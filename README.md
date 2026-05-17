@@ -42,12 +42,12 @@ Pipe tables are shown as editable monospace Markdown blocks. amorist aligns colu
 
 Very wide tables scroll horizontally inside their block, so the rest of the document stays readable.
 
-## Ubuntu Install
+## Install
 
 Install from the repo checkout:
 
 ```bash
-./scripts/install-ubuntu.sh
+./scripts/install.sh
 ```
 
 The installer asks for confirmation, installs `python3` and `xdg-utils` if needed, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`.
@@ -59,6 +59,12 @@ amorist file.md
 ```
 
 If `file.md` does not exist yet, amorist creates it on the first save.
+
+To remove the installed files:
+
+```bash
+./scripts/uninstall.sh
+```
 
 ## Development
 
@@ -76,7 +82,8 @@ Useful checks:
 python3 -m py_compile bin/amorist
 node --check web/editor/amorist-editor.js
 node --check web/app.js
-bash -n scripts/install-ubuntu.sh
+bash -n scripts/install.sh
+bash -n scripts/uninstall.sh
 bash -n scripts/capture-screenshots.sh
 ```
 

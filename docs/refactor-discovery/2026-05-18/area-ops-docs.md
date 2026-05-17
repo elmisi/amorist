@@ -1,7 +1,8 @@
 # Area: Ops and Docs   (pass: 2026-05-18, commit: 40d5d727a7b6b584a94321f69c1d4c5f7b5a7339)
 
 ## Enumeration
-- `scripts/install-ubuntu.sh` — 90 LOC, install flow and summary.
+- `scripts/install.sh` — install flow and summary.
+- `scripts/uninstall.sh` — uninstall flow and cleanup.
 - `scripts/capture-screenshots.sh` — 81 LOC, local demo screenshots.
 - `README.md`, `scripts/README.md`, `VERSION`, `.gitignore` — user-facing docs and metadata.
 
@@ -27,7 +28,8 @@
 - none.
 
 ## Acceptable as-is
-- `scripts/install-ubuntu.sh`: direct and user-confirmed installer flow.
+- `scripts/install.sh`: direct and user-confirmed installer flow.
+- `scripts/uninstall.sh`: direct and user-confirmed cleanup flow.
 - `scripts/capture-screenshots.sh`: small, clear, and documented.
 - Docs: current README avoids internal QA noise and describes user-visible behaviour.
 

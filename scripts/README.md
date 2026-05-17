@@ -1,14 +1,24 @@
 # Scripts
 
-## Ubuntu Installer
+## Installer
 
-Install amorist on Ubuntu:
+Install amorist:
 
 ```bash
-./scripts/install-ubuntu.sh
+./scripts/install.sh
 ```
 
-The installer prints a summary, asks for confirmation, installs the small runtime prerequisites, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`.
+The installer prints a summary, asks for confirmation, installs the small runtime prerequisites, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`. It currently supports Ubuntu/Debian systems.
+
+## Uninstaller
+
+Remove the installed files:
+
+```bash
+./scripts/uninstall.sh
+```
+
+The uninstaller removes `/opt/amorist` and the `/usr/local/bin/amorist` command link. It does not remove system packages such as `python3` or `xdg-utils`.
 
 ## Screenshots
 
