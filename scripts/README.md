@@ -18,6 +18,8 @@ Screenshots use the static demo routes served by the local launcher:
 ./scripts/capture-screenshots.sh
 ```
 
+The script uses the first Chromium-compatible browser it finds. Set `BROWSER=/path/to/browser` to choose one explicitly.
+
 The script writes:
 
 - `docs/screenshots/empty-state.png`

@@ -21,9 +21,26 @@ The command starts a private server on `127.0.0.1`, opens the editor in your bro
 - Stops the local server automatically after the browser tab is closed.
 - Supports headings, emphasis, links, code, lists, blockquotes, fenced code blocks, task lists, and readable Markdown tables.
 - Converts common WYSIWYG Markdown shortcuts while typing: `#`, `##`, `###`, `-`, `1.`, `>`, code fences, task markers, inline code like `` `name` ``, and bold text like `**name**`.
+- Keeps wide tables and fenced code blocks inside horizontally scrollable blocks.
 - Rejects files larger than 10 MB before reading.
 
-Markdown tables are rendered as plain Markdown in this version.
+## WYSIWYG Shortcuts
+
+In WYSIWYG mode, amorist converts common Markdown markers as you type:
+
+- `# `, `## `, `### ` for headings.
+- `- ` and `1. ` for lists.
+- `- [ ] ` and `- [x] ` for task lists.
+- `> ` for blockquotes.
+- Triple backticks followed by Enter for fenced code blocks.
+- `` `code` `` for inline code.
+- `**bold**` for bold text.
+
+## Tables
+
+Pipe tables are shown as editable monospace Markdown blocks. amorist aligns columns when rendering or saving, counts emoji and other wide glyphs by visual width, preserves escaped pipes like `\|`, and keeps blank lines inside a table when the following non-empty line is still a table row.
+
+Very wide tables scroll horizontally inside their block, so the rest of the document stays readable.
 
 ## Ubuntu Install
 
@@ -87,7 +104,7 @@ The editor lives in `web/editor/amorist-editor.js` and `web/editor/amorist-edito
 </script>
 ```
 
-The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, fenced code blocks, and pipe tables. In WYSIWYG mode, common block shortcuts are converted as you type; tables are shown as editable monospace Markdown blocks and are automatically aligned on serialization. Use source mode when exact text control matters.
+The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, fenced code blocks, and pipe tables. In WYSIWYG mode, common shortcuts are converted as you type; tables are automatically aligned on serialization. Use source mode when exact text control matters.
 
 ## Manual QA
 
@@ -99,5 +116,7 @@ Use a temporary copy when testing save behavior.
 - Close the tab with unsaved changes and verify the browser asks for confirmation.
 - Close the tab with no changes and verify the terminal process exits after a few seconds.
 - Verify an existing `CRLF` file remains `CRLF` after saving.
+- Check WYSIWYG shortcuts for headings, quote, task list, inline code, and bold.
+- Open a wide table and confirm only the table scrolls horizontally.
 - Try opening a `.txt` file and confirm it is rejected.
 - Try opening a file larger than 10 MB and confirm it is rejected.
