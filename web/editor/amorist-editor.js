@@ -1,5 +1,8 @@
 (function () {
   const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE"]);
+  const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && Intl.Segmenter
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
 
   function create(container, options) {
     return new AmoristEditor(container, options || {});
@@ -700,7 +703,66 @@
   }
 
   function tableCellWidth(value) {
-    return String(value || "").length;
+    const text = String(value || "").normalize("NFC");
+    if (!text) return 0;
+
+    const graphemes = GRAPHEME_SEGMENTER
+      ? Array.from(GRAPHEME_SEGMENTER.segment(text), (part) => part.segment)
+      : Array.from(text);
+
+    return graphemes.reduce((width, grapheme) => width + graphemeWidth(grapheme), 0);
+  }
+
+  function graphemeWidth(grapheme) {
+    let width = 0;
+    let hasEmoji = false;
+
+    for (const char of grapheme) {
+      const codePoint = char.codePointAt(0);
+      if (isZeroWidthCodePoint(codePoint) || isCombiningCodePoint(codePoint)) {
+        continue;
+      }
+      if (isEmojiCodePoint(codePoint)) {
+        hasEmoji = true;
+      }
+      width += isWideCodePoint(codePoint) ? 2 : 1;
+    }
+
+    return hasEmoji ? 2 : width;
+  }
+
+  function isZeroWidthCodePoint(codePoint) {
+    return codePoint === 0x200d ||
+      codePoint === 0xfe0e ||
+      codePoint === 0xfe0f;
+  }
+
+  function isCombiningCodePoint(codePoint) {
+    return (codePoint >= 0x0300 && codePoint <= 0x036f) ||
+      (codePoint >= 0x1ab0 && codePoint <= 0x1aff) ||
+      (codePoint >= 0x1dc0 && codePoint <= 0x1dff) ||
+      (codePoint >= 0x20d0 && codePoint <= 0x20ff) ||
+      (codePoint >= 0xfe20 && codePoint <= 0xfe2f);
+  }
+
+  function isEmojiCodePoint(codePoint) {
+    return (codePoint >= 0x1f000 && codePoint <= 0x1faff) ||
+      (codePoint >= 0x2300 && codePoint <= 0x23ff) ||
+      (codePoint >= 0x2600 && codePoint <= 0x27bf) ||
+      (codePoint >= 0x2b00 && codePoint <= 0x2bff);
+  }
+
+  function isWideCodePoint(codePoint) {
+    return (codePoint >= 0x1100 && codePoint <= 0x115f) ||
+      codePoint === 0x2329 ||
+      codePoint === 0x232a ||
+      (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
+      (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+      (codePoint >= 0xfe10 && codePoint <= 0xfe19) ||
+      (codePoint >= 0xfe30 && codePoint <= 0xfe6f) ||
+      (codePoint >= 0xff00 && codePoint <= 0xff60) ||
+      (codePoint >= 0xffe0 && codePoint <= 0xffe6);
   }
 
   function escapeHtml(value) {
