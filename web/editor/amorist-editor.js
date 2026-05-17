@@ -488,8 +488,9 @@
 
       if (isTableStart(lines, index)) {
         const tableLines = [lines[index], lines[index + 1]];
+        const tableColumnCount = splitTableRow(lines[index + 1]).length;
         index += 2;
-        while (index < lines.length && looksLikeTableRow(lines[index])) {
+        while (index < lines.length && looksLikeTableRow(lines[index], tableColumnCount)) {
           tableLines.push(lines[index]);
           index += 1;
         }
@@ -853,8 +854,11 @@
     return looksLikeTableRow(lines[index]) && isTableSeparator(lines[index + 1] || "");
   }
 
-  function looksLikeTableRow(line) {
-    return typeof line === "string" && line.includes("|") && splitTableRow(line).length >= 2;
+  function looksLikeTableRow(line, expectedColumnCount) {
+    if (typeof line !== "string" || !line.includes("|")) return false;
+    const cells = splitTableRow(line);
+    const minimumColumns = expectedColumnCount || 2;
+    return cells.length >= minimumColumns;
   }
 
   function isTableSeparator(line) {
@@ -862,30 +866,65 @@
     return cells.length >= 2 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
   }
 
-  function splitTableRow(line) {
+  function splitTableRow(line, expectedColumnCount) {
     let value = String(line || "").trim();
     if (value.startsWith("|")) value = value.slice(1);
     if (value.endsWith("|")) value = value.slice(0, -1);
-    return value.split("|").map((cell) => cell.trim());
+
+    const cells = [];
+    let cell = "";
+    for (let index = 0; index < value.length; index += 1) {
+      const char = value[index];
+      if (char === "\\") {
+        const next = value[index + 1];
+        if (next === "|") {
+          cell += "|";
+          index += 1;
+        } else {
+          cell += char;
+        }
+        continue;
+      }
+      if (char === "|") {
+        cells.push(cell.trim());
+        cell = "";
+        continue;
+      }
+      cell += char;
+    }
+    cells.push(cell.trim());
+
+    if (expectedColumnCount && cells.length > expectedColumnCount) {
+      return [
+        ...cells.slice(0, expectedColumnCount - 1),
+        cells.slice(expectedColumnCount - 1).join(" | ").trim(),
+      ];
+    }
+
+    return cells;
   }
 
   function formatMarkdownTable(markdown) {
-    const sourceRows = normalize(markdown)
+    const sourceLines = normalize(markdown)
       .split("\n")
-      .filter((line) => line.trim())
-      .map(splitTableRow);
+      .filter((line) => line.trim());
+    if (sourceLines.length < 2) return normalize(markdown).trim();
+
+    const headerRow = splitTableRow(sourceLines[0] || "");
+    const separatorRow = splitTableRow(sourceLines[1] || "");
+    const columnCount = separatorRow.length || headerRow.length;
+    const sourceRows = [
+      normalizeTableRow(headerRow, columnCount),
+      normalizeTableRow(separatorRow, columnCount),
+      ...sourceLines.slice(2).map((line) => normalizeTableRow(splitTableRow(line), columnCount, headerRow)),
+    ];
     if (sourceRows.length < 2) return normalize(markdown).trim();
 
-    const columnCount = Math.max(...sourceRows.map((row) => row.length));
-    const rows = sourceRows.map((row) => {
-      const cells = row.slice(0, columnCount);
-      while (cells.length < columnCount) cells.push("");
-      return cells;
-    });
+    const rows = sourceRows;
     const alignments = rows[1].map(tableAlignment);
     const contentRows = [rows[0], ...rows.slice(2)];
     const widths = Array.from({ length: columnCount }, (_, index) => {
-      const contentWidth = Math.max(...contentRows.map((row) => tableCellWidth(row[index])));
+      const contentWidth = Math.max(...contentRows.map((row) => tableCellWidth(escapeTableCell(row[index]))));
       return Math.max(3, contentWidth);
     });
 
@@ -903,7 +942,7 @@
   }
 
   function formatTableRow(row, widths) {
-    return `| ${row.map((cell, index) => padTableCell(cell, widths[index])).join(" | ")} |`;
+    return `| ${row.map((cell, index) => padTableCell(escapeTableCell(cell), widths[index])).join(" | ")} |`;
   }
 
   function formatTableSeparator(widths, alignments) {
@@ -918,6 +957,58 @@
   function padTableCell(cell, width) {
     const value = String(cell || "").trim();
     return value + " ".repeat(Math.max(0, width - tableCellWidth(value)));
+  }
+
+  function normalizeTableRow(row, columnCount, headerRow) {
+    const repaired = repairApiMethodRow(row, columnCount, headerRow);
+    const cells = repaired.slice(0, columnCount);
+    while (cells.length < columnCount) cells.push("");
+    return cells;
+  }
+
+  function repairApiMethodRow(row, columnCount, headerRow) {
+    if (!headerRow || row.length <= columnCount) return row;
+
+    const methodIndex = headerRow.findIndex((cell) => /^(metodo|method)$/i.test(stripMarkdownCode(cell)));
+    const mergeIndex = methodIndex - 1;
+    if (methodIndex < 1 || mergeIndex < 0) {
+      return mergeExtraTableCells(row, columnCount);
+    }
+
+    const actualMethodIndex = row.findIndex((cell, index) =>
+      index > methodIndex && isHttpMethodCell(cell),
+    );
+    if (actualMethodIndex <= methodIndex) {
+      return mergeExtraTableCells(row, columnCount);
+    }
+
+    const repaired = [
+      ...row.slice(0, mergeIndex),
+      row.slice(mergeIndex, actualMethodIndex).join(" | ").trim(),
+      row[actualMethodIndex],
+      ...row.slice(actualMethodIndex + 1),
+    ];
+    return mergeExtraTableCells(repaired, columnCount);
+  }
+
+  function mergeExtraTableCells(row, columnCount) {
+    if (row.length <= columnCount) return row;
+    return [
+      ...row.slice(0, columnCount - 1),
+      row.slice(columnCount - 1).join(" | ").trim(),
+    ];
+  }
+
+  function isHttpMethodCell(cell) {
+    return /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/i.test(stripMarkdownCode(cell));
+  }
+
+  function stripMarkdownCode(value) {
+    return String(value || "").trim().replace(/^`+|`+$/g, "");
+  }
+
+  function escapeTableCell(cell) {
+    return String(cell || "").replace(/\\?\|/g, "\\|");
   }
 
   function tableCellWidth(value) {
