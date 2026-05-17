@@ -12,12 +12,10 @@ import {
 } from "./markdownFiles";
 
 const fsMocks = vi.hoisted(() => ({
-  stat: vi.fn(),
-  readTextFile: vi.fn(),
-  writeTextFile: vi.fn(),
+  invoke: vi.fn(),
 }));
 
-vi.mock("@tauri-apps/plugin-fs", () => fsMocks);
+vi.mock("@tauri-apps/api/core", () => fsMocks);
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn(),
@@ -39,16 +37,16 @@ describe("markdown file helpers", () => {
     await expect(loadMarkdownFile("/tmp/a.txt")).rejects.toMatchObject({
       code: "unsupported-extension",
     });
-    expect(fsMocks.stat).not.toHaveBeenCalled();
+    expect(fsMocks.invoke).not.toHaveBeenCalled();
   });
 
   it("rejects files above 10 MB", async () => {
-    fsMocks.stat.mockResolvedValue({ size: 10 * 1024 * 1024 + 1 });
+    fsMocks.invoke.mockResolvedValueOnce({ size: 10 * 1024 * 1024 + 1 });
 
     await expect(loadMarkdownFile("/tmp/a.md")).rejects.toMatchObject({
       code: "too-large",
     });
-    expect(fsMocks.readTextFile).not.toHaveBeenCalled();
+    expect(fsMocks.invoke).toHaveBeenCalledTimes(1);
   });
 
   it("detects and preserves line endings", () => {
@@ -64,8 +62,9 @@ describe("markdown file helpers", () => {
   });
 
   it("loads metadata and text into a document", async () => {
-    fsMocks.stat.mockResolvedValue({ size: 12 });
-    fsMocks.readTextFile.mockResolvedValue("# Title\r\n");
+    fsMocks.invoke
+      .mockResolvedValueOnce({ size: 12 })
+      .mockResolvedValueOnce("# Title\r\n");
 
     const document = await loadMarkdownFile("/tmp/plan.md");
 
@@ -78,21 +77,21 @@ describe("markdown file helpers", () => {
   });
 
   it("normalizes line endings and recomputes bytes on save", async () => {
-    fsMocks.writeTextFile.mockResolvedValue(undefined);
+    fsMocks.invoke.mockResolvedValueOnce(undefined);
     const document = createMarkdownDocument("/tmp/a.md", "old\r\n", null);
 
     const saved = await saveMarkdownFile(document, "new\ntext\n");
 
-    expect(fsMocks.writeTextFile).toHaveBeenCalledWith(
-      "/tmp/a.md",
-      "new\r\ntext\r\n",
-    );
+    expect(fsMocks.invoke).toHaveBeenCalledWith("write_markdown_file", {
+      path: "/tmp/a.md",
+      contents: "new\r\ntext\r\n",
+    });
     expect(saved.byteLength).toBe(new TextEncoder().encode("new\r\ntext\r\n").byteLength);
     expect(saved.savedAt).toEqual(expect.any(Number));
   });
 
   it("maps permission failures", async () => {
-    fsMocks.stat.mockRejectedValue(new Error("permission denied"));
+    fsMocks.invoke.mockRejectedValue(new Error("permission denied"));
 
     await expect(loadMarkdownFile("/tmp/a.md")).rejects.toMatchObject({
       code: "permission-denied",

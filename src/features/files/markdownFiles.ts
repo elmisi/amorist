@@ -1,5 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { readTextFile, stat, writeTextFile } from "@tauri-apps/plugin-fs";
 import {
   MAX_MARKDOWN_BYTES,
   type FileFailure,
@@ -9,6 +9,10 @@ import {
 const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "mdown"]);
 const TEXT_ENCODER = new TextEncoder();
 const NOTE_PATTERN = /^> \*\*NOTE\*\*:/m;
+
+interface MarkdownFileInfo {
+  size: number;
+}
 
 export async function pickMarkdownFile(): Promise<string | null> {
   const selected = await open({
@@ -32,7 +36,7 @@ export async function loadMarkdownFile(path: string): Promise<MarkdownDocument> 
   validateMarkdownPath(path);
 
   try {
-    const info = await stat(path);
+    const info = await invoke<MarkdownFileInfo>("stat_markdown_file", { path });
     if (info.size > MAX_MARKDOWN_BYTES) {
       throw fileFailure("too-large", "File is larger than 10 MB.");
     }
@@ -44,7 +48,7 @@ export async function loadMarkdownFile(path: string): Promise<MarkdownDocument> 
   }
 
   try {
-    const contents = await readTextFile(path);
+    const contents = await invoke<string>("read_markdown_file", { path });
     return createMarkdownDocument(path, contents, null);
   } catch (error) {
     throw mapFailure(error, "read-failed");
@@ -58,7 +62,10 @@ export async function saveMarkdownFile(
   const normalized = normalizeLineEnding(markdown, document.lineEnding);
 
   try {
-    await writeTextFile(document.path, normalized);
+    await invoke("write_markdown_file", {
+      path: document.path,
+      contents: normalized,
+    });
     return createMarkdownDocument(document.path, normalized, Date.now());
   } catch (error) {
     throw mapFailure(error, "write-failed");
@@ -87,7 +94,10 @@ export async function saveMarkdownFileAs(
   const normalized = normalizeLineEnding(markdown, options?.lineEnding ?? "lf");
 
   try {
-    await writeTextFile(selected, normalized);
+    await invoke("write_markdown_file", {
+      path: selected,
+      contents: normalized,
+    });
     return createMarkdownDocument(selected, normalized, Date.now());
   } catch (error) {
     throw mapFailure(error, "write-failed");

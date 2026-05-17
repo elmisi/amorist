@@ -17,6 +17,30 @@ amorist is a small Tauri desktop app for opening, editing, and saving one Markdo
 
 Markdown table editing is not supported in v1.
 
+## Ubuntu install
+
+Build and install the local `.deb` package:
+
+```bash
+npm run install:ubuntu
+```
+
+The installer:
+
+- installs Ubuntu build prerequisites with `apt-get`;
+- runs `npm ci`;
+- builds the Tauri Debian package;
+- installs the generated `.deb`;
+- verifies that `amorist` is available in `PATH`.
+
+Open a Markdown file from the shell:
+
+```bash
+amorist file.md
+```
+
+The command also accepts `.markdown` and `.mdown` files. If more than one path is passed, amorist opens the first one and shows a warning.
+
 ## Development
 
 Install JavaScript dependencies:
@@ -54,7 +78,7 @@ npm run tauri:build
 On Ubuntu 24.04, Tauri also needs the native WebKit/libsoup development packages:
 
 ```bash
-sudo apt-get install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+sudo apt-get install build-essential libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config
 ```
 
 ## Screenshots
