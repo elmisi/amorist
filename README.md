@@ -105,18 +105,3 @@ The editor lives in `web/editor/amorist-editor.js` and `web/editor/amorist-edito
 ```
 
 The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, fenced code blocks, and pipe tables. In WYSIWYG mode, common shortcuts are converted as you type; tables are automatically aligned on serialization. Use source mode when exact text control matters.
-
-## Manual QA
-
-Use a temporary copy when testing save behavior.
-
-- Open an existing Markdown file.
-- Create a missing Markdown file with `amorist new-file.md`, edit it, and save.
-- Edit and save with `Ctrl+S`.
-- Close the tab with unsaved changes and verify the browser asks for confirmation.
-- Close the tab with no changes and verify the terminal process exits after a few seconds.
-- Verify an existing `CRLF` file remains `CRLF` after saving.
-- Check WYSIWYG shortcuts for headings, quote, task list, inline code, and bold.
-- Open a wide table and confirm only the table scrolls horizontally.
-- Try opening a `.txt` file and confirm it is rejected.
-- Try opening a file larger than 10 MB and confirm it is rejected.
