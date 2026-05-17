@@ -31,6 +31,13 @@ APT_PACKAGES=(
 INSTALL_DIR="/opt/amorist"
 BIN_PATH="/usr/local/bin/amorist"
 VERSION="$(tr -d '[:space:]' < VERSION)"
+APT_PACKAGES_TEXT=""
+for package in "${APT_PACKAGES[@]}"; do
+  if [[ -n "$APT_PACKAGES_TEXT" ]]; then
+    APT_PACKAGES_TEXT+=", "
+  fi
+  APT_PACKAGES_TEXT+="$package"
+done
 
 cat <<SUMMARY
 amorist Ubuntu installer
@@ -41,8 +48,7 @@ Version: $VERSION
 
 This script will:
   1. Run: sudo apt-get update
-  2. Install these apt packages:
-$(printf '     - %s\n' "${APT_PACKAGES[@]}")
+  2. Install these apt packages: $APT_PACKAGES_TEXT
   3. Copy the launcher and web assets to: $INSTALL_DIR
   4. Create or replace this command: $BIN_PATH
   5. Verify that the amorist command is available in PATH
