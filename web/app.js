@@ -116,9 +116,8 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     });
     state.savedMarkdown = demoMarkdown;
     mountEditor(demoMarkdown);
-    state.editor.showStats(false);
     if (sourceMode) {
-      state.editor.showPlainTextarea();
+      state.editor.showSourceMode();
     }
     if (screenshotMode === "empty") {
       elements.editor.innerHTML = '<section class="empty-state">Open a Markdown file with <code>amorist file.md</code></section>';
@@ -135,18 +134,13 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     }
     elements.editor.innerHTML = "";
 
-    const overtypeModule = window.OverType || {};
-    const OverTypeCtor = overtypeModule.default || overtypeModule.OverType || overtypeModule;
-    state.editor = OverTypeCtor.init(elements.editor, {
+    state.editor = window.AmoristEditor.create(elements.editor, {
       value: markdown,
-      toolbar: true,
-      showStats: true,
       spellcheck: true,
-      minHeight: "calc(100vh - 136px)",
       onChange: (value) => {
         setDirty(value !== state.savedMarkdown);
       },
-    })[0];
+    });
   }
 
   function handleKeyDown(event) {

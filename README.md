@@ -8,7 +8,7 @@ amorist opens one Markdown file at a time from the shell:
 amorist file.md
 ```
 
-The command starts a private server on `127.0.0.1`, opens the editor in your browser, and saves directly back to the file you passed in. The editor uses a vendored copy of OverType, so Markdown stays the source of truth and the runtime has no Node, Rust, WebKitGTK, or Electron dependency chain.
+The command starts a private server on `127.0.0.1`, opens the editor in your browser, and saves directly back to the file you passed in. The editor is a small vanilla JavaScript component built for this project, so Markdown stays the source of truth and the runtime has no Node, Rust, WebKitGTK, or Electron dependency chain.
 
 ![amorist WYSIWYG editor](docs/screenshots/wysiwyg-mode.png)
 
@@ -56,13 +56,37 @@ Useful checks:
 
 ```bash
 python3 -m py_compile bin/amorist
+node --check web/editor/amorist-editor.js
+node --check web/app.js
 bash -n scripts/install-ubuntu.sh
 bash -n scripts/capture-screenshots.sh
 ```
 
-## Vendored Code
+## Embedded Editor
 
-`vendor/overtype/overtype.min.js` is OverType v2.3.10, licensed under MIT. The upstream project is `panphora/overtype`.
+The editor lives in `web/editor/amorist-editor.js` and `web/editor/amorist-editor.css`. It is plain browser JavaScript and can be embedded in another vanilla app without a build step:
+
+```html
+<link rel="stylesheet" href="amorist-editor.css">
+<div id="description-editor"></div>
+<script src="amorist-editor.js"></script>
+<script>
+  const editor = AmoristEditor.create(document.getElementById("description-editor"), {
+    value: "# Notes",
+    onChange(markdown) {
+      console.log(markdown);
+    },
+  });
+
+  editor.getMarkdown();
+  editor.setMarkdown("Updated **Markdown**");
+  editor.showSourceMode();
+  editor.showWysiwygMode();
+  editor.destroy();
+</script>
+```
+
+The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, and fenced code blocks. It serializes normalized Markdown; use source mode when exact text control matters.
 
 ## Manual QA
 

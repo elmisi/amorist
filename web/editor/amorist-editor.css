@@ -1,0 +1,186 @@
+.amorist-editor {
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #d8dee6);
+  border-radius: 8px;
+  min-height: calc(100vh - 136px);
+  overflow: hidden;
+  width: 100%;
+}
+
+.amorist-editor-toolbar {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel, #fff) 96%, var(--accent, #246b54));
+  border-bottom: 1px solid var(--border, #d8dee6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+}
+
+.amorist-editor-toolbar button {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text, #1c232b);
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 650;
+  justify-content: center;
+  min-height: 32px;
+  min-width: 34px;
+  padding: 0 9px;
+}
+
+.amorist-editor-toolbar button:hover {
+  background: var(--panel, #fff);
+  border-color: var(--border, #d8dee6);
+}
+
+.amorist-editor-toolbar button[aria-pressed="true"] {
+  background: #e6f1ed;
+  border-color: var(--accent, #246b54);
+  color: var(--accent-strong, #175540);
+}
+
+.amorist-editor-toolbar-separator {
+  background: var(--border, #d8dee6);
+  height: 22px;
+  margin: 0 3px;
+  width: 1px;
+}
+
+.amorist-editor-surface,
+.amorist-editor-source {
+  min-height: calc(100vh - 190px);
+  width: 100%;
+}
+
+.amorist-editor-surface[hidden],
+.amorist-editor-source[hidden] {
+  display: none;
+}
+
+.amorist-editor-surface {
+  outline: none;
+  padding: 28px 34px;
+}
+
+.amorist-editor-source {
+  background: var(--panel, #fff);
+  border: 0;
+  color: var(--text, #1c232b);
+  display: block;
+  font: 15px/1.6 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  outline: none;
+  padding: 24px;
+  resize: none;
+}
+
+.amorist-editor-surface > *:first-child {
+  margin-top: 0;
+}
+
+.amorist-editor-surface h1,
+.amorist-editor-surface h2,
+.amorist-editor-surface h3 {
+  line-height: 1.2;
+  margin: 1.1em 0 0.45em;
+}
+
+.amorist-editor-surface h1 {
+  font-size: 32px;
+}
+
+.amorist-editor-surface h2 {
+  font-size: 24px;
+}
+
+.amorist-editor-surface h3 {
+  font-size: 19px;
+}
+
+.amorist-editor-surface p,
+.amorist-editor-surface li,
+.amorist-editor-surface blockquote {
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.amorist-editor-surface blockquote {
+  border-left: 3px solid var(--accent, #246b54);
+  color: #40566b;
+  margin-left: 0;
+  padding-left: 14px;
+}
+
+.amorist-editor-surface code {
+  background: #eef2f3;
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+  padding: 2px 4px;
+}
+
+.amorist-editor-surface pre {
+  background: #172027;
+  border-radius: 8px;
+  color: #f2f6f8;
+  overflow: auto;
+  padding: 16px;
+}
+
+.amorist-editor-surface pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.amorist-editor-surface ul,
+.amorist-editor-surface ol {
+  padding-left: 1.6em;
+}
+
+.amorist-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.amorist-task-item {
+  align-items: baseline;
+  display: flex;
+  gap: 9px;
+}
+
+.amorist-task-checkbox {
+  align-items: center;
+  border: 1px solid var(--border, #d8dee6);
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  font-size: 12px;
+  height: 16px;
+  justify-content: center;
+  transform: translateY(2px);
+  width: 16px;
+}
+
+.amorist-task-item[data-checked="true"] .amorist-task-checkbox {
+  background: var(--accent, #246b54);
+  border-color: var(--accent, #246b54);
+}
+
+.amorist-task-item[data-checked="true"] .amorist-task-checkbox::before {
+  content: "✓";
+}
+
+.amorist-task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.amorist-empty {
+  color: var(--muted, #68717d);
+}

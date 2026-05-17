@@ -68,7 +68,7 @@ sudo apt-get install -y "${APT_PACKAGES[@]}"
 echo "Installing amorist into $INSTALL_DIR..."
 sudo rm -rf "$INSTALL_DIR"
 sudo install -d "$INSTALL_DIR"
-sudo cp -a bin web vendor VERSION README.md "$INSTALL_DIR/"
+sudo cp -a bin web VERSION README.md "$INSTALL_DIR/"
 
 sudo install -d "$(dirname "$BIN_PATH")"
 sudo ln -sfn "$INSTALL_DIR/bin/amorist" "$BIN_PATH"

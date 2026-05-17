@@ -125,23 +125,6 @@ button:disabled {
   padding: 16px;
 }
 
-.overtype-container {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  min-height: calc(100vh - 136px);
-  width: 100%;
-}
-
-.overtype-wrapper {
-  min-height: calc(100vh - 188px);
-}
-
-.overtype-toolbar {
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-}
-
 .empty-state {
   align-items: center;
   background: var(--panel);

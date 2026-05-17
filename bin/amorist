@@ -17,7 +17,6 @@ from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parent.parent
 WEB_ROOT = APP_ROOT / "web"
-VENDOR_ROOT = APP_ROOT / "vendor"
 VERSION_FILE = APP_ROOT / "VERSION"
 MAX_MARKDOWN_BYTES = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".md", ".markdown", ".mdown"}
@@ -181,8 +180,6 @@ def make_handler(state: ServerState):
             relative = request_path.lstrip("/")
             if relative.startswith("web/"):
                 path = APP_ROOT / relative
-            elif relative.startswith("vendor/"):
-                path = APP_ROOT / relative
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
@@ -193,8 +190,8 @@ def make_handler(state: ServerState):
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
 
-            allowed_roots = (WEB_ROOT.resolve(), VENDOR_ROOT.resolve())
-            if not any(resolved == root or root in resolved.parents for root in allowed_roots):
+            web_root = WEB_ROOT.resolve()
+            if not (resolved == web_root or web_root in resolved.parents):
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             self.send_file(resolved)
