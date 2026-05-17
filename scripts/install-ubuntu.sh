@@ -24,21 +24,53 @@ for command in npm cargo rustc sudo apt-get; do
   fi
 done
 
+APT_PACKAGES=(
+  build-essential
+  curl
+  file
+  libayatana-appindicator3-dev
+  libgtk-3-dev
+  libjavascriptcoregtk-4.1-dev
+  libsoup-3.0-dev
+  libssl-dev
+  libwebkit2gtk-4.1-dev
+  librsvg2-dev
+  patchelf
+  pkg-config
+)
+
+cat <<SUMMARY
+amorist Ubuntu installer
+
+Detected system: ${PRETTY_NAME:-unknown}
+Project path: $ROOT_DIR
+
+This script will:
+  1. Run: sudo apt-get update
+  2. Install these apt packages:
+$(printf '     - %s\n' "${APT_PACKAGES[@]}")
+  3. Run: npm ci
+  4. Build the Debian package with: npm run tauri:build -- --bundles deb --ci
+  5. Install the generated .deb with: sudo apt-get install -y <package>
+  6. Verify that the amorist command is available in PATH
+
+After installation you should be able to run:
+  amorist file.md
+
+SUMMARY
+
+read -r -p "Continue? [y/N] " CONFIRM
+case "$CONFIRM" in
+  y|Y|yes|YES) ;;
+  *)
+    echo "Installation cancelled."
+    exit 0
+    ;;
+esac
+
 echo "Installing Ubuntu build prerequisites..."
 sudo apt-get update
-sudo apt-get install -y \
-  build-essential \
-  curl \
-  file \
-  libayatana-appindicator3-dev \
-  libgtk-3-dev \
-  libjavascriptcoregtk-4.1-dev \
-  libsoup-3.0-dev \
-  libssl-dev \
-  libwebkit2gtk-4.1-dev \
-  librsvg2-dev \
-  patchelf \
-  pkg-config
+sudo apt-get install -y "${APT_PACKAGES[@]}"
 
 echo "Installing JavaScript dependencies from package-lock.json..."
 npm ci
