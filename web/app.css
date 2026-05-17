@@ -57,6 +57,7 @@ button:disabled {
 .app-shell {
   display: grid;
   grid-template-rows: auto auto 1fr auto;
+  min-width: 0;
   min-height: 100vh;
 }
 
@@ -130,8 +131,12 @@ button:disabled {
 }
 
 .editor {
+  max-width: 100%;
   min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
   padding: 16px;
+  width: 100%;
 }
 
 .empty-state {

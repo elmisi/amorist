@@ -2,7 +2,10 @@
   background: var(--panel, #fff);
   border: 1px solid var(--border, #d8dee6);
   border-radius: 8px;
+  box-sizing: border-box;
+  max-width: 100%;
   min-height: calc(100vh - 136px);
+  min-width: 0;
   overflow: visible;
   width: 100%;
 }
@@ -57,6 +60,7 @@
 .amorist-editor-surface,
 .amorist-editor-source {
   min-height: calc(100vh - 190px);
+  min-width: 0;
   width: 100%;
 }
 
@@ -66,7 +70,10 @@
 }
 
 .amorist-editor-surface {
+  max-width: 100%;
   outline: none;
+  overflow-x: hidden;
+  overflow-wrap: break-word;
   padding: 28px 34px;
 }
 
@@ -129,9 +136,14 @@
 .amorist-editor-surface pre {
   background: #172027;
   border-radius: 8px;
+  box-sizing: border-box;
   color: #f2f6f8;
+  display: block;
+  max-width: 100%;
+  min-width: 0;
   overflow: auto;
   padding: 16px;
+  width: 100%;
 }
 
 .amorist-editor-surface pre code {
