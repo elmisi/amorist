@@ -136,6 +136,19 @@
   padding: 0;
 }
 
+.amorist-editor-surface .amorist-markdown-table {
+  background: #f3f6f7;
+  border: 1px solid var(--border, #d8dee6);
+  color: #10202c;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.amorist-editor-surface .amorist-markdown-table code {
+  color: inherit;
+}
+
 .amorist-editor-surface ul,
 .amorist-editor-surface ol {
   padding-left: 1.6em;

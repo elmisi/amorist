@@ -292,6 +292,17 @@
         continue;
       }
 
+      if (isTableStart(lines, index)) {
+        const tableLines = [lines[index], lines[index + 1]];
+        index += 2;
+        while (index < lines.length && looksLikeTableRow(lines[index])) {
+          tableLines.push(lines[index]);
+          index += 1;
+        }
+        blocks.push({ type: "table", text: formatMarkdownTable(tableLines.join("\n")) });
+        continue;
+      }
+
       const heading = line.match(/^(#{1,3})\s+(.+)$/);
       if (heading) {
         blocks.push({ type: "heading", level: heading[1].length, text: heading[2] });
@@ -377,6 +388,8 @@
         return `<blockquote>${renderInline(block.text)}</blockquote>`;
       case "code":
         return `<pre><code>${escapeHtml(block.text)}</code></pre>`;
+      case "table":
+        return `<pre class="amorist-markdown-table" data-block-type="table"><code>${escapeHtml(block.text)}</code></pre>`;
       case "taskList":
         return `<ul class="amorist-task-list">${block.items.map((item) =>
           `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text)}</span></li>`,
@@ -429,6 +442,10 @@
       return;
     }
     if (tag === "PRE") {
+      if (element.dataset.blockType === "table" || element.classList.contains("amorist-markdown-table")) {
+        lines.push(formatMarkdownTable(element.textContent));
+        return;
+      }
       lines.push(`\`\`\`\n${element.textContent.replace(/\n$/, "")}\n\`\`\``);
       return;
     }
@@ -493,6 +510,81 @@
 
   function normalize(markdown) {
     return String(markdown).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  }
+
+  function isTableStart(lines, index) {
+    return looksLikeTableRow(lines[index]) && isTableSeparator(lines[index + 1] || "");
+  }
+
+  function looksLikeTableRow(line) {
+    return typeof line === "string" && line.includes("|") && splitTableRow(line).length >= 2;
+  }
+
+  function isTableSeparator(line) {
+    const cells = splitTableRow(line);
+    return cells.length >= 2 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+  }
+
+  function splitTableRow(line) {
+    let value = String(line || "").trim();
+    if (value.startsWith("|")) value = value.slice(1);
+    if (value.endsWith("|")) value = value.slice(0, -1);
+    return value.split("|").map((cell) => cell.trim());
+  }
+
+  function formatMarkdownTable(markdown) {
+    const sourceRows = normalize(markdown)
+      .split("\n")
+      .filter((line) => line.trim())
+      .map(splitTableRow);
+    if (sourceRows.length < 2) return normalize(markdown).trim();
+
+    const columnCount = Math.max(...sourceRows.map((row) => row.length));
+    const rows = sourceRows.map((row) => {
+      const cells = row.slice(0, columnCount);
+      while (cells.length < columnCount) cells.push("");
+      return cells;
+    });
+    const alignments = rows[1].map(tableAlignment);
+    const contentRows = [rows[0], ...rows.slice(2)];
+    const widths = Array.from({ length: columnCount }, (_, index) => {
+      const contentWidth = Math.max(...contentRows.map((row) => tableCellWidth(row[index])));
+      return Math.max(3, contentWidth);
+    });
+
+    const header = formatTableRow(rows[0], widths);
+    const separator = formatTableSeparator(widths, alignments);
+    const body = rows.slice(2).map((row) => formatTableRow(row, widths));
+    return [header, separator, ...body].join("\n");
+  }
+
+  function tableAlignment(cell) {
+    const trimmed = String(cell || "").trim();
+    if (trimmed.startsWith(":") && trimmed.endsWith(":")) return "center";
+    if (trimmed.endsWith(":")) return "right";
+    return "left";
+  }
+
+  function formatTableRow(row, widths) {
+    return `| ${row.map((cell, index) => padTableCell(cell, widths[index])).join(" | ")} |`;
+  }
+
+  function formatTableSeparator(widths, alignments) {
+    return `| ${widths.map((width, index) => {
+      const dashes = "-".repeat(width);
+      if (alignments[index] === "center") return `:${dashes.slice(1, -1)}:`;
+      if (alignments[index] === "right") return `${dashes.slice(0, -1)}:`;
+      return dashes;
+    }).join(" | ")} |`;
+  }
+
+  function padTableCell(cell, width) {
+    const value = String(cell || "").trim();
+    return value + " ".repeat(Math.max(0, width - tableCellWidth(value)));
+  }
+
+  function tableCellWidth(value) {
+    return String(value || "").length;
   }
 
   function escapeHtml(value) {

@@ -35,6 +35,11 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
 
 - [ ] Review draft
 - [x] Save locally
+
+| Project   | Status | Notes       |
+|-----------|--------|-------------|
+| amorist   | ready  | local-first |
+| ambiguous | later  | embeddable  |
 `;
 
   document.addEventListener("DOMContentLoaded", () => {

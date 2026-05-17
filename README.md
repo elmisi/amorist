@@ -19,7 +19,7 @@ The command starts a private server on `127.0.0.1`, opens the editor in your bro
 - Keeps existing `LF` or `CRLF` line endings when saving.
 - Shows a browser-native warning before closing with unsaved changes.
 - Stops the local server automatically after the browser tab is closed.
-- Supports headings, emphasis, links, code, lists, blockquotes, fenced code blocks, and task lists.
+- Supports headings, emphasis, links, code, lists, blockquotes, fenced code blocks, task lists, and readable Markdown tables.
 - Rejects files larger than 10 MB before reading.
 
 Markdown tables are rendered as plain Markdown in this version.
@@ -86,7 +86,7 @@ The editor lives in `web/editor/amorist-editor.js` and `web/editor/amorist-edito
 </script>
 ```
 
-The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, and fenced code blocks. It serializes normalized Markdown; use source mode when exact text control matters.
+The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, fenced code blocks, and pipe tables. Tables are shown as editable monospace Markdown blocks and are automatically aligned on serialization; use source mode when exact text control matters.
 
 ## Manual QA
 
