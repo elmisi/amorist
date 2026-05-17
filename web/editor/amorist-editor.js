@@ -119,20 +119,24 @@
 
     showSourceMode() {
       if (this.mode === "source") return;
+      const scrollPosition = this.captureScrollPosition();
       this.source.value = this.markdown;
       this.surface.hidden = true;
       this.source.hidden = false;
       this.mode = "source";
       this.updateSourceButton();
+      this.restoreScrollPosition(scrollPosition);
     }
 
     showWysiwygMode() {
       if (this.mode === "wysiwyg") return;
+      const scrollPosition = this.captureScrollPosition();
       this.setMarkdown(this.source.value, { silent: true });
       this.source.hidden = true;
       this.surface.hidden = false;
       this.mode = "wysiwyg";
       this.updateSourceButton();
+      this.restoreScrollPosition(scrollPosition);
     }
 
     showPlainTextarea() {
@@ -259,6 +263,63 @@
       const button = this.toolbar.querySelector('[data-action="source"]');
       if (button) button.setAttribute("aria-pressed", String(this.mode === "source"));
     }
+
+    captureScrollPosition() {
+      if (this.mode === "source") {
+        const lineHeight = sourceLineHeight(this.source);
+        const maxScroll = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
+        return {
+          line: Math.max(0, Math.floor(this.source.scrollTop / lineHeight)),
+          progress: maxScroll > 0 ? this.source.scrollTop / maxScroll : 0,
+        };
+      }
+
+      const visibleTop = viewportContentTop(this.toolbar);
+      const visibleBlock = Array.from(this.surface.children).find((child) => {
+        const rect = child.getBoundingClientRect();
+        return rect.bottom > visibleTop;
+      });
+      const surfaceRect = this.surface.getBoundingClientRect();
+      const progress = clamp(
+        (visibleTop - surfaceRect.top) / Math.max(1, this.surface.scrollHeight),
+        0,
+        1,
+      );
+
+      return {
+        line: visibleBlock ? Number(visibleBlock.dataset.sourceLine || 0) : 0,
+        progress,
+      };
+    }
+
+    restoreScrollPosition(position) {
+      if (!position) return;
+
+      const restore = () => {
+        if (this.mode === "source") {
+          const maxScroll = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
+          const lineTop = position.line * sourceLineHeight(this.source);
+          this.source.scrollTop = clamp(lineTop, 0, maxScroll);
+          window.scrollTo({ top: Math.max(0, documentTop(this.root) - topbarHeight()) });
+          return;
+        }
+
+        const target = blockForSourceLine(this.surface, position.line);
+        if (target) {
+          window.scrollTo({
+            top: Math.max(0, documentTop(target) - viewportContentTop(this.toolbar)),
+          });
+          return;
+        }
+
+        const surfaceTop = documentTop(this.surface);
+        const y = surfaceTop + (this.surface.scrollHeight * position.progress) - viewportContentTop(this.toolbar);
+        window.scrollTo({ top: Math.max(0, y) });
+      };
+
+      restore();
+      window.requestAnimationFrame(restore);
+    }
   }
 
   function renderMarkdown(markdown) {
@@ -278,6 +339,7 @@
         index += 1;
         continue;
       }
+      const sourceLine = index;
 
       const fence = line.match(/^ {0,3}(`{3,}|~{3,}).*$/);
       if (fence) {
@@ -291,7 +353,7 @@
           index += 1;
         }
         if (index < lines.length) index += 1;
-        blocks.push({ type: "code", text: code.join("\n") });
+        blocks.push({ type: "code", text: code.join("\n"), sourceLine });
         continue;
       }
 
@@ -302,13 +364,13 @@
           tableLines.push(lines[index]);
           index += 1;
         }
-        blocks.push({ type: "table", text: formatMarkdownTable(tableLines.join("\n")) });
+        blocks.push({ type: "table", text: formatMarkdownTable(tableLines.join("\n")), sourceLine });
         continue;
       }
 
       const heading = line.match(/^(#{1,3})\s+(.+)$/);
       if (heading) {
-        blocks.push({ type: "heading", level: heading[1].length, text: heading[2] });
+        blocks.push({ type: "heading", level: heading[1].length, text: heading[2], sourceLine });
         index += 1;
         continue;
       }
@@ -319,7 +381,7 @@
           quote.push(lines[index].replace(/^>\s?/, ""));
           index += 1;
         }
-        blocks.push({ type: "quote", text: quote.join(" ") });
+        blocks.push({ type: "quote", text: quote.join(" "), sourceLine });
         continue;
       }
 
@@ -331,7 +393,7 @@
           items.push({ checked: task[1].trim().toLowerCase() === "x", text: task[2] });
           index += 1;
         }
-        blocks.push({ type: "taskList", items });
+        blocks.push({ type: "taskList", items, sourceLine });
         continue;
       }
 
@@ -343,7 +405,7 @@
           items.push(bullet[1]);
           index += 1;
         }
-        blocks.push({ type: "bulletList", items });
+        blocks.push({ type: "bulletList", items, sourceLine });
         continue;
       }
 
@@ -355,7 +417,7 @@
           items.push(ordered[1]);
           index += 1;
         }
-        blocks.push({ type: "orderedList", items });
+        blocks.push({ type: "orderedList", items, sourceLine });
         continue;
       }
 
@@ -369,7 +431,7 @@
         paragraph.push(lines[index]);
         index += 1;
       }
-      blocks.push({ type: "paragraph", text: paragraph.join(" ") });
+      blocks.push({ type: "paragraph", text: paragraph.join(" "), sourceLine });
     }
 
     return blocks;
@@ -386,26 +448,31 @@
   }
 
   function renderBlock(block) {
+    const attrs = sourceLineAttr(block);
     switch (block.type) {
       case "heading":
-        return `<h${block.level}>${renderInline(block.text)}</h${block.level}>`;
+        return `<h${block.level}${attrs}>${renderInline(block.text)}</h${block.level}>`;
       case "quote":
-        return `<blockquote>${renderInline(block.text)}</blockquote>`;
+        return `<blockquote${attrs}>${renderInline(block.text)}</blockquote>`;
       case "code":
-        return `<pre><code>${escapeHtml(block.text)}</code></pre>`;
+        return `<pre${attrs}><code>${escapeHtml(block.text)}</code></pre>`;
       case "table":
-        return `<pre class="amorist-markdown-table" data-block-type="table"><code>${escapeHtml(block.text)}</code></pre>`;
+        return `<pre class="amorist-markdown-table" data-block-type="table"${attrs}><code>${escapeHtml(block.text)}</code></pre>`;
       case "taskList":
-        return `<ul class="amorist-task-list">${block.items.map((item) =>
+        return `<ul class="amorist-task-list"${attrs}>${block.items.map((item) =>
           `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text)}</span></li>`,
         ).join("")}</ul>`;
       case "bulletList":
-        return `<ul>${block.items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ul>`;
+        return `<ul${attrs}>${block.items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ul>`;
       case "orderedList":
-        return `<ol>${block.items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ol>`;
+        return `<ol${attrs}>${block.items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ol>`;
       default:
-        return `<p>${renderInline(block.text)}</p>`;
+        return `<p${attrs}>${renderInline(block.text)}</p>`;
     }
+  }
+
+  function sourceLineAttr(block) {
+    return ` data-source-line="${Number(block.sourceLine || 0)}"`;
   }
 
   function renderInline(text) {
@@ -511,6 +578,50 @@
       }
     });
     return output.replace(/\u00a0/g, " ").trim();
+  }
+
+  function sourceLineHeight(source) {
+    const style = window.getComputedStyle(source);
+    const lineHeight = Number.parseFloat(style.lineHeight);
+    if (Number.isFinite(lineHeight)) return lineHeight;
+    const fontSize = Number.parseFloat(style.fontSize);
+    return Number.isFinite(fontSize) ? fontSize * 1.6 : 24;
+  }
+
+  function viewportContentTop(toolbar) {
+    return Math.max(0, toolbar.getBoundingClientRect().bottom) + 1;
+  }
+
+  function topbarHeight() {
+    const topbar = document.querySelector(".topbar");
+    return topbar ? topbar.getBoundingClientRect().height : 0;
+  }
+
+  function documentTop(element) {
+    return element.getBoundingClientRect().top + window.scrollY;
+  }
+
+  function blockForSourceLine(surface, line) {
+    const blocks = Array.from(surface.children)
+      .map((element) => ({
+        element,
+        line: Number(element.dataset.sourceLine || 0),
+      }))
+      .filter((block) => Number.isFinite(block.line))
+      .sort((a, b) => a.line - b.line);
+
+    if (blocks.length === 0) return null;
+
+    let target = blocks[0].element;
+    for (const block of blocks) {
+      if (block.line > line) break;
+      target = block.element;
+    }
+    return target;
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
   }
 
   function normalize(markdown) {
