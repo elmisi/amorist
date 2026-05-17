@@ -20,7 +20,7 @@ The command starts a private server on `127.0.0.1`, opens the editor in your bro
 - Shows a browser-native warning before closing with unsaved changes.
 - Stops the local server automatically after the browser tab is closed.
 - Supports headings, emphasis, links, code, lists, blockquotes, fenced code blocks, task lists, and readable Markdown tables.
-- Converts common WYSIWYG Markdown shortcuts while typing: `#`, `##`, `###`, `-`, `1.`, `>`, code fences, task markers, and inline code like `` `name` ``.
+- Converts common WYSIWYG Markdown shortcuts while typing: `#`, `##`, `###`, `-`, `1.`, `>`, code fences, task markers, inline code like `` `name` ``, and bold text like `**name**`.
 - Rejects files larger than 10 MB before reading.
 
 Markdown tables are rendered as plain Markdown in this version.

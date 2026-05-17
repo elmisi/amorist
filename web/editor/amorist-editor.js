@@ -333,13 +333,13 @@
 
     handleWysiwygInput() {
       if (this.isSyncing) return;
-      this.applyInlineCodeShortcut();
+      this.applyInlineMarkdownShortcut();
       this.markdown = serializeBlocks(this.surface);
       this.source.value = this.markdown;
       this.emitChange();
     }
 
-    applyInlineCodeShortcut() {
+    applyInlineMarkdownShortcut() {
       const selection = window.getSelection();
       if (!selection || !selection.isCollapsed || selection.rangeCount === 0) return;
       const node = selection.anchorNode;
@@ -349,21 +349,17 @@
       const offset = selection.anchorOffset;
       const text = node.textContent || "";
       const before = text.slice(0, offset);
-      const match = before.match(/`([^`\n]+)`$/);
-      if (!match) return;
 
-      const start = offset - match[0].length;
-      const beforeNodeText = text.slice(0, start);
-      const afterNodeText = text.slice(offset);
-      const code = document.createElement("code");
-      code.textContent = match[1];
+      const codeMatch = before.match(/`([^`\n]+)`$/);
+      if (codeMatch) {
+        replaceTextShortcut(node, offset, codeMatch, "code");
+        return;
+      }
 
-      const replacements = [];
-      if (beforeNodeText) replacements.push(document.createTextNode(beforeNodeText));
-      replacements.push(code);
-      if (afterNodeText) replacements.push(document.createTextNode(afterNodeText));
-      node.replaceWith(...replacements);
-      placeCaretAfter(code);
+      const boldMatch = !hasOpenInlineCode(before) && before.match(/\*\*([^*\n]+)\*\*$/);
+      if (boldMatch) {
+        replaceTextShortcut(node, offset, boldMatch, "strong");
+      }
     }
 
     handlePaste(event) {
@@ -720,7 +716,7 @@
           output += inlineMarkdown(element);
       }
     });
-    return output.replace(/\u00a0/g, " ").trim();
+    return output.replace(/\u00a0/g, " ").replace(/\u200b/g, "").trim();
   }
 
   function currentSelectionBlock(surface) {
@@ -801,6 +797,37 @@
     if (!selection) return;
     const range = document.createRange();
     range.setStartAfter(element);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function replaceTextShortcut(node, offset, match, tagName) {
+    const text = node.textContent || "";
+    const start = offset - match[0].length;
+    const beforeNodeText = text.slice(0, start);
+    const afterNodeText = text.slice(offset);
+    const element = document.createElement(tagName);
+    element.textContent = match[1];
+    const afterNode = document.createTextNode(afterNodeText || "\u200b");
+
+    const replacements = [];
+    if (beforeNodeText) replacements.push(document.createTextNode(beforeNodeText));
+    replacements.push(element);
+    replacements.push(afterNode);
+    node.replaceWith(...replacements);
+    placeCaretInTextNode(afterNode, afterNodeText ? 0 : 1);
+  }
+
+  function hasOpenInlineCode(text) {
+    return (text.match(/`/g) || []).length % 2 === 1;
+  }
+
+  function placeCaretInTextNode(node, offset) {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.setStart(node, offset);
     range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
