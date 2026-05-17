@@ -249,19 +249,20 @@
       const block = currentSelectionBlock(this.surface);
       if (!block || block.tagName === "PRE" || closestElement(block, "CODE")) return;
 
-      const before = textBeforeCaret(block).replace(/\u00a0/g, " ");
-      const after = textAfterCaret(block).replace(/\u00a0/g, " ");
-      const marker = before.trim();
+      const before = normalizeShortcutText(textBeforeCaret(block));
+      const after = normalizeShortcutText(textAfterCaret(block));
+      const lineBefore = currentShortcutLine(before);
+      const lineMarker = lineBefore.trim();
 
-      if (block.tagName === "LI" && /^\[[ xX]\]$/.test(marker)) {
+      if (block.tagName === "LI" && /^\[[ xX]\]$/.test(lineMarker)) {
         event.preventDefault();
-        this.convertListItemToTask(block, /x/i.test(marker), after.trimStart());
+        this.convertListItemToTask(block, /x/i.test(lineMarker), after.trimStart());
         return;
       }
 
-      if (!isPlainTextBlock(block) || before !== marker) return;
+      if (!isPlainTextBlock(block) || !isShortcutAtLineStart(before)) return;
 
-      const heading = marker.match(/^(#{1,3})$/);
+      const heading = lineMarker.match(/^(#{1,3})$/);
       if (heading) {
         event.preventDefault();
         const replacement = replaceBlockWithTag(block, `h${heading[1].length}`, after.trimStart());
@@ -270,7 +271,7 @@
         return;
       }
 
-      if (/^[-*+]$/.test(marker)) {
+      if (/^[-*+]$/.test(lineMarker)) {
         event.preventDefault();
         const item = replaceBlockWithList(block, "ul", after.trimStart());
         placeCaretAtEnd(item);
@@ -278,7 +279,7 @@
         return;
       }
 
-      if (/^\d+\.$/.test(marker)) {
+      if (/^\d+\.$/.test(lineMarker)) {
         event.preventDefault();
         const item = replaceBlockWithList(block, "ol", after.trimStart());
         placeCaretAtEnd(item);
@@ -286,7 +287,7 @@
         return;
       }
 
-      if (marker === ">") {
+      if (lineMarker === ">") {
         event.preventDefault();
         const replacement = replaceBlockWithTag(block, "blockquote", after.trimStart());
         placeCaretAtEnd(replacement);
@@ -750,6 +751,20 @@
     after.selectNodeContents(block);
     after.setStart(range.endContainer, range.endOffset);
     return after.toString();
+  }
+
+  function normalizeShortcutText(text) {
+    return String(text || "").replace(/\u00a0/g, " ").replace(/\u200b/g, "");
+  }
+
+  function currentShortcutLine(text) {
+    const lines = normalizeShortcutText(text).split("\n");
+    return lines[lines.length - 1] || "";
+  }
+
+  function isShortcutAtLineStart(text) {
+    const line = currentShortcutLine(text);
+    return /^[ \t]{0,3}\S*$/.test(line);
   }
 
   function isPlainTextBlock(block) {
