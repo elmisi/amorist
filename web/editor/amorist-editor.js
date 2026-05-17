@@ -80,6 +80,7 @@
     }
 
     bind() {
+      this.surface.addEventListener("keydown", (event) => this.handleEditorKeyDown(event));
       this.surface.addEventListener("input", () => this.handleWysiwygInput());
       this.surface.addEventListener("paste", (event) => this.handlePaste(event));
       this.surface.addEventListener("click", (event) => this.handleClick(event));
@@ -233,11 +234,136 @@
       document.execCommand("insertHTML", false, "<pre><code>code</code></pre><p><br></p>");
     }
 
+    handleEditorKeyDown(event) {
+      if (this.mode !== "wysiwyg" || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) {
+        return;
+      }
+      if (event.key === " ") {
+        this.applySpaceMarkdownShortcut(event);
+      } else if (event.key === "Enter") {
+        this.applyEnterMarkdownShortcut(event);
+      }
+    }
+
+    applySpaceMarkdownShortcut(event) {
+      const block = currentSelectionBlock(this.surface);
+      if (!block || block.tagName === "PRE" || closestElement(block, "CODE")) return;
+
+      const before = textBeforeCaret(block).replace(/\u00a0/g, " ");
+      const after = textAfterCaret(block).replace(/\u00a0/g, " ");
+      const marker = before.trim();
+
+      if (block.tagName === "LI" && /^\[[ xX]\]$/.test(marker)) {
+        event.preventDefault();
+        this.convertListItemToTask(block, /x/i.test(marker), after.trimStart());
+        return;
+      }
+
+      if (!isPlainTextBlock(block) || before !== marker) return;
+
+      const heading = marker.match(/^(#{1,3})$/);
+      if (heading) {
+        event.preventDefault();
+        const replacement = replaceBlockWithTag(block, `h${heading[1].length}`, after.trimStart());
+        placeCaretAtEnd(replacement);
+        this.handleWysiwygInput();
+        return;
+      }
+
+      if (/^[-*+]$/.test(marker)) {
+        event.preventDefault();
+        const item = replaceBlockWithList(block, "ul", after.trimStart());
+        placeCaretAtEnd(item);
+        this.handleWysiwygInput();
+        return;
+      }
+
+      if (/^\d+\.$/.test(marker)) {
+        event.preventDefault();
+        const item = replaceBlockWithList(block, "ol", after.trimStart());
+        placeCaretAtEnd(item);
+        this.handleWysiwygInput();
+        return;
+      }
+
+      if (marker === ">") {
+        event.preventDefault();
+        const replacement = replaceBlockWithTag(block, "blockquote", after.trimStart());
+        placeCaretAtEnd(replacement);
+        this.handleWysiwygInput();
+      }
+    }
+
+    applyEnterMarkdownShortcut(event) {
+      const block = currentSelectionBlock(this.surface);
+      if (!block || !isPlainTextBlock(block)) return;
+
+      const before = textBeforeCaret(block).trim();
+      const after = textAfterCaret(block).trim();
+      if (after || !/^(`{3,}|~{3,})$/.test(before)) return;
+
+      event.preventDefault();
+      const code = document.createElement("code");
+      code.append(document.createElement("br"));
+      const pre = document.createElement("pre");
+      pre.append(code);
+      block.replaceWith(pre);
+      placeCaretAtEnd(code);
+      this.handleWysiwygInput();
+    }
+
+    convertListItemToTask(item, checked, text) {
+      const list = item.closest("ul");
+      if (list) list.classList.add("amorist-task-list");
+      item.className = "amorist-task-item";
+      item.dataset.checked = String(checked);
+
+      const checkbox = document.createElement("span");
+      checkbox.className = "amorist-task-checkbox";
+      checkbox.contentEditable = "false";
+
+      const content = document.createElement("span");
+      content.className = "amorist-task-content";
+      setPlainContent(content, text);
+
+      item.replaceChildren(checkbox, content);
+      placeCaretAtEnd(content);
+      this.handleWysiwygInput();
+    }
+
     handleWysiwygInput() {
       if (this.isSyncing) return;
+      this.applyInlineCodeShortcut();
       this.markdown = serializeBlocks(this.surface);
       this.source.value = this.markdown;
       this.emitChange();
+    }
+
+    applyInlineCodeShortcut() {
+      const selection = window.getSelection();
+      if (!selection || !selection.isCollapsed || selection.rangeCount === 0) return;
+      const node = selection.anchorNode;
+      if (!node || node.nodeType !== Node.TEXT_NODE || !this.surface.contains(node)) return;
+      if (closestElement(node, "CODE") || closestElement(node, "PRE")) return;
+
+      const offset = selection.anchorOffset;
+      const text = node.textContent || "";
+      const before = text.slice(0, offset);
+      const match = before.match(/`([^`\n]+)`$/);
+      if (!match) return;
+
+      const start = offset - match[0].length;
+      const beforeNodeText = text.slice(0, start);
+      const afterNodeText = text.slice(offset);
+      const code = document.createElement("code");
+      code.textContent = match[1];
+
+      const replacements = [];
+      if (beforeNodeText) replacements.push(document.createTextNode(beforeNodeText));
+      replacements.push(code);
+      if (afterNodeText) replacements.push(document.createTextNode(afterNodeText));
+      node.replaceWith(...replacements);
+      placeCaretAfter(code);
     }
 
     handlePaste(event) {
@@ -581,6 +707,98 @@
       }
     });
     return output.replace(/\u00a0/g, " ").trim();
+  }
+
+  function currentSelectionBlock(surface) {
+    const selection = window.getSelection();
+    if (!selection || !selection.isCollapsed || selection.rangeCount === 0) return null;
+    let node = selection.anchorNode;
+    while (node && node !== surface) {
+      if (node.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has(node.tagName)) {
+        return node;
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  function textBeforeCaret(block) {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return "";
+    const range = selection.getRangeAt(0).cloneRange();
+    const before = document.createRange();
+    before.selectNodeContents(block);
+    before.setEnd(range.endContainer, range.endOffset);
+    return before.toString();
+  }
+
+  function textAfterCaret(block) {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return "";
+    const range = selection.getRangeAt(0).cloneRange();
+    const after = document.createRange();
+    after.selectNodeContents(block);
+    after.setStart(range.endContainer, range.endOffset);
+    return after.toString();
+  }
+
+  function isPlainTextBlock(block) {
+    return block.tagName === "P" || block.tagName === "DIV" ||
+      block.tagName === "H1" || block.tagName === "H2" || block.tagName === "H3";
+  }
+
+  function replaceBlockWithTag(block, tagName, text) {
+    const replacement = document.createElement(tagName);
+    setPlainContent(replacement, text);
+    block.replaceWith(replacement);
+    return replacement;
+  }
+
+  function replaceBlockWithList(block, tagName, text) {
+    const list = document.createElement(tagName);
+    const item = document.createElement("li");
+    setPlainContent(item, text);
+    list.append(item);
+    block.replaceWith(list);
+    return item;
+  }
+
+  function setPlainContent(element, text) {
+    element.replaceChildren();
+    if (text) {
+      element.textContent = text;
+    } else {
+      element.append(document.createElement("br"));
+    }
+  }
+
+  function placeCaretAtEnd(element) {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function placeCaretAfter(element) {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.setStartAfter(element);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function closestElement(node, tagName) {
+    let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+    while (current) {
+      if (current.tagName === tagName) return current;
+      current = current.parentElement;
+    }
+    return null;
   }
 
   function sourceLineHeight(source) {
