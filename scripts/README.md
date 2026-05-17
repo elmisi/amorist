@@ -1,24 +1,36 @@
 # Scripts
 
-## Ubuntu Installer
+## Installer
 
-Build and install amorist on Ubuntu:
+Install amorist:
 
 ```bash
-npm run install:ubuntu
+./scripts/install.sh
 ```
 
-The script prints a summary, asks for confirmation, installs build prerequisites, builds the `.deb`, installs it, and verifies that `amorist` is available in `PATH`.
+The installer prints a summary, asks for confirmation, installs the small runtime prerequisites, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`. It currently supports Ubuntu/Debian systems.
+
+## Uninstaller
+
+Remove the installed files:
+
+```bash
+./scripts/uninstall.sh
+```
+
+The uninstaller removes `/opt/amorist` and the `/usr/local/bin/amorist` command link. It does not remove system packages such as `python3` or `xdg-utils`.
 
 ## Screenshots
 
-Screenshots are generated from deterministic demo routes in the Vite app:
+Screenshots use the static demo routes served by the local launcher:
 
 ```bash
-npm run screenshots
+./scripts/capture-screenshots.sh
 ```
 
-The command writes:
+The script uses the first Chromium-compatible browser it finds. Set `BROWSER=/path/to/browser` to choose one explicitly.
+
+The script writes:
 
 - `docs/screenshots/empty-state.png`
 - `docs/screenshots/source-mode.png`

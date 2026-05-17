@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>amorist</title>
+    <link rel="stylesheet" href="/web/editor/amorist-editor.css" />
+    <link rel="stylesheet" href="/web/app.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="identity">
+          <strong id="app-name">amorist</strong>
+          <span id="app-version" class="app-version"></span>
+          <span id="file-name">Loading...</span>
+        </div>
+        <div class="actions">
+          <button id="reload-button" type="button">Reload</button>
+          <button id="save-button" type="button">Save</button>
+        </div>
+      </header>
+
+      <section id="notice" class="notice" hidden></section>
+      <section id="editor" class="editor"></section>
+
+      <footer class="statusbar">
+        <span id="status">Starting</span>
+        <span id="file-path"></span>
+      </footer>
+    </main>
+
+    <script src="/web/editor/amorist-editor.js"></script>
+    <script src="/web/app.js"></script>
+  </body>
+</html>
