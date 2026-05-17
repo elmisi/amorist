@@ -937,7 +937,7 @@
     const sourceRows = [
       normalizeTableRow(headerRow, columnCount),
       normalizeTableRow(separatorRow, columnCount),
-      ...sourceLines.slice(2).map((line) => normalizeTableRow(splitTableRow(line), columnCount, headerRow)),
+      ...sourceLines.slice(2).map((line) => normalizeTableRow(splitTableRow(line), columnCount)),
     ];
     if (sourceRows.length < 2) return normalize(markdown).trim();
 
@@ -980,36 +980,10 @@
     return value + " ".repeat(Math.max(0, width - tableCellWidth(value)));
   }
 
-  function normalizeTableRow(row, columnCount, headerRow) {
-    const repaired = repairApiMethodRow(row, columnCount, headerRow);
-    const cells = repaired.slice(0, columnCount);
+  function normalizeTableRow(row, columnCount) {
+    const cells = mergeExtraTableCells(row, columnCount).slice(0, columnCount);
     while (cells.length < columnCount) cells.push("");
     return cells;
-  }
-
-  function repairApiMethodRow(row, columnCount, headerRow) {
-    if (!headerRow || row.length <= columnCount) return row;
-
-    const methodIndex = headerRow.findIndex((cell) => /^(metodo|method)$/i.test(stripMarkdownCode(cell)));
-    const mergeIndex = methodIndex - 1;
-    if (methodIndex < 1 || mergeIndex < 0) {
-      return mergeExtraTableCells(row, columnCount);
-    }
-
-    const actualMethodIndex = row.findIndex((cell, index) =>
-      index > methodIndex && isHttpMethodCell(cell),
-    );
-    if (actualMethodIndex <= methodIndex) {
-      return mergeExtraTableCells(row, columnCount);
-    }
-
-    const repaired = [
-      ...row.slice(0, mergeIndex),
-      row.slice(mergeIndex, actualMethodIndex).join(" | ").trim(),
-      row[actualMethodIndex],
-      ...row.slice(actualMethodIndex + 1),
-    ];
-    return mergeExtraTableCells(repaired, columnCount);
   }
 
   function mergeExtraTableCells(row, columnCount) {
@@ -1018,14 +992,6 @@
       ...row.slice(0, columnCount - 1),
       row.slice(columnCount - 1).join(" | ").trim(),
     ];
-  }
-
-  function isHttpMethodCell(cell) {
-    return /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/i.test(stripMarkdownCode(cell));
-  }
-
-  function stripMarkdownCode(value) {
-    return String(value || "").trim().replace(/^`+|`+$/g, "");
   }
 
   function escapeTableCell(cell) {
