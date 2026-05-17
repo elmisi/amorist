@@ -51,6 +51,9 @@ This document shows **rich Markdown** with \`inline code\`, blockquotes, and lis
 - Fast startup
 - Native file dialogs
 - Source mode when exact Markdown matters
+
+- [ ] Review draft
+- [x] Save locally
 `;
 
 export default function App() {
