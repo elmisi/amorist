@@ -3,6 +3,21 @@ import type { DocumentState } from "./useDocumentState";
 
 export type DirtyChoice = "save" | "discard" | "cancel";
 
+export function mapDirtyDialogResult(result: string): DirtyChoice {
+  switch (result) {
+    case "Save":
+    case "yes":
+    case "Yes":
+      return "save";
+    case "Discard":
+    case "no":
+    case "No":
+      return "discard";
+    default:
+      return "cancel";
+  }
+}
+
 export async function confirmDirtyTransition(
   state: Pick<DocumentState, "dirty">,
 ): Promise<DirtyChoice> {
@@ -16,9 +31,7 @@ export async function confirmDirtyTransition(
     buttons: { yes: "Save", no: "Discard", cancel: "Cancel" },
   });
 
-  if (result === "Save") return "save";
-  if (result === "Discard") return "discard";
-  return "cancel";
+  return mapDirtyDialogResult(result);
 }
 
 export function canShowEditor(state: Pick<DocumentState, "active" | "dirty">) {
