@@ -51,7 +51,7 @@ This script will:
 $(printf '     - %s\n' "${APT_PACKAGES[@]}")
   3. Run: npm ci
   4. Build the Debian package with: npm run tauri:build -- --bundles deb --ci
-  5. Install the generated .deb with: sudo apt-get install -y <package>
+  5. Install or reinstall the generated .deb with: sudo dpkg -i <package>
   6. Verify that the amorist command is available in PATH
 
 After installation you should be able to run:
@@ -86,7 +86,8 @@ fi
 
 DEB_PATH="$(realpath "${DEBS[0]}")"
 echo "Installing $DEB_PATH..."
-sudo apt-get install -y "$DEB_PATH"
+sudo dpkg -i "$DEB_PATH"
+sudo apt-get install -f -y
 
 if ! command -v amorist >/dev/null 2>&1; then
   echo "amorist was installed, but it is not visible in PATH." >&2
