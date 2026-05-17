@@ -84,7 +84,7 @@ if [[ "${#DEBS[@]}" -eq 0 ]]; then
   exit 1
 fi
 
-DEB_PATH="${DEBS[0]}"
+DEB_PATH="$(realpath "${DEBS[0]}")"
 echo "Installing $DEB_PATH..."
 sudo apt-get install -y "$DEB_PATH"
 
