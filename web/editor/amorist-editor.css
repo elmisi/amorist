@@ -3,7 +3,7 @@
   border: 1px solid var(--border, #d8dee6);
   border-radius: 8px;
   min-height: calc(100vh - 136px);
-  overflow: hidden;
+  overflow: visible;
   width: 100%;
 }
 
@@ -11,6 +11,7 @@
   align-items: center;
   background: color-mix(in srgb, var(--panel, #fff) 96%, var(--accent, #246b54));
   border-bottom: 1px solid var(--border, #d8dee6);
+  border-radius: 8px 8px 0 0;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
