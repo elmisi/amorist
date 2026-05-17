@@ -490,9 +490,22 @@
         const tableLines = [lines[index], lines[index + 1]];
         const tableColumnCount = splitTableRow(lines[index + 1]).length;
         index += 2;
-        while (index < lines.length && looksLikeTableRow(lines[index], tableColumnCount)) {
-          tableLines.push(lines[index]);
-          index += 1;
+        while (index < lines.length) {
+          if (looksLikeTableRow(lines[index], tableColumnCount)) {
+            tableLines.push(lines[index]);
+            index += 1;
+            continue;
+          }
+
+          if (!lines[index].trim()) {
+            const nextTableRow = nextNonEmptyTableRow(lines, index + 1, tableColumnCount);
+            if (nextTableRow > index) {
+              index = nextTableRow;
+              continue;
+            }
+          }
+
+          break;
         }
         blocks.push({ type: "table", text: formatMarkdownTable(tableLines.join("\n")), sourceLine });
         continue;
@@ -859,6 +872,14 @@
     const cells = splitTableRow(line);
     const minimumColumns = expectedColumnCount || 2;
     return cells.length >= minimumColumns;
+  }
+
+  function nextNonEmptyTableRow(lines, index, expectedColumnCount) {
+    let next = index;
+    while (next < lines.length && !lines[next].trim()) {
+      next += 1;
+    }
+    return looksLikeTableRow(lines[next], expectedColumnCount) ? next : -1;
   }
 
   function isTableSeparator(line) {
