@@ -5,6 +5,7 @@
 
   const elements = {
     editor: document.getElementById("editor"),
+    appVersion: document.getElementById("app-version"),
     fileName: document.getElementById("file-name"),
     filePath: document.getElementById("file-path"),
     notice: document.getElementById("notice"),
@@ -43,10 +44,17 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
 `;
 
   document.addEventListener("DOMContentLoaded", () => {
+    updateTopbarHeight();
+    window.addEventListener("resize", updateTopbarHeight);
+    if (window.ResizeObserver) {
+      new ResizeObserver(updateTopbarHeight).observe(document.querySelector(".topbar"));
+    }
+
     elements.save.addEventListener("click", () => saveDocument());
     elements.reload.addEventListener("click", () => reloadDocument());
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("beforeunload", handleBeforeUnload);
+    loadVersion();
 
     if (state.demo) {
       loadDemo();
@@ -83,6 +91,19 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
       hideNotice();
     } catch (error) {
       showError(error.message || "The document could not be loaded.");
+    }
+  }
+
+  async function loadVersion() {
+    try {
+      const response = await fetch("/api/version");
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (payload.version) {
+        elements.appVersion.textContent = `v${payload.version}`;
+      }
+    } catch (_error) {
+      elements.appVersion.textContent = "";
     }
   }
 
@@ -176,6 +197,12 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
   function setDocumentLabel(document) {
     elements.fileName.textContent = document.name || "Untitled";
     elements.filePath.textContent = document.path || "";
+  }
+
+  function updateTopbarHeight() {
+    const topbar = document.querySelector(".topbar");
+    if (!topbar) return;
+    document.documentElement.style.setProperty("--topbar-height", `${topbar.offsetHeight}px`);
   }
 
   function setBusy(label) {

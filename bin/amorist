@@ -108,6 +108,8 @@ def make_handler(state: ServerState):
                 return self.send_file(WEB_ROOT / "index.html")
             if parsed.path == "/api/document":
                 return self.send_document(parsed)
+            if parsed.path == "/api/version":
+                return self.send_json({"version": read_version()})
             return self.send_static(parsed.path)
 
         def do_POST(self) -> None:
@@ -292,7 +294,7 @@ def start_heartbeat_monitor(state: ServerState) -> None:
 
 def install_signal_handlers(server: ThreadingHTTPServer) -> None:
     def shutdown(_signum, _frame) -> None:
-        server.shutdown()
+        threading.Thread(target=server.shutdown, name="amorist-signal-shutdown", daemon=True).start()
 
     signal.signal(signal.SIGTERM, shutdown)
 

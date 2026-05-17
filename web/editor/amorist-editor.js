@@ -119,7 +119,7 @@
 
     showSourceMode() {
       if (this.mode === "source") return;
-      this.source.value = this.getMarkdown();
+      this.source.value = this.markdown;
       this.surface.hidden = true;
       this.source.hidden = false;
       this.mode = "source";
@@ -279,11 +279,14 @@
         continue;
       }
 
-      const fence = line.match(/^```(.*)$/);
+      const fence = line.match(/^ {0,3}(`{3,}|~{3,}).*$/);
       if (fence) {
+        const fenceMarker = fence[1][0];
+        const fenceLength = fence[1].length;
+        const closingFence = new RegExp(`^ {0,3}\\${fenceMarker}{${fenceLength},}\\s*$`);
         const code = [];
         index += 1;
-        while (index < lines.length && !lines[index].startsWith("```")) {
+        while (index < lines.length && !closingFence.test(lines[index])) {
           code.push(lines[index]);
           index += 1;
         }
@@ -361,7 +364,7 @@
       while (
         index < lines.length &&
         lines[index].trim() &&
-        !isBlockStart(lines[index])
+        !isBlockStart(lines, index)
       ) {
         paragraph.push(lines[index]);
         index += 1;
@@ -372,12 +375,14 @@
     return blocks;
   }
 
-  function isBlockStart(line) {
+  function isBlockStart(lines, index) {
+    const line = Array.isArray(lines) ? lines[index] : lines;
     return /^(#{1,3})\s+/.test(line) ||
-      /^```/.test(line) ||
+      /^ {0,3}(`{3,}|~{3,})/.test(line) ||
       /^>\s?/.test(line) ||
       /^[-*+]\s+/.test(line) ||
-      /^\d+\.\s+/.test(line);
+      /^\d+\.\s+/.test(line) ||
+      (Array.isArray(lines) && isTableStart(lines, index));
   }
 
   function renderBlock(block) {

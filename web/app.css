@@ -75,6 +75,9 @@ button:disabled {
 .topbar {
   border-bottom-style: solid;
   border-bottom-width: 1px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 
 .statusbar {
@@ -94,6 +97,12 @@ button:disabled {
 .identity strong {
   color: var(--accent-strong);
   font-size: 16px;
+}
+
+.app-version {
+  color: var(--muted);
+  flex: none;
+  font-size: 13px;
 }
 
 #file-name,
