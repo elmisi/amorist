@@ -2,23 +2,23 @@
 
 ## Ubuntu Installer
 
-Build and install amorist on Ubuntu:
+Install amorist on Ubuntu:
 
 ```bash
-npm run install:ubuntu
+./scripts/install-ubuntu.sh
 ```
 
-The script prints a summary, asks for confirmation, installs build prerequisites, builds the `.deb`, installs it, and verifies that `amorist` is available in `PATH`.
+The installer prints a summary, asks for confirmation, installs the small runtime prerequisites, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`.
 
 ## Screenshots
 
-Screenshots are generated from deterministic demo routes in the Vite app:
+Screenshots use the static demo routes served by the local launcher:
 
 ```bash
-npm run screenshots
+./scripts/capture-screenshots.sh
 ```
 
-The command writes:
+The script writes:
 
 - `docs/screenshots/empty-state.png`
 - `docs/screenshots/source-mode.png`

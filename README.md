@@ -1,91 +1,78 @@
 # amorist
 
-Fast local Markdown editing.
+Fast local Markdown editing with a small browser-based runtime.
 
-amorist is a small Tauri desktop app for opening, editing, and saving one Markdown file at a time. It has a WYSIWYG editor for everyday writing and a source mode when exact Markdown control matters.
-
-![amorist WYSIWYG editor](docs/screenshots/wysiwyg-mode.png)
-
-## Features
-
-- Native open and save dialogs for `.md`, `.markdown`, and `.mdown` files.
-- Startup file support: `amorist path/to/file.md`.
-- WYSIWYG Markdown editing with headings, emphasis, links, code, lists, blockquotes, fenced code blocks, and task lists.
-- Source mode for exact Markdown edits.
-- Existing `LF` or `CRLF` line endings are preserved on save.
-- Files larger than 10 MB are rejected before reading.
-
-Markdown table editing is not supported in v1.
-
-## Ubuntu Install
-
-Build and install the local `.deb` package:
-
-```bash
-npm run install:ubuntu
-```
-
-The installer prints the packages and commands it will run, asks for confirmation, builds the Debian package, installs it, and verifies that `amorist` is available in `PATH`.
-
-Open a Markdown file from the shell:
+amorist opens one Markdown file at a time from the shell:
 
 ```bash
 amorist file.md
 ```
 
-The command also accepts `.markdown` and `.mdown` files. If more than one path is passed, amorist opens the first one and shows a warning.
+The command starts a private server on `127.0.0.1`, opens the editor in your browser, and saves directly back to the file you passed in. The editor uses a vendored copy of OverType, so Markdown stays the source of truth and the runtime has no Node, Rust, WebKitGTK, or Electron dependency chain.
+
+![amorist WYSIWYG editor](docs/screenshots/wysiwyg-mode.png)
+
+## Features
+
+- Opens `.md`, `.markdown`, and `.mdown` files from the command line.
+- Saves directly to the same local file with `Ctrl+S` or the Save button.
+- Keeps existing `LF` or `CRLF` line endings when saving.
+- Shows a browser-native warning before closing with unsaved changes.
+- Stops the local server automatically after the browser tab is closed.
+- Supports headings, emphasis, links, code, lists, blockquotes, fenced code blocks, and task lists.
+- Rejects files larger than 10 MB before reading.
+
+Markdown tables are rendered as plain Markdown in this version.
+
+## Ubuntu Install
+
+Install from the repo checkout:
+
+```bash
+./scripts/install-ubuntu.sh
+```
+
+The installer asks for confirmation, installs `python3` and `xdg-utils` if needed, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`.
+
+After installation:
+
+```bash
+amorist file.md
+```
+
+If `file.md` does not exist yet, amorist creates it on the first save.
 
 ## Development
 
-Install JavaScript dependencies:
+Run from the checkout without installing:
 
 ```bash
-npm install
+./bin/amorist --no-open file.md
 ```
 
-Run the web frontend:
+Open the printed local URL in a browser. Omit `--no-open` to let amorist call `xdg-open`.
+
+Useful checks:
 
 ```bash
-npm run dev
+python3 -m py_compile bin/amorist
+bash -n scripts/install-ubuntu.sh
+bash -n scripts/capture-screenshots.sh
 ```
 
-Run the desktop app in development:
+## Vendored Code
 
-```bash
-npm run tauri:dev
-```
-
-Run checks:
-
-```bash
-npm run typecheck
-npm run test
-npm run build
-```
-
-Build the desktop bundle:
-
-```bash
-npm run tauri:build
-```
-
-On Ubuntu 24.04, Tauri also needs native WebKit/libsoup development packages:
-
-```bash
-sudo apt-get install build-essential libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config
-```
+`vendor/overtype/overtype.min.js` is OverType v2.3.10, licensed under MIT. The upstream project is `panphora/overtype`.
 
 ## Manual QA
 
 Use a temporary copy when testing save behavior.
 
-Checklist:
-
-- Open a Markdown file under 2 MB.
-- Start the app with a Markdown path from the Linux command line.
-- Edit heading text in WYSIWYG mode.
-- Add text in source mode.
-- Save and reopen the file.
+- Open an existing Markdown file.
+- Create a missing Markdown file with `amorist new-file.md`, edit it, and save.
+- Edit and save with `Ctrl+S`.
+- Close the tab with unsaved changes and verify the browser asks for confirmation.
+- Close the tab with no changes and verify the terminal process exits after a few seconds.
 - Verify an existing `CRLF` file remains `CRLF` after saving.
 - Try opening a `.txt` file and confirm it is rejected.
-- Try opening a file larger than 10 MB and confirm the current document is unchanged.
+- Try opening a file larger than 10 MB and confirm it is rejected.
