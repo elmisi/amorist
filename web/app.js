@@ -54,6 +54,7 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     elements.reload.addEventListener("click", () => reloadDocument());
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", notifyTabClosing);
     loadVersion();
 
     if (state.demo) {
@@ -192,6 +193,16 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     };
     ping();
     window.setInterval(ping, 3000);
+  }
+
+  function notifyTabClosing() {
+    if (state.demo || !token) return;
+    const url = `/api/close?token=${encodeURIComponent(token)}`;
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url);
+      return;
+    }
+    fetch(url, { method: "POST", keepalive: true }).catch(() => {});
   }
 
   function setDocumentLabel(document) {

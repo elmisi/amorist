@@ -68,7 +68,7 @@ def main() -> int:
     print(f"amorist {read_version()}", flush=True)
     print(f"Editing: {markdown_path}", flush=True)
     print(f"URL: {url}", flush=True)
-    print("Close the browser tab to stop this process, or press Ctrl+C.", flush=True)
+    print("Close the editor tab to stop this process, or press Ctrl+C.", flush=True)
 
     if not args.no_open:
         open_browser(url)
@@ -89,6 +89,7 @@ class ServerState:
         self.token = token
         self.server: ThreadingHTTPServer | None = None
         self.last_ping: float | None = None
+        self.close_deadline: float | None = None
         self.first_ping_seen = False
         self.shutdown_started = False
         self.lock = threading.Lock()
@@ -105,7 +106,10 @@ def make_handler(state: ServerState):
         def do_GET(self) -> None:
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path in {"", "/"}:
+                record_client_activity(state)
                 return self.send_file(WEB_ROOT / "index.html")
+            if parsed.path == "/favicon.ico":
+                return self.send_file(WEB_ROOT / "favicon.ico")
             if parsed.path == "/api/document":
                 return self.send_document(parsed)
             if parsed.path == "/api/version":
@@ -118,6 +122,8 @@ def make_handler(state: ServerState):
                 return self.save_document(parsed)
             if parsed.path == "/api/ping":
                 return self.record_ping(parsed)
+            if parsed.path == "/api/close":
+                return self.record_close(parsed)
             self.send_error(HTTPStatus.NOT_FOUND)
 
         def send_document(self, parsed: urllib.parse.ParseResult) -> None:
@@ -176,9 +182,15 @@ def make_handler(state: ServerState):
         def record_ping(self, parsed: urllib.parse.ParseResult) -> None:
             if not self.check_token(parsed):
                 return
+            record_client_activity(state)
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self.end_headers()
+
+        def record_close(self, parsed: urllib.parse.ParseResult) -> None:
+            if not self.check_token(parsed):
+                return
             with state.lock:
-                state.first_ping_seen = True
-                state.last_ping = time.time()
+                state.close_deadline = time.time() + 5
             self.send_response(HTTPStatus.NO_CONTENT)
             self.end_headers()
 
@@ -271,6 +283,13 @@ def open_browser(url: str) -> None:
         print("xdg-open is not installed; open the URL above manually.", file=sys.stderr)
 
 
+def record_client_activity(state: ServerState) -> None:
+    with state.lock:
+        state.first_ping_seen = True
+        state.last_ping = time.time()
+        state.close_deadline = None
+
+
 def start_heartbeat_monitor(state: ServerState) -> None:
     def monitor() -> None:
         while True:
@@ -282,6 +301,9 @@ def start_heartbeat_monitor(state: ServerState) -> None:
                     state.first_ping_seen
                     and state.last_ping is not None
                     and time.time() - state.last_ping > 12
+                ) or (
+                    state.close_deadline is not None
+                    and time.time() >= state.close_deadline
                 )
                 if should_shutdown:
                     state.shutdown_started = True

@@ -1,5 +1,5 @@
 (function () {
-  const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE"]);
+  const BLOCK_TAGS = new Set(["P", "DIV", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE"]);
 
   function create({ surface, onChanged }) {
     if (!surface) {
@@ -65,6 +65,14 @@
       if (block.tagName === "LI" && /^\[[ xX]\]$/.test(lineMarker)) {
         event.preventDefault();
         convertListItemToTask(block, /x/i.test(lineMarker), after.trimStart());
+        notifyChanged();
+        return true;
+      }
+
+      if (block.tagName === "LI" && lineMarker === ">" && isShortcutAtLineStart(before)) {
+        event.preventDefault();
+        const replacement = replaceListItemWithTag(block, "blockquote", after.trimStart());
+        placeCaretAtEnd(replacement);
         notifyChanged();
         return true;
       }
@@ -272,6 +280,40 @@
     list.append(item);
     block.replaceWith(list);
     return item;
+  }
+
+  function replaceListItemWithTag(item, tagName, text) {
+    const list = item.parentElement;
+    const replacement = document.createElement(tagName);
+    setPlainContent(replacement, text);
+
+    if (!list || (list.tagName !== "UL" && list.tagName !== "OL")) {
+      item.replaceWith(replacement);
+      return replacement;
+    }
+
+    const beforeList = cloneListShell(list);
+    while (list.firstElementChild && list.firstElementChild !== item) {
+      beforeList.append(list.firstElementChild);
+    }
+
+    const afterList = cloneListShell(list);
+    while (item.nextElementSibling) {
+      afterList.append(item.nextElementSibling);
+    }
+
+    const nodes = [];
+    if (beforeList.children.length) nodes.push(beforeList);
+    nodes.push(replacement);
+    if (afterList.children.length) nodes.push(afterList);
+    list.replaceWith(...nodes);
+    return replacement;
+  }
+
+  function cloneListShell(list) {
+    const clone = document.createElement(list.tagName.toLowerCase());
+    clone.className = list.className;
+    return clone;
   }
 
   function convertListItemToTask(item, checked, text) {

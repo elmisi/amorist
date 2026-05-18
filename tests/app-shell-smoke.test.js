@@ -26,6 +26,44 @@ run().catch((error) => {
 });
 
 async function run() {
+  await runCloseIdleTabCheck();
+  await runEditCheck();
+  console.log("app-shell-smoke.test.js passed");
+}
+
+async function runCloseIdleTabCheck() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-smoke-close-"));
+  const markdownPath = path.join(tempDir, "close.md");
+  fs.writeFileSync(markdownPath, "# Close\n\nIdle\n", "utf8");
+
+  let server;
+  let chrome;
+  let pageSocket;
+  try {
+    server = await startAmorist(markdownPath);
+    chrome = await startChrome(browser, tempDir);
+    const page = await openPage(chrome.debuggingUrl, server.url);
+    pageSocket = await WebSocketConnection.open(page.webSocketDebuggerUrl);
+
+    const result = await evaluateWithNavigationRetry(pageSocket, waitForEditorScript());
+    if (result.exceptionDetails) {
+      throw new Error(result.exceptionDetails.text || "Browser evaluation failed.");
+    }
+
+    pageSocket.close();
+    pageSocket = null;
+    await closePage(chrome.debuggingUrl, page.id);
+    await waitForExit(server.process, 16000);
+    server = null;
+  } finally {
+    if (pageSocket) pageSocket.close();
+    if (chrome) await terminate(chrome.process);
+    if (server) await terminate(server.process);
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+}
+
+async function runEditCheck() {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-smoke-"));
   const markdownPath = path.join(tempDir, "smoke.md");
   fs.writeFileSync(markdownPath, "# Smoke\n\nInitial\n", "utf8");
@@ -50,7 +88,6 @@ async function run() {
       status: "Loaded",
       text: "Changed from smoke",
     });
-    console.log("app-shell-smoke.test.js passed");
   } finally {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
@@ -128,6 +165,16 @@ async function openPage(browserWebSocketUrl, targetUrl) {
   return JSON.parse(body);
 }
 
+async function closePage(browserWebSocketUrl, pageId) {
+  const browserUrl = new URL(browserWebSocketUrl);
+  await httpRequest({
+    method: "GET",
+    hostname: browserUrl.hostname,
+    port: browserUrl.port,
+    path: `/json/close/${encodeURIComponent(pageId)}`,
+  });
+}
+
 function httpRequest(options) {
   return new Promise((resolve, reject) => {
     const req = http.request(options, (res) => {
@@ -145,6 +192,27 @@ function httpRequest(options) {
     req.on("error", reject);
     req.end();
   });
+}
+
+function waitForEditorScript() {
+  return `(${async function () {
+    await new Promise((resolve, reject) => {
+      const deadline = Date.now() + 10000;
+      const tick = () => {
+        if (document.querySelector(".amorist-editor-surface")) {
+          resolve();
+          return;
+        }
+        if (Date.now() > deadline) {
+          reject(new Error("Timed out waiting for editor mount"));
+          return;
+        }
+        setTimeout(tick, 50);
+      };
+      tick();
+    });
+    return true;
+  }})()`;
 }
 
 function browserScript() {
@@ -169,6 +237,9 @@ function browserScript() {
 
     await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
     let surface = document.querySelector(".amorist-editor-surface");
+    exerciseQuoteShortcutInsideList(surface);
+    exerciseQuoteShortcutBetweenLists(surface);
+
     surface.innerHTML = "<p>Changed from smoke</p>";
     surface.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "Changed from smoke" }));
     await waitFor(() => document.body.classList.contains("is-dirty"), "dirty state");
@@ -185,6 +256,50 @@ function browserScript() {
       status: document.getElementById("status").textContent,
       text: surface.textContent.trim(),
     };
+
+    function exerciseQuoteShortcutInsideList(surface) {
+      surface.innerHTML = "<ul><li>One</li><li>&gt;</li><li>Three</li></ul>";
+      const quoteItem = surface.querySelectorAll("li")[1];
+      const textNode = quoteItem.firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, textNode.textContent.length);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      quoteItem.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+
+      if (
+        surface.children.length !== 3 ||
+        surface.children[0].tagName !== "UL" ||
+        surface.children[1].tagName !== "BLOCKQUOTE" ||
+        surface.children[2].tagName !== "UL"
+      ) {
+        throw new Error("Quote shortcut inside list did not split the list around a blockquote.");
+      }
+    }
+
+    function exerciseQuoteShortcutBetweenLists(surface) {
+      surface.innerHTML = "<ul><li>One</li></ul><div>&gt;</div><ul><li>Three</li></ul>";
+      const quoteLine = surface.querySelector("div");
+      const textNode = quoteLine.firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, textNode.textContent.length);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      quoteLine.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
+
+      if (
+        surface.children.length !== 3 ||
+        surface.children[0].tagName !== "UL" ||
+        surface.children[1].tagName !== "BLOCKQUOTE" ||
+        surface.children[2].tagName !== "UL"
+      ) {
+        throw new Error("Quote shortcut between lists did not convert the middle line to a blockquote.");
+      }
+    }
   }})()`;
 }
 
@@ -204,6 +319,22 @@ async function evaluateWithNavigationRetry(pageSocket, expression) {
     }
   }
   throw new Error("Browser evaluation did not complete.");
+}
+
+function waitForExit(proc, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    if (proc.exitCode !== null || proc.signalCode !== null) {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(() => {
+      reject(new Error(`Process did not exit within ${timeoutMs}ms.`));
+    }, timeoutMs);
+    proc.once("exit", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
 }
 
 function terminate(proc) {
