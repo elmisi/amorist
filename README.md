@@ -44,13 +44,26 @@ Very wide tables scroll horizontally inside their block, so the rest of the docu
 
 ## Install
 
+amorist requires `python3` to be already installed (the launcher is a Python
+script). `xdg-open` is optional: if present the launcher opens the editor in
+your default browser automatically; otherwise it prints the URL for you to
+open manually.
+
 Install from the repo checkout:
 
 ```bash
 ./scripts/install.sh
 ```
 
-The installer asks for confirmation, installs `python3` and `xdg-utils` if needed, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`.
+The installer asks for confirmation and chooses the install scope from your
+effective UID — **the script never escalates privileges**:
+
+- Run as a normal user → installs under `~/.local/share/amorist` and links
+  the command at `~/.local/bin/amorist`. If `~/.local/bin` is not on your
+  `PATH`, the installer prints the exact `export` line to add to your shell
+  rc.
+- Run as root → installs under `/opt/amorist` and links
+  `/usr/local/bin/amorist`.
 
 After installation:
 
@@ -60,7 +73,9 @@ amorist file.md
 
 If `file.md` does not exist yet, amorist creates it on the first save.
 
-To remove the installed files:
+To remove the installed files (same scope rule applies — run as root to
+remove a system-wide install, run as your normal user to remove a user
+install):
 
 ```bash
 ./scripts/uninstall.sh

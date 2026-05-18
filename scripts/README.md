@@ -8,7 +8,16 @@ Install amorist:
 ./scripts/install.sh
 ```
 
-The installer prints a summary, asks for confirmation, installs the small runtime prerequisites, copies the app to `/opt/amorist`, and links `/usr/local/bin/amorist`. It currently supports Ubuntu/Debian systems.
+The installer prints a summary, asks for confirmation, and **never escalates
+privileges**. The install scope is chosen from your effective UID:
+
+- Normal user → installs under `~/.local/share/amorist` and links the command
+  at `~/.local/bin/amorist`. The installer creates `~/.local/bin` if missing
+  and prints a `PATH` hint if it is not yet on `PATH`.
+- Root → installs under `/opt/amorist` and links `/usr/local/bin/amorist`.
+
+`python3` must already be installed; `xdg-open` is optional (the launcher
+prints the URL when `xdg-open` is absent).
 
 ## Uninstaller
 
@@ -18,7 +27,10 @@ Remove the installed files:
 ./scripts/uninstall.sh
 ```
 
-The uninstaller removes `/opt/amorist` and the `/usr/local/bin/amorist` command link. It does not remove system packages such as `python3` or `xdg-utils`.
+The uninstaller mirrors the installer's scope rule — run as your normal user
+to remove a user install, or as root to remove a system install. It only
+removes a `*/bin/amorist` symlink if that symlink points at the managed
+amorist target.
 
 ## Screenshots
 
