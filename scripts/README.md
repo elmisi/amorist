@@ -49,3 +49,15 @@ The script writes:
 - `docs/screenshots/wysiwyg-mode.png`
 
 `source-mode.png` intentionally shows raw Markdown because it captures source mode. Use `wysiwyg-mode.png` when you want a rendered editor screenshot.
+
+## Optional Browser Smoke Test
+
+Run the app-shell save/reload smoke test with:
+
+```bash
+AMORIST_RUN_BROWSER_SMOKE=1 node tests/app-shell-smoke.test.js
+```
+
+The test starts the local launcher against a temporary Markdown file and uses
+the first Chromium-compatible browser it finds. Set `BROWSER=/path/to/browser`
+to choose one explicitly.

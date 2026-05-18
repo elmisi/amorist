@@ -23,6 +23,7 @@ The command starts a private server on `127.0.0.1`, opens the editor in your bro
 - Converts common WYSIWYG Markdown shortcuts while typing: `#`, `##`, `###`, `-`, `1.`, `>`, code fences, task markers, inline code like `` `name` ``, and bold text like `**name**`.
 - Keeps wide tables and fenced code blocks inside horizontally scrollable blocks.
 - Rejects files larger than 10 MB before reading.
+- Reads and writes Markdown as UTF-8.
 
 ## WYSIWYG Shortcuts
 
@@ -94,21 +95,40 @@ Open the printed local URL in a browser. Omit `--no-open` to let amorist call `x
 Useful checks:
 
 ```bash
+node tests/editor-table-codec.test.js
+node tests/editor-markdown-codec.test.js
+python3 tests/test_runtime_server.py
 python3 -m py_compile bin/amorist
-node --check web/editor/amorist-editor.js
 node --check web/app.js
+node --check web/editor/amorist-text-utils.js
+node --check web/editor/amorist-table-codec.js
+node --check web/editor/amorist-markdown-codec.js
+node --check web/editor/amorist-editing-policy.js
+node --check web/editor/amorist-editor.js
 bash -n scripts/install.sh
 bash -n scripts/uninstall.sh
 bash -n scripts/capture-screenshots.sh
 ```
 
+Optional browser smoke check:
+
+```bash
+AMORIST_RUN_BROWSER_SMOKE=1 node tests/app-shell-smoke.test.js
+```
+
+The smoke check starts `./bin/amorist --no-open` against a temporary Markdown file and uses a Chromium-compatible browser if one is available.
+
 ## Embedded Editor
 
-The editor lives in `web/editor/amorist-editor.js` and `web/editor/amorist-editor.css`. It is plain browser JavaScript and can be embedded in another vanilla app without a build step:
+The editor lives under `web/editor/`. It is plain browser JavaScript and can be embedded in another vanilla app without a build step:
 
 ```html
 <link rel="stylesheet" href="amorist-editor.css">
 <div id="description-editor"></div>
+<script src="amorist-text-utils.js"></script>
+<script src="amorist-table-codec.js"></script>
+<script src="amorist-markdown-codec.js"></script>
+<script src="amorist-editing-policy.js"></script>
 <script src="amorist-editor.js"></script>
 <script>
   const editor = AmoristEditor.create(document.getElementById("description-editor"), {
