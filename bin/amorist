@@ -126,7 +126,11 @@ def make_handler(state: ServerState):
             path = state.markdown_path
             if path.exists():
                 raw = path.read_bytes()
-                markdown = raw.decode("utf-8")
+                try:
+                    markdown = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.send_error(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "Markdown files must be UTF-8 encoded.")
+                    return
             else:
                 raw = b""
                 markdown = ""
