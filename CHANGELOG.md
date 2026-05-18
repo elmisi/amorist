@@ -7,6 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.2.0] - 2026-05-18
 
 ### Changed
+- Installer runs without a confirmation prompt and prints a shorter action/result
+  summary.
 - Installer no longer escalates privileges or invokes a package manager.
   Scope is chosen from `EUID`: root installs system-wide to `/opt/amorist`
   + `/usr/local/bin/amorist`; non-root installs user-locally to

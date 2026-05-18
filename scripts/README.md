@@ -8,8 +8,9 @@ Install amorist:
 ./scripts/install.sh
 ```
 
-The installer prints a summary, asks for confirmation, and **never escalates
-privileges**. The install scope is chosen from your effective UID:
+The installer runs without confirmation, prints the action it performs, and
+**never escalates privileges**. The install scope is chosen from your effective
+UID:
 
 - Normal user → installs under `~/.local/share/amorist` and links the command
   at `~/.local/bin/amorist`. The installer creates `~/.local/bin` if missing

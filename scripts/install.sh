@@ -67,10 +67,10 @@ guard_bin_path "$BIN_PATH" "$INSTALL_DIR/bin/amorist"
 if [[ "$SCOPE" == "user" && -L /usr/local/bin/amorist ]]; then
   legacy_target="$(readlink -- /usr/local/bin/amorist)"
   if [[ "$legacy_target" == /opt/amorist/bin/amorist ]]; then
-    echo "Note: a previous system-wide install is present at /opt/amorist." >&2
-    echo "      Run ./scripts/uninstall.sh as root to remove it." >&2
-    echo "      This installer will not touch it." >&2
-    echo "" >&2
+    echo "Note: a previous system-wide install is present at /opt/amorist."
+    echo "      Run ./scripts/uninstall.sh as root to remove it."
+    echo "      This installer will not touch it."
+    echo ""
   fi
 fi
 
@@ -81,28 +81,7 @@ amorist installer
 
 Scope: $SCOPE  (no privilege escalation)
 Project path: $ROOT_DIR
-Version: $VERSION
-
-This script will:
-  1. Verify python3 is available
-  2. Stage the launcher and web assets into a sibling directory, then
-     atomically swap it into: $INSTALL_DIR
-  3. Create or update the command symlink at: $BIN_PATH
-     (only replaces an existing symlink already managed by amorist;
-      refuses to overwrite an unrelated file)
-  4. (If missing) create the directory: $BIN_DIR
-  5. Report whether $BIN_DIR is on your PATH
-
-After installation you should be able to run:
-  amorist file.md
-
 SUMMARY
-
-read -r -p "Continue? [y/N] " CONFIRM
-case "$CONFIRM" in
-  y|Y|yes|YES) ;;
-  *) echo "Installation cancelled."; exit 0 ;;
-esac
 
 echo "Installing amorist into $INSTALL_DIR..."
 
@@ -130,19 +109,12 @@ ln -sfn "$INSTALL_DIR/bin/amorist" "$BIN_PATH"
 
 RESOLVED="$(command -v amorist 2>/dev/null || true)"
 if [[ -z "$RESOLVED" ]]; then
-  case ":$PATH:" in
-    *":$BIN_DIR:"*)
-      echo "amorist was installed at $BIN_PATH, but is still not visible on PATH." >&2
-      echo "This usually means the shell has cached an older PATH lookup. Try: hash -r" >&2
-      exit 1 ;;
-    *)
-      echo "Installed: $BIN_PATH"
-      echo "Version: $("$BIN_PATH" --version)"
-      echo "Note: $BIN_DIR is not on PATH yet."
-      echo "Add this to your shell rc (~/.bashrc or ~/.zshrc) and restart the shell:"
-      echo "  export PATH=\"$BIN_DIR:\$PATH\""
-      ;;
-  esac
+  echo "Installed: $BIN_PATH"
+  echo "Version: $("$BIN_PATH" --version)"
+  echo "Usage: amorist file.md"
+  echo "Note: $BIN_DIR is not on PATH yet."
+  echo "      Add this to your shell rc (~/.bashrc or ~/.zshrc) and restart the shell:"
+  echo "      export PATH=\"$BIN_DIR:\$PATH\""
 elif [[ "$RESOLVED" != "$BIN_PATH" ]]; then
   echo "Installed: $BIN_PATH" >&2
   echo "Warning: 'amorist' on PATH currently resolves to $RESOLVED (earlier on PATH)." >&2

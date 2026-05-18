@@ -56,13 +56,12 @@ Install from the repo checkout:
 ./scripts/install.sh
 ```
 
-The installer asks for confirmation and chooses the install scope from your
-effective UID — **the script never escalates privileges**:
+The installer runs without confirmation and chooses the install scope from
+your effective UID — **the script never escalates privileges**:
 
 - Run as a normal user → installs under `~/.local/share/amorist` and links
   the command at `~/.local/bin/amorist`. If `~/.local/bin` is not on your
-  `PATH`, the installer prints the exact `export` line to add to your shell
-  rc.
+  `PATH`, the installer prints the exact `export` line to add to your shell rc.
 - Run as root → installs under `/opt/amorist` and links
   `/usr/local/bin/amorist`.
 
