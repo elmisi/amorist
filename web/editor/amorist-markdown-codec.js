@@ -1,5 +1,6 @@
 (function () {
-  const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE"]);
+  const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "LI", "PRE", "HR"]);
+  const HR_PATTERN = /^(-{3,}|\*{3,}|_{3,})\s*$/;
   const Internals = window.AmoristInternals || (window.AmoristInternals = {});
   const TextUtils = Internals.TextUtils;
   const TableCodec = Internals.TableCodec;
@@ -70,7 +71,7 @@
         continue;
       }
 
-      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
         blocks.push({ type: "heading", level: heading[1].length, text: heading[2], sourceLine });
         index += 1;
@@ -123,6 +124,12 @@
         continue;
       }
 
+      if (HR_PATTERN.test(line)) {
+        blocks.push({ type: "hr", sourceLine });
+        index += 1;
+        continue;
+      }
+
       const paragraph = [line];
       index += 1;
       while (
@@ -141,11 +148,12 @@
 
   function isBlockStart(lines, index) {
     const line = Array.isArray(lines) ? lines[index] : lines;
-    return /^(#{1,3})\s+/.test(line) ||
+    return /^(#{1,6})\s+/.test(line) ||
       /^ {0,3}(`{3,}|~{3,})/.test(line) ||
       /^>\s?/.test(line) ||
       /^[-*+]\s+/.test(line) ||
       /^\d+\.\s+/.test(line) ||
+      HR_PATTERN.test(line) ||
       (Array.isArray(lines) && TableCodec.isTableStart(lines, index));
   }
 
@@ -156,6 +164,8 @@
         return `<h${block.level}${attrs}>${renderInline(block.text)}</h${block.level}>`;
       case "quote":
         return `<blockquote${attrs}>${renderInline(block.text)}</blockquote>`;
+      case "hr":
+        return `<hr${attrs}>`;
       case "code":
         return `<pre${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "table":
@@ -207,8 +217,12 @@
 
   function serializeBlock(element, lines) {
     const tag = element.tagName;
-    if (tag === "H1" || tag === "H2" || tag === "H3") {
+    if (/^H[1-6]$/.test(tag)) {
       lines.push(`${"#".repeat(Number(tag.slice(1)))} ${inlineMarkdown(element)}`);
+      return;
+    }
+    if (tag === "HR") {
+      lines.push("---");
       return;
     }
     if (tag === "BLOCKQUOTE") {
@@ -224,20 +238,24 @@
       return;
     }
     if (tag === "UL") {
+      const items = [];
       Array.from(element.children).forEach((item) => {
         if (item.classList.contains("amorist-task-item")) {
           const checked = item.dataset.checked === "true" ? "x" : " ";
-          lines.push(`- [${checked}] ${inlineMarkdown(item.querySelector(".amorist-task-content") || item)}`);
+          items.push(`- [${checked}] ${inlineMarkdown(item.querySelector(".amorist-task-content") || item)}`);
         } else {
-          lines.push(`- ${inlineMarkdown(item)}`);
+          items.push(`- ${inlineMarkdown(item)}`);
         }
       });
+      lines.push(items.join("\n"));
       return;
     }
     if (tag === "OL") {
+      const items = [];
       Array.from(element.children).forEach((item, index) => {
-        lines.push(`${index + 1}. ${inlineMarkdown(item)}`);
+        items.push(`${index + 1}. ${inlineMarkdown(item)}`);
       });
+      lines.push(items.join("\n"));
       return;
     }
     if (tag === "DIV" && BLOCK_TAGS.has(element.firstElementChild?.tagName || "")) {

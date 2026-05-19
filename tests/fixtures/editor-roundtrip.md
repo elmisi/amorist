@@ -13,6 +13,8 @@ Paragraph with **bold**, *italic*, `code`, and [link](https://example.com).
 - [ ] Todo
 - [x] Done
 
+---
+
 ```
 const value = 1;
 ```

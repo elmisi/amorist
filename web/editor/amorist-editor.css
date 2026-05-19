@@ -94,7 +94,10 @@
 
 .amorist-editor-surface h1,
 .amorist-editor-surface h2,
-.amorist-editor-surface h3 {
+.amorist-editor-surface h3,
+.amorist-editor-surface h4,
+.amorist-editor-surface h5,
+.amorist-editor-surface h6 {
   line-height: 1.2;
   margin: 1.1em 0 0.45em;
 }
@@ -109,6 +112,19 @@
 
 .amorist-editor-surface h3 {
   font-size: 19px;
+}
+
+.amorist-editor-surface h4 {
+  font-size: 16px;
+}
+
+.amorist-editor-surface h5 {
+  font-size: 14px;
+}
+
+.amorist-editor-surface h6 {
+  font-size: 13px;
+  color: var(--muted, #68717d);
 }
 
 .amorist-editor-surface p,
@@ -134,10 +150,11 @@
 }
 
 .amorist-editor-surface pre {
-  background: #172027;
+  background: #f3f6f7;
+  border: 1px solid var(--border, #d8dee6);
   border-radius: 8px;
   box-sizing: border-box;
-  color: #f2f6f8;
+  color: #2b3a47;
   display: block;
   max-width: 100%;
   min-width: 0;
@@ -165,6 +182,12 @@
   color: inherit;
 }
 
+.amorist-editor-surface hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 1em 0;
+}
+
 .amorist-editor-surface ul,
 .amorist-editor-surface ol {
   padding-left: 1.6em;
@@ -182,16 +205,14 @@
 }
 
 .amorist-task-checkbox {
-  align-items: center;
   border: 1px solid var(--border, #d8dee6);
   border-radius: 4px;
   color: #fff;
   cursor: pointer;
   display: inline-flex;
   flex: none;
-  font-size: 12px;
   height: 16px;
-  justify-content: center;
+  position: relative;
   transform: translateY(2px);
   width: 16px;
 }
@@ -202,7 +223,13 @@
 }
 
 .amorist-task-item[data-checked="true"] .amorist-task-checkbox::before {
+  align-items: center;
   content: "✓";
+  display: flex;
+  font-size: 12px;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
 }
 
 .amorist-task-content {

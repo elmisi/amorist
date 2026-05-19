@@ -59,11 +59,48 @@ assert.equal(
 assert.equal(codec.renderInline(""), "<br>");
 assert.equal(codec.renderInline("x < y & z"), "x &lt; y &amp; z");
 
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("#### Sub-heading"))), [
+  { type: "heading", level: 4, text: "Sub-heading", sourceLine: 0 },
+]);
+
+assert.equal(
+  codec.renderMarkdown("#### H4\n\n##### H5\n\n###### H6"),
+  '<h4 data-source-line="0">H4</h4><h5 data-source-line="2">H5</h5><h6 data-source-line="4">H6</h6>',
+);
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("---"))), [
+  { type: "hr", sourceLine: 0 },
+]);
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("***"))), [
+  { type: "hr", sourceLine: 0 },
+]);
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("___"))), [
+  { type: "hr", sourceLine: 0 },
+]);
+
+assert.ok(codec.renderMarkdown("---").includes("<hr"));
+assert.ok(codec.renderMarkdown("***").includes("<hr"));
+assert.ok(codec.renderMarkdown("___").includes("<hr"));
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("- a\n- b\n- c"))), [
+  { type: "bulletList", items: ["a", "b", "c"], sourceLine: 0 },
+]);
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("1. a\n2. b\n3. c"))), [
+  { type: "orderedList", items: ["a", "b", "c"], sourceLine: 0 },
+]);
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("- [ ] a\n- [x] b"))), [
+  { type: "taskList", items: [{ checked: false, text: "a" }, { checked: true, text: "b" }], sourceLine: 0 },
+]);
+
 const fixture = fs.readFileSync("tests/fixtures/editor-roundtrip.md", "utf8");
 const blocks = codec.parseBlocks(fixture);
 assert.deepEqual(
   Array.from(blocks, (block) => block.type),
-  ["heading", "paragraph", "quote", "bulletList", "orderedList", "taskList", "code", "table"],
+  ["heading", "paragraph", "quote", "bulletList", "orderedList", "taskList", "hr", "code", "table"],
 );
 
 console.log("editor-markdown-codec.test.js passed");

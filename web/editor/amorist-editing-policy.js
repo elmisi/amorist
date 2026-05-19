@@ -1,5 +1,5 @@
 (function () {
-  const BLOCK_TAGS = new Set(["P", "DIV", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE"]);
+  const BLOCK_TAGS = new Set(["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "LI", "PRE"]);
 
   function create({ surface, onChanged }) {
     if (!surface) {
@@ -29,6 +29,9 @@
         case "h1":
         case "h2":
         case "h3":
+        case "h4":
+        case "h5":
+        case "h6":
           document.execCommand("formatBlock", false, action);
           break;
         case "bullet":
@@ -79,11 +82,23 @@
 
       if (!isPlainTextBlock(block) || !isShortcutAtLineStart(before)) return false;
 
-      const heading = lineMarker.match(/^(#{1,3})$/);
+      const heading = lineMarker.match(/^(#{1,6})$/);
       if (heading) {
         event.preventDefault();
         const replacement = replaceBlockWithTag(block, `h${heading[1].length}`, after.trimStart());
         placeCaretAtEnd(replacement);
+        notifyChanged();
+        return true;
+      }
+
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(lineMarker)) {
+        event.preventDefault();
+        const hr = document.createElement("hr");
+        const p = document.createElement("p");
+        p.append(document.createElement("br"));
+        block.replaceWith(hr);
+        hr.after(p);
+        placeCaretAtEnd(p);
         notifyChanged();
         return true;
       }
@@ -121,17 +136,33 @@
 
       const before = textBeforeCaret(block).trim();
       const after = textAfterCaret(block).trim();
-      if (after || !/^(`{3,}|~{3,})$/.test(before)) return false;
+      if (after) return false;
 
-      event.preventDefault();
-      const code = document.createElement("code");
-      code.append(document.createElement("br"));
-      const pre = document.createElement("pre");
-      pre.append(code);
-      block.replaceWith(pre);
-      placeCaretAtEnd(code);
-      notifyChanged();
-      return true;
+      if (/^(`{3,}|~{3,})$/.test(before)) {
+        event.preventDefault();
+        const code = document.createElement("code");
+        code.append(document.createElement("br"));
+        const pre = document.createElement("pre");
+        pre.append(code);
+        block.replaceWith(pre);
+        placeCaretAtEnd(code);
+        notifyChanged();
+        return true;
+      }
+
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(before)) {
+        event.preventDefault();
+        const hr = document.createElement("hr");
+        const p = document.createElement("p");
+        p.append(document.createElement("br"));
+        block.replaceWith(hr);
+        hr.after(p);
+        placeCaretAtEnd(p);
+        notifyChanged();
+        return true;
+      }
+
+      return false;
     }
 
     function applyInlineMarkdownShortcut() {
@@ -263,7 +294,7 @@
 
   function isPlainTextBlock(block) {
     return block.tagName === "P" || block.tagName === "DIV" ||
-      block.tagName === "H1" || block.tagName === "H2" || block.tagName === "H3";
+      /^H[1-6]$/.test(block.tagName);
   }
 
   function replaceBlockWithTag(block, tagName, text) {
