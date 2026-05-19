@@ -300,7 +300,7 @@ def start_heartbeat_monitor(state: ServerState) -> None:
                 should_shutdown = (
                     state.first_ping_seen
                     and state.last_ping is not None
-                    and time.time() - state.last_ping > 12
+                    and time.time() - state.last_ping > 120
                 ) or (
                     state.close_deadline is not None
                     and time.time() >= state.close_deadline

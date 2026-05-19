@@ -190,8 +190,19 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
   }
 
   function startHeartbeat() {
+    let pingFailures = 0;
     const ping = () => {
-      fetch(`/api/ping?token=${encodeURIComponent(token)}`, { method: "POST" }).catch(() => {});
+      fetch(`/api/ping?token=${encodeURIComponent(token)}`, { method: "POST" })
+        .then(() => {
+          if (pingFailures > 0 && noticeSource === "heartbeat") { hideNotice(); }
+          pingFailures = 0;
+        })
+        .catch(() => {
+          pingFailures += 1;
+          if (pingFailures >= 3) {
+            showWarning("Connection to server lost. Save is unavailable.");
+          }
+        });
     };
     ping();
     window.setInterval(ping, 3000);
