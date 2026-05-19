@@ -4,6 +4,18 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-05-19
+
+### Added
+- Horizontal rule shortcut triggers on Space too (type `---`, `***`, or `___`
+  then Space or Enter).
+- H4–H6 heading support: parser, renderer, serializer, `#### ` shortcut, and
+  editor CSS.
+
+### Changed
+- Code block styling uses a light background (`#f3f6f7`) with dark text instead
+  of white-on-dark, matching the surrounding editor aesthetic.
+
 ## [0.2.1] - 2026-05-19
 
 ### Fixed

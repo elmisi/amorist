@@ -59,6 +59,15 @@ assert.equal(
 assert.equal(codec.renderInline(""), "<br>");
 assert.equal(codec.renderInline("x < y & z"), "x &lt; y &amp; z");
 
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("#### Sub-heading"))), [
+  { type: "heading", level: 4, text: "Sub-heading", sourceLine: 0 },
+]);
+
+assert.equal(
+  codec.renderMarkdown("#### H4\n\n##### H5\n\n###### H6"),
+  '<h4 data-source-line="0">H4</h4><h5 data-source-line="2">H5</h5><h6 data-source-line="4">H6</h6>',
+);
+
 assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("---"))), [
   { type: "hr", sourceLine: 0 },
 ]);

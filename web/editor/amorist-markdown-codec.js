@@ -1,5 +1,5 @@
 (function () {
-  const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE", "HR"]);
+  const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "LI", "PRE", "HR"]);
   const HR_PATTERN = /^(-{3,}|\*{3,}|_{3,})\s*$/;
   const Internals = window.AmoristInternals || (window.AmoristInternals = {});
   const TextUtils = Internals.TextUtils;
@@ -71,7 +71,7 @@
         continue;
       }
 
-      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
         blocks.push({ type: "heading", level: heading[1].length, text: heading[2], sourceLine });
         index += 1;
@@ -148,7 +148,7 @@
 
   function isBlockStart(lines, index) {
     const line = Array.isArray(lines) ? lines[index] : lines;
-    return /^(#{1,3})\s+/.test(line) ||
+    return /^(#{1,6})\s+/.test(line) ||
       /^ {0,3}(`{3,}|~{3,})/.test(line) ||
       /^>\s?/.test(line) ||
       /^[-*+]\s+/.test(line) ||
@@ -217,7 +217,7 @@
 
   function serializeBlock(element, lines) {
     const tag = element.tagName;
-    if (tag === "H1" || tag === "H2" || tag === "H3") {
+    if (/^H[1-6]$/.test(tag)) {
       lines.push(`${"#".repeat(Number(tag.slice(1)))} ${inlineMarkdown(element)}`);
       return;
     }
