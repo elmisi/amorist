@@ -22,6 +22,8 @@
     demo: Boolean(screenshotMode),
   };
 
+  let noticeSource = null;
+
   const demoMarkdown = `# Draft Notes
 
 ## Today
@@ -63,7 +65,7 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     }
 
     if (!token) {
-      showError("Missing local access token. Launch amorist from the command line.");
+      showError("Missing local access token. Launch amorist from the command line.", "init");
       return;
     }
 
@@ -91,7 +93,7 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
       setStatus(document.exists ? "Loaded" : "New file");
       hideNotice();
     } catch (error) {
-      showError(error.message || "The document could not be loaded.");
+      showError(error.message || "The document could not be loaded.", "reload");
     }
   }
 
@@ -129,7 +131,7 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
       setStatus("Saved");
       hideNotice();
     } catch (error) {
-      showError(error.message || "The document could not be saved.");
+      showError(error.message || "The document could not be saved.", "save");
       setDirty(true);
     }
   }
@@ -234,16 +236,29 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     setStatus(dirty ? "Modified" : "Saved");
   }
 
-  function showError(message) {
+  function showError(message, source) {
     elements.notice.hidden = false;
+    elements.notice.classList.remove("warning");
+    elements.notice.classList.add("error");
     elements.notice.textContent = message;
     elements.status.textContent = "Error";
     elements.save.disabled = false;
     elements.reload.disabled = false;
+    noticeSource = source || null;
+  }
+
+  function showWarning(message) {
+    elements.notice.hidden = false;
+    elements.notice.classList.remove("error");
+    elements.notice.classList.add("warning");
+    elements.notice.textContent = message;
+    noticeSource = "heartbeat";
   }
 
   function hideNotice() {
     elements.notice.hidden = true;
+    elements.notice.classList.remove("error", "warning");
     elements.notice.textContent = "";
+    noticeSource = null;
   }
 })();

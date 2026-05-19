@@ -124,10 +124,20 @@ button:disabled {
 }
 
 .notice {
-  background: #fff4f1;
-  border-bottom: 1px solid #f0c7bf;
-  color: var(--danger);
+  border-bottom: 1px solid var(--border);
   padding: 10px 16px;
+}
+
+.notice.error {
+  background: #f8d7da;
+  border-color: #f0c7bf;
+  color: #721c24;
+}
+
+.notice.warning {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
 }
 
 .editor {
