@@ -205,16 +205,14 @@
 }
 
 .amorist-task-checkbox {
-  align-items: center;
   border: 1px solid var(--border, #d8dee6);
   border-radius: 4px;
   color: #fff;
   cursor: pointer;
   display: inline-flex;
   flex: none;
-  font-size: 12px;
   height: 16px;
-  justify-content: center;
+  position: relative;
   transform: translateY(2px);
   width: 16px;
 }
@@ -225,7 +223,13 @@
 }
 
 .amorist-task-item[data-checked="true"] .amorist-task-checkbox::before {
+  align-items: center;
   content: "✓";
+  display: flex;
+  font-size: 12px;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
 }
 
 .amorist-task-content {
