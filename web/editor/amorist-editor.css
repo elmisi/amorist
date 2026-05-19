@@ -165,6 +165,12 @@
   color: inherit;
 }
 
+.amorist-editor-surface hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 1em 0;
+}
+
 .amorist-editor-surface ul,
 .amorist-editor-surface ol {
   padding-left: 1.6em;

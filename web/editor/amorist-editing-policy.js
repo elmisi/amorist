@@ -121,17 +121,33 @@
 
       const before = textBeforeCaret(block).trim();
       const after = textAfterCaret(block).trim();
-      if (after || !/^(`{3,}|~{3,})$/.test(before)) return false;
+      if (after) return false;
 
-      event.preventDefault();
-      const code = document.createElement("code");
-      code.append(document.createElement("br"));
-      const pre = document.createElement("pre");
-      pre.append(code);
-      block.replaceWith(pre);
-      placeCaretAtEnd(code);
-      notifyChanged();
-      return true;
+      if (/^(`{3,}|~{3,})$/.test(before)) {
+        event.preventDefault();
+        const code = document.createElement("code");
+        code.append(document.createElement("br"));
+        const pre = document.createElement("pre");
+        pre.append(code);
+        block.replaceWith(pre);
+        placeCaretAtEnd(code);
+        notifyChanged();
+        return true;
+      }
+
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(before)) {
+        event.preventDefault();
+        const hr = document.createElement("hr");
+        const p = document.createElement("p");
+        p.append(document.createElement("br"));
+        block.replaceWith(hr);
+        hr.after(p);
+        placeCaretAtEnd(p);
+        notifyChanged();
+        return true;
+      }
+
+      return false;
     }
 
     function applyInlineMarkdownShortcut() {

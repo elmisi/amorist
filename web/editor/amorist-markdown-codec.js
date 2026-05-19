@@ -1,5 +1,6 @@
 (function () {
-  const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE"]);
+  const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "BLOCKQUOTE", "LI", "PRE", "HR"]);
+  const HR_PATTERN = /^(-{3,}|\*{3,}|_{3,})\s*$/;
   const Internals = window.AmoristInternals || (window.AmoristInternals = {});
   const TextUtils = Internals.TextUtils;
   const TableCodec = Internals.TableCodec;
@@ -123,6 +124,12 @@
         continue;
       }
 
+      if (HR_PATTERN.test(line)) {
+        blocks.push({ type: "hr", sourceLine });
+        index += 1;
+        continue;
+      }
+
       const paragraph = [line];
       index += 1;
       while (
@@ -146,6 +153,7 @@
       /^>\s?/.test(line) ||
       /^[-*+]\s+/.test(line) ||
       /^\d+\.\s+/.test(line) ||
+      HR_PATTERN.test(line) ||
       (Array.isArray(lines) && TableCodec.isTableStart(lines, index));
   }
 
@@ -156,6 +164,8 @@
         return `<h${block.level}${attrs}>${renderInline(block.text)}</h${block.level}>`;
       case "quote":
         return `<blockquote${attrs}>${renderInline(block.text)}</blockquote>`;
+      case "hr":
+        return `<hr${attrs}>`;
       case "code":
         return `<pre${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "table":
@@ -209,6 +219,10 @@
     const tag = element.tagName;
     if (tag === "H1" || tag === "H2" || tag === "H3") {
       lines.push(`${"#".repeat(Number(tag.slice(1)))} ${inlineMarkdown(element)}`);
+      return;
+    }
+    if (tag === "HR") {
+      lines.push("---");
       return;
     }
     if (tag === "BLOCKQUOTE") {
