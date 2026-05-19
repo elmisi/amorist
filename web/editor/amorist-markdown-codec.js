@@ -224,20 +224,24 @@
       return;
     }
     if (tag === "UL") {
+      const items = [];
       Array.from(element.children).forEach((item) => {
         if (item.classList.contains("amorist-task-item")) {
           const checked = item.dataset.checked === "true" ? "x" : " ";
-          lines.push(`- [${checked}] ${inlineMarkdown(item.querySelector(".amorist-task-content") || item)}`);
+          items.push(`- [${checked}] ${inlineMarkdown(item.querySelector(".amorist-task-content") || item)}`);
         } else {
-          lines.push(`- ${inlineMarkdown(item)}`);
+          items.push(`- ${inlineMarkdown(item)}`);
         }
       });
+      lines.push(items.join("\n"));
       return;
     }
     if (tag === "OL") {
+      const items = [];
       Array.from(element.children).forEach((item, index) => {
-        lines.push(`${index + 1}. ${inlineMarkdown(item)}`);
+        items.push(`${index + 1}. ${inlineMarkdown(item)}`);
       });
+      lines.push(items.join("\n"));
       return;
     }
     if (tag === "DIV" && BLOCK_TAGS.has(element.firstElementChild?.tagName || "")) {

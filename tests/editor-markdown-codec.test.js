@@ -59,6 +59,18 @@ assert.equal(
 assert.equal(codec.renderInline(""), "<br>");
 assert.equal(codec.renderInline("x < y & z"), "x &lt; y &amp; z");
 
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("- a\n- b\n- c"))), [
+  { type: "bulletList", items: ["a", "b", "c"], sourceLine: 0 },
+]);
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("1. a\n2. b\n3. c"))), [
+  { type: "orderedList", items: ["a", "b", "c"], sourceLine: 0 },
+]);
+
+assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("- [ ] a\n- [x] b"))), [
+  { type: "taskList", items: [{ checked: false, text: "a" }, { checked: true, text: "b" }], sourceLine: 0 },
+]);
+
 const fixture = fs.readFileSync("tests/fixtures/editor-roundtrip.md", "utf8");
 const blocks = codec.parseBlocks(fixture);
 assert.deepEqual(
