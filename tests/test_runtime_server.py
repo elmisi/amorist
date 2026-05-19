@@ -135,6 +135,54 @@ def test_tab_close_request_schedules_shutdown_and_ping_cancels_it():
             assert state.close_deadline is None
 
 
+def test_save_to_readonly_dir_returns_json_error():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "notes.md"
+        path.write_bytes(b"original\n")
+        parent = path.parent
+        parent.chmod(0o555)
+        try:
+            with run_server(path) as (base_url, token, _state):
+                status, body = request(api_document(base_url, token), save_payload("changed\n", "lf"), "POST")
+            assert status == 500
+            payload = json.loads(body)
+            assert "error" in payload
+        finally:
+            parent.chmod(0o755)
+        assert path.read_bytes() == b"original\n"
+
+
+def test_save_to_readonly_dir_leaves_no_tmp_file():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "notes.md"
+        path.write_bytes(b"original\n")
+        parent = path.parent
+        parent.chmod(0o555)
+        try:
+            with run_server(path) as (base_url, token, _state):
+                request(api_document(base_url, token), save_payload("changed\n", "lf"), "POST")
+            tmp_file = path.with_name(f".{path.name}.amorist-tmp")
+            assert not tmp_file.exists()
+        finally:
+            parent.chmod(0o755)
+
+
+def test_save_to_uncreatable_parent_returns_json_error():
+    with tempfile.TemporaryDirectory() as tmp:
+        parent = Path(tmp) / "locked"
+        parent.mkdir()
+        path = parent / "deep" / "notes.md"
+        parent.chmod(0o555)
+        try:
+            with run_server(path) as (base_url, token, _state):
+                status, body = request(api_document(base_url, token), save_payload("new\n", "lf"), "POST")
+            assert status == 500
+            payload = json.loads(body)
+            assert "error" in payload
+        finally:
+            parent.chmod(0o755)
+
+
 def run_tests():
     tests = [
         test_lf_save,
@@ -144,6 +192,9 @@ def run_tests():
         test_invalid_utf8_read_returns_415_and_preserves_file,
         test_favicon_is_served_from_web_assets,
         test_tab_close_request_schedules_shutdown_and_ping_cancels_it,
+        test_save_to_readonly_dir_returns_json_error,
+        test_save_to_readonly_dir_leaves_no_tmp_file,
+        test_save_to_uncreatable_parent_returns_json_error,
     ]
     for test in tests:
         test()

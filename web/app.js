@@ -24,6 +24,28 @@
 
   let noticeSource = null;
 
+  async function fetchWithTimeout(url, opts, timeoutMs = 10000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...opts, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function extractErrorDetail(response) {
+    try {
+      const body = await response.json();
+      if (body.error) return body.error;
+    } catch (_ignored) {} // non-JSON response; fall through
+    const STATUS_MESSAGES = {
+      413: "File is too large (max 10 MB)",
+      403: "Session expired — relaunch amorist from the terminal",
+    };
+    return STATUS_MESSAGES[response.status] || `HTTP ${response.status}`;
+  }
+
   const demoMarkdown = `# Draft Notes
 
 ## Today
@@ -80,9 +102,10 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
 
     setBusy("Loading");
     try {
-      const response = await fetch(`/api/document?token=${encodeURIComponent(token)}`);
+      const response = await fetchWithTimeout(`/api/document?token=${encodeURIComponent(token)}`);
       if (!response.ok) {
-        throw new Error(`Load failed: HTTP ${response.status}`);
+        const detail = await extractErrorDetail(response);
+        throw new Error(`Load failed: ${detail}`);
       }
       const document = await response.json();
       state.lineEnding = document.lineEnding || "lf";
@@ -93,7 +116,11 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
       setStatus(document.exists ? "Loaded" : "New file");
       hideNotice();
     } catch (error) {
-      showError(error.message || "The document could not be loaded.", "reload");
+      if (error.name === "AbortError") {
+        showError("Load timed out — the server may be unreachable.", "reload");
+      } else {
+        showError(error.message || "The document could not be loaded.", "reload");
+      }
     }
   }
 
@@ -117,21 +144,44 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
 
     setBusy("Saving");
     const markdown = state.editor.getValue();
-    try {
-      const response = await fetch(`/api/document?token=${encodeURIComponent(token)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown, lineEnding: state.lineEnding }),
-      });
+    const saveOpts = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markdown, lineEnding: state.lineEnding }),
+    };
+    const url = `/api/document?token=${encodeURIComponent(token)}`;
+
+    async function attemptSave() {
+      const response = await fetchWithTimeout(url, saveOpts);
       if (!response.ok) {
-        throw new Error(`Save failed: HTTP ${response.status}`);
+        const detail = await extractErrorDetail(response);
+        throw new Error(`Save failed: ${detail}`);
+      }
+      return response;
+    }
+
+    try {
+      try {
+        await attemptSave();
+      } catch (firstError) {
+        if (firstError instanceof TypeError || firstError.name === "AbortError") {
+          elements.status.textContent = "Retrying save…";
+          await new Promise((r) => setTimeout(r, 2000));
+          await attemptSave();
+        } else {
+          throw firstError;
+        }
       }
       state.savedMarkdown = markdown;
       setDirty(false);
       setStatus("Saved");
       hideNotice();
     } catch (error) {
-      showError(error.message || "The document could not be saved.", "save");
+      if (error.name === "AbortError") {
+        showError("Save timed out — the server may be unreachable. Your changes are still in the editor.", "save");
+      } else {
+        showError(error.message || "The document could not be saved.", "save");
+      }
       setDirty(true);
     }
   }
