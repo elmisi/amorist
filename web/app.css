@@ -148,6 +148,12 @@ button:disabled {
   width: 100%;
 }
 
+.editor .amorist-editor {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
 .empty-state {
   align-items: center;
   background: var(--panel);
