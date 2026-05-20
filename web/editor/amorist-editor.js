@@ -230,55 +230,42 @@
 
     captureScrollPosition() {
       if (this.mode === "source") {
-        const lineHeight = sourceLineHeight(this.source);
-        const maxScroll = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
+        var lineHeight = sourceLineHeight(this.source);
         return {
           line: Math.max(0, Math.floor(this.source.scrollTop / lineHeight)),
-          progress: maxScroll > 0 ? this.source.scrollTop / maxScroll : 0,
+          progress: this.source.scrollHeight > 0 ? this.source.scrollTop / this.source.scrollHeight : 0,
         };
       }
 
-      const visibleTop = viewportContentTop(this.toolbar);
-      const visibleBlock = Array.from(this.surface.children).find((child) => {
-        const rect = child.getBoundingClientRect();
-        return rect.bottom > visibleTop;
+      var surfaceTop = this.surface.getBoundingClientRect().top;
+      var visibleBlock = Array.from(this.surface.children).find(function (child) {
+        return child.getBoundingClientRect().bottom > surfaceTop;
       });
-      const surfaceRect = this.surface.getBoundingClientRect();
-      const progress = clamp(
-        (visibleTop - surfaceRect.top) / Math.max(1, this.surface.scrollHeight),
-        0,
-        1,
-      );
 
       return {
         line: visibleBlock ? Number(visibleBlock.dataset.sourceLine || 0) : 0,
-        progress,
+        progress: this.surface.scrollHeight > 0 ? this.surface.scrollTop / this.surface.scrollHeight : 0,
       };
     }
 
     restoreScrollPosition(position) {
       if (!position) return;
+      var self = this;
 
-      const restore = () => {
-        if (this.mode === "source") {
-          const maxScroll = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
-          const lineTop = position.line * sourceLineHeight(this.source);
-          this.source.scrollTop = clamp(lineTop, 0, maxScroll);
-          window.scrollTo({ top: Math.max(0, documentTop(this.root) - topbarHeight()) });
+      var restore = function () {
+        if (self.mode === "source") {
+          var lineTop = position.line * sourceLineHeight(self.source);
+          self.source.scrollTop = lineTop;
           return;
         }
 
-        const target = blockForSourceLine(this.surface, position.line);
+        var target = blockForSourceLine(self.surface, position.line);
         if (target) {
-          window.scrollTo({
-            top: Math.max(0, documentTop(target) - viewportContentTop(this.toolbar)),
-          });
+          self.surface.scrollTop = target.offsetTop;
           return;
         }
 
-        const surfaceTop = documentTop(this.surface);
-        const y = surfaceTop + (this.surface.scrollHeight * position.progress) - viewportContentTop(this.toolbar);
-        window.scrollTo({ top: Math.max(0, y) });
+        self.surface.scrollTop = self.surface.scrollHeight * position.progress;
       };
 
       restore();
