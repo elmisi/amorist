@@ -1,6 +1,6 @@
 {
   "productName": "amorist",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "identifier": "dev.elmisi.amorist",
   "build": {
     "frontendDist": "../web"
@@ -23,7 +23,8 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.png",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.icns"
     ],
     "fileAssociations": [
       {
@@ -42,6 +43,11 @@
           "index": 1,
           "takesValue": true,
           "required": false
+        },
+        {
+          "name": "install-cli",
+          "takesValue": false,
+          "description": "Install a symlink so the `amorist` command is available in your shell, then exit."
         }
       ]
     }

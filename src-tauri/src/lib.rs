@@ -144,6 +144,19 @@ fn set_dirty(state: State<AppState>, dirty: bool) {
 
 #[tauri::command]
 fn force_close(app_handle: tauri::AppHandle) {
+    // macOS: app_handle.exit(0) called from an IPC handler thread does not
+    // terminate the Cocoa runloop. Route through the WindowEvent handler so
+    // the exit happens on the event-loop thread instead.
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(state) = app_handle.try_state::<AppState>() {
+            *state.force_close.lock().unwrap() = true;
+        }
+        if let Some(window) = app_handle.get_webview_window("main") {
+            let _ = window.close();
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
     app_handle.exit(0);
 }
 
@@ -194,6 +207,69 @@ fn url_to_path(uri: &str) -> Result<String, String> {
     Ok(percent_decode(stripped))
 }
 
+#[cfg(unix)]
+fn run_install_cli() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
+    let home = std::env::var("HOME").map_err(|e| format!("HOME unset: {e}"))?;
+    let bin_dir = PathBuf::from(&home).join(".local").join("bin");
+    fs::create_dir_all(&bin_dir)
+        .map_err(|e| format!("create {}: {e}", bin_dir.display()))?;
+    let link = bin_dir.join("amorist");
+
+    if let Ok(meta) = link.symlink_metadata() {
+        if !meta.file_type().is_symlink() {
+            return Err(format!(
+                "{} exists and is not a symlink; refusing to overwrite. Remove it manually and retry.",
+                link.display()
+            ));
+        }
+        fs::remove_file(&link).map_err(|e| format!("remove existing link: {e}"))?;
+    }
+
+    std::os::unix::fs::symlink(&exe, &link)
+        .map_err(|e| format!("symlink {} -> {}: {e}", link.display(), exe.display()))?;
+
+    println!("Installed: {}", link.display());
+    println!("Target:    {}", exe.display());
+
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    let in_path = path_env
+        .split(':')
+        .any(|p| std::path::Path::new(p) == bin_dir.as_path());
+    if !in_path {
+        println!();
+        println!("Note: {} is not on your PATH.", bin_dir.display());
+        println!("Add this line to your shell rc (e.g. ~/.zshrc or ~/.bashrc):");
+        println!("    export PATH=\"$HOME/.local/bin:$PATH\"");
+        println!("Then restart the shell or `source` the rc file.");
+    }
+    Ok(())
+}
+
+fn check_install_cli(app: &App) -> Result<bool, String> {
+    let matches = app
+        .cli()
+        .matches()
+        .map_err(|e| format!("CLI argument parsing failed: {e}"))?;
+    let requested = matches
+        .args
+        .get("install-cli")
+        .map(|a| a.occurrences > 0)
+        .unwrap_or(false);
+    if !requested {
+        return Ok(false);
+    }
+    #[cfg(unix)]
+    {
+        run_install_cli()?;
+        Ok(true)
+    }
+    #[cfg(not(unix))]
+    {
+        Err("--install-cli is only supported on Unix systems.".into())
+    }
+}
+
 fn resolve_file_arg(app: &App) -> Result<Option<PathBuf>, String> {
     let matches = app
         .cli()
@@ -229,6 +305,7 @@ fn resolve_file_arg(app: &App) -> Result<Option<PathBuf>, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_cli::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             file_path: Mutex::new(None),
             last_modified: Mutex::new(None),
@@ -238,16 +315,30 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let state: State<AppState> = window.state();
-                if *state.force_close.lock().unwrap() {
-                    return;
-                }
-                if *state.dirty.lock().unwrap() {
+                let force = *state.force_close.lock().unwrap();
+                if !force && *state.dirty.lock().unwrap() {
                     api.prevent_close();
                     let _ = window.emit("confirm-close", ());
+                    return;
                 }
+                // macOS: Cocoa keeps the process alive after the last window
+                // closes by default, leaving a zombie with no UI. Exit
+                // explicitly to match Linux/GTK behavior. On other platforms
+                // we let the runloop close the window naturally — that's the
+                // behavior that has been validated on Linux.
+                #[cfg(target_os = "macos")]
+                window.app_handle().exit(0);
             }
         })
         .setup(|app| {
+            match check_install_cli(app) {
+                Ok(true) => std::process::exit(0),
+                Ok(false) => {}
+                Err(e) => {
+                    eprintln!("install-cli failed: {e}");
+                    std::process::exit(1);
+                }
+            }
             match resolve_file_arg(app) {
                 Ok(Some(path)) => {
                     let state: State<AppState> = app.state();
@@ -258,10 +349,15 @@ pub fn run() {
                             .map(|n| n.to_string_lossy().to_string())
                             .unwrap_or_default();
                         let _ = window.set_title(&format!("amorist — {}", name));
+                        // macOS doesn't steal focus by default when an app
+                        // launches; for a CLI-invoked editor we always want
+                        // the window in front of the terminal.
+                        let _ = window.set_focus();
                     }
                 }
                 Ok(None) => {
                     eprintln!("Usage: amorist <file.md>");
+                    eprintln!("       amorist --install-cli   (install shell command into ~/.local/bin)");
                     std::process::exit(1);
                 }
                 Err(error) => {

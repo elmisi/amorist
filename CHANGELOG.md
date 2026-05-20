@@ -4,6 +4,50 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-20
+
+### Added
+- macOS `.dmg` build: universal binary (Intel + Apple Silicon) produced by CI on
+  every push to `main` and attached to the GitHub release alongside the Linux `.deb`.
+- `src-tauri/icons/icon.icns` for macOS bundling, generated from `icon.png`.
+- README: macOS install section with prebuilt `.dmg` instructions, Gatekeeper note
+  for the unsigned bundle, and source-build commands for universal binaries.
+
+### Changed
+- CI workflow `build-deb.yml` replaced by `build.yml`: matrix build across
+  `ubuntu-latest` (deb) and `macos-latest` (universal dmg), with a dedicated
+  release job that publishes both artifacts under the same `v$VERSION` tag.
+- `tauri.conf.json` `bundle.icon` now includes `icons/icon.icns`.
+
+### Fixed
+- macOS: closing the window now quits the process instead of leaving a
+  background app with no UI. Cocoa keeps the app alive after the last
+  window closes by default; the `CloseRequested` handler now calls
+  `app_handle.exit(0)` explicitly on macOS, and the `force_close` IPC
+  command routes through the same path. Linux behavior is unchanged
+  (`#[cfg(target_os = "macos")]`).
+- macOS: confirm dialogs now appear when closing a modified document,
+  when reloading with unsaved changes, and when saving a file modified
+  externally. WKWebView on macOS silently drops `window.confirm`; all
+  three call sites now use `tauri-plugin-dialog`, which shows a native
+  NSAlert on macOS and a native GTK dialog on Linux. `window.confirm`
+  remains the fallback for the deprecated HTTP/browser mode.
+- macOS: window now takes focus on launch instead of opening behind the
+  terminal. `window.set_focus()` is invoked after `set_title` in the
+  setup callback.
+
+### Changed
+- Webview devtools enabled in release builds (`devtools` feature on the
+  `tauri` crate). Right-click → Inspect (or Cmd+Opt+I) now works in
+  shipped binaries to make diagnosing webview-specific issues possible.
+
+### Added
+- `amorist --install-cli` flag: creates a symlink at `~/.local/bin/amorist`
+  pointing to the current binary, so users who installed the macOS `.dmg`
+  can invoke `amorist file.md` from any shell. Detects whether the
+  directory is on `PATH` and prints the missing `export` line otherwise.
+  Idempotent and refuses to overwrite a non-symlink file. Unix only.
+
 ## [0.4.0] - 2026-05-20
 
 ### Added
