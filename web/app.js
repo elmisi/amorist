@@ -36,7 +36,15 @@
 
   function createTauriBackend() {
     const { invoke } = window.__TAURI__.core;
-    const { getCurrentWebviewWindow } = window.__TAURI__.webviewWindow;
+
+    function getAppWindow() {
+      try {
+        if (window.__TAURI__.webviewWindow) return window.__TAURI__.webviewWindow.getCurrentWebviewWindow();
+        if (window.__TAURI__.window) return window.__TAURI__.window.getCurrentWindow();
+      } catch (e) {}
+      return null;
+    }
+
     return {
       async loadDocument() {
         return invoke("read_document");
@@ -47,13 +55,27 @@
       async getVersion() {
         return invoke("get_version");
       },
-      async registerCloseGuard(isDirty) {
-        await getCurrentWebviewWindow().onCloseRequested((event) => {
-          if (isDirty()) event.preventDefault();
-        });
+      registerCloseGuard(isDirty) {
+        var appWindow = getAppWindow();
+        if (appWindow && appWindow.onCloseRequested) {
+          appWindow.onCloseRequested(function (event) {
+            if (isDirty() && !window.confirm("You have unsaved changes. Close anyway?")) {
+              event.preventDefault();
+            }
+          });
+        } else {
+          window.addEventListener("beforeunload", function (event) {
+            if (!isDirty()) return;
+            event.preventDefault();
+            event.returnValue = "";
+          });
+        }
       },
       async setWindowTitle(name) {
-        if (name) await getCurrentWebviewWindow().setTitle("amorist — " + name);
+        try {
+          var appWindow = getAppWindow();
+          if (name && appWindow) await appWindow.setTitle("amorist — " + name);
+        } catch (e) {}
       },
       startHeartbeat() {},
       notifyClose() {},
@@ -259,10 +281,13 @@
       setStatus("Saved");
       hideNotice();
     } catch (error) {
-      if (error && error.name === "AbortError") {
+      var msg = errorMessage(error, "The document could not be saved.");
+      if (msg.indexOf("modified outside") !== -1) {
+        showWarning(msg);
+      } else if (error && error.name === "AbortError") {
         showError("Save timed out — the server may be unreachable. Your changes are still in the editor.", "save");
       } else {
-        showError(errorMessage(error, "The document could not be saved."), "save");
+        showError(msg, "save");
       }
       setDirty(true);
     }

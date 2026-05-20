@@ -11,6 +11,7 @@ const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
 
 struct AppState {
     file_path: Mutex<Option<PathBuf>>,
+    last_modified: Mutex<Option<std::time::SystemTime>>,
 }
 
 #[derive(Serialize)]
@@ -46,6 +47,10 @@ fn read_document(state: State<AppState>) -> Result<DocumentResponse, String> {
         let line_ending = detect_line_ending(&raw);
         let markdown = normalize_line_endings(&text);
 
+        if let Ok(mtime) = metadata.modified() {
+            *state.last_modified.lock().unwrap() = Some(mtime);
+        }
+
         Ok(DocumentResponse {
             path: path.display().to_string(),
             name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
@@ -77,6 +82,20 @@ fn save_document(
         return Err("File is too large (max 10 MB).".into());
     }
 
+    // Check for external modification
+    {
+        let saved_mtime = state.last_modified.lock().unwrap();
+        if let Some(expected) = *saved_mtime {
+            if let Ok(meta) = fs::metadata(path) {
+                if let Ok(current) = meta.modified() {
+                    if current != expected {
+                        return Err("The file was modified outside amorist. Reload to see the latest version, or save again to overwrite.".into());
+                    }
+                }
+            }
+        }
+    }
+
     let name = path
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
@@ -96,6 +115,13 @@ fn save_document(
     if let Err(e) = fs::rename(&tmp_path, path) {
         let _ = fs::remove_file(&tmp_path);
         return Err(e.to_string());
+    }
+
+    // Update last_modified after successful save
+    if let Ok(meta) = fs::metadata(path) {
+        if let Ok(mtime) = meta.modified() {
+            *state.last_modified.lock().unwrap() = Some(mtime);
+        }
     }
 
     Ok(SaveResponse {
@@ -193,6 +219,7 @@ pub fn run() {
         .plugin(tauri_plugin_cli::init())
         .manage(AppState {
             file_path: Mutex::new(None),
+            last_modified: Mutex::new(None),
         })
         .setup(|app| {
             match resolve_file_arg(app) {
@@ -207,7 +234,10 @@ pub fn run() {
                         let _ = window.set_title(&format!("amorist — {}", name));
                     }
                 }
-                Ok(None) => {}
+                Ok(None) => {
+                    eprintln!("Usage: amorist <file.md>");
+                    std::process::exit(1);
+                }
                 Err(error) => {
                     #[cfg(debug_assertions)]
                     eprintln!("{error}");
