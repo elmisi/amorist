@@ -91,6 +91,7 @@
       if (/^[-*+]\s+\[[ xX]\]\s+/.test(line)) {
         const items = [];
         while (index < lines.length) {
+          if (lines[index].trim() === "" && index + 1 < lines.length && /^[-*+]\s+\[[ xX]\]\s+/.test(lines[index + 1])) { index += 1; continue; }
           const task = lines[index].match(/^[-*+]\s+\[([ xX])\]\s+(.*)$/);
           if (!task) break;
           items.push({ checked: task[1].trim().toLowerCase() === "x", text: task[2] });
@@ -103,6 +104,7 @@
       if (/^[-*+]\s+/.test(line)) {
         const items = [];
         while (index < lines.length) {
+          if (lines[index].trim() === "" && index + 1 < lines.length && /^[-*+]\s+/.test(lines[index + 1]) && !/^[-*+]\s+\[[ xX]\]\s+/.test(lines[index + 1])) { index += 1; continue; }
           const bullet = lines[index].match(/^[-*+]\s+(.*)$/);
           if (!bullet || /^[-*+]\s+\[[ xX]\]\s+/.test(lines[index])) break;
           items.push(bullet[1]);
@@ -115,6 +117,7 @@
       if (/^\d+\.\s+/.test(line)) {
         const items = [];
         while (index < lines.length) {
+          if (lines[index].trim() === "" && index + 1 < lines.length && /^\d+\.\s+/.test(lines[index + 1])) { index += 1; continue; }
           const ordered = lines[index].match(/^\d+\.\s+(.*)$/);
           if (!ordered) break;
           items.push(ordered[1]);
