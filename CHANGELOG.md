@@ -4,6 +4,20 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-20
+
+### Added
+- Undo/redo with markdown-level history stack (Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z).
+  Tracks markdown snapshots with 500ms debounce, survives mode switches, 100-entry
+  cap with ~50M UTF-16 code unit memory limit.
+- In-editor find bar (Ctrl+F) with case-insensitive search, real-time highlighting,
+  Enter/Shift+Enter match navigation, Escape to close, and "N of M" match counter.
+- WYSIWYG find uses TreeWalker + `<mark>` wrapping with automatic cleanup before
+  serialization to prevent markdown corruption.
+- Source mode find uses textarea selection range for match highlighting.
+- Find bar persists across WYSIWYG/source mode switches.
+- Unit tests for MarkdownHistory and browser smoke tests for undo/find.
+
 ## [0.3.0] - 2026-05-20
 
 ### Added

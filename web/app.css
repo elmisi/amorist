@@ -175,6 +175,10 @@ button:disabled {
   position: static;
 }
 
+.editor .amorist-editor-findbar {
+  flex: none;
+}
+
 .editor .amorist-editor-surface,
 .editor .amorist-editor-source {
   flex: 1;

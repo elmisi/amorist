@@ -27,6 +27,7 @@ cd src-tauri && cargo tauri build
 # Unit tests
 node tests/editor-table-codec.test.js
 node tests/editor-markdown-codec.test.js
+node tests/editor-history.test.js
 python3 tests/test_runtime_server.py
 
 # Browser smoke test (needs Chromium)
