@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{App, Manager, State};
+use tauri::{App, Emitter, Manager, State};
 use tauri_plugin_cli::CliExt;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
@@ -12,6 +12,8 @@ const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
 struct AppState {
     file_path: Mutex<Option<PathBuf>>,
     last_modified: Mutex<Option<std::time::SystemTime>>,
+    dirty: Mutex<bool>,
+    force_close: Mutex<bool>,
 }
 
 #[derive(Serialize)]
@@ -135,6 +137,16 @@ fn get_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+#[tauri::command]
+fn set_dirty(state: State<AppState>, dirty: bool) {
+    *state.dirty.lock().unwrap() = dirty;
+}
+
+#[tauri::command]
+fn force_close(app_handle: tauri::AppHandle) {
+    app_handle.exit(0);
+}
+
 fn detect_line_ending(raw: &[u8]) -> String {
     if raw.windows(2).any(|w| w == b"\r\n") {
         "crlf".into()
@@ -220,6 +232,20 @@ pub fn run() {
         .manage(AppState {
             file_path: Mutex::new(None),
             last_modified: Mutex::new(None),
+            dirty: Mutex::new(false),
+            force_close: Mutex::new(false),
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let state: State<AppState> = window.state();
+                if *state.force_close.lock().unwrap() {
+                    return;
+                }
+                if *state.dirty.lock().unwrap() {
+                    api.prevent_close();
+                    let _ = window.emit("confirm-close", ());
+                }
+            }
         })
         .setup(|app| {
             match resolve_file_arg(app) {
@@ -250,6 +276,8 @@ pub fn run() {
             read_document,
             save_document,
             get_version,
+            set_dirty,
+            force_close,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -56,20 +56,16 @@
         return invoke("get_version");
       },
       registerCloseGuard(isDirty) {
-        var appWindow = getAppWindow();
-        if (appWindow && appWindow.onCloseRequested) {
-          appWindow.onCloseRequested(function (event) {
-            if (isDirty() && !window.confirm("You have unsaved changes. Close anyway?")) {
-              event.preventDefault();
+        if (window.__TAURI__.event) {
+          window.__TAURI__.event.listen("confirm-close", function () {
+            if (window.confirm("You have unsaved changes. Close anyway?")) {
+              invoke("force_close");
             }
           });
-        } else {
-          window.addEventListener("beforeunload", function (event) {
-            if (!isDirty()) return;
-            event.preventDefault();
-            event.returnValue = "";
-          });
         }
+      },
+      syncDirty(dirty) {
+        invoke("set_dirty", { dirty: dirty });
       },
       async setWindowTitle(name) {
         try {
@@ -159,6 +155,7 @@
           event.returnValue = "";
         });
       },
+      syncDirty(dirty) {},
       async setWindowTitle(_name) {},
       startHeartbeat() {
         var pingFailures = 0;
@@ -364,6 +361,7 @@
   function setDirty(dirty) {
     state.dirty = dirty;
     document.body.classList.toggle("is-dirty", dirty);
+    backend.syncDirty(dirty);
     setStatus(dirty ? "Modified" : "Saved");
   }
 
