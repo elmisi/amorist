@@ -49,8 +49,8 @@
       async loadDocument() {
         return invoke("read_document");
       },
-      async saveDocument(markdown, lineEnding) {
-        return invoke("save_document", { markdown, lineEnding });
+      async saveDocument(markdown, lineEnding, force) {
+        return invoke("save_document", { markdown: markdown, lineEnding: lineEnding, force: force || false });
       },
       async getVersion() {
         return invoke("get_version");
@@ -113,7 +113,7 @@
         }
         return response.json();
       },
-      async saveDocument(markdown, lineEnding) {
+      async saveDocument(markdown, lineEnding, force) {
         var url = "/api/document?token=" + encodeURIComponent(token);
         var opts = {
           method: "POST",
@@ -279,9 +279,25 @@
       hideNotice();
     } catch (error) {
       var msg = errorMessage(error, "The document could not be saved.");
-      if (msg.indexOf("modified outside") !== -1) {
-        showWarning(msg);
-      } else if (error && error.name === "AbortError") {
+      if (msg === "CONFLICT") {
+        if (window.confirm("The file was modified outside amorist.\n\nOverwrite with your version?")) {
+          try {
+            await backend.saveDocument(markdown, state.lineEnding, true);
+            state.savedMarkdown = markdown;
+            setDirty(false);
+            setStatus("Saved");
+            hideNotice();
+          } catch (retryError) {
+            showError(errorMessage(retryError, "The document could not be saved."), "save");
+            setDirty(true);
+          }
+        } else {
+          setDirty(true);
+          showWarning("File changed on disk. Use Reload to load the latest version.");
+        }
+        return;
+      }
+      if (error && error.name === "AbortError") {
         showError("Save timed out — the server may be unreachable. Your changes are still in the editor.", "save");
       } else {
         showError(msg, "save");

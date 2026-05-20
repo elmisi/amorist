@@ -76,6 +76,7 @@ fn save_document(
     state: State<AppState>,
     markdown: String,
     line_ending: String,
+    force: Option<bool>,
 ) -> Result<SaveResponse, String> {
     let guard = state.file_path.lock().unwrap();
     let path = guard.as_ref().ok_or("No file open.")?;
@@ -84,14 +85,13 @@ fn save_document(
         return Err("File is too large (max 10 MB).".into());
     }
 
-    // Check for external modification
-    {
+    if !force.unwrap_or(false) {
         let saved_mtime = state.last_modified.lock().unwrap();
         if let Some(expected) = *saved_mtime {
             if let Ok(meta) = fs::metadata(path) {
                 if let Ok(current) = meta.modified() {
                     if current != expected {
-                        return Err("The file was modified outside amorist. Reload to see the latest version, or save again to overwrite.".into());
+                        return Err("CONFLICT".into());
                     }
                 }
             }
