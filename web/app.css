@@ -77,6 +77,19 @@ button:disabled {
 .topbar {
   border-bottom-style: solid;
   border-bottom-width: 1px;
+  grid-row: 1;
+}
+
+.notice {
+  grid-row: 2;
+}
+
+.editor {
+  grid-row: 3;
+}
+
+.statusbar {
+  grid-row: 4;
 }
 
 .statusbar {
@@ -165,6 +178,7 @@ button:disabled {
 .editor .amorist-editor-surface,
 .editor .amorist-editor-source {
   flex: 1;
+  height: 0;
   min-height: 0;
   overflow-y: auto;
 }
