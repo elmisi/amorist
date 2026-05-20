@@ -240,3 +240,61 @@
 .amorist-empty {
   color: var(--muted, #68717d);
 }
+
+.amorist-editor-findbar {
+  align-items: center;
+  background: var(--panel, #fff);
+  border-bottom: 1px solid var(--border, #d8dee6);
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.amorist-editor-findbar[hidden] {
+  display: none;
+}
+
+.amorist-editor-findbar-input {
+  border: 1px solid var(--border, #d8dee6);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 14px;
+  min-width: 200px;
+  outline: none;
+  padding: 4px 8px;
+}
+
+.amorist-editor-findbar-input:focus {
+  border-color: var(--accent, #246b54);
+}
+
+.amorist-editor-findbar-count {
+  color: var(--muted, #68717d);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.amorist-editor-findbar-close {
+  background: transparent;
+  border: none;
+  color: var(--muted, #68717d);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.amorist-editor-findbar-close:hover {
+  color: var(--text, #1c232b);
+}
+
+mark.amorist-find-match {
+  background: #fff3cd;
+  border-radius: 2px;
+  color: inherit;
+}
+
+mark.amorist-find-current {
+  background: #f0a020;
+  color: #fff;
+}

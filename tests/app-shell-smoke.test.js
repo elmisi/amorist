@@ -28,6 +28,7 @@ run().catch((error) => {
 async function run() {
   await runCloseIdleTabCheck();
   await runEditCheck();
+  await runUndoFindCheck();
   console.log("app-shell-smoke.test.js passed");
 }
 
@@ -94,6 +95,93 @@ async function runEditCheck() {
     if (server) await terminate(server.process);
     fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
+}
+
+async function runUndoFindCheck() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-smoke-undo-"));
+  const markdownPath = path.join(tempDir, "undo.md");
+  fs.writeFileSync(markdownPath, "# Hello\n\nWorld\n", "utf8");
+
+  let server;
+  let chrome;
+  let pageSocket;
+  try {
+    server = await startAmorist(markdownPath);
+    chrome = await startChrome(browser, tempDir);
+    const page = await openPage(chrome.debuggingUrl, server.url);
+    pageSocket = await WebSocketConnection.open(page.webSocketDebuggerUrl);
+
+    const result = await evaluateWithNavigationRetry(pageSocket, undoFindBrowserScript());
+    if (result.exceptionDetails) {
+      throw new Error(result.exceptionDetails.text || "Undo/find check failed.");
+    }
+
+    assert.deepEqual(result.result.value, {
+      undoWorked: true,
+      findBarOpened: true,
+      matchCount: "1 of 2",
+      findBarClosed: true,
+    });
+  } finally {
+    if (pageSocket) pageSocket.close();
+    if (chrome) await terminate(chrome.process);
+    if (server) await terminate(server.process);
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+}
+
+function undoFindBrowserScript() {
+  return `(${async function () {
+    function waitFor(predicate, label) {
+      return new Promise((resolve, reject) => {
+        const deadline = Date.now() + 10000;
+        const tick = () => {
+          if (predicate()) { resolve(); return; }
+          if (Date.now() > deadline) { reject(new Error("Timed out: " + label)); return; }
+          setTimeout(tick, 50);
+        };
+        tick();
+      });
+    }
+
+    await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
+    var surface = document.querySelector(".amorist-editor-surface");
+    var source = document.querySelector(".amorist-editor-source");
+
+    // Type a change
+    surface.innerHTML = "<p>Changed</p>";
+    surface.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+    await waitFor(() => document.body.classList.contains("is-dirty"), "dirty");
+
+    // Wait for debounce to push to history
+    await new Promise(r => setTimeout(r, 600));
+
+    // Undo via Ctrl+Z
+    surface.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 100));
+    var undoWorked = surface.textContent.includes("Hello") || surface.textContent.includes("World");
+
+    // Open find bar via Ctrl+F
+    surface.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 100));
+    var findBar = document.querySelector(".amorist-editor-findbar");
+    var findBarOpened = findBar && !findBar.hidden;
+
+    // Type a search query — "l" appears in Hello and World
+    var findInput = document.querySelector(".amorist-editor-findbar-input");
+    findInput.value = "l";
+    findInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise(r => setTimeout(r, 200));
+    var countLabel = document.querySelector(".amorist-editor-findbar-count");
+    var matchCount = countLabel ? countLabel.textContent : "";
+
+    // Close with Escape
+    findInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 100));
+    var findBarClosed = findBar.hidden === true;
+
+    return { undoWorked, findBarOpened, matchCount, findBarClosed };
+  }})()`;
 }
 
 function findBrowser() {

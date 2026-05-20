@@ -1,6 +1,5 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
-  const token = params.get("token") || "";
   const screenshotMode = params.get("screenshot");
 
   const elements = {
@@ -24,61 +23,194 @@
 
   let noticeSource = null;
 
-  async function fetchWithTimeout(url, opts, timeoutMs = 10000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      return await fetch(url, { ...opts, signal: controller.signal });
-    } finally {
-      clearTimeout(timer);
+  function errorMessage(error, fallback) {
+    if (typeof error === "string") return error;
+    if (error && error.message) return error.message;
+    return fallback;
+  }
+
+  function createBackend() {
+    if (window.__TAURI__) return createTauriBackend();
+    return createHttpBackend();
+  }
+
+  function createTauriBackend() {
+    const { invoke } = window.__TAURI__.core;
+
+    function getAppWindow() {
+      try {
+        if (window.__TAURI__.webviewWindow) return window.__TAURI__.webviewWindow.getCurrentWebviewWindow();
+        if (window.__TAURI__.window) return window.__TAURI__.window.getCurrentWindow();
+      } catch (e) {}
+      return null;
     }
-  }
 
-  async function extractErrorDetail(response) {
-    try {
-      const body = await response.json();
-      if (body.error) return body.error;
-    } catch (_ignored) {} // non-JSON response; fall through
-    const STATUS_MESSAGES = {
-      413: "File is too large (max 10 MB)",
-      403: "Session expired — relaunch amorist from the terminal",
+    return {
+      async loadDocument() {
+        return invoke("read_document");
+      },
+      async saveDocument(markdown, lineEnding, force) {
+        return invoke("save_document", { markdown: markdown, lineEnding: lineEnding, force: force || false });
+      },
+      async getVersion() {
+        return invoke("get_version");
+      },
+      registerCloseGuard(isDirty) {
+        if (window.__TAURI__.event) {
+          window.__TAURI__.event.listen("confirm-close", function () {
+            if (window.confirm("You have unsaved changes. Close anyway?")) {
+              invoke("force_close");
+            }
+          });
+        }
+      },
+      syncDirty(dirty) {
+        invoke("set_dirty", { dirty: dirty });
+      },
+      async setWindowTitle(name) {
+        try {
+          var appWindow = getAppWindow();
+          if (name && appWindow) await appWindow.setTitle("amorist — " + name);
+        } catch (e) {}
+      },
+      startHeartbeat() {},
+      notifyClose() {},
     };
-    return STATUS_MESSAGES[response.status] || `HTTP ${response.status}`;
   }
 
-  const demoMarkdown = `# Draft Notes
+  function createHttpBackend() {
+    const token = params.get("token") || "";
 
-## Today
+    async function fetchWithTimeout(url, opts, timeoutMs) {
+      timeoutMs = timeoutMs || 10000;
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+      try {
+        return await fetch(url, Object.assign({}, opts, { signal: controller.signal }));
+      } finally {
+        clearTimeout(timer);
+      }
+    }
 
-This document shows **Markdown** with inline code, blockquotes, lists, and task items.
+    async function extractErrorDetail(response) {
+      try {
+        var body = await response.json();
+        if (body.error) return body.error;
+      } catch (_ignored) {}
+      var STATUS_MESSAGES = {
+        413: "File is too large (max 10 MB)",
+        403: "Session expired — relaunch amorist from the terminal",
+      };
+      return STATUS_MESSAGES[response.status] || "HTTP " + response.status;
+    }
 
-> A compact editor for local Markdown files.
+    return {
+      async loadDocument() {
+        var response = await fetchWithTimeout("/api/document?token=" + encodeURIComponent(token));
+        if (!response.ok) {
+          var detail = await extractErrorDetail(response);
+          throw new Error("Load failed: " + detail);
+        }
+        return response.json();
+      },
+      async saveDocument(markdown, lineEnding, force) {
+        var url = "/api/document?token=" + encodeURIComponent(token);
+        var opts = {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ markdown: markdown, lineEnding: lineEnding }),
+        };
 
-- Fast startup
-- Browser-native close behavior
-- Plain Markdown as the source of truth
+        async function attemptSave() {
+          var response = await fetchWithTimeout(url, opts);
+          if (!response.ok) {
+            var detail = await extractErrorDetail(response);
+            throw new Error("Save failed: " + detail);
+          }
+          return response;
+        }
 
-- [ ] Review draft
-- [x] Save locally
+        try {
+          await attemptSave();
+        } catch (firstError) {
+          if (firstError instanceof TypeError || firstError.name === "AbortError") {
+            elements.status.textContent = "Retrying save…";
+            await new Promise(function (r) { setTimeout(r, 2000); });
+            await attemptSave();
+          } else {
+            throw firstError;
+          }
+        }
+      },
+      async getVersion() {
+        var response = await fetch("/api/version");
+        if (!response.ok) return "";
+        var payload = await response.json();
+        return payload.version || "";
+      },
+      registerCloseGuard(isDirty) {
+        window.addEventListener("beforeunload", function (event) {
+          if (!isDirty()) return;
+          event.preventDefault();
+          event.returnValue = "";
+        });
+      },
+      syncDirty(dirty) {},
+      async setWindowTitle(_name) {},
+      startHeartbeat() {
+        var pingFailures = 0;
+        var ping = function () {
+          fetch("/api/ping?token=" + encodeURIComponent(token), { method: "POST" })
+            .then(function () {
+              if (pingFailures > 0 && noticeSource === "heartbeat") { hideNotice(); }
+              pingFailures = 0;
+            })
+            .catch(function () {
+              pingFailures += 1;
+              if (pingFailures >= 3) {
+                showWarning("Connection to server lost. Save is unavailable.");
+              }
+            });
+        };
+        ping();
+        window.setInterval(ping, 3000);
+      },
+      notifyClose() {
+        if (!token) return;
+        var url = "/api/close?token=" + encodeURIComponent(token);
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url);
+          return;
+        }
+        fetch(url, { method: "POST", keepalive: true }).catch(function () {});
+      },
+      isHttpMode: true,
+    };
+  }
 
-| Project   | Status | Notes       |
-|-----------|--------|-------------|
-| amorist   | ready  | local-first |
-| ambiguous | later  | embeddable  |
-`;
+  const backend = createBackend();
 
-  document.addEventListener("DOMContentLoaded", () => {
+  const demoMarkdown = "# Draft Notes\n\n## Today\n\nThis document shows **Markdown** with inline code, blockquotes, lists, and task items.\n\n> A compact editor for local Markdown files.\n\n- Fast startup\n- Browser-native close behavior\n- Plain Markdown as the source of truth\n\n- [ ] Review draft\n- [x] Save locally\n\n| Project   | Status | Notes       |\n|-----------|--------|-------------|\n| amorist   | ready  | local-first |\n| ambiguous | later  | embeddable  |\n";
+
+  document.addEventListener("DOMContentLoaded", function () {
     updateTopbarHeight();
     window.addEventListener("resize", updateTopbarHeight);
     if (window.ResizeObserver) {
       new ResizeObserver(updateTopbarHeight).observe(document.querySelector(".topbar"));
     }
 
-    elements.save.addEventListener("click", () => saveDocument());
-    elements.reload.addEventListener("click", () => reloadDocument());
+    elements.save.addEventListener("click", function () { saveDocument(); });
+    elements.reload.addEventListener("click", function () { reloadDocument(); });
     window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("pagehide", notifyTabClosing);
+
+    backend.registerCloseGuard(function () { return state.dirty; });
+
+    if (!backend.isHttpMode) {
+      window.addEventListener("pagehide", function () { backend.notifyClose(); });
+    } else {
+      window.addEventListener("pagehide", function () { backend.notifyClose(); });
+    }
+
     loadVersion();
 
     if (state.demo) {
@@ -86,12 +218,12 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
       return;
     }
 
-    if (!token) {
+    if (backend.isHttpMode && !params.get("token")) {
       showError("Missing local access token. Launch amorist from the command line.", "init");
       return;
     }
 
-    startHeartbeat();
+    backend.startHeartbeat();
     reloadDocument();
   });
 
@@ -102,35 +234,29 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
 
     setBusy("Loading");
     try {
-      const response = await fetchWithTimeout(`/api/document?token=${encodeURIComponent(token)}`);
-      if (!response.ok) {
-        const detail = await extractErrorDetail(response);
-        throw new Error(`Load failed: ${detail}`);
-      }
-      const document = await response.json();
-      state.lineEnding = document.lineEnding || "lf";
-      state.savedMarkdown = document.markdown || "";
-      setDocumentLabel(document);
+      var doc = await backend.loadDocument();
+      state.lineEnding = doc.lineEnding || "lf";
+      state.savedMarkdown = doc.markdown || "";
+      setDocumentLabel(doc);
       mountEditor(state.savedMarkdown);
       setDirty(false);
-      setStatus(document.exists ? "Loaded" : "New file");
+      setStatus(doc.exists ? "Loaded" : "New file");
       hideNotice();
+      backend.setWindowTitle(doc.name || "");
     } catch (error) {
-      if (error.name === "AbortError") {
+      if (error && error.name === "AbortError") {
         showError("Load timed out — the server may be unreachable.", "reload");
       } else {
-        showError(error.message || "The document could not be loaded.", "reload");
+        showError(errorMessage(error, "The document could not be loaded."), "reload");
       }
     }
   }
 
   async function loadVersion() {
     try {
-      const response = await fetch("/api/version");
-      if (!response.ok) return;
-      const payload = await response.json();
-      if (payload.version) {
-        elements.appVersion.textContent = `v${payload.version}`;
+      var version = await backend.getVersion();
+      if (version) {
+        elements.appVersion.textContent = "v" + version;
       }
     } catch (_error) {
       elements.appVersion.textContent = "";
@@ -143,51 +269,45 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     }
 
     setBusy("Saving");
-    const markdown = state.editor.getValue();
-    const saveOpts = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown, lineEnding: state.lineEnding }),
-    };
-    const url = `/api/document?token=${encodeURIComponent(token)}`;
-
-    async function attemptSave() {
-      const response = await fetchWithTimeout(url, saveOpts);
-      if (!response.ok) {
-        const detail = await extractErrorDetail(response);
-        throw new Error(`Save failed: ${detail}`);
-      }
-      return response;
-    }
+    var markdown = state.editor.getValue();
 
     try {
-      try {
-        await attemptSave();
-      } catch (firstError) {
-        if (firstError instanceof TypeError || firstError.name === "AbortError") {
-          elements.status.textContent = "Retrying save…";
-          await new Promise((r) => setTimeout(r, 2000));
-          await attemptSave();
-        } else {
-          throw firstError;
-        }
-      }
+      await backend.saveDocument(markdown, state.lineEnding);
       state.savedMarkdown = markdown;
       setDirty(false);
       setStatus("Saved");
       hideNotice();
     } catch (error) {
-      if (error.name === "AbortError") {
+      var msg = errorMessage(error, "The document could not be saved.");
+      if (msg === "CONFLICT") {
+        if (window.confirm("The file was modified outside amorist.\n\nOverwrite with your version?")) {
+          try {
+            await backend.saveDocument(markdown, state.lineEnding, true);
+            state.savedMarkdown = markdown;
+            setDirty(false);
+            setStatus("Saved");
+            hideNotice();
+          } catch (retryError) {
+            showError(errorMessage(retryError, "The document could not be saved."), "save");
+            setDirty(true);
+          }
+        } else {
+          setDirty(true);
+          showWarning("File changed on disk. Use Reload to load the latest version.");
+        }
+        return;
+      }
+      if (error && error.name === "AbortError") {
         showError("Save timed out — the server may be unreachable. Your changes are still in the editor.", "save");
       } else {
-        showError(error.message || "The document could not be saved.", "save");
+        showError(msg, "save");
       }
       setDirty(true);
     }
   }
 
   function loadDemo() {
-    const sourceMode = screenshotMode === "source";
+    var sourceMode = screenshotMode === "source";
     setDocumentLabel({
       name: sourceMode ? "source-demo.md" : "draft-notes.md",
       path: "/tmp/amorist-demo.md",
@@ -216,14 +336,14 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     state.editor = window.AmoristEditor.create(elements.editor, {
       value: markdown,
       spellcheck: true,
-      onChange: (value) => {
+      onChange: function (value) {
         setDirty(value !== state.savedMarkdown);
       },
     });
   }
 
   function handleKeyDown(event) {
-    const command = event.ctrlKey || event.metaKey;
+    var command = event.ctrlKey || event.metaKey;
     if (!command || event.key.toLowerCase() !== "s") {
       return;
     }
@@ -231,52 +351,15 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
     saveDocument();
   }
 
-  function handleBeforeUnload(event) {
-    if (!state.dirty) {
-      return;
-    }
-    event.preventDefault();
-    event.returnValue = "";
-  }
-
-  function startHeartbeat() {
-    let pingFailures = 0;
-    const ping = () => {
-      fetch(`/api/ping?token=${encodeURIComponent(token)}`, { method: "POST" })
-        .then(() => {
-          if (pingFailures > 0 && noticeSource === "heartbeat") { hideNotice(); }
-          pingFailures = 0;
-        })
-        .catch(() => {
-          pingFailures += 1;
-          if (pingFailures >= 3) {
-            showWarning("Connection to server lost. Save is unavailable.");
-          }
-        });
-    };
-    ping();
-    window.setInterval(ping, 3000);
-  }
-
-  function notifyTabClosing() {
-    if (state.demo || !token) return;
-    const url = `/api/close?token=${encodeURIComponent(token)}`;
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(url);
-      return;
-    }
-    fetch(url, { method: "POST", keepalive: true }).catch(() => {});
-  }
-
-  function setDocumentLabel(document) {
-    elements.fileName.textContent = document.name || "Untitled";
-    elements.filePath.textContent = document.path || "";
+  function setDocumentLabel(doc) {
+    elements.fileName.textContent = doc.name || "Untitled";
+    elements.filePath.textContent = doc.path || "";
   }
 
   function updateTopbarHeight() {
-    const topbar = document.querySelector(".topbar");
+    var topbar = document.querySelector(".topbar");
     if (!topbar) return;
-    document.documentElement.style.setProperty("--topbar-height", `${topbar.offsetHeight}px`);
+    document.documentElement.style.setProperty("--topbar-height", topbar.offsetHeight + "px");
   }
 
   function setBusy(label) {
@@ -286,7 +369,7 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
   }
 
   function setStatus(label) {
-    elements.status.textContent = state.dirty ? `${label} - modified` : label;
+    elements.status.textContent = state.dirty ? label + " - modified" : label;
     elements.save.disabled = state.demo || !state.dirty;
     elements.reload.disabled = state.demo;
   }
@@ -294,6 +377,7 @@ This document shows **Markdown** with inline code, blockquotes, lists, and task 
   function setDirty(dirty) {
     state.dirty = dirty;
     document.body.classList.toggle("is-dirty", dirty);
+    backend.syncDirty(dirty);
     setStatus(dirty ? "Modified" : "Saved");
   }
 
