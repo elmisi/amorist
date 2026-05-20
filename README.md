@@ -12,18 +12,37 @@ The standalone app uses a system webview (Tauri 2) with a Rust backend — singl
 
 ![amorist WYSIWYG editor](docs/screenshots/wysiwyg-mode.png)
 
+| Source mode | Find bar |
+|-------------|----------|
+| ![Source mode](docs/screenshots/source-mode.png) | ![Find bar](docs/screenshots/find-bar.png) |
+
 ## Features
 
 - Opens `.md`, `.markdown`, and `.mdown` files from the command line.
 - Saves directly to the same local file with `Ctrl+S` or the Save button.
 - Keeps existing `LF` or `CRLF` line endings when saving.
-- Shows a browser-native warning before closing with unsaved changes.
-- Stops the local server automatically after the browser tab is closed.
+- Undo and redo with full history that survives mode switches.
+- In-editor find bar with real-time match highlighting and navigation.
+- Warns before closing with unsaved changes; detects external file modifications.
 - Supports headings, emphasis, links, code, lists, blockquotes, fenced code blocks, task lists, and readable Markdown tables.
-- Converts common WYSIWYG Markdown shortcuts while typing: `#`, `##`, `###`, `-`, `1.`, `>`, code fences, task markers, inline code like `` `name` ``, and bold text like `**name**`.
+- Converts common Markdown shortcuts while typing (see below).
 - Keeps wide tables and fenced code blocks inside horizontally scrollable blocks.
 - Rejects files larger than 10 MB before reading.
 - Reads and writes Markdown as UTF-8.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+S` | Save |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
+| `Ctrl+F` | Open find bar |
+| `Enter` | Next match (find bar focused) |
+| `Shift+Enter` | Previous match (find bar focused) |
+| `Escape` | Close find bar |
+
+On macOS, use `Cmd` instead of `Ctrl`.
 
 ## WYSIWYG Shortcuts
 
@@ -108,6 +127,7 @@ Useful checks:
 ```bash
 node tests/editor-table-codec.test.js
 node tests/editor-markdown-codec.test.js
+node tests/editor-history.test.js
 python3 tests/test_runtime_server.py
 python3 -m py_compile bin/amorist
 node --check web/app.js

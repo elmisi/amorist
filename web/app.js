@@ -318,6 +318,11 @@
     if (sourceMode) {
       state.editor.showSourceMode();
     }
+    if (screenshotMode === "find") {
+      state.editor.openFindBar();
+      state.editor.findInput.value = "markdown";
+      state.editor.performFind();
+    }
     if (screenshotMode === "empty") {
       elements.editor.innerHTML = '<section class="empty-state">Open a Markdown file with <code>amorist file.md</code></section>';
     }

@@ -76,6 +76,7 @@ capture() {
 
 capture wysiwyg wysiwyg-mode.png
 capture source source-mode.png
+capture find find-bar.png
 capture empty empty-state.png
 
 echo "Wrote screenshots to $OUT_DIR"
