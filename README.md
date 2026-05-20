@@ -66,19 +66,47 @@ Very wide tables scroll horizontally inside their block, so the rest of the docu
 
 ### Standalone app (recommended)
 
-Build from source (requires Rust toolchain and system webview libraries):
+Prebuilt `.deb` (Linux) and `.dmg` (macOS, universal) packages are attached to each [GitHub release](../../releases).
+
+The macOS `.dmg` is currently unsigned. On first launch, right-click the app in Applications and choose **Open** to bypass the Gatekeeper warning ("amorist cannot be opened because the developer cannot be verified"). After that, normal double-click works.
+
+#### Shell command (`amorist`)
+
+The Linux `.deb` already installs `amorist` into `/usr/bin`. On macOS, the `.app` is GUI-only by default. To get the `amorist` command in your shell, run once after install:
 
 ```bash
-# Linux prerequisites
+/Applications/amorist.app/Contents/MacOS/amorist --install-cli
+```
+
+This creates a symlink at `~/.local/bin/amorist`. If that directory is not on your `PATH`, the command prints the exact `export` line to add to your shell rc. After that, `amorist file.md` works from anywhere.
+
+#### Build from source
+
+Requires the Rust toolchain and the Tauri CLI:
+
+```bash
+cargo install tauri-cli --version "^2"
+```
+
+**Linux:**
+
+```bash
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
   libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-cargo install tauri-cli --version "^2"
-
-# Build
 cd src-tauri && cargo tauri build
 ```
 
 The release binary is at `src-tauri/target/release/amorist`. A `.deb` package is generated in `src-tauri/target/release/bundle/deb/`.
+
+**macOS:**
+
+```bash
+xcode-select --install  # Xcode Command Line Tools (one-time)
+rustup target add x86_64-apple-darwin aarch64-apple-darwin
+cd src-tauri && cargo tauri build --target universal-apple-darwin
+```
+
+The universal `.app` is at `src-tauri/target/universal-apple-darwin/release/bundle/macos/amorist.app`. A `.dmg` is generated in `src-tauri/target/universal-apple-darwin/release/bundle/dmg/`.
 
 ### Browser mode (deprecated)
 

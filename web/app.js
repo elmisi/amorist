@@ -29,6 +29,21 @@
     return fallback;
   }
 
+  // Cross-platform confirm. In Tauri 2 on macOS the WKWebView silently
+  // drops `window.confirm/alert/prompt`, so we prefer the native dialog
+  // plugin when available. Falls back to `window.confirm` for HTTP mode
+  // (which runs in a real browser tab where confirm works).
+  async function confirmDialog(message) {
+    if (window.__TAURI__ && window.__TAURI__.dialog && typeof window.__TAURI__.dialog.confirm === "function") {
+      try {
+        return await window.__TAURI__.dialog.confirm(message);
+      } catch (e) {
+        console.error("dialog.confirm failed:", e);
+      }
+    }
+    return window.confirm(message);
+  }
+
   function createBackend() {
     if (window.__TAURI__) return createTauriBackend();
     return createHttpBackend();
@@ -56,13 +71,29 @@
         return invoke("get_version");
       },
       registerCloseGuard(isDirty) {
-        if (window.__TAURI__.event) {
-          window.__TAURI__.event.listen("confirm-close", function () {
-            if (window.confirm("You have unsaved changes. Close anyway?")) {
-              invoke("force_close");
-            }
+        var handler = async function () {
+          if (await confirmDialog("You have unsaved changes. Close anyway?")) {
+            invoke("force_close");
+          }
+        };
+        // The global event API is the path that was validated on Linux.
+        // Keep it primary so Linux behavior is unchanged; fall back to the
+        // webview window's own listen for builds where the global event
+        // namespace is not exposed (observed in macOS release builds).
+        if (window.__TAURI__ && window.__TAURI__.event && typeof window.__TAURI__.event.listen === "function") {
+          Promise.resolve(window.__TAURI__.event.listen("confirm-close", handler)).catch(function (err) {
+            console.error("confirm-close listen failed:", err);
           });
+          return;
         }
+        var appWindow = getAppWindow();
+        if (appWindow && typeof appWindow.listen === "function") {
+          Promise.resolve(appWindow.listen("confirm-close", handler)).catch(function (err) {
+            console.error("confirm-close listen failed:", err);
+          });
+          return;
+        }
+        console.error("confirm-close: no listen API available");
       },
       syncDirty(dirty) {
         invoke("set_dirty", { dirty: dirty });
@@ -228,7 +259,7 @@
   });
 
   async function reloadDocument() {
-    if (state.dirty && !window.confirm("Discard unsaved changes and reload the file?")) {
+    if (state.dirty && !(await confirmDialog("Discard unsaved changes and reload the file?"))) {
       return;
     }
 
@@ -280,7 +311,7 @@
     } catch (error) {
       var msg = errorMessage(error, "The document could not be saved.");
       if (msg === "CONFLICT") {
-        if (window.confirm("The file was modified outside amorist.\n\nOverwrite with your version?")) {
+        if (await confirmDialog("The file was modified outside amorist.\n\nOverwrite with your version?")) {
           try {
             await backend.saveDocument(markdown, state.lineEnding, true);
             state.savedMarkdown = markdown;
