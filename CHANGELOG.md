@@ -4,6 +4,26 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-20
+
+### Added
+- Tauri 2 standalone app: native webview window with Rust backend, replacing the
+  Python HTTP server + browser tab architecture. Single binary, no Python required.
+- Rust IPC commands (`read_document`, `save_document`, `get_version`) with atomic
+  writes, UTF-8 validation, line ending preservation, and 10 MB file size limit.
+- Backend abstraction in `web/app.js`: detects `window.__TAURI__` at startup and
+  routes I/O through Tauri IPC or HTTP fetch transparently.
+- CLI file argument with extension validation (`.md`, `.markdown`, `.mdown`),
+  `file://` URI handling, and absolute path resolution.
+- Linux `.desktop` file association for `.md`/`.markdown`/`.mdown` files.
+- Version baked at compile time from `VERSION` file via `build.rs`.
+- App icon (1024x1024 source) with generated icon set for all platforms.
+
+### Changed
+- `web/index.html` uses relative asset paths (works in both Tauri and Python modes).
+- `bin/amorist` `send_static()` serves both `/web/`-prefixed and relative paths.
+- Python server mode marked as deprecated in README and CLAUDE.md.
+
 ## [0.2.2] - 2026-05-19
 
 ### Added

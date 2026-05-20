@@ -1,14 +1,14 @@
 # amorist
 
-Fast local Markdown editing with a small browser-based runtime.
+Fast local Markdown editing in a native window.
 
-amorist opens one Markdown file at a time from the shell:
+amorist opens one Markdown file at a time:
 
 ```bash
 amorist file.md
 ```
 
-The command starts a private server on `127.0.0.1`, opens the editor in your browser, and saves directly back to the file you passed in. The editor is a small vanilla JavaScript component built for this project, so Markdown stays the source of truth and the runtime has no Node, Rust, WebKitGTK, or Electron dependency chain.
+The standalone app uses a system webview (Tauri 2) with a Rust backend — single binary, no Python, no Electron. The editor is a small vanilla JavaScript component built for this project, so Markdown stays the source of truth.
 
 ![amorist WYSIWYG editor](docs/screenshots/wysiwyg-mode.png)
 
@@ -45,12 +45,25 @@ Very wide tables scroll horizontally inside their block, so the rest of the docu
 
 ## Install
 
-amorist requires `python3` to be already installed (the launcher is a Python
-script). `xdg-open` is optional: if present the launcher opens the editor in
-your default browser automatically; otherwise it prints the URL for you to
-open manually.
+### Standalone app (recommended)
 
-Install from the repo checkout:
+Build from source (requires Rust toolchain and system webview libraries):
+
+```bash
+# Linux prerequisites
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+cargo install tauri-cli --version "^2"
+
+# Build
+cd src-tauri && cargo tauri build
+```
+
+The release binary is at `src-tauri/target/release/amorist`. A `.deb` package is generated in `src-tauri/target/release/bundle/deb/`.
+
+### Browser mode (deprecated)
+
+amorist can also run as a Python 3 HTTP server that opens the editor in a browser tab. This mode is deprecated and will be removed in a future version.
 
 ```bash
 ./scripts/install.sh
@@ -65,17 +78,9 @@ your effective UID — **the script never escalates privileges**:
 - Run as root → installs under `/opt/amorist` and links
   `/usr/local/bin/amorist`.
 
-After installation:
-
-```bash
-amorist file.md
-```
-
 If `file.md` does not exist yet, amorist creates it on the first save.
 
-To remove the installed files (same scope rule applies — run as root to
-remove a system-wide install, run as your normal user to remove a user
-install):
+To remove the installed files:
 
 ```bash
 ./scripts/uninstall.sh
@@ -83,7 +88,14 @@ install):
 
 ## Development
 
-Run from the checkout without installing:
+### Standalone app
+
+```bash
+cd src-tauri && cargo tauri dev
+cd src-tauri && cargo tauri dev -- -- notes.md
+```
+
+### Browser mode (deprecated)
 
 ```bash
 ./bin/amorist --no-open file.md

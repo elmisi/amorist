@@ -1,0 +1,42 @@
+{
+  "productName": "amorist",
+  "version": "0.0.0",
+  "identifier": "dev.elmisi.amorist",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "amorist",
+        "width": 960,
+        "height": 720,
+        "minWidth": 480,
+        "minHeight": 360
+      }
+    ]
+  },
+  "bundle": {
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown"],
+        "mimeType": "text/markdown",
+        "description": "Markdown document"
+      }
+    ]
+  },
+  "plugins": {
+    "cli": {
+      "description": "Local Markdown editor",
+      "args": [
+        {
+          "name": "file",
+          "index": 1,
+          "takesValue": true,
+          "required": false
+        }
+      ]
+    }
+  }
+}

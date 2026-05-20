@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for amorist",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "cli:default"
+  ]
+}
