@@ -96,6 +96,39 @@ assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("- [ ] a\n- [x] b")
   { type: "taskList", items: [{ checked: false, text: "a" }, { checked: true, text: "b" }], sourceLine: 0 },
 ]);
 
+// Regression: any inline construct nested inside another (the reported case was
+// bold wrapping inline-code) must render its inner content, not collapse to the
+// token-placeholder index (previously serialized as `**0**`). The corruption was
+// general to nesting: the inner placeholder leaked into the HTML and the browser
+// silently dropped it, leaving a bare digit. Cover the whole nesting matrix.
+assert.equal(
+  codec.renderMarkdown("**`PROVA1`**"),
+  '<p data-source-line="0"><strong><code>PROVA1</code></strong></p>',
+);
+assert.equal(
+  codec.renderMarkdown("prefix **`PROVA2`** suffix"),
+  '<p data-source-line="0">prefix <strong><code>PROVA2</code></strong> suffix</p>',
+);
+assert.equal(
+  codec.renderMarkdown("- voce **`PROVA6`** nella lista"),
+  '<ul data-source-line="0"><li>voce <strong><code>PROVA6</code></strong> nella lista</li></ul>',
+);
+assert.equal(
+  codec.renderMarkdown("*`em-code`*"),
+  '<p data-source-line="0"><em><code>em-code</code></em></p>',
+);
+assert.equal(
+  codec.renderMarkdown("[`link-code`](http://x)"),
+  '<p data-source-line="0"><a href="http://x" target="_blank" rel="noopener noreferrer"><code>link-code</code></a></p>',
+);
+assert.equal(
+  codec.renderMarkdown("**[`triple`](http://x)**"),
+  '<p data-source-line="0"><strong><a href="http://x" target="_blank" rel="noopener noreferrer"><code>triple</code></a></strong></p>',
+);
+// No inline placeholder may survive into rendered HTML, whatever the sentinel is.
+const PLACEHOLDER_MARK = String.fromCodePoint(0xe000);
+assert.ok(!codec.renderMarkdown("**`a`** and *`b`* and [`c`](http://x)").includes(PLACEHOLDER_MARK));
+
 const fixture = fs.readFileSync("tests/fixtures/editor-roundtrip.md", "utf8");
 const blocks = codec.parseBlocks(fixture);
 assert.deepEqual(

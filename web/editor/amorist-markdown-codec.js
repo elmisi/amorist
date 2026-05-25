@@ -1,6 +1,13 @@
 (function () {
   const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "LI", "PRE", "HR"]);
   const HR_PATTERN = /^(-{3,}|\*{3,}|_{3,})\s*$/;
+  // Sentinel framing inline-render placeholders (see createInlineTokenizer).
+  // A Private Use Area code point: it never occurs in real prose, survives the
+  // HTML parser intact (unlike NUL, which the parser silently strips — the root
+  // of the bold-wrapping-inline-code corruption bug), and stays readable in
+  // editors and grep. Defined once here and derived into the matching pattern.
+  const PLACEHOLDER_MARK = String.fromCodePoint(0xe000);
+  const PLACEHOLDER_PATTERN = new RegExp(`${PLACEHOLDER_MARK}(\\d+)${PLACEHOLDER_MARK}`, "g");
   const Internals = window.AmoristInternals || (window.AmoristInternals = {});
   const TextUtils = Internals.TextUtils;
   const TableCodec = Internals.TableCodec;
@@ -190,24 +197,40 @@
     return ` data-source-line="${Number(block.sourceLine || 0)}"`;
   }
 
-  function renderInline(text) {
+  function createInlineTokenizer() {
     const tokens = [];
-    let source = TextUtils.escapeHtml(text);
-    source = source.replace(/`([^`]+)`/g, (_, code) => token(tokens, `<code>${code}</code>`));
-    source = source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) =>
-      token(tokens, `<a href="${TextUtils.escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`),
-    );
-    source = source.replace(/\*\*([^*]+)\*\*/g, (_, value) => token(tokens, `<strong>${value}</strong>`));
-    source = source.replace(/\*([^*]+)\*/g, (_, value) => token(tokens, `<em>${value}</em>`));
-    tokens.forEach((value, index) => {
-      source = source.replace(`\u0000${index}\u0000`, value);
-    });
-    return source || "<br>";
+    return {
+      // Stash rendered HTML, returning an opaque placeholder to leave in the source.
+      hold(html) {
+        const index = tokens.push(html) - 1;
+        return `${PLACEHOLDER_MARK}${index}${PLACEHOLDER_MARK}`;
+      },
+      // Restore placeholders, repeating until none remain so that nested ones
+      // (e.g. a code span inside bold) are fully resolved rather than left dangling.
+      restore(source) {
+        let previous;
+        do {
+          previous = source;
+          source = source.replace(PLACEHOLDER_PATTERN, (match, index) => {
+            const value = tokens[Number(index)];
+            return value === undefined ? match : value;
+          });
+        } while (source !== previous);
+        return source;
+      },
+    };
   }
 
-  function token(tokens, html) {
-    const index = tokens.push(html) - 1;
-    return `\u0000${index}\u0000`;
+  function renderInline(text) {
+    const tokenizer = createInlineTokenizer();
+    let source = TextUtils.escapeHtml(text);
+    source = source.replace(/`([^`]+)`/g, (_, code) => tokenizer.hold(`<code>${code}</code>`));
+    source = source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) =>
+      tokenizer.hold(`<a href="${TextUtils.escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`),
+    );
+    source = source.replace(/\*\*([^*]+)\*\*/g, (_, value) => tokenizer.hold(`<strong>${value}</strong>`));
+    source = source.replace(/\*([^*]+)\*/g, (_, value) => tokenizer.hold(`<em>${value}</em>`));
+    return tokenizer.restore(source) || "<br>";
   }
 
   function serializeBlocks(surface) {

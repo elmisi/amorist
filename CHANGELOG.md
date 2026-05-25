@@ -4,6 +4,19 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-05-25
+
+### Fixed
+- Bold (or italic, or a link) wrapping an inline-code span is no longer corrupted
+  on save. Nested inline constructs such as `**`code`**` were serialized as the
+  literal `**0**`, silently destroying content; they now round-trip intact. The
+  fix is general to any inline nesting (bold/italic/link around code or links).
+
+### Changed
+- Internal: inline rendering placeholders are now handled by a single
+  `createInlineTokenizer` helper with one named sentinel constant, and expansion
+  repeats until no placeholders remain so nested tokens always resolve.
+
 ## [0.5.0] - 2026-05-20
 
 ### Added
