@@ -2,11 +2,11 @@
 Categories=Office;TextEditor;Utility;
 Comment=Local Markdown editor
 Exec={{exec}} %f
-StartupWMClass={{exec}}
+StartupWMClass=amorist
 Icon={{icon}}
 Name={{name}}
 Terminal=false
 Type=Application
 {{#if mime_type}}
-MimeType={{mime_type}}
+MimeType={{mime_type}};
 {{/if}}
