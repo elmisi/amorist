@@ -4,6 +4,16 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-05-27
+
+### Added
+- `HtmlToMarkdown.convert(html)`: implements the DOM sanitize → serializeBlocks
+  pipeline for EL-172 paste-style handling. `sanitize()` drops scripts/styles/
+  comments, unwraps span/font-like tags, and strips all attributes except `href`
+  on anchors. `wrapLooseInline()` wraps bare top-level text and inline nodes in
+  `<p>` so `serializeBlocks` does not silently drop them. `convert()` reuses the
+  existing `MarkdownCodec.serializeBlocks` walker rather than duplicating logic.
+
 ## [0.5.2] - 2026-05-27
 
 ### Added
