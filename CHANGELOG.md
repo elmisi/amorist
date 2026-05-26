@@ -4,6 +4,14 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-05-26
+
+### Added
+- `desktop_entry(exec)` pure builder function in `src-tauri/src/lib.rs`: generates
+  the freedesktop `.desktop` file content with `Exec=%f`, `MimeType=text/markdown;`,
+  `Categories=Office;TextEditor;Utility;`, `Icon=amorist`, and `StartupWMClass=amorist`.
+  Covered by a unit test (`desktop_entry_includes_exec_with_file_placeholder`).
+
 ## [0.5.4] - 2026-05-26
 
 ### Added

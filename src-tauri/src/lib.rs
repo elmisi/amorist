@@ -207,6 +207,21 @@ fn url_to_path(uri: &str) -> Result<String, String> {
     Ok(percent_decode(stripped))
 }
 
+fn desktop_entry(exec: &str) -> String {
+    format!(
+        "[Desktop Entry]\n\
+         Type=Application\n\
+         Name=amorist\n\
+         Comment=Local Markdown editor\n\
+         Exec={exec} %f\n\
+         Icon=amorist\n\
+         Categories=Office;TextEditor;Utility;\n\
+         MimeType=text/markdown;\n\
+         Terminal=false\n\
+         StartupWMClass=amorist\n"
+    )
+}
+
 #[cfg(unix)]
 fn run_install_cli() -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
@@ -377,4 +392,19 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn desktop_entry_includes_exec_with_file_placeholder() {
+        let entry = desktop_entry("/home/u/.local/bin/amorist");
+        assert!(entry.contains("Exec=/home/u/.local/bin/amorist %f"));
+        assert!(entry.contains("MimeType=text/markdown;"));
+        assert!(entry.contains("Categories=Office;TextEditor;Utility;"));
+        assert!(entry.contains("Icon=amorist"));
+        assert!(entry.contains("StartupWMClass=amorist"));
+    }
 }
