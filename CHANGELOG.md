@@ -4,6 +4,22 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-27
+
+### Added
+- Paste in the WYSIWYG view now preserves formatting (EL-172). Rich HTML from a
+  browser or another app is converted to amorist's Markdown subset via the new
+  `amorist-html-to-markdown.js` module (drops scripts/styles, unwraps
+  span/font-like tags, strips attributes except anchor `href`, and wraps loose
+  inline content in paragraphs), reusing the existing serializer. Plain text is
+  interpreted as Markdown source. Pasting inside a code block stays literal.
+  Verified end-to-end against a real browser DOM.
+
+### Note
+- Embedders must now load `amorist-html-to-markdown.js` after
+  `amorist-markdown-codec.js` and before `amorist-editor.js`; the editor guards
+  on it as a required dependency.
+
 ## [0.5.6] - 2026-05-27
 
 ### Fixed
