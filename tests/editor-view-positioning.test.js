@@ -24,3 +24,12 @@ assert.equal(h.midViewportLine(0, 0, 20), 0);
 assert.equal(h.midViewportLine(0, 400, 0), 0);         // guard against /0
 
 console.log("midViewportLine OK");
+
+// centerScroll(anchorTop, clientHeight, scrollHeight)
+// anchorTop = pixel offset of the anchor (line top or block center) in content space
+assert.equal(h.centerScroll(500, 400, 2000), 300);   // 500 - 200 = 300
+assert.equal(h.centerScroll(100, 400, 2000), 0);      // clamp low
+assert.equal(h.centerScroll(1950, 400, 2000), 1600);  // clamp high (scrollHeight - clientHeight)
+assert.equal(h.centerScroll(500, 400, 300), 0);       // content shorter than viewport -> 0
+
+console.log("centerScroll OK");

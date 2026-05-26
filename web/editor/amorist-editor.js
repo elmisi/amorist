@@ -632,6 +632,11 @@
     return Math.max(0, Math.floor(centerY / lineHeight));
   }
 
-  window.__editorTestHelpers = { midViewportLine };
+  function centerScroll(anchorTop, clientHeight, scrollHeight) {
+    const max = Math.max(0, scrollHeight - clientHeight);
+    return clamp(anchorTop - clientHeight / 2, 0, max);
+  }
+
+  window.__editorTestHelpers = { midViewportLine, centerScroll };
   window.AmoristEditor = { create };
 })();

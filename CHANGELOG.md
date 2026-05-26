@@ -4,6 +4,14 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-05-27
+
+### Added
+- `centerScroll(anchorTop, clientHeight, scrollHeight)` pure helper in
+  `amorist-editor.js` (EL-173): computes the scroll offset that centers a pixel
+  anchor within the viewport, clamped to the valid scroll range. Exported via
+  `window.__editorTestHelpers`. Covered by `tests/editor-view-positioning.test.js`.
+
 ## [0.5.2] - 2026-05-27
 
 ### Added
