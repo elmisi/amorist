@@ -207,6 +207,22 @@ fn url_to_path(uri: &str) -> Result<String, String> {
     Ok(percent_decode(stripped))
 }
 
+#[allow(dead_code)]
+fn desktop_entry(exec: &str) -> String {
+    format!(
+        "[Desktop Entry]\n\
+         Type=Application\n\
+         Name=amorist\n\
+         Comment=Local Markdown editor\n\
+         Exec={exec} %f\n\
+         Icon=amorist\n\
+         Categories=Office;TextEditor;Utility;\n\
+         MimeType=text/markdown;\n\
+         Terminal=false\n\
+         StartupWMClass=amorist\n"
+    )
+}
+
 #[cfg(unix)]
 fn run_install_cli() -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
@@ -244,6 +260,188 @@ fn run_install_cli() -> Result<(), String> {
         println!("Then restart the shell or `source` the rc file.");
     }
     Ok(())
+}
+
+#[cfg(target_os = "linux")]
+const ICON_128: &[u8] = include_bytes!("../icons/128x128.png");
+// 128x128@2x.png is the 256×256 px HiDPI variant; no separate 256x256.png
+// asset exists, so it is the correct source for the 256x256 hicolor slot.
+#[cfg(target_os = "linux")]
+const ICON_256: &[u8] = include_bytes!("../icons/128x128@2x.png");
+
+#[cfg(target_os = "linux")]
+fn data_home() -> Result<PathBuf, String> {
+    if let Ok(xdg) = std::env::var("XDG_DATA_HOME") {
+        if !xdg.is_empty() {
+            return Ok(PathBuf::from(xdg));
+        }
+    }
+    let home = std::env::var("HOME").map_err(|e| format!("HOME unset: {e}"))?;
+    Ok(PathBuf::from(home).join(".local").join("share"))
+}
+
+#[cfg(target_os = "linux")]
+fn exec_path() -> Result<String, String> {
+    // Inside an AppImage, $APPIMAGE points at the .AppImage file itself,
+    // which is the correct thing to launch. Otherwise use the real binary.
+    if let Ok(appimage) = std::env::var("APPIMAGE") {
+        if !appimage.is_empty() {
+            return Ok(appimage);
+        }
+    }
+    // current_exe() resolves /proc/self/exe to the real binary (following any
+    // symlink such as one created by --install-cli); for deb/AppImage installs
+    // this is a stable path, which is what we want in the .desktop Exec line.
+    std::env::current_exe()
+        .map(|p| p.display().to_string())
+        .map_err(|e| format!("current_exe: {e}"))
+}
+
+#[cfg(target_os = "linux")]
+fn install_icon(data: &std::path::Path, size: &str, bytes: &[u8]) -> Result<PathBuf, String> {
+    let dir = data
+        .join("icons")
+        .join("hicolor")
+        .join(size)
+        .join("apps");
+    fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    let path = dir.join("amorist.png");
+    fs::write(&path, bytes).map_err(|e| format!("write {}: {e}", path.display()))?;
+    Ok(path)
+}
+
+#[cfg(target_os = "linux")]
+fn run_install_desktop() -> Result<(), String> {
+    let data = data_home()?;
+    let exec = exec_path()?;
+
+    let apps_dir = data.join("applications");
+    fs::create_dir_all(&apps_dir).map_err(|e| format!("create {}: {e}", apps_dir.display()))?;
+    let entry_path = apps_dir.join("amorist.desktop");
+
+    if let Ok(meta) = entry_path.symlink_metadata() {
+        // Only refuse if it exists and was clearly not written by us.
+        let existing = fs::read_to_string(&entry_path).unwrap_or_default();
+        if meta.len() > 0 && !existing.contains("StartupWMClass=amorist") {
+            return Err(format!(
+                "{} exists and was not created by amorist; refusing to overwrite.",
+                entry_path.display()
+            ));
+        }
+    }
+
+    fs::write(&entry_path, desktop_entry(&exec))
+        .map_err(|e| format!("write {}: {e}", entry_path.display()))?;
+
+    // No ownership marker is feasible for PNG files, so icons are always
+    // overwritten. The hicolor app-icon directory is a shared namespace, but a
+    // name collision on "amorist.png" with another package is not realistic.
+    let icon_128 = install_icon(&data, "128x128", ICON_128)?;
+    let icon_256 = install_icon(&data, "256x256", ICON_256)?;
+
+    // Best-effort cache refresh; do not fail if the tools are absent.
+    let _ = std::process::Command::new("update-desktop-database")
+        .arg(&apps_dir)
+        .status();
+    let _ = std::process::Command::new("gtk-update-icon-cache")
+        .arg("-f")
+        .arg(data.join("icons").join("hicolor"))
+        .status();
+
+    println!("Installed desktop entry: {}", entry_path.display());
+    println!("Installed icon:          {}", icon_128.display());
+    println!("Installed icon:          {}", icon_256.display());
+    println!("Exec:                    {exec} %f");
+    println!();
+    println!("amorist should now appear under 'Open with' for Markdown files.");
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn run_uninstall_desktop() -> Result<(), String> {
+    let data = data_home()?;
+    let apps_dir = data.join("applications");
+    let entry_path = apps_dir.join("amorist.desktop");
+
+    let mut removed = false;
+    if entry_path.exists() {
+        let existing = fs::read_to_string(&entry_path).unwrap_or_default();
+        if existing.contains("StartupWMClass=amorist") {
+            fs::remove_file(&entry_path)
+                .map_err(|e| format!("remove {}: {e}", entry_path.display()))?;
+            removed = true;
+        } else {
+            return Err(format!(
+                "{} was not created by amorist; leaving it untouched.",
+                entry_path.display()
+            ));
+        }
+    }
+
+    for size in ["128x128", "256x256"] {
+        let icon = data
+            .join("icons")
+            .join("hicolor")
+            .join(size)
+            .join("apps")
+            .join("amorist.png");
+        if icon.exists() {
+            if let Err(e) = fs::remove_file(&icon) {
+                eprintln!("Warning: could not remove {}: {e}", icon.display());
+            } else {
+                removed = true;
+            }
+        }
+    }
+
+    let _ = std::process::Command::new("update-desktop-database")
+        .arg(&apps_dir)
+        .status();
+    let _ = std::process::Command::new("gtk-update-icon-cache")
+        .arg("-f")
+        .arg(data.join("icons").join("hicolor"))
+        .status();
+
+    if removed {
+        println!("Removed amorist desktop entry and icons.");
+    } else {
+        println!("Nothing to remove.");
+    }
+    Ok(())
+}
+
+fn check_desktop_flags(app: &App) -> Result<bool, String> {
+    let matches = app
+        .cli()
+        .matches()
+        .map_err(|e| format!("CLI argument parsing failed: {e}"))?;
+    let requested = |name: &str| {
+        matches
+            .args
+            .get(name)
+            .map(|a| a.occurrences > 0)
+            .unwrap_or(false)
+    };
+
+    #[cfg(target_os = "linux")]
+    {
+        if requested("install-desktop") {
+            run_install_desktop()?;
+            return Ok(true);
+        }
+        if requested("uninstall-desktop") {
+            run_uninstall_desktop()?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        if requested("install-desktop") || requested("uninstall-desktop") {
+            return Err("--install-desktop / --uninstall-desktop are Linux-only. On macOS the .app bundle registers file associations automatically.".into());
+        }
+        Ok(false)
+    }
 }
 
 fn check_install_cli(app: &App) -> Result<bool, String> {
@@ -339,6 +537,14 @@ pub fn run() {
                     std::process::exit(1);
                 }
             }
+            match check_desktop_flags(app) {
+                Ok(true) => std::process::exit(0),
+                Ok(false) => {}
+                Err(e) => {
+                    eprintln!("desktop integration failed: {e}");
+                    std::process::exit(1);
+                }
+            }
             match resolve_file_arg(app) {
                 Ok(Some(path)) => {
                     let state: State<AppState> = app.state();
@@ -358,6 +564,8 @@ pub fn run() {
                 Ok(None) => {
                     eprintln!("Usage: amorist <file.md>");
                     eprintln!("       amorist --install-cli   (install shell command into ~/.local/bin)");
+                    #[cfg(target_os = "linux")]
+                    eprintln!("       amorist --install-desktop   (register in 'Open with' for .md files)");
                     std::process::exit(1);
                 }
                 Err(error) => {
@@ -377,4 +585,19 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn desktop_entry_includes_exec_with_file_placeholder() {
+        let entry = desktop_entry("/home/u/.local/bin/amorist");
+        assert!(entry.contains("Exec=/home/u/.local/bin/amorist %f"));
+        assert!(entry.contains("MimeType=text/markdown;"));
+        assert!(entry.contains("Categories=Office;TextEditor;Utility;"));
+        assert!(entry.contains("Icon=amorist"));
+        assert!(entry.contains("StartupWMClass=amorist"));
+    }
 }

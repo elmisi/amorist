@@ -66,7 +66,7 @@ Very wide tables scroll horizontally inside their block, so the rest of the docu
 
 ### Standalone app (recommended)
 
-Prebuilt `.deb` (Linux) and `.dmg` (macOS, universal) packages are attached to each [GitHub release](../../releases).
+Prebuilt `.deb` and portable `.AppImage` (Linux) and `.dmg` (macOS, universal) packages are attached to each [GitHub release](../../releases).
 
 The macOS `.dmg` is currently unsigned. On first launch, right-click the app in Applications and choose **Open** to bypass the Gatekeeper warning ("amorist cannot be opened because the developer cannot be verified"). After that, normal double-click works.
 
@@ -79,6 +79,20 @@ The Linux `.deb` already installs `amorist` into `/usr/bin`. On macOS, the `.app
 ```
 
 This creates a symlink at `~/.local/bin/amorist`. If that directory is not on your `PATH`, the command prints the exact `export` line to add to your shell rc. After that, `amorist file.md` works from anywhere.
+
+#### Desktop integration (Linux)
+
+The `.deb` package registers amorist in your desktop's **Open with** menu for Markdown files automatically (it installs a `.desktop` entry whose launcher passes the file path).
+
+For the portable **AppImage** (no system install), register it at user level once:
+
+```bash
+"path/to/amorist_<version>_amd64.AppImage" --install-desktop
+```
+
+This writes a `.desktop` entry and icon under `~/.local/share/icons` and `~/.local/share/applications`, so amorist appears under **Open with** for `.md` files. Undo it with `--uninstall-desktop`. To build the AppImage from source, run `./build-appimage.sh`.
+
+On **macOS**, the `.app`/`.dmg` registers the Markdown association and icon with Launch Services automatically when installed — no extra step is needed.
 
 #### Build from source
 
