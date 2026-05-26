@@ -4,7 +4,7 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-05-27
+## [0.7.0] - 2026-05-27
 
 ### Added
 - Paste in the WYSIWYG view now preserves formatting (EL-172). Rich HTML from a
@@ -20,59 +20,130 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `amorist-markdown-codec.js` and before `amorist-editor.js`; the editor guards
   on it as a required dependency.
 
-## [0.5.6] - 2026-05-27
+## [0.6.2] - 2026-05-26
+
+### Added
+- CI now builds a portable Linux `.AppImage` and attaches it to each GitHub
+  release alongside the `.deb` and `.dmg`. The AppImage job sets
+  `APPIMAGE_EXTRACT_AND_RUN=1` so it builds on FUSE-less GitHub runners.
+
+## [0.6.1] - 2026-05-26
 
 ### Fixed
-- `isInCodeContext()` now checks both selection endpoints for non-collapsed
-  selections: a selection spanning from inside a code block to outside (or vice
-  versa) is no longer misclassified as a code context. Both the anchor and focus
-  nodes must be inside a `<pre>` or `<code>` ancestor for the method to return
-  `true`; collapsed selections retain the original single-endpoint walk.
-- `insertMarkdownAtCaret()` no longer calls `syncWysiwygInput()` when
-  `execCommand("insertHTML")` reports failure, avoiding a spurious re-serialize
-  of stale content.
+- Usage message now includes `--install-desktop` hint on Linux so users see the
+  flag when launching without a file argument.
+- `desktop_entry()` is annotated `#[allow(dead_code)]` so non-Linux release
+  builds no longer emit a dead-code warning (the function is used on Linux and
+  in the cross-platform unit test).
+- `build-appimage.sh`: renamed local `APPIMAGE` variable to `APPIMAGE_PATH` to
+  avoid shadowing the AppImage-runtime `$APPIMAGE` environment variable.
 
-## [0.5.5] - 2026-05-27
+## [0.6.0] - 2026-05-26
+
+### Added
+- Linux desktop integration: the `.deb` package now ships a `.desktop` entry
+  with `Exec=... %f` (file path passed on launch) and proper freedesktop
+  categories (`Office;TextEditor;Utility;`), so amorist appears under
+  **Open with** for Markdown files in file managers.
+- Portable AppImage build: `build-appimage.sh` produces a self-contained
+  `amorist_<version>_amd64.AppImage` without requiring a system install.
+- `--install-desktop` / `--uninstall-desktop` CLI flags (Linux): write or
+  remove a user-level `.desktop` entry and icons under
+  `~/.local/share/applications` and `~/.local/share/icons`, enabling
+  **Open with** integration for the AppImage and dev builds.
+- macOS file association and icon verified via the bundled `.app`/`.dmg`:
+  Launch Services registers amorist for `.md`/`.markdown`/`.mdown` files
+  automatically on install — no extra step needed.
+
+## [0.5.10] - 2026-05-26
+
+### Added
+- `build-appimage.sh`: build script for portable AppImage bundle, mirroring
+  `build-install-deb.sh` without sudo/dpkg; prints the path and the
+  `--install-desktop` one-liner after a successful build.
+
+## [0.5.9] - 2026-05-26
+
+### Fixed
+- `run_uninstall_desktop()`: icon-removal errors are now surfaced as warnings on
+  stderr instead of being silently swallowed; `removed` is only set to `true`
+  when `fs::remove_file` actually succeeds, so a failed removal no longer causes
+  a false "Removed amorist desktop entry and icons." message.
 
 ### Changed
-- `handlePaste` in `AmoristEditor` now routes by clipboard payload: inside a
-  code block or inline code the literal plain text is inserted unchanged; when
-  the clipboard carries `text/html` the HTML is converted to Markdown via
-  `HtmlToMarkdown.convert()`; otherwise plain text is treated as Markdown
-  source. The resulting Markdown is rendered and inserted at the caret via
-  `insertHTML` + `syncWysiwygInput()`.
-- Two new helper methods: `isInCodeContext()` (walks the selection anchor to
-  detect `<pre>`/`<code>` ancestors) and `insertMarkdownAtCaret()` (renders
-  Markdown to HTML and executes `insertHTML`).
-- `HtmlToMarkdown` is now bound and guarded as a required dependency alongside
-  `TextUtils`, `MarkdownCodec`, and `EditingPolicy`.
+- Added clarifying comment above `ICON_256` constant explaining why
+  `128x128@2x.png` (the 256×256 px HiDPI asset) is the correct source for the
+  `256x256` hicolor slot.
+- Added comment in `run_install_desktop()` above the `install_icon` calls
+  explaining why icons are always overwritten (no feasible ownership marker for
+  PNG files; namespace collision on "amorist.png" is not realistic).
+- Added comment in `exec_path()` explaining that `current_exe()` resolves
+  `/proc/self/exe` through symlinks, making it safe for the `.desktop` Exec line.
 
-## [0.5.4] - 2026-05-27
+## [0.5.8] - 2026-05-26
 
 ### Added
-- Load `amorist-html-to-markdown.js` in `web/index.html` after the markdown
-  codec and before the editing policy, so the paste converter is available to
-  the editor.
+- `check_desktop_flags()` dispatcher in `src-tauri/src/lib.rs`: reads
+  `--install-desktop` and `--uninstall-desktop` CLI flags via `app.cli().matches()`
+  and delegates to `run_install_desktop()` / `run_uninstall_desktop()` on Linux.
+  Returns an error on non-Linux platforms with a clear message directing users to
+  the `.app` bundle. Wired into `setup()` immediately after `check_install_cli`,
+  so both flags are handled before the window opens and the process exits cleanly
+  (`std::process::exit(0)`) on success. Eliminates dead-code warnings for all
+  previously-unreachable desktop integration functions.
 
-## [0.5.3] - 2026-05-27
-
-### Added
-- `HtmlToMarkdown.convert(html)`: implements the DOM sanitize → serializeBlocks
-  pipeline for EL-172 paste-style handling. `sanitize()` drops scripts/styles/
-  comments, unwraps span/font-like tags, and strips all attributes except `href`
-  on anchors. `wrapLooseInline()` wraps bare top-level text and inline nodes in
-  `<p>` so `serializeBlocks` does not silently drop them. `convert()` reuses the
-  existing `MarkdownCodec.serializeBlocks` walker rather than duplicating logic.
-
-## [0.5.2] - 2026-05-27
+## [0.5.7] - 2026-05-26
 
 ### Added
-- `web/editor/amorist-html-to-markdown.js`: new IIFE module skeleton for
-  EL-172 paste-style handling. Exports `HtmlToMarkdown` to `AmoristInternals`
-  with three pure helpers: `_isStripped` (tags whose content is discarded),
-  `_isUnwrapped` (inline wrappers with no Markdown meaning), and
-  `_cleanupMarkdown` (collapse excess blank lines and trailing whitespace).
-  The `convert()` function (DOM-dependent) will be added in the next task.
+- `run_uninstall_desktop()` in `src-tauri/src/lib.rs` (Linux-only): symmetric
+  uninstall for `run_install_desktop()`. Removes `amorist.desktop` from
+  `$XDG_DATA_HOME/applications/` only if the file contains the
+  `StartupWMClass=amorist` marker (i.e. was written by amorist). Removes the
+  embedded PNG icons from the hicolor icon theme. Runs `update-desktop-database`
+  and `gtk-update-icon-cache` best-effort. Not yet wired into `setup()` (Task 6).
+
+## [0.5.6] - 2026-05-26
+
+### Added
+- `run_install_desktop()` in `src-tauri/src/lib.rs` (Linux-only): writes the
+  freedesktop `.desktop` entry to `$XDG_DATA_HOME/applications/amorist.desktop`
+  and installs embedded PNG icons (`128x128` and `256x256`) into the hicolor
+  icon theme under `$XDG_DATA_HOME/icons/hicolor/`. Embedded via `include_bytes!`
+  so the icons are available regardless of packaging (AppImage, deb, dev build).
+  Respects `$APPIMAGE` for the `Exec=` path, falls back to `current_exe()`.
+  Runs `update-desktop-database` and `gtk-update-icon-cache` best-effort.
+  Not yet wired into `setup()` (Task 6).
+
+## [0.5.5] - 2026-05-26
+
+### Added
+- `desktop_entry(exec)` pure builder function in `src-tauri/src/lib.rs`: generates
+  the freedesktop `.desktop` file content with `Exec=%f`, `MimeType=text/markdown;`,
+  `Categories=Office;TextEditor;Utility;`, `Icon=amorist`, and `StartupWMClass=amorist`.
+  Covered by a unit test (`desktop_entry_includes_exec_with_file_placeholder`).
+
+## [0.5.4] - 2026-05-26
+
+### Added
+- `tauri.conf.json`: declared `--install-desktop` and `--uninstall-desktop` CLI
+  flags in `plugins.cli.args`. These config-only entries let `tauri-plugin-cli`
+  parse the flags; Rust handlers will be wired in subsequent EL-171 tasks.
+
+## [0.5.3] - 2026-05-26
+
+### Fixed
+- Linux `.desktop` template: `StartupWMClass` is now the hardcoded logical name
+  `amorist` instead of `{{exec}}`, so taskbar grouping works correctly when the
+  binary is launched from an absolute path (AppImage, dev). `MimeType` line now
+  carries a trailing semicolon as required by the freedesktop spec.
+
+## [0.5.2] - 2026-05-26
+
+### Fixed
+- Linux `.desktop` entry now includes `%f` in the `Exec` line, so launching
+  amorist via "Open with" or double-click in a file manager correctly passes the
+  file path. The freedesktop categories (`Office;TextEditor;Utility;`) are also
+  populated, replacing the empty default.
 
 ## [0.5.1] - 2026-05-25
 
