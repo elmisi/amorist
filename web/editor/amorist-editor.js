@@ -626,5 +626,12 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function midViewportLine(scrollTop, clientHeight, lineHeight) {
+    if (!Number.isFinite(lineHeight) || lineHeight <= 0) return 0;
+    const centerY = scrollTop + clientHeight / 2;
+    return Math.max(0, Math.floor(centerY / lineHeight));
+  }
+
+  window.__editorTestHelpers = { midViewportLine };
   window.AmoristEditor = { create };
 })();
