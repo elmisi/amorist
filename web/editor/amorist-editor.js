@@ -528,14 +528,16 @@
 
       var restore = function () {
         if (self.mode === "source") {
-          var lineTop = position.line * sourceLineHeight(self.source);
-          self.source.scrollTop = lineTop;
+          var lineHeight = sourceLineHeight(self.source);
+          var lineTop = position.line * lineHeight;
+          self.source.scrollTop = centerScroll(lineTop, self.source.clientHeight, self.source.scrollHeight);
           return;
         }
 
         var target = blockForSourceLine(self.surface, position.line);
         if (target) {
-          self.surface.scrollTop = target.offsetTop;
+          var anchorTop = target.offsetTop + target.offsetHeight / 2;
+          self.surface.scrollTop = centerScroll(anchorTop, self.surface.clientHeight, self.surface.scrollHeight);
           return;
         }
 

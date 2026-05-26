@@ -4,6 +4,14 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-05-27
+
+### Changed
+- `restoreScrollPosition()` in `amorist-editor.js` (EL-173): anchor line is now
+  centered in the destination viewport instead of aligned to the top. Source mode
+  centers the line's pixel top; WYSIWYG mode centers the block's midpoint. Uses
+  the existing `centerScroll()` helper; `progress` fallback preserved.
+
 ## [0.5.4] - 2026-05-27
 
 ### Changed
