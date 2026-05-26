@@ -502,18 +502,22 @@
       if (this.mode === "source") {
         var lineHeight = sourceLineHeight(this.source);
         return {
-          line: Math.max(0, Math.floor(this.source.scrollTop / lineHeight)),
+          line: midViewportLine(this.source.scrollTop, this.source.clientHeight, lineHeight),
           progress: this.source.scrollHeight > 0 ? this.source.scrollTop / this.source.scrollHeight : 0,
         };
       }
 
-      var surfaceTop = this.surface.getBoundingClientRect().top;
-      var visibleBlock = Array.from(this.surface.children).find(function (child) {
-        return child.getBoundingClientRect().bottom > surfaceTop;
+      var rect = this.surface.getBoundingClientRect();
+      var midY = rect.top + this.surface.clientHeight / 2;
+      var midBlock = Array.from(this.surface.children).find(function (child) {
+        var r = child.getBoundingClientRect();
+        return r.top <= midY && r.bottom > midY;
+      }) || Array.from(this.surface.children).find(function (child) {
+        return child.getBoundingClientRect().bottom > midY;
       });
 
       return {
-        line: visibleBlock ? Number(visibleBlock.dataset.sourceLine || 0) : 0,
+        line: midBlock ? Number(midBlock.dataset.sourceLine || 0) : 0,
         progress: this.surface.scrollHeight > 0 ? this.surface.scrollTop / this.surface.scrollHeight : 0,
       };
     }

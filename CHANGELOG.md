@@ -4,6 +4,15 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-05-27
+
+### Changed
+- `captureScrollPosition()` in `amorist-editor.js` (EL-173): WYSIWYG anchor is
+  now the block crossing the vertical midpoint of the viewport (with fallback to
+  the first block below the midpoint) instead of the topmost visible block.
+  Source-mode anchor uses `midViewportLine` to capture the line at the viewport
+  centre instead of the topmost visible line.
+
 ## [0.5.3] - 2026-05-27
 
 ### Added
