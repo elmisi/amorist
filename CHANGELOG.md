@@ -4,6 +4,24 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.9] - 2026-05-26
+
+### Fixed
+- `run_uninstall_desktop()`: icon-removal errors are now surfaced as warnings on
+  stderr instead of being silently swallowed; `removed` is only set to `true`
+  when `fs::remove_file` actually succeeds, so a failed removal no longer causes
+  a false "Removed amorist desktop entry and icons." message.
+
+### Changed
+- Added clarifying comment above `ICON_256` constant explaining why
+  `128x128@2x.png` (the 256×256 px HiDPI asset) is the correct source for the
+  `256x256` hicolor slot.
+- Added comment in `run_install_desktop()` above the `install_icon` calls
+  explaining why icons are always overwritten (no feasible ownership marker for
+  PNG files; namespace collision on "amorist.png" is not realistic).
+- Added comment in `exec_path()` explaining that `current_exe()` resolves
+  `/proc/self/exe` through symlinks, making it safe for the `.desktop` Exec line.
+
 ## [0.5.8] - 2026-05-26
 
 ### Added

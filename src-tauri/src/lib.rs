@@ -263,6 +263,8 @@ fn run_install_cli() -> Result<(), String> {
 
 #[cfg(target_os = "linux")]
 const ICON_128: &[u8] = include_bytes!("../icons/128x128.png");
+// 128x128@2x.png is the 256×256 px HiDPI variant; no separate 256x256.png
+// asset exists, so it is the correct source for the 256x256 hicolor slot.
 #[cfg(target_os = "linux")]
 const ICON_256: &[u8] = include_bytes!("../icons/128x128@2x.png");
 
@@ -286,6 +288,9 @@ fn exec_path() -> Result<String, String> {
             return Ok(appimage);
         }
     }
+    // current_exe() resolves /proc/self/exe to the real binary (following any
+    // symlink such as one created by --install-cli); for deb/AppImage installs
+    // this is a stable path, which is what we want in the .desktop Exec line.
     std::env::current_exe()
         .map(|p| p.display().to_string())
         .map_err(|e| format!("current_exe: {e}"))
@@ -327,6 +332,9 @@ fn run_install_desktop() -> Result<(), String> {
     fs::write(&entry_path, desktop_entry(&exec))
         .map_err(|e| format!("write {}: {e}", entry_path.display()))?;
 
+    // No ownership marker is feasible for PNG files, so icons are always
+    // overwritten. The hicolor app-icon directory is a shared namespace, but a
+    // name collision on "amorist.png" with another package is not realistic.
     let icon_128 = install_icon(&data, "128x128", ICON_128)?;
     let icon_256 = install_icon(&data, "256x256", ICON_256)?;
 
@@ -377,8 +385,11 @@ fn run_uninstall_desktop() -> Result<(), String> {
             .join("apps")
             .join("amorist.png");
         if icon.exists() {
-            let _ = fs::remove_file(&icon);
-            removed = true;
+            if let Err(e) = fs::remove_file(&icon) {
+                eprintln!("Warning: could not remove {}: {e}", icon.display());
+            } else {
+                removed = true;
+            }
         }
     }
 
