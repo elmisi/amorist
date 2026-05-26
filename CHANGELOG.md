@@ -4,6 +4,18 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-05-26
+
+### Added
+- `run_install_desktop()` in `src-tauri/src/lib.rs` (Linux-only): writes the
+  freedesktop `.desktop` entry to `$XDG_DATA_HOME/applications/amorist.desktop`
+  and installs embedded PNG icons (`128x128` and `256x256`) into the hicolor
+  icon theme under `$XDG_DATA_HOME/icons/hicolor/`. Embedded via `include_bytes!`
+  so the icons are available regardless of packaging (AppImage, deb, dev build).
+  Respects `$APPIMAGE` for the `Exec=` path, falls back to `current_exe()`.
+  Runs `update-desktop-database` and `gtk-update-icon-cache` best-effort.
+  Not yet wired into `setup()` (Task 6).
+
 ## [0.5.5] - 2026-05-26
 
 ### Added
