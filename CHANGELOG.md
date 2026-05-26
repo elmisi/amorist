@@ -4,6 +4,16 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-05-26
+
+### Added
+- `run_uninstall_desktop()` in `src-tauri/src/lib.rs` (Linux-only): symmetric
+  uninstall for `run_install_desktop()`. Removes `amorist.desktop` from
+  `$XDG_DATA_HOME/applications/` only if the file contains the
+  `StartupWMClass=amorist` marker (i.e. was written by amorist). Removes the
+  embedded PNG icons from the hicolor icon theme. Runs `update-desktop-database`
+  and `gtk-update-icon-cache` best-effort. Not yet wired into `setup()` (Task 6).
+
 ## [0.5.6] - 2026-05-26
 
 ### Added

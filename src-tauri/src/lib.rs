@@ -348,6 +348,56 @@ fn run_install_desktop() -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(target_os = "linux")]
+fn run_uninstall_desktop() -> Result<(), String> {
+    let data = data_home()?;
+    let apps_dir = data.join("applications");
+    let entry_path = apps_dir.join("amorist.desktop");
+
+    let mut removed = false;
+    if entry_path.exists() {
+        let existing = fs::read_to_string(&entry_path).unwrap_or_default();
+        if existing.contains("StartupWMClass=amorist") {
+            fs::remove_file(&entry_path)
+                .map_err(|e| format!("remove {}: {e}", entry_path.display()))?;
+            removed = true;
+        } else {
+            return Err(format!(
+                "{} was not created by amorist; leaving it untouched.",
+                entry_path.display()
+            ));
+        }
+    }
+
+    for size in ["128x128", "256x256"] {
+        let icon = data
+            .join("icons")
+            .join("hicolor")
+            .join(size)
+            .join("apps")
+            .join("amorist.png");
+        if icon.exists() {
+            let _ = fs::remove_file(&icon);
+            removed = true;
+        }
+    }
+
+    let _ = std::process::Command::new("update-desktop-database")
+        .arg(&apps_dir)
+        .status();
+    let _ = std::process::Command::new("gtk-update-icon-cache")
+        .arg("-f")
+        .arg(data.join("icons").join("hicolor"))
+        .status();
+
+    if removed {
+        println!("Removed amorist desktop entry and icons.");
+    } else {
+        println!("Nothing to remove.");
+    }
+    Ok(())
+}
+
 fn check_install_cli(app: &App) -> Result<bool, String> {
     let matches = app
         .cli()
