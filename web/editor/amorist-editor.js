@@ -3,6 +3,7 @@
   const TextUtils = Internals.TextUtils;
   const MarkdownCodec = Internals.MarkdownCodec;
   const EditingPolicy = Internals.EditingPolicy;
+  const HtmlToMarkdown = Internals.HtmlToMarkdown;
 
   if (!TextUtils) {
     throw new Error("AmoristTextUtils must be loaded before AmoristEditor.");
@@ -12,6 +13,9 @@
   }
   if (!EditingPolicy) {
     throw new Error("AmoristEditingPolicy must be loaded before AmoristEditor.");
+  }
+  if (!HtmlToMarkdown) {
+    throw new Error("AmoristHtmlToMarkdown must be loaded before AmoristEditor.");
   }
 
   class MarkdownHistory {
@@ -328,10 +332,50 @@
     }
 
     handlePaste(event) {
-      const text = event.clipboardData && event.clipboardData.getData("text/plain");
-      if (!text) return;
+      const clipboard = event.clipboardData;
+      if (!clipboard) return;
+
+      // Inside a code block / inline code: never parse, paste literally.
+      if (this.isInCodeContext()) {
+        const literal = clipboard.getData("text/plain");
+        if (!literal) return;
+        event.preventDefault();
+        this.editing.insertPlainText(literal);
+        return;
+      }
+
+      const html = clipboard.getData("text/html");
+      let markdown;
+      if (html && html.trim()) {
+        markdown = HtmlToMarkdown.convert(html);
+      } else {
+        // Plain text is treated as Markdown source (EL-172 decision).
+        markdown = TextUtils.normalize(clipboard.getData("text/plain") || "");
+      }
+      if (!markdown) return;
       event.preventDefault();
-      this.editing.insertPlainText(text);
+      this.insertMarkdownAtCaret(markdown);
+    }
+
+    isInCodeContext() {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return false;
+      let node = selection.anchorNode;
+      while (node && node !== this.surface) {
+        if (node.nodeType === Node.ELEMENT_NODE && (node.tagName === "PRE" || node.tagName === "CODE")) {
+          return true;
+        }
+        node = node.parentNode;
+      }
+      return false;
+    }
+
+    insertMarkdownAtCaret(markdown) {
+      const html = MarkdownCodec.renderMarkdown(markdown);
+      // execCommand splits the current block when inserting block-level HTML,
+      // which is the desired behavior for multi-block pastes.
+      document.execCommand("insertHTML", false, html);
+      this.syncWysiwygInput();
     }
 
     handleClick(event) {

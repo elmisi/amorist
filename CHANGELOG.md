@@ -4,6 +4,21 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-05-27
+
+### Changed
+- `handlePaste` in `AmoristEditor` now routes by clipboard payload: inside a
+  code block or inline code the literal plain text is inserted unchanged; when
+  the clipboard carries `text/html` the HTML is converted to Markdown via
+  `HtmlToMarkdown.convert()`; otherwise plain text is treated as Markdown
+  source. The resulting Markdown is rendered and inserted at the caret via
+  `insertHTML` + `syncWysiwygInput()`.
+- Two new helper methods: `isInCodeContext()` (walks the selection anchor to
+  detect `<pre>`/`<code>` ancestors) and `insertMarkdownAtCaret()` (renders
+  Markdown to HTML and executes `insertHTML`).
+- `HtmlToMarkdown` is now bound and guarded as a required dependency alongside
+  `TextUtils`, `MarkdownCodec`, and `EditingPolicy`.
+
 ## [0.5.4] - 2026-05-27
 
 ### Added
