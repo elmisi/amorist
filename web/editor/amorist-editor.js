@@ -529,8 +529,10 @@
       var restore = function () {
         if (self.mode === "source") {
           var lineHeight = sourceLineHeight(self.source);
-          var lineTop = position.line * lineHeight;
-          self.source.scrollTop = centerScroll(lineTop, self.source.clientHeight, self.source.scrollHeight);
+          // Center the middle of the captured line (midViewportLine captured the
+          // line crossing the viewport center), not its top edge.
+          var lineCenter = position.line * lineHeight + lineHeight / 2;
+          self.source.scrollTop = centerScroll(lineCenter, self.source.clientHeight, self.source.scrollHeight);
           return;
         }
 

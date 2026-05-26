@@ -4,6 +4,13 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-05-27
+
+### Fixed
+- Source-view restore now centers the middle of the captured line (to match
+  `midViewportLine`, which anchors on the line crossing the viewport center)
+  instead of the line's top edge, improving WYSIWYG↔source round-trip symmetry.
+
 ## [0.5.5] - 2026-05-27
 
 ### Changed
