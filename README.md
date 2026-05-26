@@ -201,6 +201,7 @@ The editor lives under `web/editor/`. It is plain browser JavaScript and can be 
 <script src="amorist-text-utils.js"></script>
 <script src="amorist-table-codec.js"></script>
 <script src="amorist-markdown-codec.js"></script>
+<script src="amorist-html-to-markdown.js"></script>
 <script src="amorist-editing-policy.js"></script>
 <script src="amorist-editor.js"></script>
 <script>
@@ -220,3 +221,5 @@ The editor lives under `web/editor/`. It is plain browser JavaScript and can be 
 ```
 
 The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, fenced code blocks, and pipe tables. In WYSIWYG mode, common shortcuts are converted as you type; tables are automatically aligned on serialization. Use source mode when exact text control matters.
+
+Pasting into WYSIWYG preserves formatting: rich HTML (from a browser or another app) is converted to the Markdown subset above, and plain text is interpreted as Markdown source. Pasting inside a code block keeps the text literal. `amorist-html-to-markdown.js` must be loaded after `amorist-markdown-codec.js` and before `amorist-editor.js` (see the script order above) — the editor requires it.
