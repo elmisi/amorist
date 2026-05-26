@@ -4,6 +4,15 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-05-27
+
+### Changed
+- View switching (WYSIWYG ↔ source) now keeps the line at the *middle* of the
+  viewport aligned across both views instead of anchoring on the topmost visible
+  block (EL-173). `captureScrollPosition` records the source line crossing the
+  viewport center; `restoreScrollPosition` centers that line/block in the
+  destination view, clamped to valid scroll range. New unit-tested helpers
+  `midViewportLine` and `centerScroll`.
 ## [0.7.0] - 2026-05-27
 
 ### Added

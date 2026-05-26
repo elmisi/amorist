@@ -551,18 +551,22 @@
       if (this.mode === "source") {
         var lineHeight = sourceLineHeight(this.source);
         return {
-          line: Math.max(0, Math.floor(this.source.scrollTop / lineHeight)),
+          line: midViewportLine(this.source.scrollTop, this.source.clientHeight, lineHeight),
           progress: this.source.scrollHeight > 0 ? this.source.scrollTop / this.source.scrollHeight : 0,
         };
       }
 
-      var surfaceTop = this.surface.getBoundingClientRect().top;
-      var visibleBlock = Array.from(this.surface.children).find(function (child) {
-        return child.getBoundingClientRect().bottom > surfaceTop;
+      var rect = this.surface.getBoundingClientRect();
+      var midY = rect.top + this.surface.clientHeight / 2;
+      var midBlock = Array.from(this.surface.children).find(function (child) {
+        var r = child.getBoundingClientRect();
+        return r.top <= midY && r.bottom > midY;
+      }) || Array.from(this.surface.children).find(function (child) {
+        return child.getBoundingClientRect().bottom > midY;
       });
 
       return {
-        line: visibleBlock ? Number(visibleBlock.dataset.sourceLine || 0) : 0,
+        line: midBlock ? Number(midBlock.dataset.sourceLine || 0) : 0,
         progress: this.surface.scrollHeight > 0 ? this.surface.scrollTop / this.surface.scrollHeight : 0,
       };
     }
@@ -573,14 +577,18 @@
 
       var restore = function () {
         if (self.mode === "source") {
-          var lineTop = position.line * sourceLineHeight(self.source);
-          self.source.scrollTop = lineTop;
+          var lineHeight = sourceLineHeight(self.source);
+          // Center the middle of the captured line (midViewportLine captured the
+          // line crossing the viewport center), not its top edge.
+          var lineCenter = position.line * lineHeight + lineHeight / 2;
+          self.source.scrollTop = centerScroll(lineCenter, self.source.clientHeight, self.source.scrollHeight);
           return;
         }
 
         var target = blockForSourceLine(self.surface, position.line);
         if (target) {
-          self.surface.scrollTop = target.offsetTop;
+          var anchorTop = target.offsetTop + target.offsetHeight / 2;
+          self.surface.scrollTop = centerScroll(anchorTop, self.surface.clientHeight, self.surface.scrollHeight);
           return;
         }
 
@@ -675,5 +683,17 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function midViewportLine(scrollTop, clientHeight, lineHeight) {
+    if (!Number.isFinite(lineHeight) || lineHeight <= 0) return 0;
+    const centerY = scrollTop + clientHeight / 2;
+    return Math.max(0, Math.floor(centerY / lineHeight));
+  }
+
+  function centerScroll(anchorTop, clientHeight, scrollHeight) {
+    const max = Math.max(0, scrollHeight - clientHeight);
+    return clamp(anchorTop - clientHeight / 2, 0, max);
+  }
+
+  window.__editorTestHelpers = { midViewportLine, centerScroll };
   window.AmoristEditor = { create };
 })();
