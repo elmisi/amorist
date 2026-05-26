@@ -4,6 +4,18 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-05-27
+
+### Fixed
+- `isInCodeContext()` now checks both selection endpoints for non-collapsed
+  selections: a selection spanning from inside a code block to outside (or vice
+  versa) is no longer misclassified as a code context. Both the anchor and focus
+  nodes must be inside a `<pre>` or `<code>` ancestor for the method to return
+  `true`; collapsed selections retain the original single-endpoint walk.
+- `insertMarkdownAtCaret()` no longer calls `syncWysiwygInput()` when
+  `execCommand("insertHTML")` reports failure, avoiding a spurious re-serialize
+  of stale content.
+
 ## [0.5.5] - 2026-05-27
 
 ### Changed

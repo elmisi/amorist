@@ -360,22 +360,27 @@
     isInCodeContext() {
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) return false;
-      let node = selection.anchorNode;
-      while (node && node !== this.surface) {
-        if (node.nodeType === Node.ELEMENT_NODE && (node.tagName === "PRE" || node.tagName === "CODE")) {
-          return true;
+      const endpoints = selection.isCollapsed
+        ? [selection.anchorNode]
+        : [selection.anchorNode, selection.focusNode];
+      return endpoints.every((start) => {
+        let node = start;
+        while (node && node !== this.surface) {
+          if (node.nodeType === Node.ELEMENT_NODE && (node.tagName === "PRE" || node.tagName === "CODE")) {
+            return true;
+          }
+          node = node.parentNode;
         }
-        node = node.parentNode;
-      }
-      return false;
+        return false;
+      });
     }
 
     insertMarkdownAtCaret(markdown) {
       const html = MarkdownCodec.renderMarkdown(markdown);
       // execCommand splits the current block when inserting block-level HTML,
       // which is the desired behavior for multi-block pastes.
-      document.execCommand("insertHTML", false, html);
-      this.syncWysiwygInput();
+      const inserted = document.execCommand("insertHTML", false, html);
+      if (inserted) this.syncWysiwygInput();
     }
 
     handleClick(event) {
