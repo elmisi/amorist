@@ -4,6 +4,23 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-26
+
+### Added
+- Linux desktop integration: the `.deb` package now ships a `.desktop` entry
+  with `Exec=... %f` (file path passed on launch) and proper freedesktop
+  categories (`Office;TextEditor;Utility;`), so amorist appears under
+  **Open with** for Markdown files in file managers.
+- Portable AppImage build: `build-appimage.sh` produces a self-contained
+  `amorist_<version>_amd64.AppImage` without requiring a system install.
+- `--install-desktop` / `--uninstall-desktop` CLI flags (Linux): write or
+  remove a user-level `.desktop` entry and icons under
+  `~/.local/share/applications` and `~/.local/share/icons`, enabling
+  **Open with** integration for the AppImage and dev builds.
+- macOS file association and icon verified via the bundled `.app`/`.dmg`:
+  Launch Services registers amorist for `.md`/`.markdown`/`.mdown` files
+  automatically on install — no extra step needed.
+
 ## [0.5.10] - 2026-05-26
 
 ### Added
