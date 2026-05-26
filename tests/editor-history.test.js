@@ -13,6 +13,7 @@ function loadMarkdownHistory() {
   loadClassicScript("web/editor/amorist-table-codec.js", window);
   loadClassicScript("web/editor/amorist-markdown-codec.js", window);
   window.AmoristInternals.EditingPolicy = { create: function () { return {}; } };
+  window.AmoristInternals.HtmlToMarkdown = { convert: function (html) { return html; } };
   loadClassicScript("web/editor/amorist-editor.js", window);
   return window.AmoristInternals.MarkdownHistory;
 }

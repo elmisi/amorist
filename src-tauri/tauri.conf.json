@@ -1,6 +1,6 @@
 {
   "productName": "amorist",
-  "version": "0.5.1",
+  "version": "0.8.0",
   "identifier": "dev.elmisi.amorist",
   "build": {
     "frontendDist": "../web"
@@ -32,7 +32,12 @@
         "mimeType": "text/markdown",
         "description": "Markdown document"
       }
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/amorist.desktop"
+      }
+    }
   },
   "plugins": {
     "cli": {
@@ -48,6 +53,16 @@
           "name": "install-cli",
           "takesValue": false,
           "description": "Install a symlink so the `amorist` command is available in your shell, then exit."
+        },
+        {
+          "name": "install-desktop",
+          "takesValue": false,
+          "description": "Register a user-level .desktop entry + icon so amorist appears in 'Open with' for Markdown files, then exit. (Linux)"
+        },
+        {
+          "name": "uninstall-desktop",
+          "takesValue": false,
+          "description": "Remove the user-level .desktop entry and icons installed by --install-desktop, then exit. (Linux)"
         }
       ]
     }

@@ -66,7 +66,7 @@ Very wide tables scroll horizontally inside their block, so the rest of the docu
 
 ### Standalone app (recommended)
 
-Prebuilt `.deb` (Linux) and `.dmg` (macOS, universal) packages are attached to each [GitHub release](../../releases).
+Prebuilt `.deb` and portable `.AppImage` (Linux) and `.dmg` (macOS, universal) packages are attached to each [GitHub release](../../releases).
 
 The macOS `.dmg` is currently unsigned. On first launch, right-click the app in Applications and choose **Open** to bypass the Gatekeeper warning ("amorist cannot be opened because the developer cannot be verified"). After that, normal double-click works.
 
@@ -79,6 +79,20 @@ The Linux `.deb` already installs `amorist` into `/usr/bin`. On macOS, the `.app
 ```
 
 This creates a symlink at `~/.local/bin/amorist`. If that directory is not on your `PATH`, the command prints the exact `export` line to add to your shell rc. After that, `amorist file.md` works from anywhere.
+
+#### Desktop integration (Linux)
+
+The `.deb` package registers amorist in your desktop's **Open with** menu for Markdown files automatically (it installs a `.desktop` entry whose launcher passes the file path).
+
+For the portable **AppImage** (no system install), register it at user level once:
+
+```bash
+"path/to/amorist_<version>_amd64.AppImage" --install-desktop
+```
+
+This writes a `.desktop` entry and icon under `~/.local/share/icons` and `~/.local/share/applications`, so amorist appears under **Open with** for `.md` files. Undo it with `--uninstall-desktop`. To build the AppImage from source, run `./build-appimage.sh`.
+
+On **macOS**, the `.app`/`.dmg` registers the Markdown association and icon with Launch Services automatically when installed — no extra step is needed.
 
 #### Build from source
 
@@ -187,6 +201,7 @@ The editor lives under `web/editor/`. It is plain browser JavaScript and can be 
 <script src="amorist-text-utils.js"></script>
 <script src="amorist-table-codec.js"></script>
 <script src="amorist-markdown-codec.js"></script>
+<script src="amorist-html-to-markdown.js"></script>
 <script src="amorist-editing-policy.js"></script>
 <script src="amorist-editor.js"></script>
 <script>
@@ -206,3 +221,5 @@ The editor lives under `web/editor/`. It is plain browser JavaScript and can be 
 ```
 
 The editor intentionally supports a small Markdown subset: headings, paragraphs, emphasis, inline code, links, blockquotes, bullet lists, numbered lists, task lists, fenced code blocks, and pipe tables. In WYSIWYG mode, common shortcuts are converted as you type; tables are automatically aligned on serialization. Use source mode when exact text control matters.
+
+Pasting into WYSIWYG preserves formatting: rich HTML (from a browser or another app) is converted to the Markdown subset above, and plain text is interpreted as Markdown source. Pasting inside a code block keeps the text literal. `amorist-html-to-markdown.js` must be loaded after `amorist-markdown-codec.js` and before `amorist-editor.js` (see the script order above) — the editor requires it.

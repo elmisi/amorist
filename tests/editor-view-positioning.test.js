@@ -6,7 +6,7 @@ function loadEditorHelpers() {
   // Stub the dependency guards so the IIFE runs in node.
   const window = {
     AmoristInternals: {
-      TextUtils: {}, MarkdownCodec: {}, EditingPolicy: {},
+      TextUtils: {}, MarkdownCodec: {}, EditingPolicy: {}, HtmlToMarkdown: {},
     },
   };
   const context = vm.createContext({ window, console, Intl, document: { querySelector: () => null } });
