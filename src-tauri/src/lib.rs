@@ -398,6 +398,40 @@ fn run_uninstall_desktop() -> Result<(), String> {
     Ok(())
 }
 
+fn check_desktop_flags(app: &App) -> Result<bool, String> {
+    let matches = app
+        .cli()
+        .matches()
+        .map_err(|e| format!("CLI argument parsing failed: {e}"))?;
+    let requested = |name: &str| {
+        matches
+            .args
+            .get(name)
+            .map(|a| a.occurrences > 0)
+            .unwrap_or(false)
+    };
+
+    #[cfg(target_os = "linux")]
+    {
+        if requested("install-desktop") {
+            run_install_desktop()?;
+            return Ok(true);
+        }
+        if requested("uninstall-desktop") {
+            run_uninstall_desktop()?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        if requested("install-desktop") || requested("uninstall-desktop") {
+            return Err("--install-desktop / --uninstall-desktop are Linux-only. On macOS the .app bundle registers file associations automatically.".into());
+        }
+        Ok(false)
+    }
+}
+
 fn check_install_cli(app: &App) -> Result<bool, String> {
     let matches = app
         .cli()
@@ -488,6 +522,14 @@ pub fn run() {
                 Ok(false) => {}
                 Err(e) => {
                     eprintln!("install-cli failed: {e}");
+                    std::process::exit(1);
+                }
+            }
+            match check_desktop_flags(app) {
+                Ok(true) => std::process::exit(0),
+                Ok(false) => {}
+                Err(e) => {
+                    eprintln!("desktop integration failed: {e}");
                     std::process::exit(1);
                 }
             }

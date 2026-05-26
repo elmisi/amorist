@@ -4,6 +4,18 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2026-05-26
+
+### Added
+- `check_desktop_flags()` dispatcher in `src-tauri/src/lib.rs`: reads
+  `--install-desktop` and `--uninstall-desktop` CLI flags via `app.cli().matches()`
+  and delegates to `run_install_desktop()` / `run_uninstall_desktop()` on Linux.
+  Returns an error on non-Linux platforms with a clear message directing users to
+  the `.app` bundle. Wired into `setup()` immediately after `check_install_cli`,
+  so both flags are handled before the window opens and the process exits cleanly
+  (`std::process::exit(0)`) on success. Eliminates dead-code warnings for all
+  previously-unreachable desktop integration functions.
+
 ## [0.5.7] - 2026-05-26
 
 ### Added
