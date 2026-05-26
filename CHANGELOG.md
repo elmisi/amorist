@@ -4,46 +4,15 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.6] - 2026-05-27
-
-### Fixed
-- Source-view restore now centers the middle of the captured line (to match
-  `midViewportLine`, which anchors on the line crossing the viewport center)
-  instead of the line's top edge, improving WYSIWYG↔source round-trip symmetry.
-
-## [0.5.5] - 2026-05-27
+## [0.6.0] - 2026-05-27
 
 ### Changed
-- `restoreScrollPosition()` in `amorist-editor.js` (EL-173): anchor line is now
-  centered in the destination viewport instead of aligned to the top. Source mode
-  centers the line's pixel top; WYSIWYG mode centers the block's midpoint. Uses
-  the existing `centerScroll()` helper; `progress` fallback preserved.
-
-## [0.5.4] - 2026-05-27
-
-### Changed
-- `captureScrollPosition()` in `amorist-editor.js` (EL-173): WYSIWYG anchor is
-  now the block crossing the vertical midpoint of the viewport (with fallback to
-  the first block below the midpoint) instead of the topmost visible block.
-  Source-mode anchor uses `midViewportLine` to capture the line at the viewport
-  centre instead of the topmost visible line.
-
-## [0.5.3] - 2026-05-27
-
-### Added
-- `centerScroll(anchorTop, clientHeight, scrollHeight)` pure helper in
-  `amorist-editor.js` (EL-173): computes the scroll offset that centers a pixel
-  anchor within the viewport, clamped to the valid scroll range. Exported via
-  `window.__editorTestHelpers`. Covered by `tests/editor-view-positioning.test.js`.
-
-## [0.5.2] - 2026-05-27
-
-### Added
-- `midViewportLine(scrollTop, clientHeight, lineHeight)` pure helper in
-  `amorist-editor.js` (EL-173): computes the source line at the centre of the
-  visible viewport, used to anchor scroll position when toggling between WYSIWYG
-  and source views. Exported via `window.__editorTestHelpers` for unit testing
-  without a DOM. Covered by the new `tests/editor-view-positioning.test.js`.
+- View switching (WYSIWYG ↔ source) now keeps the line at the *middle* of the
+  viewport aligned across both views instead of anchoring on the topmost visible
+  block (EL-173). `captureScrollPosition` records the source line crossing the
+  viewport center; `restoreScrollPosition` centers that line/block in the
+  destination view, clamped to valid scroll range. New unit-tested helpers
+  `midViewportLine` and `centerScroll`.
 
 ## [0.5.1] - 2026-05-25
 
