@@ -32,7 +32,12 @@
         "mimeType": "text/markdown",
         "description": "Markdown document"
       }
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/amorist.desktop"
+      }
+    }
   },
   "plugins": {
     "cli": {
