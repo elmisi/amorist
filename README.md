@@ -66,7 +66,7 @@ Very wide tables scroll horizontally inside their block, so the rest of the docu
 
 ### Standalone app (recommended)
 
-Prebuilt `.deb` (Linux) and `.dmg` (macOS, universal) packages are attached to each [GitHub release](../../releases).
+Prebuilt `.deb` and portable `.AppImage` (Linux) and `.dmg` (macOS, universal) packages are attached to each [GitHub release](../../releases).
 
 The macOS `.dmg` is currently unsigned. On first launch, right-click the app in Applications and choose **Open** to bypass the Gatekeeper warning ("amorist cannot be opened because the developer cannot be verified"). After that, normal double-click works.
 

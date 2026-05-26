@@ -21,6 +21,12 @@ jobs:
             tauri_cli_asset: cargo-tauri-x86_64-unknown-linux-gnu.tgz
             artifact_name: amorist-deb
             artifact_glob: src-tauri/target/release/bundle/deb/amorist_*.deb
+          - os: ubuntu-latest
+            bundle: appimage
+            target: ""
+            tauri_cli_asset: cargo-tauri-x86_64-unknown-linux-gnu.tgz
+            artifact_name: amorist-appimage
+            artifact_glob: src-tauri/target/release/bundle/appimage/amorist_*.AppImage
           - os: macos-latest
             bundle: dmg
             target: universal-apple-darwin
@@ -68,6 +74,10 @@ jobs:
           esac
 
       - name: Build bundle
+        env:
+          # GitHub runners lack FUSE; let appimagetool/linuxdeploy run by
+          # self-extracting instead of mounting. Harmless for deb/dmg builds.
+          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           VERSION=$(tr -d '[:space:]' < VERSION)
           if [ -n "${{ matrix.target }}" ]; then
@@ -101,10 +111,11 @@ jobs:
           VERSION=$(tr -d '[:space:]' < VERSION)
           DEB=$(ls dist/amorist-deb/amorist_*.deb)
           DMG=$(ls dist/amorist-dmg/amorist_*.dmg)
+          APPIMAGE=$(ls dist/amorist-appimage/amorist_*.AppImage)
           if gh release view "v$VERSION" > /dev/null 2>&1; then
-            gh release upload "v$VERSION" "$DEB" "$DMG" --clobber
+            gh release upload "v$VERSION" "$DEB" "$DMG" "$APPIMAGE" --clobber
           else
-            gh release create "v$VERSION" "$DEB" "$DMG" \
+            gh release create "v$VERSION" "$DEB" "$DMG" "$APPIMAGE" \
               --title "v$VERSION" \
               --notes "See [CHANGELOG.md](CHANGELOG.md) for details."
           fi

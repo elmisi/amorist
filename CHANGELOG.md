@@ -4,6 +4,13 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-05-26
+
+### Added
+- CI now builds a portable Linux `.AppImage` and attaches it to each GitHub
+  release alongside the `.deb` and `.dmg`. The AppImage job sets
+  `APPIMAGE_EXTRACT_AND_RUN=1` so it builds on FUSE-less GitHub runners.
+
 ## [0.6.1] - 2026-05-26
 
 ### Fixed
