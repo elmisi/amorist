@@ -4,6 +4,17 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-05-26
+
+### Fixed
+- Usage message now includes `--install-desktop` hint on Linux so users see the
+  flag when launching without a file argument.
+- `desktop_entry()` is annotated `#[allow(dead_code)]` so non-Linux release
+  builds no longer emit a dead-code warning (the function is used on Linux and
+  in the cross-platform unit test).
+- `build-appimage.sh`: renamed local `APPIMAGE` variable to `APPIMAGE_PATH` to
+  avoid shadowing the AppImage-runtime `$APPIMAGE` environment variable.
+
 ## [0.6.0] - 2026-05-26
 
 ### Added

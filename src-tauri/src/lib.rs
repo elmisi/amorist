@@ -207,6 +207,7 @@ fn url_to_path(uri: &str) -> Result<String, String> {
     Ok(percent_decode(stripped))
 }
 
+#[allow(dead_code)]
 fn desktop_entry(exec: &str) -> String {
     format!(
         "[Desktop Entry]\n\
@@ -563,6 +564,8 @@ pub fn run() {
                 Ok(None) => {
                     eprintln!("Usage: amorist <file.md>");
                     eprintln!("       amorist --install-cli   (install shell command into ~/.local/bin)");
+                    #[cfg(target_os = "linux")]
+                    eprintln!("       amorist --install-desktop   (register in 'Open with' for .md files)");
                     std::process::exit(1);
                 }
                 Err(error) => {
