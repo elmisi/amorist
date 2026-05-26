@@ -4,6 +4,13 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-05-27
+
+### Added
+- Load `amorist-html-to-markdown.js` in `web/index.html` after the markdown
+  codec and before the editing policy, so the paste converter is available to
+  the editor.
+
 ## [0.5.3] - 2026-05-27
 
 ### Added
