@@ -4,6 +4,16 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-05-27
+
+### Added
+- `web/editor/amorist-html-to-markdown.js`: new IIFE module skeleton for
+  EL-172 paste-style handling. Exports `HtmlToMarkdown` to `AmoristInternals`
+  with three pure helpers: `_isStripped` (tags whose content is discarded),
+  `_isUnwrapped` (inline wrappers with no Markdown meaning), and
+  `_cleanupMarkdown` (collapse excess blank lines and trailing whitespace).
+  The `convert()` function (DOM-dependent) will be added in the next task.
+
 ## [0.5.1] - 2026-05-25
 
 ### Fixed
