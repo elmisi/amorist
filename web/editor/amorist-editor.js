@@ -549,9 +549,12 @@
 
     captureScrollPosition() {
       if (this.mode === "source") {
-        var lineHeight = sourceLineHeight(this.source);
+        var measurer = makeSourceMeasurer(this.source);
+        var targetY = this.source.scrollTop + this.source.clientHeight / 2;
+        var line = measurer.lineAtY(targetY);
+        measurer.destroy();
         return {
-          line: midViewportLine(this.source.scrollTop, this.source.clientHeight, lineHeight),
+          line: line,
           progress: this.source.scrollHeight > 0 ? this.source.scrollTop / this.source.scrollHeight : 0,
         };
       }
@@ -577,11 +580,12 @@
 
       var restore = function () {
         if (self.mode === "source") {
-          var lineHeight = sourceLineHeight(self.source);
-          // Center the middle of the captured line (midViewportLine captured the
-          // line crossing the viewport center), not its top edge.
-          var lineCenter = position.line * lineHeight + lineHeight / 2;
-          self.source.scrollTop = centerScroll(lineCenter, self.source.clientHeight, self.source.scrollHeight);
+          // Measure the captured line's TRUE pixel position (accounting for
+          // soft-wrapped long lines) and center its middle in the viewport.
+          var measurer = makeSourceMeasurer(self.source);
+          var lineMiddle = measurer.topOfLine(position.line) + measurer.heightOfLine(position.line) / 2;
+          measurer.destroy();
+          self.source.scrollTop = centerScroll(lineMiddle, self.source.clientHeight, self.source.scrollHeight);
           return;
         }
 
@@ -692,6 +696,80 @@
   function centerScroll(anchorTop, clientHeight, scrollHeight) {
     const max = Math.max(0, scrollHeight - clientHeight);
     return clamp(anchorTop - clientHeight / 2, 0, max);
+  }
+
+  // A <textarea> exposes no per-line geometry and soft-wraps long lines, so
+  // "sourceLine * lineHeight" is wrong whenever any line wraps. This builds a
+  // hidden mirror that reproduces the textarea's wrapping and measures the true
+  // pixel offset of any logical source line (in the textarea's scroll space,
+  // i.e. including padding-top). Caller must call destroy() when done.
+  function makeSourceMeasurer(source) {
+    const cs = window.getComputedStyle(source);
+    const paddingTop = Number.parseFloat(cs.paddingTop) || 0;
+    const contentWidth =
+      source.clientWidth -
+      (Number.parseFloat(cs.paddingLeft) || 0) -
+      (Number.parseFloat(cs.paddingRight) || 0);
+
+    const mirror = document.createElement("div");
+    const s = mirror.style;
+    s.position = "absolute";
+    s.visibility = "hidden";
+    s.left = "-99999px";
+    s.top = "0";
+    s.whiteSpace = "pre-wrap";
+    s.overflowWrap = cs.overflowWrap;
+    s.wordBreak = cs.wordBreak;
+    s.boxSizing = "content-box";
+    s.padding = "0";
+    s.border = "0";
+    s.width = Math.max(0, contentWidth) + "px";
+    s.fontFamily = cs.fontFamily;
+    s.fontSize = cs.fontSize;
+    s.fontWeight = cs.fontWeight;
+    s.fontStyle = cs.fontStyle;
+    s.lineHeight = cs.lineHeight;
+    s.letterSpacing = cs.letterSpacing;
+    s.tabSize = cs.tabSize;
+    document.body.appendChild(mirror);
+
+    const lines = source.value.split("\n");
+
+    // Height of the first `n` logical lines = pixel top of line `n`
+    // (relative to the content box). join() never adds a trailing newline,
+    // so n lines render as exactly n wrapped paragraphs.
+    function prefixHeight(n) {
+      if (n <= 0) return 0;
+      mirror.textContent = lines.slice(0, n).join("\n");
+      return mirror.scrollHeight;
+    }
+
+    return {
+      lineCount: lines.length,
+      // Top of a logical line in the textarea's scroll-space coordinates.
+      topOfLine(n) {
+        return paddingTop + prefixHeight(n);
+      },
+      // Visual height of a single logical line (may span several wrapped rows).
+      heightOfLine(n) {
+        return Math.max(1, prefixHeight(n + 1) - prefixHeight(n));
+      },
+      // Largest logical line whose top is at or above targetY (binary search;
+      // topOfLine is monotonic in n).
+      lineAtY(targetY) {
+        let lo = 0;
+        let hi = lines.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (this.topOfLine(mid) <= targetY) lo = mid;
+          else hi = mid - 1;
+        }
+        return lo;
+      },
+      destroy() {
+        document.body.removeChild(mirror);
+      },
+    };
   }
 
   window.__editorTestHelpers = { midViewportLine, centerScroll };

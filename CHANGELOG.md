@@ -4,6 +4,19 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-05-27
+
+### Fixed
+- Source-view positioning (EL-173 follow-up): switching to/from the source view
+  no longer drifts by tens of lines on documents with long, soft-wrapped lines.
+  The source scroll math previously treated a Markdown source-line number as a
+  visual-row index, so any wrapped line desynchronised the two views (e.g. the
+  WYSIWYG centre line 80 landed on source line 39). Source capture/restore now
+  measure the true wrapped pixel offset of a logical line via a hidden mirror
+  (`makeSourceMeasurer`), so the line centred in one view is centred in the
+  other (verified in a real browser DOM: WYSIWYG→source drift 0, source→WYSIWYG
+  within one block).
+
 ## [0.8.0] - 2026-05-27
 
 ### Changed
