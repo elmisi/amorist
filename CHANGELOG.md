@@ -16,6 +16,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`makeSourceMeasurer`), so the line centred in one view is centred in the
   other (verified in a real browser DOM: WYSIWYG→source drift 0, source→WYSIWYG
   within one block).
+- Linux: suppressed the noisy startup warning "Disabled hardware acceleration
+  because GTK failed to initialize GL: Unable to create a GL context" on
+  machines without usable GL (VMs, remote/headless X). amorist now sets
+  `WEBKIT_DISABLE_COMPOSITING_MODE=1` at startup (overridable); accelerated
+  compositing brings no perceptible benefit to this text UI.
 
 ## [0.8.0] - 2026-05-27
 
