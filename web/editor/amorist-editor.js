@@ -548,25 +548,33 @@
     }
 
     captureScrollPosition() {
+      // The anchor is a FRACTIONAL source line: the integer part is the source
+      // line, the fraction is how far into it (source side) / into its block
+      // (WYSIWYG side) the viewport centre falls. A WYSIWYG block can span many
+      // source lines (list, code, table, wrapped paragraph), so anchoring at
+      // block granularity drifts by up to half the block height; the fraction
+      // keeps both views aligned regardless of block height.
       if (this.mode === "source") {
-        var lineHeight = sourceLineHeight(this.source);
+        var measurer = makeSourceMeasurer(this.source);
+        var targetY = this.source.scrollTop + this.source.clientHeight / 2;
+        var line = measurer.lineAtY(targetY);
+        var h = measurer.heightOfLine(line);
+        var frac = h > 0 ? clamp((targetY - measurer.topOfLine(line)) / h, 0, 1) : 0;
+        measurer.destroy();
         return {
-          line: midViewportLine(this.source.scrollTop, this.source.clientHeight, lineHeight),
+          line: line + frac,
           progress: this.source.scrollHeight > 0 ? this.source.scrollTop / this.source.scrollHeight : 0,
         };
       }
 
-      var rect = this.surface.getBoundingClientRect();
-      var midY = rect.top + this.surface.clientHeight / 2;
-      var midBlock = Array.from(this.surface.children).find(function (child) {
-        var r = child.getBoundingClientRect();
-        return r.top <= midY && r.bottom > midY;
-      }) || Array.from(this.surface.children).find(function (child) {
-        return child.getBoundingClientRect().bottom > midY;
-      });
-
+      var totalLines = TextUtils.normalize(this.markdown || "").split("\n").length;
+      var knots = blockKnots(this.surface, totalLines);
+      if (!knots) {
+        return { line: 0, progress: 0 };
+      }
+      var midY = this.surface.scrollTop + this.surface.clientHeight / 2;
       return {
-        line: midBlock ? Number(midBlock.dataset.sourceLine || 0) : 0,
+        line: interpolate(knots, midY, "y", "line"),
         progress: this.surface.scrollHeight > 0 ? this.surface.scrollTop / this.surface.scrollHeight : 0,
       };
     }
@@ -577,18 +585,22 @@
 
       var restore = function () {
         if (self.mode === "source") {
-          var lineHeight = sourceLineHeight(self.source);
-          // Center the middle of the captured line (midViewportLine captured the
-          // line crossing the viewport center), not its top edge.
-          var lineCenter = position.line * lineHeight + lineHeight / 2;
-          self.source.scrollTop = centerScroll(lineCenter, self.source.clientHeight, self.source.scrollHeight);
+          // Place the fractional anchor line at the viewport centre, measuring
+          // the line's TRUE wrapped pixel position.
+          var measurer = makeSourceMeasurer(self.source);
+          var lineFloor = Math.max(0, Math.floor(position.line));
+          var frac = position.line - lineFloor;
+          var anchorY = measurer.topOfLine(lineFloor) + frac * measurer.heightOfLine(lineFloor);
+          measurer.destroy();
+          self.source.scrollTop = centerScroll(anchorY, self.source.clientHeight, self.source.scrollHeight);
           return;
         }
 
-        var target = blockForSourceLine(self.surface, position.line);
-        if (target) {
-          var anchorTop = target.offsetTop + target.offsetHeight / 2;
-          self.surface.scrollTop = centerScroll(anchorTop, self.surface.clientHeight, self.surface.scrollHeight);
+        var totalLines = TextUtils.normalize(self.markdown || "").split("\n").length;
+        var knots = blockKnots(self.surface, totalLines);
+        if (knots) {
+          var anchorY = interpolate(knots, position.line, "line", "y");
+          self.surface.scrollTop = centerScroll(anchorY, self.surface.clientHeight, self.surface.scrollHeight);
           return;
         }
 
@@ -660,6 +672,43 @@
     return element.getBoundingClientRect().top + window.scrollY;
   }
 
+  function sortedBlocks(surface) {
+    return Array.from(surface.children)
+      .map((el) => ({ el, line: Number(el.dataset.sourceLine || 0) }))
+      .filter((b) => Number.isFinite(b.line))
+      .sort((a, b) => a.line - b.line);
+  }
+
+  // Piecewise-linear map between source lines and WYSIWYG pixel offsets, using
+  // each block's (sourceLine, offsetTop) as a knot plus a final knot at the
+  // bottom of the last block. Interpolating top-to-top (not within a block's
+  // own height) absorbs inter-block margins and blank source lines, so the
+  // mapping stays monotonic and continuous across block boundaries.
+  function blockKnots(surface, totalLines) {
+    const blocks = sortedBlocks(surface);
+    if (blocks.length === 0) return null;
+    const knots = blocks.map((b) => ({ line: b.line, y: b.el.offsetTop }));
+    const last = blocks[blocks.length - 1];
+    knots.push({
+      line: Math.max(last.line + 1, totalLines),
+      y: last.el.offsetTop + last.el.offsetHeight,
+    });
+    return knots;
+  }
+
+  function interpolate(knots, key, from, to) {
+    let i = 0;
+    for (let k = 0; k < knots.length - 1; k++) {
+      if (knots[k][from] <= key) i = k;
+      else break;
+    }
+    const a = knots[i];
+    const b = knots[i + 1] || knots[i];
+    const denom = b[from] - a[from];
+    const f = denom > 0 ? clamp((key - a[from]) / denom, 0, 1) : 0;
+    return a[to] + f * (b[to] - a[to]);
+  }
+
   function blockForSourceLine(surface, line) {
     const blocks = Array.from(surface.children)
       .map((element) => ({
@@ -692,6 +741,80 @@
   function centerScroll(anchorTop, clientHeight, scrollHeight) {
     const max = Math.max(0, scrollHeight - clientHeight);
     return clamp(anchorTop - clientHeight / 2, 0, max);
+  }
+
+  // A <textarea> exposes no per-line geometry and soft-wraps long lines, so
+  // "sourceLine * lineHeight" is wrong whenever any line wraps. This builds a
+  // hidden mirror that reproduces the textarea's wrapping and measures the true
+  // pixel offset of any logical source line (in the textarea's scroll space,
+  // i.e. including padding-top). Caller must call destroy() when done.
+  function makeSourceMeasurer(source) {
+    const cs = window.getComputedStyle(source);
+    const paddingTop = Number.parseFloat(cs.paddingTop) || 0;
+    const contentWidth =
+      source.clientWidth -
+      (Number.parseFloat(cs.paddingLeft) || 0) -
+      (Number.parseFloat(cs.paddingRight) || 0);
+
+    const mirror = document.createElement("div");
+    const s = mirror.style;
+    s.position = "absolute";
+    s.visibility = "hidden";
+    s.left = "-99999px";
+    s.top = "0";
+    s.whiteSpace = "pre-wrap";
+    s.overflowWrap = cs.overflowWrap;
+    s.wordBreak = cs.wordBreak;
+    s.boxSizing = "content-box";
+    s.padding = "0";
+    s.border = "0";
+    s.width = Math.max(0, contentWidth) + "px";
+    s.fontFamily = cs.fontFamily;
+    s.fontSize = cs.fontSize;
+    s.fontWeight = cs.fontWeight;
+    s.fontStyle = cs.fontStyle;
+    s.lineHeight = cs.lineHeight;
+    s.letterSpacing = cs.letterSpacing;
+    s.tabSize = cs.tabSize;
+    document.body.appendChild(mirror);
+
+    const lines = source.value.split("\n");
+
+    // Height of the first `n` logical lines = pixel top of line `n`
+    // (relative to the content box). join() never adds a trailing newline,
+    // so n lines render as exactly n wrapped paragraphs.
+    function prefixHeight(n) {
+      if (n <= 0) return 0;
+      mirror.textContent = lines.slice(0, n).join("\n");
+      return mirror.scrollHeight;
+    }
+
+    return {
+      lineCount: lines.length,
+      // Top of a logical line in the textarea's scroll-space coordinates.
+      topOfLine(n) {
+        return paddingTop + prefixHeight(n);
+      },
+      // Visual height of a single logical line (may span several wrapped rows).
+      heightOfLine(n) {
+        return Math.max(1, prefixHeight(n + 1) - prefixHeight(n));
+      },
+      // Largest logical line whose top is at or above targetY (binary search;
+      // topOfLine is monotonic in n).
+      lineAtY(targetY) {
+        let lo = 0;
+        let hi = lines.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi + 1) >> 1;
+          if (this.topOfLine(mid) <= targetY) lo = mid;
+          else hi = mid - 1;
+        }
+        return lo;
+      },
+      destroy() {
+        document.body.removeChild(mirror);
+      },
+    };
   }
 
   window.__editorTestHelpers = { midViewportLine, centerScroll };

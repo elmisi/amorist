@@ -4,6 +4,38 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2026-05-27
+
+### Fixed
+- Source→WYSIWYG positioning no longer drifts upward ("text rises") on tall
+  multi-line blocks (code, tables, lists, wrapped paragraphs/blockquotes). The
+  WYSIWYG side previously anchored at block granularity (centring the block's
+  middle), which is off by up to half the block height when the source anchor
+  is mid-block. View switching now anchors on a *fractional* source line and
+  maps it through a piecewise-linear interpolation between block tops
+  (`blockKnots`/`interpolate`), so the line centred in one view stays centred
+  in the other. Verified across a document with every block type: round-trip
+  drift dropped from up to ~115 px (half a tall block) to 0 at most positions
+  and ≤ ~1 line at multi-line-block interiors.
+
+## [0.8.1] - 2026-05-27
+
+### Fixed
+- Source-view positioning (EL-173 follow-up): switching to/from the source view
+  no longer drifts by tens of lines on documents with long, soft-wrapped lines.
+  The source scroll math previously treated a Markdown source-line number as a
+  visual-row index, so any wrapped line desynchronised the two views (e.g. the
+  WYSIWYG centre line 80 landed on source line 39). Source capture/restore now
+  measure the true wrapped pixel offset of a logical line via a hidden mirror
+  (`makeSourceMeasurer`), so the line centred in one view is centred in the
+  other (verified in a real browser DOM: WYSIWYG→source drift 0, source→WYSIWYG
+  within one block).
+- Linux: suppressed the noisy startup warning "Disabled hardware acceleration
+  because GTK failed to initialize GL: Unable to create a GL context" on
+  machines without usable GL (VMs, remote/headless X). amorist now sets
+  `WEBKIT_DISABLE_COMPOSITING_MODE=1` at startup (overridable); accelerated
+  compositing brings no perceptible benefit to this text UI.
+
 ## [0.8.0] - 2026-05-27
 
 ### Changed

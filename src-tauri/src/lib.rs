@@ -501,6 +501,17 @@ fn resolve_file_arg(app: &App) -> Result<Option<PathBuf>, String> {
 }
 
 pub fn run() {
+    // WebKitGTK tries to create a GL context for accelerated compositing and
+    // prints a noisy "Disabled hardware acceleration ... Unable to create a GL
+    // context" warning when that fails (headless/VM/remote-X machines without
+    // usable GL). amorist is a lightweight text UI, so accelerated compositing
+    // brings no perceptible benefit; disable it on Linux to keep startup clean.
+    // Guarded so an explicit user-set value still wins.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_dialog::init())

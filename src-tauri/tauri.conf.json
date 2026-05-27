@@ -1,6 +1,6 @@
 {
   "productName": "amorist",
-  "version": "0.8.0",
+  "version": "0.8.2",
   "identifier": "dev.elmisi.amorist",
   "build": {
     "frontendDist": "../web"
