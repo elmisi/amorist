@@ -548,28 +548,33 @@
     }
 
     captureScrollPosition() {
+      // The anchor is a FRACTIONAL source line: the integer part is the source
+      // line, the fraction is how far into it (source side) / into its block
+      // (WYSIWYG side) the viewport centre falls. A WYSIWYG block can span many
+      // source lines (list, code, table, wrapped paragraph), so anchoring at
+      // block granularity drifts by up to half the block height; the fraction
+      // keeps both views aligned regardless of block height.
       if (this.mode === "source") {
         var measurer = makeSourceMeasurer(this.source);
         var targetY = this.source.scrollTop + this.source.clientHeight / 2;
         var line = measurer.lineAtY(targetY);
+        var h = measurer.heightOfLine(line);
+        var frac = h > 0 ? clamp((targetY - measurer.topOfLine(line)) / h, 0, 1) : 0;
         measurer.destroy();
         return {
-          line: line,
+          line: line + frac,
           progress: this.source.scrollHeight > 0 ? this.source.scrollTop / this.source.scrollHeight : 0,
         };
       }
 
-      var rect = this.surface.getBoundingClientRect();
-      var midY = rect.top + this.surface.clientHeight / 2;
-      var midBlock = Array.from(this.surface.children).find(function (child) {
-        var r = child.getBoundingClientRect();
-        return r.top <= midY && r.bottom > midY;
-      }) || Array.from(this.surface.children).find(function (child) {
-        return child.getBoundingClientRect().bottom > midY;
-      });
-
+      var totalLines = TextUtils.normalize(this.markdown || "").split("\n").length;
+      var knots = blockKnots(this.surface, totalLines);
+      if (!knots) {
+        return { line: 0, progress: 0 };
+      }
+      var midY = this.surface.scrollTop + this.surface.clientHeight / 2;
       return {
-        line: midBlock ? Number(midBlock.dataset.sourceLine || 0) : 0,
+        line: interpolate(knots, midY, "y", "line"),
         progress: this.surface.scrollHeight > 0 ? this.surface.scrollTop / this.surface.scrollHeight : 0,
       };
     }
@@ -580,19 +585,22 @@
 
       var restore = function () {
         if (self.mode === "source") {
-          // Measure the captured line's TRUE pixel position (accounting for
-          // soft-wrapped long lines) and center its middle in the viewport.
+          // Place the fractional anchor line at the viewport centre, measuring
+          // the line's TRUE wrapped pixel position.
           var measurer = makeSourceMeasurer(self.source);
-          var lineMiddle = measurer.topOfLine(position.line) + measurer.heightOfLine(position.line) / 2;
+          var lineFloor = Math.max(0, Math.floor(position.line));
+          var frac = position.line - lineFloor;
+          var anchorY = measurer.topOfLine(lineFloor) + frac * measurer.heightOfLine(lineFloor);
           measurer.destroy();
-          self.source.scrollTop = centerScroll(lineMiddle, self.source.clientHeight, self.source.scrollHeight);
+          self.source.scrollTop = centerScroll(anchorY, self.source.clientHeight, self.source.scrollHeight);
           return;
         }
 
-        var target = blockForSourceLine(self.surface, position.line);
-        if (target) {
-          var anchorTop = target.offsetTop + target.offsetHeight / 2;
-          self.surface.scrollTop = centerScroll(anchorTop, self.surface.clientHeight, self.surface.scrollHeight);
+        var totalLines = TextUtils.normalize(self.markdown || "").split("\n").length;
+        var knots = blockKnots(self.surface, totalLines);
+        if (knots) {
+          var anchorY = interpolate(knots, position.line, "line", "y");
+          self.surface.scrollTop = centerScroll(anchorY, self.surface.clientHeight, self.surface.scrollHeight);
           return;
         }
 
@@ -662,6 +670,43 @@
 
   function documentTop(element) {
     return element.getBoundingClientRect().top + window.scrollY;
+  }
+
+  function sortedBlocks(surface) {
+    return Array.from(surface.children)
+      .map((el) => ({ el, line: Number(el.dataset.sourceLine || 0) }))
+      .filter((b) => Number.isFinite(b.line))
+      .sort((a, b) => a.line - b.line);
+  }
+
+  // Piecewise-linear map between source lines and WYSIWYG pixel offsets, using
+  // each block's (sourceLine, offsetTop) as a knot plus a final knot at the
+  // bottom of the last block. Interpolating top-to-top (not within a block's
+  // own height) absorbs inter-block margins and blank source lines, so the
+  // mapping stays monotonic and continuous across block boundaries.
+  function blockKnots(surface, totalLines) {
+    const blocks = sortedBlocks(surface);
+    if (blocks.length === 0) return null;
+    const knots = blocks.map((b) => ({ line: b.line, y: b.el.offsetTop }));
+    const last = blocks[blocks.length - 1];
+    knots.push({
+      line: Math.max(last.line + 1, totalLines),
+      y: last.el.offsetTop + last.el.offsetHeight,
+    });
+    return knots;
+  }
+
+  function interpolate(knots, key, from, to) {
+    let i = 0;
+    for (let k = 0; k < knots.length - 1; k++) {
+      if (knots[k][from] <= key) i = k;
+      else break;
+    }
+    const a = knots[i];
+    const b = knots[i + 1] || knots[i];
+    const denom = b[from] - a[from];
+    const f = denom > 0 ? clamp((key - a[from]) / denom, 0, 1) : 0;
+    return a[to] + f * (b[to] - a[to]);
   }
 
   function blockForSourceLine(surface, line) {

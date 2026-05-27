@@ -4,6 +4,20 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2026-05-27
+
+### Fixed
+- Source→WYSIWYG positioning no longer drifts upward ("text rises") on tall
+  multi-line blocks (code, tables, lists, wrapped paragraphs/blockquotes). The
+  WYSIWYG side previously anchored at block granularity (centring the block's
+  middle), which is off by up to half the block height when the source anchor
+  is mid-block. View switching now anchors on a *fractional* source line and
+  maps it through a piecewise-linear interpolation between block tops
+  (`blockKnots`/`interpolate`), so the line centred in one view stays centred
+  in the other. Verified across a document with every block type: round-trip
+  drift dropped from up to ~115 px (half a tall block) to 0 at most positions
+  and ≤ ~1 line at multi-line-block interiors.
+
 ## [0.8.1] - 2026-05-27
 
 ### Fixed
