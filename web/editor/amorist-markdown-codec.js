@@ -91,7 +91,7 @@
           quote.push(lines[index].replace(/^>\s?/, ""));
           index += 1;
         }
-        blocks.push({ type: "quote", text: quote.join(" "), sourceLine });
+        blocks.push({ type: "quote", text: joinTextLines(quote), sourceLine });
         continue;
       }
 
@@ -118,10 +118,30 @@
         paragraph.push(lines[index]);
         index += 1;
       }
-      blocks.push({ type: "paragraph", text: paragraph.join(" "), sourceLine });
+      blocks.push({ type: "paragraph", text: joinTextLines(paragraph), sourceLine });
     }
 
     return blocks;
+  }
+
+  // Joins the lines of one block. A newline between them is a soft break, i.e. a
+  // space — that is what lets prose be wrapped in the source without the wrap
+  // reaching the reader. Only an explicit CommonMark marker (two trailing spaces
+  // or a trailing backslash) is a hard break, carried as "\n" in the block text
+  // and rendered as <br>.
+  function joinTextLines(lines) {
+    const parts = lines.map(splitHardBreak);
+    return parts.reduce((text, part, index) => (
+      index === 0 ? part.text : text + (parts[index - 1].hardBreak ? "\n" : " ") + part.text
+    ), "");
+  }
+
+  function splitHardBreak(line) {
+    const backslash = line.match(/^(.*)\\$/);
+    if (backslash) return { text: backslash[1], hardBreak: true };
+    const spaces = line.match(/^(.*\S) {2,}$/);
+    if (spaces) return { text: spaces[1], hardBreak: true };
+    return { text: line, hardBreak: false };
   }
 
   // A list line: leading indent, a marker, and the item's own text. The indent
@@ -255,6 +275,9 @@
   function renderInline(text) {
     const tokenizer = createInlineTokenizer();
     let source = TextUtils.escapeHtml(text);
+    // Held before the inline passes so the constructs around a break match across
+    // it, and so the tag itself never reaches those regexes as raw text.
+    source = source.replace(/\n/g, () => tokenizer.hold("<br>"));
     source = source.replace(/`([^`]+)`/g, (_, code) => tokenizer.hold(`<code>${code}</code>`));
     source = source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) =>
       tokenizer.hold(`<a href="${TextUtils.escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`),
@@ -275,7 +298,7 @@
   function serializeBlock(element, lines) {
     const tag = element.tagName;
     if (/^H[1-6]$/.test(tag)) {
-      lines.push(`${"#".repeat(Number(tag.slice(1)))} ${inlineMarkdown(element)}`);
+      lines.push(`${"#".repeat(Number(tag.slice(1)))} ${withoutHardBreaks(inlineMarkdown(element))}`);
       return;
     }
     if (tag === "HR") {
@@ -283,7 +306,7 @@
       return;
     }
     if (tag === "BLOCKQUOTE") {
-      lines.push(`> ${inlineMarkdown(element)}`);
+      lines.push(withHardBreaks(inlineMarkdown(element), "> "));
       return;
     }
     if (tag === "PRE") {
@@ -302,7 +325,26 @@
       Array.from(element.children).forEach((child) => serializeBlock(child, lines));
       return;
     }
-    lines.push(inlineMarkdown(element));
+    lines.push(withHardBreaks(inlineMarkdown(element), ""));
+  }
+
+  // Markdown writes a hard break as two trailing spaces. Block text carries breaks
+  // as "\n", and each block re-applies its own prefix to the continuation: a bare
+  // newline would drop the continuation out of the block — an unquoted second line
+  // stops being part of the quote — instead of breaking the line inside it.
+  function withHardBreaks(text, prefix, continuation = prefix) {
+    return text
+      .split("\n")
+      .map((line, index) => (index === 0 ? prefix : continuation) + line)
+      .join("  \n");
+  }
+
+  // Blocks that are a single line by construction. A heading has no second line,
+  // and a list item's continuation would need lazy-continuation parsing that this
+  // codec does not have — writing one would come back as a separate paragraph and
+  // tear the item apart, so the break degrades to a space instead.
+  function withoutHardBreaks(text) {
+    return text.replace(/\n/g, " ");
   }
 
   // Returns the list's lines rather than pushing them as a block, so a sublist
@@ -317,7 +359,7 @@
       if (item.tagName !== "LI") return;
       number += 1;
       const marker = ordered ? `${number}. ` : "- ";
-      lines.push(`${indent}${marker}${listItemMarkdown(item)}`);
+      lines.push(`${indent}${marker}${withoutHardBreaks(listItemMarkdown(item))}`);
       Array.from(item.children).forEach((child) => {
         if (child.tagName === "UL" || child.tagName === "OL") {
           lines.push(...serializeList(child, indent + " ".repeat(marker.length)));

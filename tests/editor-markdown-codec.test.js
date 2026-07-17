@@ -323,4 +323,76 @@ assert.equal(
   "- [x] todo\n  - sub",
 );
 
+// Hard line breaks. Inside a paragraph a newline is a soft break — a space —
+// which is what lets prose be wrapped in the source without the wrap showing up
+// in the output. Only an explicit marker forces a <br>: two trailing spaces or
+// a trailing backslash. The backslash form used to leak into the rendered text.
+assert.equal(
+  codec.renderMarkdown("Date: 2026-07-17\nStatus: ok"),
+  '<p data-source-line="0">Date: 2026-07-17 Status: ok</p>',
+);
+assert.equal(
+  codec.renderMarkdown("Date: 2026-07-17  \nStatus: ok"),
+  '<p data-source-line="0">Date: 2026-07-17<br>Status: ok</p>',
+);
+assert.equal(
+  codec.renderMarkdown("Date: 2026-07-17\\\nStatus: ok"),
+  '<p data-source-line="0">Date: 2026-07-17<br>Status: ok</p>',
+);
+assert.equal(
+  codec.renderMarkdown("> quoted  \n> break"),
+  '<blockquote data-source-line="0">quoted<br>break</blockquote>',
+);
+// Trailing spaces on the last line of a paragraph are not a break — there is no
+// following line to break from.
+assert.equal(
+  codec.renderMarkdown("only line  "),
+  '<p data-source-line="0">only line</p>',
+);
+// A break must survive the inline tokenizer rather than being swallowed by, or
+// swallowing, the constructs around it.
+assert.equal(
+  codec.renderMarkdown("**bold**  \n`code`"),
+  '<p data-source-line="0"><strong>bold</strong><br><code>code</code></p>',
+);
+
+// The editor's own Shift+Enter must round-trip. It used to serialize as a bare
+// newline, which the parser then read back as a space: the break was silently
+// lost on the first save or mode switch.
+const breakSurface = {
+  children: [element("P", [textNode("Date: 2026-07-17"), element("BR"), textNode("Status: ok")])],
+};
+assert.equal(codec.serializeBlocks(breakSurface), "Date: 2026-07-17  \nStatus: ok");
+assert.equal(
+  codec.renderMarkdown(codec.serializeBlocks(breakSurface)),
+  '<p data-source-line="0">Date: 2026-07-17<br>Status: ok</p>',
+);
+
+// A break inside a quote has to keep the continuation quoted, or the second line
+// would fall out of the blockquote entirely on reload.
+assert.equal(
+  codec.serializeBlocks({
+    children: [element("BLOCKQUOTE", [textNode("quoted"), element("BR"), textNode("break")])],
+  }),
+  "> quoted  \n> break",
+);
+
+// A list item cannot carry a hard break: the parser has no lazy-continuation
+// support, so "- a  \n  b" would come back as a list plus a paragraph. Collapsing
+// to a space loses the break but keeps the document's structure — previously this
+// wrote a bare newline and did split the item apart.
+assert.equal(
+  codec.serializeBlocks({
+    children: [element("UL", [element("LI", [textNode("a"), element("BR"), textNode("b")])])],
+  }),
+  "- a b",
+);
+// Same for a heading, which is a single line by construction.
+assert.equal(
+  codec.serializeBlocks({
+    children: [element("H2", [textNode("a"), element("BR"), textNode("b")])],
+  }),
+  "## a b",
+);
+
 console.log("editor-markdown-codec.test.js passed");

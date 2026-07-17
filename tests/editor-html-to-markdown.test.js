@@ -23,4 +23,15 @@ assert.equal(H._isUnwrapped("STRONG"), false);
 assert.equal(H._cleanupMarkdown("a\n\n\n\nb\n\n"), "a\n\nb");
 assert.equal(H._cleanupMarkdown("   \n\nhi  "), "hi");
 
+// Two trailing spaces are a hard line break, not stray whitespace: stripping
+// them would destroy every <br> on the paste path, the one route where pasted
+// HTML turns into Markdown.
+assert.equal(H._cleanupMarkdown("a  \nb"), "a  \nb");
+assert.equal(H._cleanupMarkdown("a   \nb"), "a  \nb");
+// A single trailing space carries no meaning, so it is still noise.
+assert.equal(H._cleanupMarkdown("a \nb"), "a\nb");
+assert.equal(H._cleanupMarkdown("a\t\nb"), "a\nb");
+// Whitespace-only lines are blank lines, not breaks.
+assert.equal(H._cleanupMarkdown("a\n  \nb"), "a\n\nb");
+
 console.log("html-to-markdown pure helpers OK");

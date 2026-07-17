@@ -18,7 +18,15 @@
   }
 
   function cleanupMarkdown(md) {
-    return md.replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+    // Trailing whitespace is noise except in one case: two spaces after text are
+    // a hard line break. Stripping indiscriminately would erase every <br> that
+    // serializeBlocks just wrote, which is the whole point of the paste path.
+    return md
+      .split("\n")
+      .map((line) => (/\S {2,}$/.test(line) ? line.replace(/[ \t]*$/, "  ") : line.replace(/[ \t]+$/, "")))
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
 
   const INLINE_TAGS = new Set(["A", "B", "STRONG", "I", "EM", "CODE", "BR", "SUB", "SUP"]);

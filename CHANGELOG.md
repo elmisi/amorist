@@ -13,6 +13,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   view. A sublist inherits its parent list's type and classes, and outdenting
   keeps the items that followed underneath the item that moved out, rather than
   re-attaching them to the item above.
+- Hard line breaks are honoured: a line ending in two spaces or a backslash
+  renders as `<br>`, in paragraphs and blockquotes. A plain newline stays a soft
+  break (a space), as in CommonMark and on GitHub, so prose wrapped in the source
+  keeps rendering as one paragraph.
 
 ### Fixed
 - An indented list no longer collapses onto a single line. Every list pattern
@@ -28,6 +32,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   text (`.amorist-task-item` lays out as a flex row), and a sublist of a task
   list now indents instead of inheriting the zeroed padding that aligns
   top-level checkboxes with the left text margin.
+- A line break typed with Shift+Enter is no longer lost on save. The editor
+  produced a `<br>`, the serializer wrote it as a bare newline, and the parser
+  read that back as a space — the break vanished on the first save or mode
+  switch. `<br>` now serializes as a hard break, and a break inside a quote keeps
+  its continuation quoted instead of falling out of the blockquote.
+- A trailing backslash no longer leaks into the rendered text: it was printed
+  literally instead of being read as a hard break.
+- Pasting no longer strips hard breaks: the paste path removed trailing
+  whitespace indiscriminately, which erased the very `  ` markers the serializer
+  had just written.
 
 ## [0.8.2] - 2026-05-27
 
