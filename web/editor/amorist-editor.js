@@ -285,6 +285,8 @@
         this.editing.applySpaceMarkdownShortcut(event);
       } else if (event.key === "Enter") {
         this.editing.applyEnterMarkdownShortcut(event);
+      } else if (event.key === "Tab") {
+        this.editing.applyListIndent(event);
       }
     }
 

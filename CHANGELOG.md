@@ -4,6 +4,45 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-07-17
+
+### Added
+- Nested lists are parsed, rendered and serialized at any depth, in any
+  combination of bullet, ordered and task lists.
+- `Tab` / `Shift-Tab` indent and outdent the current list item in the WYSIWYG
+  view. A sublist inherits its parent list's type and classes, and outdenting
+  keeps the items that followed underneath the item that moved out, rather than
+  re-attaching them to the item above.
+- Hard line breaks are honoured: a line ending in two spaces or a backslash
+  renders as `<br>`, in paragraphs and blockquotes. A plain newline stays a soft
+  break (a space), as in CommonMark and on GitHub, so prose wrapped in the source
+  keeps rendering as one paragraph.
+
+### Fixed
+- An indented list no longer collapses onto a single line. Every list pattern
+  was anchored at column 0, so an indented item matched none of them and fell
+  through to the paragraph branch, which joins its lines with a space — a
+  nested `1.`/`2.`/`3.` list rendered as one run-on paragraph. The parser now
+  tracks indentation: a deeper marker becomes a sublist of the item above it.
+- The WYSIWYG→Markdown serializer no longer flattens a sublist into its parent
+  item's line (`inlineMarkdown` spliced in the sublist's text with its markers
+  dropped). Since Markdown is the source of truth, this would have corrupted a
+  nested list on the first save or mode switch.
+- A sublist inside a task item no longer renders as a column beside the item's
+  text (`.amorist-task-item` lays out as a flex row), and a sublist of a task
+  list now indents instead of inheriting the zeroed padding that aligns
+  top-level checkboxes with the left text margin.
+- A line break typed with Shift+Enter is no longer lost on save. The editor
+  produced a `<br>`, the serializer wrote it as a bare newline, and the parser
+  read that back as a space — the break vanished on the first save or mode
+  switch. `<br>` now serializes as a hard break, and a break inside a quote keeps
+  its continuation quoted instead of falling out of the blockquote.
+- A trailing backslash no longer leaks into the rendered text: it was printed
+  literally instead of being read as a hard break.
+- Pasting no longer strips hard breaks: the paste path removed trailing
+  whitespace indiscriminately, which erased the very `  ` markers the serializer
+  had just written.
+
 ## [0.8.2] - 2026-05-27
 
 ### Fixed

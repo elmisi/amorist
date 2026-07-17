@@ -56,8 +56,14 @@ jobs:
           key: ${{ matrix.os }}-${{ matrix.target }}
 
       - name: Install Tauri CLI
+        env:
+          # Pinned deliberately. tauri-apps/tauri is a monorepo publishing several
+          # release trains, and "latest" is simply whichever was cut last: it points
+          # at a tauri-vX.Y.Z core release (no CLI assets) as often as at a CLI one,
+          # which 404s this download. Bump this tag to update the CLI.
+          TAURI_CLI_TAG: tauri-cli-v2.11.4
         run: |
-          url="https://github.com/tauri-apps/tauri/releases/latest/download/${{ matrix.tauri_cli_asset }}"
+          url="https://github.com/tauri-apps/tauri/releases/download/$TAURI_CLI_TAG/${{ matrix.tauri_cli_asset }}"
           dest="$HOME/.cargo/bin"
           mkdir -p "$dest"
           case "${{ matrix.tauri_cli_asset }}" in

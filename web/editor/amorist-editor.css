@@ -198,10 +198,25 @@
   padding-left: 0;
 }
 
+/* A sublist indents even when its parent is a task list, whose own padding is
+   zeroed so top-level checkboxes align with the left text margin. */
+.amorist-editor-surface li > ul,
+.amorist-editor-surface li > ol {
+  padding-left: 1.6em;
+}
+
 .amorist-task-item {
   align-items: baseline;
   display: flex;
+  flex-wrap: wrap;
   gap: 9px;
+}
+
+/* The item lays out as a checkbox/content row, so a sublist has to be forced
+   onto its own line — otherwise it becomes a third column beside the content. */
+.amorist-task-item > ul,
+.amorist-task-item > ol {
+  flex-basis: 100%;
 }
 
 .amorist-task-checkbox {
