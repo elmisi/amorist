@@ -95,42 +95,10 @@
         continue;
       }
 
-      if (/^[-*+]\s+\[[ xX]\]\s+/.test(line)) {
-        const items = [];
-        while (index < lines.length) {
-          if (lines[index].trim() === "" && index + 1 < lines.length && /^[-*+]\s+\[[ xX]\]\s+/.test(lines[index + 1])) { index += 1; continue; }
-          const task = lines[index].match(/^[-*+]\s+\[([ xX])\]\s+(.*)$/);
-          if (!task) break;
-          items.push({ checked: task[1].trim().toLowerCase() === "x", text: task[2] });
-          index += 1;
-        }
-        blocks.push({ type: "taskList", items, sourceLine });
-        continue;
-      }
-
-      if (/^[-*+]\s+/.test(line)) {
-        const items = [];
-        while (index < lines.length) {
-          if (lines[index].trim() === "" && index + 1 < lines.length && /^[-*+]\s+/.test(lines[index + 1]) && !/^[-*+]\s+\[[ xX]\]\s+/.test(lines[index + 1])) { index += 1; continue; }
-          const bullet = lines[index].match(/^[-*+]\s+(.*)$/);
-          if (!bullet || /^[-*+]\s+\[[ xX]\]\s+/.test(lines[index])) break;
-          items.push(bullet[1]);
-          index += 1;
-        }
-        blocks.push({ type: "bulletList", items, sourceLine });
-        continue;
-      }
-
-      if (/^\d+\.\s+/.test(line)) {
-        const items = [];
-        while (index < lines.length) {
-          if (lines[index].trim() === "" && index + 1 < lines.length && /^\d+\.\s+/.test(lines[index + 1])) { index += 1; continue; }
-          const ordered = lines[index].match(/^\d+\.\s+(.*)$/);
-          if (!ordered) break;
-          items.push(ordered[1]);
-          index += 1;
-        }
-        blocks.push({ type: "orderedList", items, sourceLine });
+      if (matchListItem(line)) {
+        const list = parseList(lines, index);
+        blocks.push(list.block);
+        index = list.nextIndex;
         continue;
       }
 
@@ -156,13 +124,68 @@
     return blocks;
   }
 
+  // A list line: leading indent, a marker, and the item's own text. The indent
+  // is what makes nesting work — it is the only thing distinguishing a sublist
+  // from a sibling item, so it must be captured rather than anchored away.
+  function matchListItem(line) {
+    const match = line.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+    if (!match) return null;
+    const bullet = match[2] !== "" && !/\d/.test(match[2]);
+    const task = bullet ? match[3].match(/^\[([ xX])\]\s+(.*)$/) : null;
+    return {
+      indent: match[1].length,
+      type: task ? "taskList" : (bullet ? "bulletList" : "orderedList"),
+      checked: Boolean(task) && task[1].toLowerCase() === "x",
+      text: task ? task[2] : match[3],
+    };
+  }
+
+  // Consumes one list, recursing into sublists. Items are collected while the
+  // marker stays at the list's own indent; anything deeper becomes a child of
+  // the item above it, anything shallower (or a different marker type) ends the
+  // list and is left for the caller.
+  function parseList(lines, start) {
+    const first = matchListItem(lines[start]);
+    const listIndent = first.indent;
+    const block = { type: first.type, items: [], sourceLine: start };
+    let index = start;
+
+    while (index < lines.length) {
+      let probe = index;
+      while (probe < lines.length && !lines[probe].trim()) probe += 1;
+      if (probe >= lines.length) break;
+
+      const item = matchListItem(lines[probe]);
+      if (!item || item.indent < listIndent) break;
+
+      if (item.indent > listIndent) {
+        if (block.items.length === 0) break;
+        const nested = parseList(lines, probe);
+        block.items[block.items.length - 1].children.push(nested.block);
+        index = nested.nextIndex;
+        continue;
+      }
+
+      if (item.type !== block.type) break;
+      block.items.push(makeListItem(block.type, item));
+      index = probe + 1;
+    }
+
+    return { block, nextIndex: index };
+  }
+
+  function makeListItem(type, item) {
+    return type === "taskList"
+      ? { checked: item.checked, text: item.text, children: [] }
+      : { text: item.text, children: [] };
+  }
+
   function isBlockStart(lines, index) {
     const line = Array.isArray(lines) ? lines[index] : lines;
     return /^(#{1,6})\s+/.test(line) ||
       /^ {0,3}(`{3,}|~{3,})/.test(line) ||
       /^>\s?/.test(line) ||
-      /^[-*+]\s+/.test(line) ||
-      /^\d+\.\s+/.test(line) ||
+      Boolean(matchListItem(line)) ||
       HR_PATTERN.test(line) ||
       (Array.isArray(lines) && TableCodec.isTableStart(lines, index));
   }
@@ -182,15 +205,23 @@
         return `<pre class="amorist-markdown-table" data-block-type="table"${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "taskList":
         return `<ul class="amorist-task-list"${attrs}>${block.items.map((item) =>
-          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text)}</span></li>`,
+          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text)}</span>${renderSublists(item)}</li>`,
         ).join("")}</ul>`;
       case "bulletList":
-        return `<ul${attrs}>${block.items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ul>`;
+        return `<ul${attrs}>${block.items.map(renderListItem).join("")}</ul>`;
       case "orderedList":
-        return `<ol${attrs}>${block.items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</ol>`;
+        return `<ol${attrs}>${block.items.map(renderListItem).join("")}</ol>`;
       default:
         return `<p${attrs}>${renderInline(block.text)}</p>`;
     }
+  }
+
+  function renderListItem(item) {
+    return `<li>${renderInline(item.text)}${renderSublists(item)}</li>`;
+  }
+
+  function renderSublists(item) {
+    return (item.children || []).map(renderBlock).join("");
   }
 
   function sourceLineAttr(block) {
@@ -263,25 +294,8 @@
       lines.push(`\`\`\`\n${element.textContent.replace(/\n$/, "")}\n\`\`\``);
       return;
     }
-    if (tag === "UL") {
-      const items = [];
-      Array.from(element.children).forEach((item) => {
-        if (item.classList.contains("amorist-task-item")) {
-          const checked = item.dataset.checked === "true" ? "x" : " ";
-          items.push(`- [${checked}] ${inlineMarkdown(item.querySelector(".amorist-task-content") || item)}`);
-        } else {
-          items.push(`- ${inlineMarkdown(item)}`);
-        }
-      });
-      lines.push(items.join("\n"));
-      return;
-    }
-    if (tag === "OL") {
-      const items = [];
-      Array.from(element.children).forEach((item, index) => {
-        items.push(`${index + 1}. ${inlineMarkdown(item)}`);
-      });
-      lines.push(items.join("\n"));
+    if (tag === "UL" || tag === "OL") {
+      lines.push(serializeList(element, "").join("\n"));
       return;
     }
     if (tag === "DIV" && BLOCK_TAGS.has(element.firstElementChild?.tagName || "")) {
@@ -289,6 +303,34 @@
       return;
     }
     lines.push(inlineMarkdown(element));
+  }
+
+  // Returns the list's lines rather than pushing them as a block, so a sublist
+  // stays glued to its parent item instead of being separated by a blank line.
+  // Children indent to the parent marker's content column, which is what keeps
+  // them nested (and not siblings) when the Markdown is parsed back.
+  function serializeList(element, indent) {
+    const ordered = element.tagName === "OL";
+    const lines = [];
+    let number = 0;
+    Array.from(element.children).forEach((item) => {
+      if (item.tagName !== "LI") return;
+      number += 1;
+      const marker = ordered ? `${number}. ` : "- ";
+      lines.push(`${indent}${marker}${listItemMarkdown(item)}`);
+      Array.from(item.children).forEach((child) => {
+        if (child.tagName === "UL" || child.tagName === "OL") {
+          lines.push(...serializeList(child, indent + " ".repeat(marker.length)));
+        }
+      });
+    });
+    return lines;
+  }
+
+  function listItemMarkdown(item) {
+    if (!item.classList.contains("amorist-task-item")) return inlineMarkdown(item);
+    const checked = item.dataset.checked === "true" ? "x" : " ";
+    return `[${checked}] ${inlineMarkdown(item.querySelector(".amorist-task-content") || item)}`;
   }
 
   function inlineMarkdown(node) {
@@ -318,6 +360,12 @@
           break;
         case "BR":
           output += "\n";
+          break;
+        case "UL":
+        case "OL":
+          // A sublist inside a list item is a block, not inline content:
+          // serializeList emits it with its own indent. Falling through to the
+          // default here would splice its text into the parent item's line.
           break;
         default:
           output += inlineMarkdown(element);

@@ -193,6 +193,18 @@
       return false;
     }
 
+    function applyListIndent(event) {
+      const block = currentSelectionBlock(surface);
+      if (!block || block.tagName !== "LI") return false;
+      // Inside a list, Tab always means "change nesting" — never "move focus out
+      // of the editor" — so it is consumed even when the item cannot move.
+      event.preventDefault();
+      if (event.shiftKey ? outdentListItem(block) : indentListItem(block)) {
+        notifyChanged();
+      }
+      return true;
+    }
+
     function insertPlainText(text) {
       document.execCommand("insertText", false, text);
       notifyChanged();
@@ -203,6 +215,7 @@
       applySpaceMarkdownShortcut,
       applyEnterMarkdownShortcut,
       applyInlineMarkdownShortcut,
+      applyListIndent,
       insertPlainText,
     };
   }
@@ -339,6 +352,51 @@
     if (afterList.children.length) nodes.push(afterList);
     list.replaceWith(...nodes);
     return replacement;
+  }
+
+  function isListTag(tagName) {
+    return tagName === "UL" || tagName === "OL";
+  }
+
+  // A sublist has to live inside the item above it, so the first item of a list
+  // has nowhere to indent to. The sublist inherits the parent list's tag and
+  // classes, keeping ordered/bullet/task nature across levels.
+  function indentListItem(item) {
+    const list = item.parentElement;
+    if (!list || !isListTag(list.tagName)) return false;
+    const previous = item.previousElementSibling;
+    if (!previous || previous.tagName !== "LI") return false;
+
+    let sublist = previous.lastElementChild;
+    if (!sublist || !isListTag(sublist.tagName)) {
+      sublist = cloneListShell(list);
+      previous.append(sublist);
+    }
+    sublist.append(item);
+    return true;
+  }
+
+  function outdentListItem(item) {
+    const list = item.parentElement;
+    if (!list || !isListTag(list.tagName)) return false;
+    const parentItem = list.parentElement;
+    if (!parentItem || parentItem.tagName !== "LI") return false;
+
+    const following = [];
+    for (let sibling = item.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
+      following.push(sibling);
+    }
+
+    parentItem.after(item);
+    // Items that followed keep their depth relative to the one that moved out,
+    // rather than silently re-attaching to the item above them.
+    if (following.length) {
+      const sublist = cloneListShell(list);
+      following.forEach((node) => sublist.append(node));
+      item.append(sublist);
+    }
+    if (!list.children.length) list.remove();
+    return true;
   }
 
   function cloneListShell(list) {

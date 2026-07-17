@@ -29,6 +29,7 @@ async function run() {
   await runCloseIdleTabCheck();
   await runEditCheck();
   await runUndoFindCheck();
+  await runListIndentCheck();
   console.log("app-shell-smoke.test.js passed");
 }
 
@@ -301,6 +302,111 @@ function waitForEditorScript() {
     });
     return true;
   }})()`;
+}
+
+// Tab / Shift-Tab drive list nesting in the WYSIWYG surface. Asserting on the
+// saved file (not just the DOM) covers the whole chain: the keyboard handler
+// restructures the list, the serializer indents it, and the parser reads the
+// nesting back on reload.
+async function runListIndentCheck() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-smoke-indent-"));
+  const markdownPath = path.join(tempDir, "indent.md");
+  fs.writeFileSync(markdownPath, "- one\n- two\n- three\n", "utf8");
+
+  let server;
+  let chrome;
+  let pageSocket;
+  try {
+    server = await startAmorist(markdownPath);
+    chrome = await startChrome(browser, tempDir);
+    const page = await openPage(chrome.debuggingUrl, server.url);
+    pageSocket = await WebSocketConnection.open(page.webSocketDebuggerUrl);
+
+    const indented = await evaluateWithNavigationRetry(pageSocket, listIndentBrowserScript("indent"));
+    if (indented.exceptionDetails) {
+      throw new Error(indented.exceptionDetails.text || "List indent check failed.");
+    }
+    assert.equal(indented.result.value.nestedItem, "two");
+    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n  - two\n- three");
+
+    const outdented = await evaluateWithNavigationRetry(pageSocket, listIndentBrowserScript("outdent"));
+    if (outdented.exceptionDetails) {
+      throw new Error(outdented.exceptionDetails.text || "List outdent check failed.");
+    }
+    assert.equal(outdented.result.value.topLevelItems, 3);
+    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n- two\n- three");
+  } finally {
+    if (pageSocket) pageSocket.close();
+    if (chrome) await terminate(chrome.process);
+    if (server) await terminate(server.process);
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+}
+
+function listIndentBrowserScript(step) {
+  return `(${async function (mode) {
+    function waitFor(predicate, label) {
+      return new Promise((resolve, reject) => {
+        const deadline = Date.now() + 10000;
+        const tick = () => {
+          if (predicate()) {
+            resolve();
+            return;
+          }
+          if (Date.now() > deadline) {
+            reject(new Error(`Timed out waiting for ${label}`));
+            return;
+          }
+          setTimeout(tick, 50);
+        };
+        tick();
+      });
+    }
+
+    function caretAtEndOf(item) {
+      const target = item.firstChild || item;
+      const range = document.createRange();
+      range.setStart(target, target.nodeType === 3 ? target.textContent.length : 0);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    function pressTab(item, shiftKey) {
+      item.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true }));
+    }
+
+    async function save() {
+      await waitFor(() => document.body.classList.contains("is-dirty"), "dirty state");
+      document.getElementById("save-button").click();
+      await waitFor(
+        () => !document.body.classList.contains("is-dirty") && document.getElementById("status").textContent === "Saved",
+        "save",
+      );
+    }
+
+    await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
+    const surface = document.querySelector(".amorist-editor-surface");
+
+    if (mode === "indent") {
+      const second = surface.querySelectorAll("li")[1];
+      caretAtEndOf(second);
+      pressTab(second, false);
+      const nested = surface.querySelector("ul > li > ul > li");
+      if (!nested) throw new Error("Tab did not nest the item under the one above it.");
+      await save();
+      return { nestedItem: nested.textContent.trim() };
+    }
+
+    const nested = surface.querySelector("ul > li > ul > li");
+    if (!nested) throw new Error("Expected a nested item to outdent.");
+    caretAtEndOf(nested);
+    pressTab(nested, true);
+    if (surface.querySelector("ul > li > ul")) throw new Error("Shift-Tab left the sublist in place.");
+    await save();
+    return { topLevelItems: surface.querySelectorAll("ul > li").length };
+  }})(${JSON.stringify(step)})`;
 }
 
 function browserScript() {
