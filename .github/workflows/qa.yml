@@ -59,10 +59,14 @@ jobs:
           }
 
       - name: Run the QA suite on both engines
+        id: suite
         run: xvfb-run -a node tests/qa/run.js
 
       - name: Keep the report even when the suite is red
-        if: always()
+        # Only when the suite actually ran. Demanding a report from a job that
+        # failed before starting it would add a second, misleading red step on
+        # top of the real cause.
+        if: always() && steps.suite.conclusion != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: qa-report

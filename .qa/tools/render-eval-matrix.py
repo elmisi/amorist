@@ -8,7 +8,9 @@ declares, and refuses to report success when one is missing.
 """
 import json, yaml, collections, pathlib
 
-root = pathlib.Path("/home/alessandro/elmisi/amorist/.qa")
+# Relative to this file, never to a machine. An absolute path here worked on
+# the desk it was written on and failed on the first runner that used it.
+root = pathlib.Path(__file__).resolve().parent.parent
 contract = yaml.safe_load((root / "qa-contract.yaml").read_text())
 register = yaml.safe_load((root / "risk-register.yaml").read_text())
 
