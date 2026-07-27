@@ -1,0 +1,287 @@
+{
+  "status": "approved",
+  "approvedOn": "2026-07-28",
+  "generatedFrom": "qa-contract.yaml",
+  "requirements": [
+    {
+      "id": "REQ-A1",
+      "statement": "Open any .md file, type one character, delete it, save. The file on disk must be byte-identical to what it was before.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-001",
+        "R-002",
+        "R-003",
+        "R-004",
+        "R-010",
+        "R-012",
+        "R-014"
+      ]
+    },
+    {
+      "id": "REQ-A2",
+      "statement": "After a real edit, only the edited line may differ between the file before and the file after. No other line may change.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-005",
+        "R-006",
+        "R-010",
+        "R-013"
+      ]
+    },
+    {
+      "id": "REQ-A3",
+      "statement": "A region the user touched but whose content ended up unchanged must be written back exactly as it was in the file, including its line wrapping.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-005"
+      ]
+    },
+    {
+      "id": "REQ-A4",
+      "statement": "Invisible characters are preserved verbatim: trailing spaces stay, a file that ended with a newline keeps it, a file that did not does not gain one. amorist never tidies up.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-014"
+      ]
+    },
+    {
+      "id": "REQ-A5",
+      "statement": "Markdown constructs amorist does not understand pass through untouched. They are copied verbatim from the original source and are never reparsed or re-emitted.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-002",
+        "R-003",
+        "R-004",
+        "R-006"
+      ]
+    },
+    {
+      "id": "REQ-A6",
+      "statement": "Table spacing is preserved as found in the file. No column re-alignment happens on open or on save.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-012"
+      ]
+    },
+    {
+      "id": "REQ-A7",
+      "statement": "List markers and numbering are preserved as the author wrote them. A list written with \"*\" stays \"*\"; a list numbered \"1. 1. 1.\" keeps it.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-013"
+      ]
+    },
+    {
+      "id": "REQ-A8",
+      "statement": "The information string on a fenced code block (the language tag) is preserved, along with the fence character and length.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-001"
+      ]
+    },
+    {
+      "id": "REQ-A9",
+      "statement": "The file's line-ending convention is preserved: a CRLF file stays CRLF, an LF file stays LF, and a file with mixed endings is not normalised.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": "partially",
+      "risks": [
+        "R-010"
+      ]
+    },
+    {
+      "id": "REQ-A10",
+      "statement": "Switching between WYSIWYG and source, any number of times and in any order, leaves the document byte-identical. Saving after a switch with no edit produces the original file.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "A",
+      "currentlyHolds": false,
+      "risks": [
+        "R-002",
+        "R-007",
+        "R-012"
+      ]
+    },
+    {
+      "id": "REQ-B1",
+      "statement": "Every line of the file is shown as its own line in the WYSIWYG view. Soft breaks are not collapsed into spaces.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": false,
+      "risks": [
+        "R-005",
+        "R-015"
+      ]
+    },
+    {
+      "id": "REQ-B2",
+      "statement": "Typing lengthens the current line. It never moves the other lines of the same paragraph.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": false,
+      "risks": [
+        "R-005"
+      ]
+    },
+    {
+      "id": "REQ-B3",
+      "statement": "Enter inserts a bare newline at the caret. It does not create a paragraph break and never writes the two-space hard break.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": false,
+      "risks": [
+        "R-015"
+      ]
+    },
+    {
+      "id": "REQ-C1",
+      "statement": "Switching between WYSIWYG and source leaves the caret on the same character of the text, in both directions. Column numbers may differ where the file contains markers the WYSIWYG does not display.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "C",
+      "currentlyHolds": false,
+      "risks": [
+        "R-007",
+        "R-011"
+      ]
+    },
+    {
+      "id": "REQ-D1",
+      "statement": "Content pasted from another application never disappears silently. What amorist cannot convert must still reach the file in a readable form.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "D",
+      "currentlyHolds": false,
+      "risks": [
+        "R-008"
+      ]
+    },
+    {
+      "id": "REQ-E1",
+      "statement": "Work not yet saved survives an abrupt termination. A working copy is written periodically to amorist's own location and offered for recovery on the next start.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "E",
+      "currentlyHolds": false,
+      "risks": [
+        "R-009"
+      ]
+    },
+    {
+      "id": "REQ-E2",
+      "statement": "amorist never writes to the user's .md file except on an explicit save. The working copy of REQ-E1 is written elsewhere.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "E",
+      "currentlyHolds": true,
+      "risks": [
+        "R-010"
+      ]
+    },
+    {
+      "id": "REQ-F1",
+      "statement": "The file is written atomically. A failure during the write leaves the original file intact and leaves no partial file behind.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "F",
+      "currentlyHolds": true,
+      "risks": [
+        "R-009"
+      ]
+    },
+    {
+      "id": "REQ-F2",
+      "statement": "A file modified outside amorist since it was opened is detected on save, and is never overwritten without an explicit user confirmation.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "F",
+      "currentlyHolds": true,
+      "risks": [
+        "R-009"
+      ]
+    },
+    {
+      "id": "REQ-G1",
+      "statement": "A check that cannot execute is a failure, never a pass. Missing browser, missing corpus, empty fixture directory: the runner exits non-zero and says which check could not run.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "G",
+      "currentlyHolds": false,
+      "risks": [
+        "R-016"
+      ]
+    },
+    {
+      "id": "REQ-G2",
+      "statement": "The editor checks run on the engine the product actually ships with, not only on a stand-in. On Linux that is WebKitGTK, driven through its own WebDriver server. Every check in families A, B, C and D runs unchanged on both engines and must pass on both.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "G",
+      "currentlyHolds": false,
+      "risks": [
+        "R-017"
+      ]
+    },
+    {
+      "id": "REQ-G3",
+      "statement": "Every report names the engines actually exercised, and names any published platform that automation does not reach, together with the cadence and the owner of its manual pass.",
+      "severity": "advisory",
+      "verification": "manual",
+      "automation": "manual",
+      "family": "G",
+      "currentlyHolds": false,
+      "risks": [
+        "R-017"
+      ]
+    }
+  ]
+}

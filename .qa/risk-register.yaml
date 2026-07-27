@@ -1,0 +1,268 @@
+# amorist — risk register
+#
+# Companion to .qa/qa-contract.yaml (status: proposed). Every risk here was
+# reproduced against the repository at commit a9d7e73 — the reproductions are in
+# .qa/risks.yaml, which is the raw Discovery log. This file is the mapping:
+# risk -> the requirement(s) that must fail when the risk is present.
+#
+# Audit rule: a risk with an empty verification_ids list is an uncovered risk,
+# whatever the suite reports.
+
+risks:
+  - id: R-001
+    title: Code fence language tag discarded at parse time
+    source: repo-evidence
+    consequence: >
+      Every round trip strips the language from every fenced code block. Silent
+      and irreversible.
+    likelihood: high
+    impact: medium
+    unacceptable: true
+    mitigation: Carry the info string through the source-preserving path.
+    verification_ids: [REQ-A8, REQ-A1]
+    status: open
+
+  - id: R-002
+    title: YAML front matter destroyed and unrecoverable
+    source: repo-evidence
+    consequence: >
+      Obsidian/Jekyll/Hugo notes lose their metadata block on the first switch;
+      the key/value structure cannot be reconstructed from the buffer.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: Verbatim pass-through of unrecognised regions.
+    verification_ids: [REQ-A5, REQ-A1, REQ-A10]
+    status: open
+
+  - id: R-003
+    title: Indented code blocks collapse into a paragraph
+    source: repo-evidence
+    consequence: Line structure lost; the block stops being code.
+    likelihood: medium
+    impact: high
+    unacceptable: true
+    mitigation: Verbatim pass-through.
+    verification_ids: [REQ-A5, REQ-A1]
+    status: open
+
+  - id: R-004
+    title: Nested blockquotes flattened, marker leaks into the prose
+    source: repo-evidence
+    consequence: Nesting lost and the inner ">" becomes visible text.
+    likelihood: medium
+    impact: medium
+    unacceptable: true
+    mitigation: Verbatim pass-through.
+    verification_ids: [REQ-A5, REQ-A1]
+    status: open
+
+  - id: R-005
+    title: Source line wrapping inside a paragraph is not preserved
+    source: repo-evidence
+    consequence: >
+      Hand-placed line breaks are replaced by spaces, so a one-word fix produces
+      a whole-paragraph diff.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Stop treating soft breaks as spaces (removes joinTextLines), show them as
+      line breaks, and restore untouched regions verbatim.
+    verification_ids: [REQ-A3, REQ-B1, REQ-B2, REQ-A2]
+    status: open
+
+  - id: R-006
+    title: Extended syntax survives only as inert literal text
+    source: repo-evidence
+    consequence: >
+      Footnotes and reference definitions keep their characters but are not
+      understood, so editing near them can rewrite them.
+    likelihood: medium
+    impact: low
+    unacceptable: true
+    mitigation: Verbatim pass-through, and never reparse an untouched region.
+    verification_ids: [REQ-A5, REQ-A2]
+    status: open
+
+  - id: R-007
+    title: Damage accumulates on view switch, before any save and with no signal
+    source: repo-evidence
+    consequence: >
+      The user can damage a document by merely toggling views; the dirty flag
+      then reports "modified" without saying what was rewritten.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: The switch must not reparse or re-serialise the document.
+    verification_ids: [REQ-A10, REQ-C1]
+    status: open
+
+  - id: R-008
+    title: Pasted rich text degrades, and images vanish entirely
+    source: repo-evidence
+    consequence: >
+      A pasted table becomes its cell text concatenated with no separators; an
+      image disappears with no address, no alt text and no warning.
+    likelihood: medium
+    impact: medium
+    unacceptable: true
+    mitigation: >
+      Declare, per fixture, the tokens that must survive; convert what is
+      convertible and degrade the rest to readable text.
+    verification_ids: [REQ-D1]
+    status: open
+
+  - id: R-009
+    title: Unsaved work is lost with no recovery path
+    source: repo-evidence
+    consequence: >
+      A crash, a power loss or a mis-clicked close confirmation loses everything
+      typed since the last save.
+    likelihood: low
+    impact: high
+    unacceptable: true
+    mitigation: Periodic working copy outside the user's file, offered on restart.
+    verification_ids: [REQ-E1, REQ-F1, REQ-F2]
+    status: open
+
+  - id: R-010
+    title: An edit anywhere re-serialises the whole document
+    source: repo-evidence
+    consequence: >
+      The blast radius of one character is the entire file; this is the mechanism
+      by which every other normalisation reaches untouched blocks.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: Source-preserving save with a region-to-line mapping.
+    verification_ids: [REQ-A1, REQ-A2, REQ-A9, REQ-E2]
+    status: open
+
+  - id: R-011
+    title: Caret is not preserved across the view toggle
+    source: repo-evidence
+    consequence: >
+      The user loses their place on every switch, which discourages using the
+      source view — the view that would reveal the damage.
+    likelihood: high
+    impact: medium
+    unacceptable: true
+    mitigation: Bidirectional character-level mapping between the two views.
+    verification_ids: [REQ-C1]
+    status: open
+
+  - id: R-012
+    title: Tables are re-aligned while the file is being read
+    source: repo-evidence
+    consequence: >
+      Open and save with no edit already rewrites any hand-spaced table; a wider
+      cell rewrites every row.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Preserve source spacing; re-alignment becomes a command the user invokes.
+    verification_ids: [REQ-A6, REQ-A1, REQ-A10]
+    status: open
+
+  - id: R-013
+    title: List markers and numbering normalised on serialisation
+    source: repo-evidence
+    consequence: >
+      "*" becomes "-", "1. 1. 1." becomes "1. 2. 3.", so every line of the list
+      changes when one item is edited.
+    likelihood: high
+    impact: medium
+    unacceptable: true
+    mitigation: Preserve the author's marker and numbering for untouched items.
+    verification_ids: [REQ-A7, REQ-A2]
+    status: open
+
+  - id: R-014
+    title: The trailing newline is stripped from every saved file
+    source: repo-evidence
+    consequence: >
+      Git reports "\\ No newline at end of file" on the last line of every file,
+      with no user edit; Zed adds it back, so the two tools ping-pong.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: Preserve the file's original trailing-newline state.
+    verification_ids: [REQ-A4, REQ-A1]
+    status: open
+
+  - id: R-015
+    title: A soft break cannot be typed at all
+    source: repo-evidence
+    consequence: >
+      Enter splits the paragraph and Shift+Enter writes a hard break; the bare
+      newline the new model is built on has no keyboard gesture.
+    likelihood: high
+    impact: medium
+    unacceptable: true
+    mitigation: Enter inserts a bare newline at the caret.
+    verification_ids: [REQ-B3, REQ-B1]
+    status: open
+
+  # Risks introduced by the QA system itself, not by the product.
+
+  - id: R-016
+    title: A check that cannot run is reported as a pass
+    source: repo-evidence
+    consequence: >
+      tests/app-shell-smoke.test.js exits successfully when no browser is found.
+      A gate inheriting that behaviour turns green precisely when it is blind.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: Non-zero exit and a named cause for any check that cannot execute.
+    verification_ids: [REQ-G1]
+    status: open
+
+  - id: R-017
+    title: The checks run in an engine the product does not ship
+    source: recommendation
+    consequence: >
+      A stand-in browser is not WebKitGTK and not WKWebView. Contenteditable and
+      selection behaviour differ, so a suite that only ever sees the stand-in
+      does not prove the shipped application behaves the same way.
+    likelihood: medium
+    impact: medium
+    unacceptable: true
+    unacceptable_note: >
+      Previously accepted. Reclassified on 2026-07-28 (D-029) once it was
+      established that the shipping engine on Linux can in fact be driven, at the
+      same version the application links against, with no third-party client
+      library. An exposure that can be removed cheaply is not an exposure to
+      accept.
+    mitigation: >
+      Every editor check runs on both the shipping engine and the stand-in, and
+      must pass on both. What remains undrivable is named in the report with its
+      manual cadence and owner, and is scoped to published platforms.
+    verification_ids: [REQ-G2, REQ-G3]
+    status: open
+    residual: >
+      macOS only. WKWebView has no equivalent driver and the Tauri WebDriver
+      wrapper does not support it; a different build of WebKit would be a proxy,
+      not the engine that ships.
+
+  - id: R-018
+    title: An implementing agent edits the checks instead of the product
+    source: recommendation
+    consequence: >
+      Facing a red check, the shortest path is to weaken the check. The suite
+      goes green while the product still damages files — the exact failure this
+      contract exists to prevent, laundered through the QA system.
+    likelihood: medium
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Corpus and runner are read-only during implementation; any fixture change
+      requires an explicit contract amendment, visible in review; the audit phase
+      re-verifies by reintroducing known defects.
+    verification_ids: [QA-AUDIT]
+    status: open
+    note: >
+      Verified by the audit phase rather than by a requirement, since it is a
+      process risk rather than a product property.

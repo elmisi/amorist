@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>amorist QA harness</title>
+
+    <!--
+      The editor component alone. No app shell, no backend, no Tauri bridge:
+      web/editor/ is a self-contained component and the contract's families A to
+      D are properties of that component, not of the application around it.
+    -->
+    <link rel="stylesheet" href="/web/editor/amorist-editor.css" />
+
+    <style>
+      /*
+        Geometry is measured here (REQ-B1), so font, size and width are pinned
+        rather than inherited. A measurement that depends on the machine's
+        default font is a measurement that disagrees between machines.
+      */
+      html {
+        font-size: 16px;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+      }
+      :root {
+        /* Set by the runner. REQ-B1 must measure against a viewport wide enough
+           that nothing wraps visually, otherwise a paragraph collapsed into one
+           long line would soft-wrap and imitate the line breaks it destroyed. */
+        --qa-width: 1200px;
+      }
+      #host {
+        width: var(--qa-width);
+      }
+      /*
+        Only the environment is pinned here: which font, at what size, across
+        what width. How the editor renders text is what is under test, so
+        nothing in this page may set white-space, wrapping or line breaking —
+        overriding those would let the harness supply the very behaviour the
+        check is meant to find missing.
+      */
+      .amorist-editor-surface,
+      .amorist-editor-source {
+        font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+        font-size: 14px;
+        line-height: 21px;
+        width: var(--qa-width);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="host"></div>
+
+    <script src="/web/editor/amorist-text-utils.js"></script>
+    <script src="/web/editor/amorist-table-codec.js"></script>
+    <script src="/web/editor/amorist-markdown-codec.js"></script>
+    <script src="/web/editor/amorist-html-to-markdown.js"></script>
+    <script src="/web/editor/amorist-editing-policy.js"></script>
+    <script src="/web/editor/amorist-editor.js"></script>
+
+    <script>
+      // The page side of the driver interface. It mounts and inspects; it never
+      // decides anything. Every verdict is reached in the runner, so that both
+      // engines are judged by the same code.
+      window.__qa = (function () {
+        var host = document.getElementById("host");
+        var editor = null;
+
+        function surface() {
+          return document.querySelector(".amorist-editor-surface");
+        }
+
+        function source() {
+          return document.querySelector(".amorist-editor-source");
+        }
+
+        return {
+          version: 1,
+
+          setHostWidth: function (pixels) {
+            document.documentElement.style.setProperty("--qa-width", pixels + "px");
+            // Force layout so a measurement taken immediately after is real.
+            return document.getElementById("host").getBoundingClientRect().width;
+          },
+
+          open: function (text) {
+            if (editor) editor.destroy();
+            host.replaceChildren();
+            editor = window.AmoristEditor.create(host, { value: text });
+            return true;
+          },
+
+          markdown: function () {
+            return editor.getMarkdown();
+          },
+
+          mode: function () {
+            return source() && !source().hidden ? "source" : "wysiwyg";
+          },
+
+          toggleMode: function () {
+            document.querySelector('[data-action="source"]').click();
+            return this.mode();
+          },
+
+          focusSurface: function () {
+            surface().focus();
+            return document.activeElement === surface();
+          },
+
+          focusSource: function () {
+            source().focus();
+            return document.activeElement === source();
+          },
+
+          // Put the caret at a character offset counted over the surface's
+          // visible text, so a check can say "line 3, column 5" without knowing
+          // how the editor happens to have built its nodes.
+          setCaretAtTextOffset: function (offset) {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var seen = 0;
+            var node = walker.nextNode();
+            while (node) {
+              var length = node.textContent.length;
+              if (seen + length >= offset) {
+                var range = document.createRange();
+                range.setStart(node, offset - seen);
+                range.collapse(true);
+                var selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                target.focus();
+                return true;
+              }
+              seen += length;
+              node = walker.nextNode();
+            }
+            // Past the end: land on the last position available.
+            var fallback = document.createRange();
+            fallback.selectNodeContents(target);
+            fallback.collapse(false);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(fallback);
+            target.focus();
+            return false;
+          },
+
+          caretTextOffset: function () {
+            var selection = window.getSelection();
+            if (!selection.rangeCount) return -1;
+            var range = selection.getRangeAt(0);
+            var measure = range.cloneRange();
+            measure.selectNodeContents(surface());
+            measure.setEnd(range.startContainer, range.startOffset);
+            return measure.toString().length;
+          },
+
+          surfaceText: function () {
+            return surface().innerText;
+          },
+
+          sourceValue: function () {
+            return source().value;
+          },
+
+          sourceSelection: function () {
+            var element = source();
+            return { start: element.selectionStart, end: element.selectionEnd };
+          },
+
+          setSourceSelection: function (start, end) {
+            var element = source();
+            element.focus();
+            element.setSelectionRange(start, end === undefined ? start : end);
+            return true;
+          },
+
+          // The rendered position of the first character of a given piece of
+          // text. REQ-B1 turns on whether two source lines occupy two rendered
+          // lines, which is a question about pixels, not about the document
+          // tree — a tree can be perfectly nested and still render as one line.
+          firstCharacterTop: function (needle) {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var node = walker.nextNode();
+            while (node) {
+              var at = node.textContent.indexOf(needle);
+              if (at !== -1) {
+                var range = document.createRange();
+                range.setStart(node, at);
+                range.setEnd(node, at + 1);
+                var rect = range.getBoundingClientRect();
+                return { found: true, top: rect.top, left: rect.left, height: rect.height };
+              }
+              node = walker.nextNode();
+            }
+            return { found: false };
+          },
+
+          selectTextRange: function (start, end) {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var seen = 0;
+            var range = document.createRange();
+            var haveStart = false;
+            var node = walker.nextNode();
+            while (node) {
+              var length = node.textContent.length;
+              if (!haveStart && seen + length >= start) {
+                range.setStart(node, start - seen);
+                haveStart = true;
+              }
+              if (haveStart && seen + length >= end) {
+                range.setEnd(node, end - seen);
+                var selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                target.focus();
+                return true;
+              }
+              seen += length;
+              node = walker.nextNode();
+            }
+            return false;
+          },
+
+          // Paste, driven through the editor's own handler. The clipboard cannot
+          // be filled from outside the page in a way both engines accept, so the
+          // event is built here — but the code path under test is the real one:
+          // whatever the editor does with clipboardData is what runs.
+          paste: function (html, text) {
+            var transfer = new DataTransfer();
+            if (html) transfer.setData("text/html", html);
+            if (text) transfer.setData("text/plain", text);
+            var event = new ClipboardEvent("paste", { bubbles: true, cancelable: true });
+            Object.defineProperty(event, "clipboardData", { value: transfer });
+            surface().focus();
+            surface().dispatchEvent(event);
+            return true;
+          },
+
+          // Rendered geometry: the top edge and left edge of the first character
+          // of every text run, with the text it belongs to. REQ-B1 compares
+          // vertical positions to prove that separate source lines occupy
+          // separate rendered lines.
+          lineBoxes: function () {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var boxes = [];
+            var node = walker.nextNode();
+            while (node) {
+              if (node.textContent.length) {
+                var range = document.createRange();
+                range.setStart(node, 0);
+                range.setEnd(node, node.textContent.length);
+                var rects = Array.prototype.map.call(range.getClientRects(), function (rect) {
+                  return { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
+                });
+                boxes.push({ text: node.textContent, rects: rects });
+              }
+              node = walker.nextNode();
+            }
+            return boxes;
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>

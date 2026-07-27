@@ -1,0 +1,14 @@
+{
+  "name": "prose carrying emphasis, code and a heading",
+  "why": "The conversion is allowed to be imperfect — only nothing may disappear. This fixture checks that the WORDS survive whatever happens to their formatting.",
+  "html": "<h2>Titolo incollato</h2><p>Testo con <strong>una parte in grassetto</strong>, <em>una in corsivo</em> e <code>del codice</code>.</p><blockquote><p>Una citazione riportata.</p></blockquote>",
+  "text": "Titolo incollato\n\nTesto con una parte in grassetto, una in corsivo e del codice.\n\nUna citazione riportata.",
+  "mustSurvive": [
+    "Titolo incollato",
+    "una parte in grassetto",
+    "una in corsivo",
+    "del codice",
+    "Una citazione riportata."
+  ],
+  "mustBeOnSeparateLines": []
+}

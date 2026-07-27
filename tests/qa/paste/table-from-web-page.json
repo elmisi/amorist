@@ -1,0 +1,8 @@
+{
+  "name": "a table copied from a web page",
+  "why": "A pasted table currently arrives as its cell text concatenated with no separators, so the columns are gone and the rows are gone with them.",
+  "html": "<table><thead><tr><th>Voce</th><th>Q1</th><th>Q2</th></tr></thead><tbody><tr><td>Ricavi</td><td>1200</td><td>1310</td></tr><tr><td>Costi</td><td>980</td><td>1002</td></tr></tbody></table>",
+  "text": "Voce\tQ1\tQ2\nRicavi\t1200\t1310\nCosti\t980\t1002",
+  "mustSurvive": ["Voce", "Q1", "Q2", "Ricavi", "1200", "1310", "Costi", "980", "1002"],
+  "mustBeOnSeparateLines": [["Ricavi", "Costi"]]
+}

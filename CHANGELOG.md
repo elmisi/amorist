@@ -4,6 +4,46 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-07-28
+
+### Added
+- A contract-driven QA suite, run with `node tests/qa/run.js`. `.qa/qa-contract.yaml`
+  states what "correct" means for this editor — 22 requirements, approved — and
+  `tests/qa/` compiles it into checks. The suite reports 4 requirements green,
+  15 failing and 2 unmeasured: it describes the editor amorist should be, not the
+  one it is, and the failures are the work list.
+- Every check on the editor runs twice, on two engines: WebKitGTK, the engine the
+  Linux application actually runs inside, driven through its own WebDriver server,
+  and a Chromium-family browser as a faster stand-in. Both must pass. No check may
+  name an engine. Needs `webkit2gtk-driver` installed.
+- A corpus of 17 synthetic Markdown fixtures, invented rather than borrowed,
+  imitating notes with front matter and wiki links, technical documentation with
+  fenced code and tables, hand-wrapped prose, and files that have been through
+  several tools. Checks select fixtures by content, so adding a newly discovered
+  breaking case is a copy, not a code change.
+- Rust checks over real temporary files for the two properties of the write path
+  that already hold: the write is atomic, and a file changed outside amorist is
+  never overwritten without being asked. They exist so that neither can quietly
+  regress while the save path is rewritten.
+- Checks on the checking system itself. The suite starts itself in a deliberately
+  broken configuration on every run — no fixtures, no browser, no engine driver —
+  and requires a non-zero exit with a named cause. A run that cannot look must
+  never report success.
+- A QA workflow on every push. Its result is visible everywhere and blocks nothing;
+  publication of a release is what it blocks, and only while a blocking requirement
+  fails.
+
+### Changed
+- The write path in the Tauri backend is now a standalone `write_document`
+  function, with `save_document` a thin wrapper around it. Behaviour is unchanged;
+  the extraction is what makes the write path verifiable without standing up a
+  window.
+- Line-ending preservation becomes a per-line rule rather than a per-file one:
+  every existing line is to keep its own terminator, and a line created by pressing
+  Enter takes the terminator of the line the caret was on. No majority convention
+  is computed and mixed files are not normalised. The current whole-file behaviour
+  is what this replaces; the requirement is recorded and currently fails.
+
 ## [0.9.0] - 2026-07-17
 
 ### Added

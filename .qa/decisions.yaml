@@ -1,0 +1,511 @@
+# Discovery decision log — amorist QA
+# source: user-statement | repo-evidence | recommendation | assumption
+# Nothing here is a contract. The contract is .qa/qa-contract.yaml (not yet written).
+
+mode: discovery
+started: 2026-07-26
+reset: 2026-07-27  # user restated the quality model from scratch; D-001/D-007 superseded
+repo_commit_at_discovery: a9d7e73
+
+decisions:
+  - id: D-002
+    statement: No tests are to be written during this session. Discovery output only.
+    source: user-statement
+    status: confirmed
+
+  - id: D-003
+    statement: >
+      Markdown is the source of truth and the editor roundtrips through Markdown
+      on every mode switch, not only on save.
+    source: repo-evidence
+    evidence: CLAUDE.md "Data flow"; amorist-editor.js showWysiwygMode -> setMarkdown
+    status: confirmed
+
+  - id: D-005
+    statement: >
+      The disk write path is atomic (tmp + rename) and guarded by an mtime
+      conflict check with an explicit user override.
+    source: repo-evidence
+    evidence: src-tauri/src/lib.rs save_document
+    status: confirmed
+    note: >
+      Durability of the write is well built. The exposure is upstream, in the
+      codec — not in the filesystem layer.
+
+  - id: D-006
+    statement: >
+      Two runtimes ship the same frontend: Tauri 2 and the deprecated Python
+      HTTP server. QA perimeter across the two is undecided (Q-004).
+    source: repo-evidence
+    status: confirmed
+
+  # ---- The quality model, as restated by the user on 2026-07-27 ----
+
+  - id: P1
+    statement: >
+      NEUTRAL-EDIT IDEMPOTENCE. Open any .md file, type one character, delete it,
+      save. The resulting file must be byte-identical to the original. amorist
+      must never introduce a change that is not a real content change.
+    source: user-statement
+    motivation: >
+      Markdown files live in git. A diff that does not correspond to an edit is
+      noise that pollutes history and review.
+    status: confirmed
+    supersedes: [D-001, D-007]
+    level: byte-identity on disk
+    currently_holds: false
+    evidence_against: R-001, R-002, R-003, R-004, R-005, R-010
+    note: >
+      Byte-level, not AST-level: git diffs bytes. The earlier AST formulation is
+      dropped — an AST check would pass a file whose wrapping was rewritten.
+
+  - id: P2
+    statement: >
+      SOURCE-FAITHFUL WYSIWYG. While editing, the WYSIWYG view must be faithful
+      to the .md file, above all on newlines: it must show line structure the way
+      a plain text editor would show it.
+    source: user-statement
+    status: confirmed
+    currently_holds: false
+    evidence_against: R-005
+    conflict: >
+      Directly contradicts joinTextLines, which converts soft breaks to spaces by
+      design (CommonMark semantics, documented in the source). Adopting P2 means
+      the WYSIWYG stops being a CommonMark renderer and becomes a styled source
+      view. This is a product decision, not a defect fix.
+    note: >
+      P2 ENABLES P1. If line structure is visible and preserved in the view, the
+      serializer can preserve it too. The two are one change, not two.
+
+  - id: P3
+    statement: >
+      CARET CONTINUITY ACROSS MODES. Toggling WYSIWYG <-> source must leave the
+      caret at the identical position on the identical line.
+    source: user-statement
+    status: confirmed
+    currently_holds: false
+    evidence_against: R-011
+    note: >
+      Requires a bidirectional (line, column) <-> (node, offset) mapping.
+      data-source-line already gives block -> line; there is no within-block
+      offset mapping and no reverse direction.
+
+  - id: D-010
+    statement: >
+      The P1 guarantee applies to ANY .md file, including files using Markdown
+      syntax amorist does not understand. The way to honour it is a
+      source-preserving save: the editor keeps the original text and rewrites
+      only the regions the user actually touched; everything else is copied
+      through verbatim, without being reparsed.
+    source: user-statement
+    answers: Q-003
+    status: confirmed
+    rejected_alternatives:
+      - declared-subset + read-only/warning guard
+      - normalise-once-then-stable (prettier model)
+    consequence: >
+      The QA contract now describes an editor that does not exist yet. Tests for
+      P1 will be red until the save path is rewritten. That is intended: the
+      contract is the specification, not a description of current behaviour.
+    enables: >
+      Removes R-010 (whole-document re-serialisation) as a side effect, and
+      shares its region<->line mapping with P3.
+
+  - id: D-009
+    statement: >
+      P1, P2 and P3 share one architectural root: the editor must preserve the
+      SOURCE LINE STRUCTURE, not only the rendered semantics. P2 is the view of
+      that structure, P1 its preservation on write, P3 the mapping between the
+      two representations.
+    source: recommendation
+    status: pending-user-confirmation
+    consequence: >
+      The QA contract should be built around one invariant family (line-structure
+      preservation) with three observation points, rather than three unrelated
+      suites.
+
+  - id: D-011
+    statement: >
+      DIFF LOCALITY IS BLOCK-LEVEL. After a real edit, the diff must stay inside
+      the touched block (paragraph, list, table, code block). Nothing outside it
+      may move. Within the touched block, re-emission is permitted.
+    source: user-statement
+    answers: Q-004
+    status: confirmed
+    rejected_alternatives:
+      - character-level locality (strictest)
+      - neutral-edit equality only (weakest)
+    contradiction_with: P1
+    note: >
+      A neutral edit (type a character, delete it) still marks its block as
+      touched. Block-level permission would then allow that block to be re-emitted
+      and, e.g., have its manual line wrapping collapsed — which breaks P1's
+      "identical file" promise. Resolution pending, see Q-005.
+
+  - id: D-012
+    statement: >
+      LOCALITY IS LINE-LEVEL, not block-level. In any structure, only the edited
+      line may appear in the diff. This supersedes D-011: shown the concrete
+      consequences, the user tightened the unit from block to line.
+    source: user-statement
+    answers: Q-006
+    status: confirmed
+    supersedes: D-011
+    implications:
+      - >
+        Lists: other items keep the author's own markers. A list written with "*"
+        stays "*", a list numbered "1. 1. 1." keeps its numbering. serializeList
+        (amorist-markdown-codec.js:361) hardcodes "- " and progressive numbering,
+        so it must become source-preserving.
+      - >
+        Tables: automatic column re-alignment is given up. amorist preserves the
+        spacing found in the file, even if ragged. Re-alignment becomes an
+        explicit user command instead of an effect of saving.
+      - >
+        Paragraphs: editing a word inside a hand-wrapped paragraph must not
+        re-wrap its other lines. Consistent with P2.
+    product_change: >
+      Table auto-alignment is an existing, deliberate feature (TableCodec computes
+      emoji visual width via Intl.Segmenter). Turning it into an on-demand command
+      is a product decision the user took knowingly.
+
+  - id: D-013
+    statement: >
+      Table re-alignment happens on OPEN, not on save.
+    source: repo-evidence
+    evidence: >
+      amorist-markdown-codec.js:77 — parseBlocks pushes
+      TableCodec.formatMarkdownTable(...) while reading the document.
+    status: confirmed
+    consequence: >
+      Opening a file with a hand-spaced table and saving it untouched already
+      rewrites the table. P1 fails without any edit at all, which makes D-012's
+      table decision necessary rather than merely preferable.
+
+  - id: D-014
+    statement: >
+      VERIFICATION LEVEL. The editor half is verified in a real Chromium, driven
+      the way tests/app-shell-smoke.test.js already does it (spawn the browser
+      binary, speak DevTools protocol over a raw WebSocket, node builtins only):
+      real typing, real deletion, compare the produced text against the original
+      file. The disk half is verified separately by Rust tests over real
+      temporary files (byte fidelity + line-ending preservation). The seam
+      between them is a single string.
+    source: user-statement
+    answers: Q-007
+    status: confirmed
+    rejected_alternatives:
+      - full end-to-end through the built Tauri binary (fragile, needs tauri-driver in CI)
+      - codec-only with a hand-written DOM shim (never opens or writes a file)
+    note: >
+      No new dependency is required: the dependency-free Chromium harness is an
+      existing precedent in this repo, so the "no build tooling" convention in
+      CLAUDE.md holds.
+
+  - id: D-015
+    statement: >
+      There is no test gate today. CI builds and publishes only.
+    source: repo-evidence
+    evidence: >
+      .github/workflows/build.yml runs the Tauri build and the release upload;
+      no step invokes node tests, python tests, or cargo test. The browser smoke
+      test is additionally opt-in behind AMORIST_RUN_BROWSER_SMOKE.
+    status: confirmed
+    consequence: >
+      Building the gate is part of the QA work, not a precondition of it.
+
+  - id: D-016
+    statement: >
+      HARD GATE FROM DAY ONE. The checks are blocking immediately: nothing is
+      published while they are red. No known-failure ledger, no advisory phase.
+    source: user-statement
+    answers: Q-008
+    status: confirmed
+    rejected_alternatives:
+      - known-failure ledger with a ratchet (blocks new failures only)
+      - advisory reporting until green
+    acknowledged_risk: >
+      All three properties are red today, so no release can be cut until the
+      editor is rewritten. The risk that a gate blocking everything gets bypassed
+      when other work is needed was stated before the choice and accepted by the
+      user.
+    assumption_to_confirm: >
+      Read as: the gate blocks the release job and every push to main. If the
+      intent was to block the release only, this needs correcting.
+
+  - id: D-017
+    statement: >
+      NO REFLOW. Line breaks in the file are user content and amorist never moves
+      them on its own. Typing lengthens the current line, which may wrap visually
+      but stays one line in the file; the other lines of the paragraph do not
+      move. Enter inserts a real newline in the file at the caret.
+    source: user-statement
+    answers: Q-009
+    status: confirmed
+    resolves: P2
+    rejected_alternatives:
+      - automatic reflow to a target width (word-processor behaviour)
+      - no reflow plus an explicit "reformat paragraph" command
+    consequence: >
+      The WYSIWYG becomes a text editor with visible formatting, not a
+      CommonMark renderer. joinTextLines (soft break -> space) must go, along
+      with withoutHardBreaks in headings and list items.
+    open_sub_question: >
+      Markdown distinguishes a soft break (bare newline, renders as a space
+      elsewhere) from a hard break (two trailing spaces or a backslash, renders
+      as <br>). If the view shows both as a line break, the user cannot tell them
+      apart, and it is undecided which one Enter writes. See Q-010.
+
+  - id: D-018
+    statement: >
+      ENTER WRITES A BARE NEWLINE, like Sublime or Zed. Two presses give a blank
+      line and a new paragraph. amorist never writes the two-space hard break on
+      its own.
+    source: user-statement
+    answers: Q-010
+    status: confirmed
+    supporting_evidence: >
+      Zed's remove_trailing_whitespace_on_save defaults to true and the user's
+      ~/.config/zed/settings.json does not override it, so two-space hard breaks
+      written by amorist would be deleted the first time the same file is saved
+      in Zed. Sublime keeps them (default false, not overridden). The repo's 31
+      .md files contain zero hard breaks.
+    changes_current_behaviour: >
+      Today Enter splits the paragraph (browser default, see R-015) and
+      Shift+Enter produces the two-space hard break. Enter must be intercepted.
+
+  - id: D-019
+    statement: >
+      CARET IDENTITY IS BY CHARACTER, not by column. After a mode switch the
+      caret sits before the same character of the text. Column numbers may differ
+      wherever markers exist in the file but not on screen ("# ", "**", "- ").
+    source: user-statement
+    answers: Q-011
+    status: confirmed
+    resolves: P3
+    rejected_alternatives:
+      - column identity, which would require showing markers in the WYSIWYG
+      - markers revealed on the active line only (live-preview style)
+    verification_shape: >
+      Record the character under the caret before the switch; assert the caret is
+      on the same character after it. Deterministic, no coordinates involved.
+
+  - id: D-020
+    statement: >
+      PERIMETER. Guarantees cover the Tauri app only. The deprecated Python
+      browser mode is out. The Chromium checks load a test page that pulls in
+      only web/editor/*.js — no server, no app shell — so the checks do not
+      depend on code that is being abandoned.
+    source: user-statement
+    answers: Q-012
+    status: confirmed
+    note: >
+      Consistent with the CLAUDE.md convention that web/editor/ is a
+      self-contained component with no Tauri or app-shell knowledge. If that were
+      untrue, the standalone test page would fail immediately — a useful side
+      effect. Note the existing smoke test spawns ./bin/amorist (the Python
+      server) to serve the app; the new checks deliberately do not.
+
+  - id: D-021
+    statement: >
+      FIXTURES. A constructed corpus (one file per problematic construct) plus
+      the user's real files. The check iterates over every file in a directory
+      rather than listing cases in code, so turning a newly discovered broken
+      file into a permanent regression case is a copy, not a code change.
+    source: user-statement
+    answers: Q-013
+    status: confirmed
+    open_item: >
+      The real-files half needs two things the user has not yet supplied: where
+      those files live, and whether they may be committed to the repository. If
+      they are personal notes, they must stay outside it and the directory the
+      check scans becomes configurable.
+
+  - id: D-022
+    statement: >
+      INVISIBLE CHARACTERS ARE PRESERVED VERBATIM. No exceptions to P1. Trailing
+      spaces stay where they are; a file that ended with a newline keeps it, a
+      file that did not does not gain one. amorist never "tidies up".
+    source: user-statement
+    answers: Q-018
+    status: confirmed
+    rejected_alternatives:
+      - preserve everything except always ensuring a final newline
+      - normalise like most editors (strip trailing spaces, ensure final newline)
+    evidence: >
+      R-014: serializeBlocks .trimEnd() currently strips the final newline from
+      every saved file; 29 of the 31 .md files here have one, 2 do not. Two
+      trailing spaces are Markdown content (a hard break), not dirt — the
+      "tidy up" option would destroy them.
+    note: >
+      amorist will therefore keep whitespace that the user's own Zed deletes on
+      save (remove_trailing_whitespace_on_save defaults to true). The two tools
+      will disagree; amorist is never the one introducing the change.
+
+  - id: D-023
+    statement: >
+      PASTE IS IN THE CONTRACT, under one bounded rule: nothing disappears
+      silently. What amorist cannot convert must still reach the file in a
+      readable form — an image at minimum as its address plus alt text, a table
+      at minimum as separated rows, strikethrough at minimum as its text.
+      Fidelity or beauty of the conversion is NOT promised.
+    source: user-statement
+    answers: Q-016
+    status: confirmed
+    evidence: >
+      Measured through serializeBlocks with a DOM stand-in: a pasted HTML table
+      becomes "ProgettoStatoamoristpronto" (all cells concatenated, no
+      separators); an image inside a paragraph yields "prima  dopo" — it
+      vanishes entirely, with no address, no alt text and no warning; a heading
+      converts correctly.
+    rationale: >
+      Full-fidelity HTML conversion is an unbounded promise (merged cells, nested
+      tables, styling). "Nothing vanishes" is bounded and verifiable: paste a
+      sample, assert every recognisable piece of information is still present.
+
+  - id: D-024
+    statement: >
+      UNSAVED WORK IS IN THE CONTRACT. amorist periodically writes a working copy
+      to its own location — never to the user's .md file — and on restart offers
+      to recover it if it is newer than the last save.
+    source: user-statement
+    answers: Q-017
+    status: confirmed
+    rejected_alternatives:
+      - out of contract (only the close-confirmation dialog, as today)
+      - autosave straight into the user's file (Obsidian model)
+    rationale: >
+      Writing to the user's file would change it at moments the user did not
+      choose, defeating the git-cleanliness motivation behind P1. A separate
+      draft keeps the file untouched until an explicit save.
+    verification_shape: >
+      Type text, kill the process without saving, restart, assert the text is
+      recoverable verbatim.
+    note: >
+      Consistent with the user's own Sublime configuration (hot_exit: always,
+      remember_open_files: true).
+
+  - id: D-025
+    statement: >
+      THE GATE BLOCKS PUBLICATION. Checks run on every push and their result is
+      visible, but only the release is blocked while they are red.
+    source: user-statement
+    answers: Q-015
+    status: confirmed
+    refines: D-016
+    rationale: >
+      Everything is red today. A gate on commits or merges would block the very
+      work that makes it green, and the rewrite would have to live outside main
+      for weeks. Blocking publication is the only placement that does not fight
+      its own remedy, while guaranteeing no user ever receives a version that
+      damages files.
+    future_step: >
+      Tighten to merges/pushes once the model is satisfied — an easy decision to
+      take when the suite is already green.
+
+  - id: D-026
+    statement: >
+      FIXTURES ARE ALL SYNTHETIC. No file of the user's is copied into the
+      repository. The corpus is written from scratch but modelled on the four
+      families of document the user actually keeps, so it carries realistic mess
+      without carrying any private content.
+    source: user-statement
+    answers: Q-014
+    supersedes_part_of: D-021
+    status: confirmed
+    families_to_imitate:
+      - >
+        Obsidian-style notes: YAML front matter, [[wiki links]], task lists.
+        Currently the worst-damaged family (R-002).
+      - >
+        Technical documentation: fenced code with a language tag, tables, nested
+        lists. Produces the noisiest diffs (R-001, R-012).
+      - >
+        Prose drafts: long text hand-wrapped at a column, blockquotes, little
+        structure. Hit by the rewrapping problem (R-005).
+      - >
+        Files passed through several tools: inconsistent formatting, ragged table
+        spacing, setext and ATX headings mixed in one file, extra blank lines,
+        leftover raw HTML. The most valuable to imitate, since this mess is not
+        invented at a desk.
+    retained_from_D021: >
+      The check still iterates over every file in a directory rather than listing
+      cases in code, so a newly discovered breaking case is added by dropping a
+      minimal, anonymised reproduction into the corpus — no code change.
+
+  # ------------------------------------------------------------------------
+  # Taken 2026-07-28, closing the three points left open when the contract was
+  # first written. All three were decided by the user.
+
+  - id: D-027
+    statement: >
+      LINE TERMINATORS ARE PRESERVED PER LINE, NOT PER FILE. Every existing line
+      keeps its own terminator byte-for-byte. A line newly created by pressing
+      Enter takes the terminator of the line the caret was on. No majority
+      convention is computed and no file is normalised, including files that mix
+      conventions.
+    source: user-statement
+    closes: the one exception left in the byte-identity promise
+    status: confirmed
+    affects: [REQ-A9, REQ-A1]
+    rationale: >
+      The alternative was to declare mixed-terminator files out of scope. It was
+      rejected because an exception inside the primary promise is the exact class
+      of thing this contract exists to remove, and because the per-line rule is
+      nearly free under the source-preserving save path: a line copied verbatim
+      from the original already carries its own terminator.
+
+  - id: D-028
+    statement: >
+      THE LIST OF EDIT KINDS IN THE CONTRACT IS COMPLETED with three gestures the
+      product already supports and the original list omitted: typing over a
+      selection that spans several lines; a toolbar action or keyboard shortcut,
+      including indent and outdent; undo and redo.
+    source: user-statement
+    closes: an incomplete definition of "the line the user touched"
+    status: confirmed
+    affects: [REQ-A2]
+    rationale: >
+      The requirement that only the edited line may change is only measurable if
+      the contract says what each gesture is allowed to change. A missing gesture
+      produces either a false alarm or, worse, silence: the check has no
+      expectation to compare against and reports nothing.
+    rule: >
+      Any edit kind not listed must be added to the contract before it is tested.
+      Discovering a new gesture during implementation is a contract amendment,
+      not a test-side decision.
+
+  - id: D-029
+    statement: >
+      THE ENGINE GAP IS CLOSED BY AUTOMATION WHERE AN ENGINE CAN BE DRIVEN, AND
+      NAMED WHERE IT CANNOT. The editor checks run on both the shipping engine
+      (WebKitGTK, through its own WebDriver server, over plain HTTP, with node
+      builtins only) and a Chromium-family stand-in. Both must pass. The manual
+      pass survives only for platforms automation cannot reach.
+    source: user-statement
+    supersedes_part_of: D-014
+    status: confirmed
+    affects: [REQ-G2, REQ-G3, R-017]
+    evidence: >
+      The development machine links against libwebkit2gtk 2.52.3, and the
+      matching WebDriver server is packaged by the distribution at the same
+      version. Driving it needs no third-party client library, so the
+      zero-dependency constraint the runner works under is preserved.
+    what_D014_still_holds: >
+      D-014 rejected driving the built application window as a gate, and that
+      still stands. This decision drives the ENGINE, not the application: the
+      same test page loading the editor files alone, with no server and no app
+      shell. The application-level path stays out of the gate.
+    residual: >
+      macOS remains uncovered: WKWebView has no equivalent driver and the Tauri
+      WebDriver wrapper does not support it. Recorded as REQ-G3 and deliberately
+      scoped to published platforms, so that dropping macOS would close it.
+
+open_recommendations:
+  - id: REC-002
+    statement: >
+      Measure P1 against the user's real corpus of .md files before fixing the
+      severity of each construct. It converts "which constructs matter" from an
+      opinion into a count.
+    source: recommendation
+    status: pending-user-decision

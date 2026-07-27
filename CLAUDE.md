@@ -24,6 +24,16 @@ cd src-tauri && cargo tauri build
 # Browser mode (deprecated, still works for development)
 ./bin/amorist --no-open file.md
 
+# Contract-driven QA suite (the release gate)
+node tests/qa/run.js                    # every requirement, on both engines
+node tests/qa/run.js --only A           # one family
+node tests/qa/run.js --engine chromium  # one engine, for debugging only
+# Needs: sudo apt install webkit2gtk-driver   (and xvfb-run where there is no display)
+# See tests/qa/README.md; the contract it compiles is .qa/qa-contract.yaml
+
+# Regenerate the contract's generated companions after editing the contract
+python3 .qa/tools/render-eval-matrix.py
+
 # Unit tests
 node tests/editor-table-codec.test.js
 node tests/editor-markdown-codec.test.js
@@ -41,6 +51,7 @@ node --check web/editor/amorist-table-codec.js
 node --check web/editor/amorist-markdown-codec.js
 node --check web/editor/amorist-editing-policy.js
 node --check web/editor/amorist-editor.js
+node --check tests/qa/run.js
 bash -n scripts/install.sh
 bash -n scripts/uninstall.sh
 bash -n scripts/capture-screenshots.sh
@@ -85,6 +96,15 @@ JS tests use `node:vm` to load classic browser scripts into a context with a min
 - **No build tooling.** Plain `<script>` tags, plain CSS, Python stdlib only. Don't introduce bundlers, transpilers, or npm runtime dependencies.
 - **Module pattern:** Every editor JS file wraps in an IIFE, reads/writes `window.AmoristInternals`, and guards with a dependency check at load time.
 - **Atomic file writes:** Both servers save via write-to-tmp then rename. Preserve this pattern.
-- **Line ending preservation:** Both backends detect LF vs CRLF on load and re-apply the same on save.
+- **Line ending preservation:** the rule is now **per line, not per file** (contract decision D-027): every existing line keeps its own terminator byte for byte, and a line created by pressing Enter takes the terminator of the line the caret was on. No majority is computed and mixed files are not normalised. Today the backend still detects LF vs CRLF for the whole file and re-applies it; that is the behaviour the per-line rule replaces, and the editor component must stop normalising on input for it to be reachable at all.
 - **Editor embeddability:** The `web/editor/` directory is a self-contained component. No `invoke()`, `__TAURI__`, or app-shell state may leak into editor files. All Tauri integration lives in `web/app.js` only.
+- **The QA contract is the source of truth for correctness.** `.qa/qa-contract.yaml`
+  says what "correct" means; `tests/qa/` compiles it. A check may not be weakened
+  to make a run go green — amend the contract, get the amendment approved, then
+  change the check. A check changed without a contract amendment is a contract
+  breach whatever the suite reports.
+- **Nothing may skip silently.** Anything in the suite that cannot do its job
+  exits non-zero and names itself: a missing engine, an empty fixture directory,
+  a requirement with no check, a gesture not exercised. A green result that
+  measured nothing is the worst outcome available.
 - **Semver:** `VERSION` file exists — update `VERSION` and `CHANGELOG.md` on every commit per the global semver rule.

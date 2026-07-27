@@ -1,0 +1,11 @@
+# The QA corpus is stored byte for byte.
+#
+# Several fixtures exist precisely to carry line terminators that are NOT the
+# repository's convention: one file entirely in CRLF, one mixing CRLF and LF
+# line by line, one with no terminator on its last line. Git's end-of-line
+# conversion would rewrite exactly those bytes on checkout and on commit, and
+# the requirement they verify — that every line keeps its own terminator — would
+# be checked against fixtures that no longer contain the case.
+#
+# -text disables all conversion. Nothing here may relax it.
+tests/qa/corpus/** -text

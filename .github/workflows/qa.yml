@@ -1,0 +1,70 @@
+name: QA
+
+# Placement is deliberate and comes from the contract (G-PUSH, G-RELEASE).
+#
+# This runs on every push and its result is visible, but a red result does NOT
+# block a commit, a merge or a push: almost every requirement is red today, and
+# a gate on commits would block the very work that turns them green. What it
+# does block is PUBLICATION — the release job in build.yml calls this workflow
+# and will not publish while it is red.
+#
+# Tighten to merges once the suite is green. That is an easy decision to take
+# then, and a costly one to take now.
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the shipping engine and its driver
+        run: |
+          sudo apt-get update
+          # webkit2gtk-driver brings both the WebDriver server and MiniBrowser,
+          # at the same version as the library the application links against.
+          # xvfb supplies the display the engine needs; without one the run
+          # fails rather than degrading to a single engine.
+          sudo apt-get install -y webkit2gtk-driver xvfb
+
+      - name: Record what is actually installed
+        run: |
+          echo "WebKitGTK: $(dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0 2>/dev/null || echo absent)"
+          echo "driver:    $(command -v WebKitWebDriver || echo absent)"
+          echo "stand-in:  $(google-chrome --version 2>/dev/null || echo absent)"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: qa-ubuntu
+
+      - name: Check the contract and its generated projection agree
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 .qa/tools/render-eval-matrix.py
+          # The runner reads .qa/contract.json to know which requirements exist.
+          # If it has drifted from the contract, a requirement could lose its
+          # check without anybody noticing — so drift is a failure, not a diff
+          # to fix later.
+          git diff --exit-code .qa/ || {
+            echo "::error::.qa/contract.json or .qa/eval-matrix.md is out of date."
+            echo "Regenerate with: python3 .qa/tools/render-eval-matrix.py"
+            exit 1
+          }
+
+      - name: Run the QA suite on both engines
+        run: xvfb-run -a node tests/qa/run.js
+
+      - name: Keep the report even when the suite is red
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: .qa/reports/last-run.json
+          if-no-files-found: error

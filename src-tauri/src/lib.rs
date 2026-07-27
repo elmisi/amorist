@@ -81,43 +81,14 @@ fn save_document(
     let guard = state.file_path.lock().unwrap();
     let path = guard.as_ref().ok_or("No file open.")?;
 
-    if markdown.len() as u64 > MAX_MARKDOWN_BYTES {
-        return Err("File is too large (max 10 MB).".into());
-    }
-
-    if !force.unwrap_or(false) {
-        let saved_mtime = state.last_modified.lock().unwrap();
-        if let Some(expected) = *saved_mtime {
-            if let Ok(meta) = fs::metadata(path) {
-                if let Ok(current) = meta.modified() {
-                    if current != expected {
-                        return Err("CONFLICT".into());
-                    }
-                }
-            }
-        }
-    }
-
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let tmp_path = path.with_file_name(format!(".{}.amorist-tmp", name));
-
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-
-    let contents = encode_line_endings(&markdown, &line_ending);
-    if let Err(e) = fs::write(&tmp_path, contents.as_bytes()) {
-        let _ = fs::remove_file(&tmp_path);
-        return Err(e.to_string());
-    }
-
-    if let Err(e) = fs::rename(&tmp_path, path) {
-        let _ = fs::remove_file(&tmp_path);
-        return Err(e.to_string());
-    }
+    let expected_mtime = *state.last_modified.lock().unwrap();
+    write_document(
+        path,
+        &markdown,
+        &line_ending,
+        expected_mtime,
+        force.unwrap_or(false),
+    )?;
 
     // Update last_modified after successful save
     if let Ok(meta) = fs::metadata(path) {
@@ -158,6 +129,62 @@ fn force_close(app_handle: tauri::AppHandle) {
     }
     #[cfg(not(target_os = "macos"))]
     app_handle.exit(0);
+}
+
+/// The write path, with no application state attached.
+///
+/// Extracted from `save_document` so that the two properties the QA contract
+/// puts on it can be verified directly, over real temporary files, without
+/// standing up a window: the write is atomic, and a file changed underneath us
+/// is never overwritten without being asked. `save_document` is now a thin
+/// wrapper that supplies the state and records the new modification time.
+///
+/// Behaviour is unchanged from the inline version.
+fn write_document(
+    path: &std::path::Path,
+    markdown: &str,
+    line_ending: &str,
+    expected_mtime: Option<std::time::SystemTime>,
+    force: bool,
+) -> Result<(), String> {
+    if markdown.len() as u64 > MAX_MARKDOWN_BYTES {
+        return Err("File is too large (max 10 MB).".into());
+    }
+
+    if !force {
+        if let Some(expected) = expected_mtime {
+            if let Ok(meta) = fs::metadata(path) {
+                if let Ok(current) = meta.modified() {
+                    if current != expected {
+                        return Err("CONFLICT".into());
+                    }
+                }
+            }
+        }
+    }
+
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let tmp_path = path.with_file_name(format!(".{}.amorist-tmp", name));
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    let contents = encode_line_endings(markdown, line_ending);
+    if let Err(e) = fs::write(&tmp_path, contents.as_bytes()) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(e.to_string());
+    }
+
+    if let Err(e) = fs::rename(&tmp_path, path) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(e.to_string());
+    }
+
+    Ok(())
 }
 
 fn detect_line_ending(raw: &[u8]) -> String {
@@ -601,6 +628,130 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---------------------------------------------------------------- family F
+    //
+    // The write path, verified over real temporary files. Both requirements
+    // here describe behaviour that is CORRECT TODAY: they exist so that it
+    // cannot quietly regress while the save path is rewritten to preserve the
+    // source. A regression check earns its keep before the change, not after.
+
+    fn scratch_dir(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "amorist-qa-{}-{}-{:?}",
+            label,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn temporary_files_in(dir: &std::path::Path) -> Vec<String> {
+        fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.file_name().to_string_lossy().to_string())
+            .filter(|name| name.contains("amorist-tmp"))
+            .collect()
+    }
+
+    #[test]
+    fn qa_req_f1_a_successful_save_leaves_no_temporary_file_behind() {
+        let dir = scratch_dir("f1-ok");
+        let file = dir.join("nota.md");
+        fs::write(&file, b"# prima\n").unwrap();
+
+        write_document(&file, "# dopo\n", "lf", None, false).unwrap();
+
+        assert_eq!(fs::read(&file).unwrap(), b"# dopo\n");
+        assert!(
+            temporary_files_in(&dir).is_empty(),
+            "a temporary file survived a successful save: {:?}",
+            temporary_files_in(&dir)
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_f1_a_failed_write_leaves_the_original_intact_and_no_debris() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = scratch_dir("f1-fail");
+        let file = dir.join("nota.md");
+        let original: &[u8] = b"# non deve cambiare\n\ncontenuto originale\n";
+        fs::write(&file, original).unwrap();
+
+        // Make the directory unwritable so the temporary file cannot be created.
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+        let outcome = write_document(&file, "# sovrascritto\n", "lf", None, false);
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
+
+        // Running as root would defeat the read-only directory. Say so rather
+        // than reporting a pass that measured nothing.
+        assert!(
+            outcome.is_err(),
+            "the write succeeded into a read-only directory; this test measures \
+             nothing when run with privileges that ignore permissions"
+        );
+        assert_eq!(
+            fs::read(&file).unwrap(),
+            original,
+            "a failed save modified the original file"
+        );
+        assert!(
+            temporary_files_in(&dir).is_empty(),
+            "a failed save left debris behind: {:?}",
+            temporary_files_in(&dir)
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_f2_a_file_changed_outside_is_not_overwritten() {
+        let dir = scratch_dir("f2-conflict");
+        let file = dir.join("nota.md");
+        fs::write(&file, b"# aperta qui\n").unwrap();
+        let opened_at = fs::metadata(&file).unwrap().modified().unwrap();
+
+        // Another program edits the file while it is open here. The sleep is
+        // not decoration: on a filesystem with coarse timestamps two writes
+        // inside the same tick carry the same modification time, and the
+        // conflict would go unnoticed. That limitation is recorded against
+        // REQ-F2 in the contract.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        fs::write(&file, b"# cambiata da un altro programma\n").unwrap();
+
+        let outcome = write_document(&file, "# sovrascritta\n", "lf", Some(opened_at), false);
+
+        assert_eq!(outcome, Err("CONFLICT".to_string()));
+        assert_eq!(
+            fs::read(&file).unwrap(),
+            b"# cambiata da un altro programma\n",
+            "the other program's work was overwritten"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_f2_a_forced_save_overwrites_only_when_asked() {
+        let dir = scratch_dir("f2-force");
+        let file = dir.join("nota.md");
+        fs::write(&file, b"# aperta qui\n").unwrap();
+        let opened_at = fs::metadata(&file).unwrap().modified().unwrap();
+
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        fs::write(&file, b"# cambiata altrove\n").unwrap();
+
+        write_document(&file, "# forzata\n", "lf", Some(opened_at), true).unwrap();
+
+        assert_eq!(fs::read(&file).unwrap(), b"# forzata\n");
+        assert!(temporary_files_in(&dir).is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
 
     #[test]
     fn desktop_entry_includes_exec_with_file_placeholder() {

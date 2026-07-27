@@ -1,0 +1,811 @@
+# amorist — QA contract
+#
+# APPROVED by the repository owner on 2026-07-28.
+#
+# From here on this file is the source of truth for what "correct" means. A
+# check may not be weakened to make a run go green: amend the contract first,
+# have the amendment approved, then change the check. A check changed without a
+# contract amendment is a contract breach whatever the suite reports (R-018).
+#
+# Provenance: .qa/decisions.yaml (28 decisions, Discovery 2026-07-26/27 plus the
+# three points closed on 2026-07-28) and .qa/risks.yaml (15 risks, each with the
+# evidence that produced it).
+# Repository state at authoring time: commit a9d7e73.
+
+status: approved
+approved_by: repository owner
+approved_on: 2026-07-28
+
+product:
+  name: amorist
+  primary_value: >
+    Never alter the user's file except as the direct result of an edit the user
+    made. Markdown files live in git; a diff that does not correspond to an edit
+    is damage, not formatting.
+
+users:
+  - id: U-1
+    description: >
+      Single local author editing their own Markdown files. The same files are
+      also opened in Zed, Sublime Text and VS Code, are tracked in git, and are
+      reviewed as diffs. Document families in use: Obsidian-style notes with
+      front matter and wiki links, technical documentation with fenced code and
+      tables, hand-wrapped prose drafts, and files that have passed through
+      several tools and carry inconsistent formatting.
+
+critical_tasks:
+  - id: T-1
+    description: Open a file, read it, close it without changing anything.
+  - id: T-2
+    description: Fix a typo in one line and save.
+  - id: T-3
+    description: Write a new note from scratch, wrapping lines by hand.
+  - id: T-4
+    description: Switch to the source view to check the markup, and back.
+  - id: T-5
+    description: Paste content from a web page.
+  - id: T-6
+    description: Resume work after the application died without a save.
+
+unacceptable_failures:
+  - Any byte of the file changes without a corresponding user edit.
+  - An edit in one place changes bytes in another place.
+  - Content the user pasted disappears with no trace and no warning.
+  - Unsaved work is lost with no recovery path.
+  - A check cannot run and the suite reports success anyway.
+  - The suite is green and would not catch a deliberately reintroduced defect.
+
+accepted_tradeoffs:
+  table_alignment: >
+    Automatic column re-alignment is removed from both open and save. Tables keep
+    the spacing found in the file, ragged or not. Re-alignment becomes a command
+    the user invokes. Source: D-012, forced by R-012.
+  rendering_model: >
+    The WYSIWYG stops being a CommonMark renderer and becomes a text editor with
+    visible formatting: soft breaks are shown as line breaks rather than spaces.
+    Source: D-017.
+  whitespace_divergence: >
+    amorist preserves trailing whitespace that the user's own Zed deletes on save
+    (remove_trailing_whitespace_on_save defaults to true). The two tools will
+    disagree; amorist is never the one introducing the change. Source: D-022.
+  paste_fidelity: >
+    Conversion quality of pasted rich text is not promised — only that nothing
+    recognisable disappears. Full-fidelity HTML conversion is an unbounded
+    promise. Source: D-023.
+  perimeter: >
+    The deprecated Python browser mode (bin/amorist) is outside the contract. It
+    is neither guaranteed nor used as test scaffolding. Source: D-020.
+  paragraph_reflow: >
+    No "reformat paragraph" command is provided. Line breaks are only ever moved
+    by the user. Source: D-017, rejected alternative.
+
+release_gates:
+  - id: G-RELEASE
+    rule: >
+      Publication of a release is blocked while any blocking requirement fails.
+    source: D-025
+  - id: G-PUSH
+    rule: >
+      Checks run on every push and their result is visible, but a red result does
+      not block a commit, a merge, or a push. This placement is deliberate:
+      everything is red today, and a gate on commits would block the very work
+      that makes it green.
+    source: D-025
+    future: >
+      Tighten to merges once the suite is green — an easy decision to take then.
+
+fallback_policies:
+  missing_engine: >
+    If either engine — the WebKitGTK WebDriver server or the Chromium-family
+    browser — cannot be found or started, the run FAILS and names which one.
+    Never skipped-and-green, and never "the other engine passed, so we are fine":
+    one engine missing means half the coverage is absent, which is precisely the
+    situation a report must not hide. The existing tests/app-shell-smoke.test.js
+    exits successfully when it finds no browser; the new runner must not inherit
+    that behaviour. See REQ-G1 and REQ-G2.
+  missing_display: >
+    Where no display is available, a virtual one is started by the runner. If it
+    cannot be started, the run FAILS with that cause named. It is not degraded to
+    a single-engine run.
+  missing_corpus: >
+    If the fixture directory is empty or unreadable, the run FAILS. A check that
+    iterates over zero files must not pass.
+  external_corpus: >
+    No user files are copied into the repository. The corpus is entirely
+    synthetic (D-026), so local and CI runs use identical inputs and there is no
+    "green here, red there" ambiguity.
+
+environments:
+  - id: ENV-linux
+    description: >
+      Linux, Tauri 2 with WebKitGTK. The publishing workflow builds deb and
+      AppImage on ubuntu-latest.
+  - id: ENV-macos
+    description: >
+      macOS, Tauri 2 with WKWebView. The publishing workflow builds a dmg on
+      macos-latest, universal target.
+    note: >
+      Windows is not built by .github/workflows/build.yml and is out of scope.
+  - id: ENV-checks
+    description: >
+      The editor checks run twice, on two engines, from one set of check code
+      behind a small driver interface. Engine one: WebKitGTK — the engine the
+      Linux application actually runs inside — driven through its WebDriver
+      server over plain HTTP. Engine two: a Chromium-family browser driven over
+      the DevTools protocol. Both use node builtins only and load a test page
+      that pulls in web/editor/*.js alone, with no server and no app shell. The
+      disk checks run as Rust tests over temporary files. Source: D-014, D-020,
+      D-029.
+    caveat: >
+      WKWebView on macOS is not covered by any automated check: it has no
+      equivalent driver. That residue is recorded as REQ-G3 and is scoped to
+      macOS remaining a published platform.
+
+requirements:
+
+  # ---------------------------------------------------------------- family A
+  # The file on disk. This is the primary value; every requirement here is a
+  # different way for the same promise to break.
+
+  - id: REQ-A1
+    statement: >
+      Open any .md file, type one character, delete it, save. The file on disk
+      must be byte-identical to what it was before.
+    category: invariant
+    origin: user-statement, 2026-07-27 (P1)
+    motivation: >
+      Markdown files live in git. A diff that does not correspond to an edit
+      pollutes history and review.
+    risk_id: R-010
+    verification:
+      type: deterministic
+      evidence_required:
+        - the original file bytes
+        - the bytes produced after the neutral edit
+        - on failure, a byte-level diff naming the first differing offset
+      success_condition: >
+        For every file in the corpus: bytes_after == bytes_before, with no
+        exception for whitespace, line endings, or the final newline.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low per case once the harness exists
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-A2
+    statement: >
+      After a real edit, only the edited line may differ between the file before
+      and the file after. No other line may change.
+    category: invariant
+    origin: user-statement (Q-006 answer, D-012)
+    motivation: >
+      "Only what I changed shows up in the diff" is the property that makes the
+      editor usable in a reviewed repository.
+    risk_id: R-010
+    verification:
+      type: deterministic
+      evidence_required:
+        - the edit position and the text typed
+        - the set of line numbers that differ before/after
+      success_condition: >
+        The set of changed lines is exactly the set the edit can account for.
+        That set MUST be defined in the check for each edit kind, and the
+        definition is part of this contract:
+          - insert/delete within a line -> that line only
+          - Enter pressed -> the line at the caret, plus one new line after it
+          - deletion across a line boundary -> the two lines, merged into one
+          - paste of N lines -> the caret line plus N-1 new lines
+          - typing over a selection spanning N lines -> those N lines collapsed
+            into one, plus whatever lines the typed text itself introduces
+          - a toolbar action or keyboard shortcut (bold, heading, list marker,
+            Tab / Shift-Tab indent) -> only the lines the affected construct
+            occupies; indenting one list item changes that item's line alone,
+            not the rest of the list
+          - undo or redo -> exactly the lines the reverted edit had touched,
+            and no others
+        Any edit kind not in this list must be added here before it is tested.
+    severity: blocking
+    false_positive_risk: medium
+    false_positive_note: >
+      The risk is in the definition above, not in the measurement. An incomplete
+      definition produces either false alarms or false silence.
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-A3
+    statement: >
+      A region the user touched but whose content ended up unchanged must be
+      written back exactly as it was in the file, including its line wrapping.
+    category: invariant
+    origin: user-statement (Q-005 answer)
+    motivation: >
+      Without this, REQ-A1 would be vacuous: typing and deleting a character
+      marks its region as touched, and a re-emitted region loses the author's
+      line breaks.
+    risk_id: R-005
+    verification:
+      type: deterministic
+      evidence_required:
+        - a hand-wrapped paragraph, edited then reverted, before and after bytes
+      success_condition: >
+        Bytes identical. The comparison the editor performs internally to decide
+        "unchanged" must ignore line wrapping, since the DOM round trip yields
+        the unwrapped form; the comparison the CHECK performs must not.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-A4
+    statement: >
+      Invisible characters are preserved verbatim: trailing spaces stay, a file
+      that ended with a newline keeps it, a file that did not does not gain one.
+      amorist never tidies up.
+    category: invariant
+    origin: user-statement (Q-018 answer, D-022)
+    motivation: >
+      Two trailing spaces are Markdown content (a hard break), not dirt. And any
+      "cleanup" is by definition a change the user did not ask for.
+    risk_id: R-014
+    verification:
+      type: deterministic
+      evidence_required:
+        - corpus files with, and without, a final newline
+        - corpus files with pre-existing trailing spaces and hard breaks
+      success_condition: >
+        Byte identity after a neutral edit, for both states of the final newline
+        and with all trailing whitespace intact.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-A5
+    statement: >
+      Markdown constructs amorist does not understand pass through untouched.
+      They are copied verbatim from the original source and are never reparsed
+      or re-emitted.
+    category: invariant
+    origin: user-statement (Q-003 answer, D-010)
+    motivation: >
+      The promise covers ANY .md file. The only way to keep it with a partial
+      codec is to never let the codec near what it does not understand.
+    risk_id: R-002
+    verification:
+      type: deterministic
+      evidence_required:
+        - corpus files containing YAML front matter, indented code blocks,
+          nested blockquotes, footnotes, reference links, raw HTML blocks,
+          setext headings, wiki links
+      success_condition: >
+        Byte identity after a neutral edit, and after an edit in an unrelated
+        part of the same file.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-A6
+    statement: >
+      Table spacing is preserved as found in the file. No column re-alignment
+      happens on open or on save.
+    category: invariant
+    origin: user-statement (Q-006 answer, D-012)
+    motivation: >
+      Re-alignment currently runs while the file is being READ, so opening and
+      saving a hand-spaced table rewrites it with no edit at all.
+    risk_id: R-012
+    verification:
+      type: deterministic
+      evidence_required:
+        - a ragged table, a table with emoji, a table with escaped pipes
+        - bytes after open+save, and after editing one cell
+      success_condition: >
+        Open+save is byte-identical. Editing one cell changes only that cell's
+        line, even when the new content is wider than the column.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+    product_note: >
+      Re-alignment is expected to survive as a command the user invokes. That
+      command, if built, needs its own requirement stating it changes only the
+      table it was invoked on.
+
+  - id: REQ-A7
+    statement: >
+      List markers and numbering are preserved as the author wrote them.
+      A list written with "*" stays "*"; a list numbered "1. 1. 1." keeps it.
+    category: invariant
+    origin: user-statement (Q-006 answer, D-012)
+    motivation: >
+      serializeList hardcodes "- " and a progressive counter, so editing one
+      item of a thirty-item list rewrites all thirty lines.
+    risk_id: R-013
+    verification:
+      type: deterministic
+      evidence_required:
+        - lists with "*", "+", "-" markers; ordered lists numbered 1/1/1 and
+          1/2/3; nested lists mixing markers per level
+      success_condition: >
+        Open+save byte-identical; editing one item changes only that item's line.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-A8
+    statement: >
+      The information string on a fenced code block (the language tag) is
+      preserved, along with the fence character and length.
+    category: invariant
+    origin: derived from P1 and R-001
+    motivation: >
+      The language tag is content the author wrote. It is currently discarded at
+      parse time, so every round trip strips it from every fenced block.
+    risk_id: R-001
+    verification:
+      type: deterministic
+      evidence_required:
+        - fences with a language, with a language plus metadata, with tildes,
+          with more than three markers
+      success_condition: Byte identity after a neutral edit.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-A9
+    statement: >
+      The file's line-ending convention is preserved: a CRLF file stays CRLF, an
+      LF file stays LF, and a file with mixed endings is not normalised.
+    category: regression
+    origin: >
+      repository evidence — detect_line_ending / encode_line_endings; the
+      per-line rule below decided by the user, D-027
+    motivation: >
+      This behaviour exists today and must not be lost during the rewrite of the
+      save path. The exception for mixed files was closed rather than accepted:
+      an exception in the primary promise is the thing this contract exists to
+      remove.
+    risk_id: R-010
+    verification:
+      type: deterministic
+      evidence_required:
+        - a file entirely in LF, a file entirely in CRLF, a file mixing both
+        - a file whose last line carries no terminator at all
+      success_condition: >
+        Byte identity after a neutral edit, for all four files. The rule is per
+        line, not per file: every existing line keeps its own terminator
+        verbatim, and a line newly created by pressing Enter takes the terminator
+        of the line the caret was on. No majority is computed and nothing is
+        normalised.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: partially
+    currently_holds_note: >
+      Files entirely in LF and files entirely in CRLF are handled today. A file
+      mixing both is rewritten to the majority convention and fails this
+      requirement. Closing that gap costs almost nothing under the
+      source-preserving save path: a line copied verbatim from the original
+      carries its own terminator with it, so the exception disappears instead of
+      needing machinery of its own.
+    status: confirmed
+
+  - id: REQ-A10
+    statement: >
+      Switching between WYSIWYG and source, any number of times and in any
+      order, leaves the document byte-identical. Saving after a switch with no
+      edit produces the original file.
+    category: invariant
+    origin: derived from P1 and R-007
+    motivation: >
+      Today the document is reparsed and re-serialised on every switch, so damage
+      accumulates before any save and with no signal to the user. This is the
+      only requirement whose failure needs no user action at all.
+    risk_id: R-007
+    verification:
+      type: deterministic
+      evidence_required:
+        - bytes after 1, 2 and 10 switches with no editing in between
+        - the dirty indicator's state after those switches
+      success_condition: >
+        Bytes identical in all three cases, and the document is not reported as
+        modified.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  # ---------------------------------------------------------------- family B
+  # What the editing surface shows and does.
+
+  - id: REQ-B1
+    statement: >
+      Every line of the file is shown as its own line in the WYSIWYG view. Soft
+      breaks are not collapsed into spaces.
+    category: invariant
+    origin: user-statement, 2026-07-27 (P2), refined by D-017
+    motivation: >
+      The user must be able to see the file's line structure while editing;
+      otherwise the structure is preserved on disk but invisible, and edits are
+      made blind.
+    risk_id: R-005
+    verification:
+      type: deterministic
+      evidence_required:
+        - "rendered geometry — the bounding rectangle of the first character of
+          each source line, measured in a real browser"
+      success_condition: >
+        Characters belonging to different source lines never share a vertical
+        position, EXCEPT where a single source line is too wide for the viewport
+        and wraps visually — that case must be identified by measuring against a
+        viewport wide enough to prevent wrapping, so that soft wrap and source
+        newlines are never confused.
+    severity: blocking
+    false_positive_risk: medium
+    false_positive_note: >
+      Geometry checks are sensitive to fonts, zoom and viewport width. The
+      check must fix all three explicitly rather than inherit defaults.
+    automation: full
+    estimated_cost: high
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-B2
+    statement: >
+      Typing lengthens the current line. It never moves the other lines of the
+      same paragraph.
+    category: invariant
+    origin: user-statement (Q-009 answer, D-017)
+    motivation: >
+      Reflow would put the whole paragraph in the diff and would move line breaks
+      the user placed deliberately.
+    risk_id: R-005
+    verification:
+      type: deterministic
+      evidence_required:
+        - a hand-wrapped paragraph, a long sentence typed into its middle line,
+          and the resulting file bytes
+      success_condition: >
+        Only the edited line differs. The other lines of the paragraph are
+        unchanged, whatever the resulting line length.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-B3
+    statement: >
+      Enter inserts a bare newline at the caret. It does not create a paragraph
+      break and never writes the two-space hard break.
+    category: invariant
+    origin: user-statement (Q-010 answer, D-018)
+    motivation: >
+      Matches how Sublime and Zed behave, and avoids writing trailing spaces that
+      the user's own Zed deletes on save.
+    risk_id: R-015
+    verification:
+      type: deterministic
+      evidence_required: [the bytes written after a single Enter keypress]
+      success_condition: >
+        Exactly one "\n" is inserted at the caret offset. No spaces are added
+        before it, and no blank line after it.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  # ---------------------------------------------------------------- family C
+
+  - id: REQ-C1
+    statement: >
+      Switching between WYSIWYG and source leaves the caret on the same character
+      of the text, in both directions. Column numbers may differ where the file
+      contains markers the WYSIWYG does not display.
+    category: invariant
+    origin: user-statement, 2026-07-27 (P3), refined by D-019
+    motivation: >
+      Losing your place on every switch discourages using the source view — which
+      is exactly the view that would reveal a damaged document.
+    risk_id: R-011
+    verification:
+      type: deterministic
+      evidence_required:
+        - the character under the caret before the switch, and after
+        - the same measured for a heading, a bold run, a list item, a table cell
+      success_condition: >
+        Same character, both directions, including at line start, line end, and
+        on the boundary between two blocks. Where the caret sits on a marker that
+        exists only in the source ("#", "*"), the mapping into the WYSIWYG must
+        land on the first visible character of that construct, deterministically.
+    severity: blocking
+    false_positive_risk: medium
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+
+  # ---------------------------------------------------------------- family D
+
+  - id: REQ-D1
+    statement: >
+      Content pasted from another application never disappears silently. What
+      amorist cannot convert must still reach the file in a readable form.
+    category: invariant
+    origin: user-statement (Q-016 answer, D-023)
+    motivation: >
+      A pasted image currently vanishes entirely — no address, no alt text, no
+      warning. Measured.
+    risk_id: R-008
+    verification:
+      type: deterministic
+      evidence_required:
+        - "per paste fixture, the list of tokens that must survive — image
+          address and alt text, every table cell value, link targets, list
+          item text"
+      success_condition: >
+        Every declared token appears in the resulting file. Table cell values
+        additionally appear on separate lines rather than concatenated.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      This is deterministic per fixture, so its weakness is coverage, not
+      evaluability. A semantic judge comparing pasted input against written
+      output MAY be used OUTSIDE the gate to discover new cases; anything it
+      finds becomes a deterministic fixture. The gate never calls a model.
+
+  # ---------------------------------------------------------------- family E
+
+  - id: REQ-E1
+    statement: >
+      Work not yet saved survives an abrupt termination. A working copy is
+      written periodically to amorist's own location and offered for recovery on
+      the next start.
+    category: invariant
+    origin: user-statement (Q-017 answer, D-024)
+    motivation: >
+      A crash, a power loss or a mis-clicked close confirmation currently loses
+      everything typed since the last save, with no recovery path.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - text typed, the process killed without a save, the recovered content
+      success_condition: >
+        The recovered text matches what was typed, verbatim, up to the last
+        working-copy interval. That interval MUST be stated in the
+        implementation and asserted by the check.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-E2
+    statement: >
+      amorist never writes to the user's .md file except on an explicit save.
+      The working copy of REQ-E1 is written elsewhere.
+    category: invariant
+    origin: derived from P1 and D-024
+    motivation: >
+      An autosave into the user's file would change it at moments the user did
+      not choose, defeating the reason the primary value exists.
+    risk_id: R-010
+    verification:
+      type: deterministic
+      evidence_required:
+        - the file's modification time and bytes, sampled during an editing
+          session with no save
+      success_condition: >
+        Neither the bytes nor the modification time of the user's file change
+        between opening it and the first explicit save.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: true
+    status: recommendation
+
+  # ---------------------------------------------------------------- family F
+  # The write path. Verified in Rust, over real temporary files.
+
+  - id: REQ-F1
+    statement: >
+      The file is written atomically. A failure during the write leaves the
+      original file intact and leaves no partial file behind.
+    category: regression
+    origin: repository evidence — save_document writes to a tmp file then renames
+    motivation: >
+      This behaviour is correct today and must not regress while the save path is
+      rewritten.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - a save into a read-only directory, a save with the tmp path blocked
+        - the directory listing afterwards
+      success_condition: >
+        The original file is unchanged, no .amorist-tmp file remains, and the
+        error is reported to the user rather than swallowed.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: true
+    status: recommendation
+
+  - id: REQ-F2
+    statement: >
+      A file modified outside amorist since it was opened is detected on save,
+      and is never overwritten without an explicit user confirmation.
+    category: regression
+    origin: repository evidence — mtime comparison returning CONFLICT
+    motivation: >
+      Silently overwriting another program's changes is content loss of exactly
+      the kind this contract exists to prevent.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - a file changed on disk between open and save
+        - the returned error, and the file's bytes afterwards
+      success_condition: >
+        Save fails with a conflict, the file on disk is untouched, and it is
+        overwritten only after the forced retry.
+    severity: blocking
+    false_positive_risk: medium
+    false_positive_note: >
+      Modification-time comparison has known limits: coarse timestamp resolution
+      on some filesystems can miss a change made within the same tick. Content
+      hashing would be exact. Flagged, not decided.
+    automation: full
+    estimated_cost: low
+    currently_holds: true
+    status: recommendation
+
+  # ---------------------------------------------------------------- family G
+  # Requirements on the checking system itself.
+
+  - id: REQ-G1
+    statement: >
+      A check that cannot execute is a failure, never a pass. Missing browser,
+      missing corpus, empty fixture directory: the runner exits non-zero and says
+      which check could not run.
+    category: invariant
+    origin: recommendation, accepted risk-control
+    motivation: >
+      tests/app-shell-smoke.test.js exits successfully when no browser is found.
+      A gate that turns green when it cannot look is worse than no gate, because
+      it produces a false assurance.
+    risk_id: R-007
+    verification:
+      type: deterministic
+      evidence_required:
+        - a run with the browser path sabotaged, and the runner's exit code
+        - a run with an empty fixture directory, and the exit code
+      success_condition: Non-zero exit and a named cause in both cases.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: false
+    status: recommendation
+
+  - id: REQ-G2
+    statement: >
+      The editor checks run on the engine the product actually ships with, not
+      only on a stand-in. On Linux that is WebKitGTK, driven through its own
+      WebDriver server. Every check in families A, B, C and D runs unchanged on
+      both engines and must pass on both.
+    category: invariant
+    origin: user-statement, 2026-07-28 (D-029) — the engine gap is to be closed
+      by automation, not carried as a manual pass
+    motivation: >
+      Contenteditable and selection behaviour differ between engines. A suite
+      that only ever sees a stand-in proves nothing about the binary the user
+      runs, and families B and C — what the surface shows and where the caret
+      lands — are exactly the parts where engines disagree.
+    risk_id: R-017
+    verification:
+      type: deterministic
+      evidence_required:
+        - the engine name and version exercised by each run
+        - a per-requirement verdict recorded separately for each engine
+      success_condition: >
+        Every check in families A, B, C and D produces a verdict on both engines
+        and passes on both. A requirement that passes on one engine and fails on
+        the other is a failure, and the report names which engine failed.
+    severity: blocking
+    false_positive_risk: medium
+    false_positive_note: >
+      Two engines mean two sets of engine-specific quirks. A divergence is real
+      information, but it may indict the check rather than the product. The
+      report must name the engine so the difference stays visible instead of
+      being averaged into a single verdict.
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    implementation_note: >
+      WebKitGTK ships a standards-compliant WebDriver server as a separate
+      distribution package, available at the same version as the library the
+      application links against (2.52.3 on the development machine). It speaks
+      plain HTTP, so it needs no third-party client library and respects the same
+      zero-dependency constraint as the rest of the runner. A virtual display is
+      required wherever no real one exists. The stand-in engine stays in the
+      suite rather than being replaced: it is faster to debug, and a check that
+      behaves differently on the two engines is itself a finding.
+    engine_naming_note: >
+      The stand-in is any Chromium-family browser. It must be located by trying
+      the known executable names in order, not by assuming one: the development
+      machine has Google Chrome and no binary named "chromium", which the
+      existing smoke test would fail to find.
+
+  - id: REQ-G3
+    statement: >
+      Every report names the engines actually exercised, and names any published
+      platform that automation does not reach, together with the cadence and the
+      owner of its manual pass.
+    category: human-decision
+    origin: recommendation
+    motivation: >
+      Even with the shipping engine automated on one platform, another published
+      platform stays outside automated reach. The report must not let that gap
+      read as covered.
+    risk_id: R-017
+    verification:
+      type: manual
+      evidence_required:
+        - a line in every report naming each engine and version exercised
+        - for each uncovered published platform, the checklist used, how often it
+          is run, and who runs it
+      success_condition: >
+        The report never claims coverage it does not have. While a manual pass is
+        still needed it is this six-case list, run once per release by the
+        repository owner: open and save without touching anything; correct one
+        character; press Enter mid-line; switch to the source view and back;
+        paste from a web page; kill the application without saving and recover.
+    severity: advisory
+    false_positive_risk: low
+    automation: manual
+    estimated_cost: low
+    currently_holds: false
+    status: confirmed
+    residual_scope_note: >
+      This requirement is scoped to PUBLISHED platforms deliberately. It shrinks
+      as automation grows and becomes inapplicable altogether if a platform stops
+      being published — so the lever for closing it is not only more automation
+      but also the decision of what to ship. macOS is the only platform it
+      currently covers: WKWebView has no equivalent driver, the Tauri WebDriver
+      wrapper does not support macOS, and a proxy engine would be a different
+      build of WebKit rather than the one that ships — which would be claiming
+      coverage instead of having it.

@@ -1,0 +1,14 @@
+{
+  "name": "a list whose items carry links",
+  "why": "Link targets are content. An item that keeps its words but loses where it pointed has lost the part that could not be retyped from memory.",
+  "html": "<ul><li><a href=\"https://example.invalid/uno\">primo rimando</a></li><li><a href=\"https://example.invalid/due\">secondo rimando</a></li><li>voce senza rimando</li></ul>",
+  "text": "primo rimando\nsecondo rimando\nvoce senza rimando",
+  "mustSurvive": [
+    "primo rimando",
+    "secondo rimando",
+    "voce senza rimando",
+    "https://example.invalid/uno",
+    "https://example.invalid/due"
+  ],
+  "mustBeOnSeparateLines": [["primo rimando", "secondo rimando", "voce senza rimando"]]
+}
