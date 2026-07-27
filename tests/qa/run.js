@@ -248,9 +248,14 @@ function printSummary(report, corpus, file) {
         const where = parts.length ? ` ${parts.join(", ")}` : "";
         line(`      ${failure.engine} ${failure.fixture || ""}${where}`);
         line(`        ${failure.detail || ""}`);
-        if (failure.expected !== undefined) {
-          line(`        expected ${failure.expected}`);
-          line(`        actual   ${failure.actual}`);
+        // Independently: a failure that has only an observed value still has
+        // to show it. Requiring both fields hid the cause of a real CI failure
+        // behind a message that named the symptom and nothing else.
+        if (failure.expected !== undefined) line(`        expected ${failure.expected}`);
+        if (failure.actual !== undefined) {
+          for (const text of String(failure.actual).split("\n").slice(-12)) {
+            line(`        actual   ${text}`);
+          }
         }
       }
       if (requirement.failures.length > shown.length) {

@@ -29,7 +29,14 @@ jobs:
           # at the same version as the library the application links against.
           # xvfb supplies the display the engine needs; without one the run
           # fails rather than degrading to a single engine.
-          sudo apt-get install -y webkit2gtk-driver xvfb
+          # webkit2gtk-driver: the engine and its driver, for families A to D.
+          # The rest: what the Tauri crate needs to compile, because the
+          # write-path checks are Rust and a suite that cannot build them
+          # verifies nothing about the one part of the product that already
+          # works. Same list as the build workflow.
+          sudo apt-get install -y webkit2gtk-driver xvfb \
+            libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Record what is actually installed
         run: |

@@ -57,13 +57,24 @@ function collect(prefix, requirement) {
         + "A check that cannot run is a failure, never a pass.",
     }];
   }
+  // No test lines at all plus a non-zero exit means it never got as far as
+  // running anything — almost always a missing build dependency. Saying "no
+  // test matched the filter" there names the symptom and hides the cause.
+  if (!outcome.tests.length && outcome.status !== 0) {
+    return [{
+      fixture: "the Rust checks",
+      detail: "The Rust checks did not build, so nothing was verified about the write path.",
+      actual: outcome.output.slice(-1500),
+    }];
+  }
   const mine = outcome.tests.filter((test) => test.name.includes(prefix));
   if (!mine.length) {
     return [{
       fixture: "the Rust checks",
-      detail: `No Rust check named for ${requirement} was found (looked for names containing `
-        + `"${prefix}"). A filter that selects nothing must not pass.`,
-      actual: outcome.output.slice(-400),
+      detail: `The Rust checks built and ran, but none is named for ${requirement} `
+        + `(looked for names containing "${prefix}"). A filter that selects nothing `
+        + "must not pass — most likely a check was renamed.",
+      actual: outcome.output.slice(-600),
     }];
   }
   return mine
