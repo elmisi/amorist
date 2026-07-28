@@ -95,19 +95,84 @@ module.exports = [
         }
       }
 
-      return {
-        failures,
-        fixturesExercised: exercised,
-        notCovered: [
-          "the caret resting on a marker that exists only in the source (a heading's "
-          + "hash, a list's asterisk), which the contract says must map into the view "
-          + "deterministically onto the first visible character of that construct",
-        ],
-      };
+      // The caret resting on a marker that exists only in the source. The
+      // contract does not require a round trip here — there is nowhere in the
+      // view for a hash to be — it requires the mapping to land on the first
+      // visible character of that construct, and to do so DETERMINISTICALLY.
+      // So both halves are asserted: the right character, and the same answer
+      // twice.
+      for (const fixture of fixtures) {
+        const marked = markerLine(fixture.text);
+        if (!marked) continue;
+
+        const landings = [];
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          await ctx.page.open(fixture.text);
+          await ctx.page.toggleMode();
+          await ctx.page.settle(40);
+          const sourceValue = await ctx.page.sourceValue();
+          const at = sourceValue.indexOf(marked.line);
+          if (at < 0) break;
+          // On the marker itself, not on the text after it.
+          await ctx.page.setSourceSelection(at + marked.markerOffset);
+          await ctx.page.toggleMode();
+          await ctx.page.settle(40);
+          const surfaceText = await ctx.page.surfaceText();
+          const offset = await ctx.page.caretTextOffset();
+          landings.push({ offset, character: surfaceText[offset] });
+        }
+
+        if (landings.length !== 2) continue;
+
+        if (landings[0].offset !== landings[1].offset) {
+          failures.push({
+            fixture: fixture.name,
+            direction: "source marker into the view",
+            detail: "The same starting position produced two different landings. "
+              + "A mapping that is not deterministic cannot be relied on even when "
+              + "it happens to be right.",
+            expected: `the same offset twice`,
+            actual: `${landings[0].offset} then ${landings[1].offset}`,
+          });
+          continue;
+        }
+
+        if (landings[0].character !== marked.firstVisible) {
+          failures.push({
+            fixture: fixture.name,
+            direction: "source marker into the view",
+            detail: "The caret sat on a marker that the view does not display, and "
+              + "the mapping did not land on the first visible character of that "
+              + "construct.",
+            line: lineOf(fixture.text, fixture.text.indexOf(marked.line)),
+            expected: describeCharacter(marked.firstVisible, 0),
+            actual: describeCharacter(landings[0].character || "", 0),
+          });
+        }
+      }
+
+      return { failures, fixturesExercised: exercised };
     },
   },
 ];
 
 function lineOf(text, offset) {
   return splitLines(text.slice(0, Math.max(0, offset))).length || 1;
+}
+
+// A line whose first characters exist only in the source: a heading's hashes,
+// a list item's bullet. Returns where the marker sits and what the first
+// character the view actually shows for that construct is.
+function markerLine(text) {
+  for (const raw of text.split(/\r?\n/)) {
+    const heading = raw.match(/^(#{1,6})\s+(\S)/);
+    if (heading) {
+      return { line: raw, markerOffset: 0, firstVisible: heading[2] };
+    }
+    const item = raw.match(/^([*+-]|\d+[.)])\s+(\S)/);
+    if (item) {
+      return { line: raw, markerOffset: 0, firstVisible: item[2] };
+    }
+  }
+  return null;
 }

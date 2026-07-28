@@ -32,6 +32,7 @@ function makePage(engine) {
     paste: (html, text) => call(engine, "paste", [html, text]),
     setHostWidth: (pixels) => call(engine, "setHostWidth", [pixels]),
     fontFingerprint: () => call(engine, "fontFingerprint"),
+    toolbarAction: (name) => call(engine, "toolbarAction", [name]),
 
     sendKeys: (sequence) => engine.sendKeys(sequence),
     evaluate: (expression) => engine.evaluate(expression),

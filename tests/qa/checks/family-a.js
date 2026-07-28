@@ -15,7 +15,7 @@
 
 const { firstDifference, changedLines, splitLines, visible } = require("../lib/diff");
 const { select } = require("../lib/fixtures");
-const { findHandWrappedParagraph } = require("../lib/markdown-shape");
+const { findHandWrappedParagraph, classifyLines } = require("../lib/markdown-shape");
 
 // Open, type one character, delete it. The neutral edit: a real edit gesture
 // whose net effect on the content is nothing at all.
@@ -148,122 +148,137 @@ module.exports = [
     title: "After a real edit, only the lines that edit can account for may differ",
     note: "The set of lines each gesture may change is defined in the contract, not here. A gesture the contract does not list must be added to the contract before it is tested.",
     async run(ctx) {
-      const fixtures = select(ctx.corpus, "hasHandWrappedParagraph");
       const failures = [];
-      const exercised = [];
+      const exercised = new Set();
 
-      for (const fixture of fixtures) {
+      // ---- the six gestures that act on prose -----------------------------
+
+      for (const fixture of select(ctx.corpus, "hasHandWrappedParagraph")) {
+        const paragraph = findHandWrappedParagraph(fixture.text);
+        if (!paragraph) continue;
         const target = targetProseLine(fixture);
         if (!target) continue;
-        exercised.push(fixture.name);
+        exercised.add(fixture.name);
 
-        // Gesture: insert one character inside a line.
-        // Contract: that line only.
-        await ctx.page.open(fixture.text);
-        const before = await ctx.page.markdown();
-        await ctx.page.focusSurface();
-        const placed = await placeCaretInside(ctx.page, target.text);
-        if (!placed.ok) {
-          failures.push({
-            fixture: fixture.name,
-            gesture: "insert one character inside a line",
-            detail: placed.reason,
-          });
-          continue;
-        }
-        await ctx.page.sendKeys(["X"]);
-        await ctx.page.settle();
-        const afterInsert = await ctx.page.markdown();
-        const insertDiff = changedLines(before, afterInsert);
-        const insertAllowed = new Set([target.number]);
-        const insertStray = insertDiff.touchedLineNumbers.filter((n) => !insertAllowed.has(n));
-        if (insertStray.length || lineCount(afterInsert) !== lineCount(before)) {
-          failures.push({
-            fixture: fixture.name,
-            gesture: "insert one character inside a line",
-            detail: "Lines changed that the gesture cannot account for.",
-            editedLine: target.number,
-            linesAllowedToChange: [...insertAllowed],
-            linesThatChanged: insertDiff.touchedLineNumbers,
-            straylines: insertStray,
-            lineCountBefore: lineCount(before),
-            lineCountAfter: lineCount(afterInsert),
-            sampleRemoved: insertDiff.removed.slice(0, 3).map((r) => `${r.line}: ${visible(r.text)}`),
-            sampleAdded: insertDiff.added.slice(0, 3).map((r) => `${r.line}: ${visible(r.text)}`),
-          });
-        }
+        const check = (outcome) => { if (outcome) failures.push({ fixture: fixture.name, ...outcome }); };
 
-        // Gesture: press Enter inside a line.
-        // Contract: the line at the caret, plus one new line after it.
-        await ctx.page.open(fixture.text);
-        await ctx.page.focusSurface();
-        await placeCaretInside(ctx.page, target.text);
-        await ctx.page.sendKeys([{ key: "Enter" }]);
-        await ctx.page.settle();
-        const afterEnter = await ctx.page.markdown();
-        const enterDelta = lineCount(afterEnter) - lineCount(before);
-        const enterDiff = changedLines(before, afterEnter);
-        const enterAllowed = new Set([target.number, target.number + 1]);
-        const enterStray = enterDiff.touchedLineNumbers.filter((n) => !enterAllowed.has(n));
-        if (enterDelta !== 1 || enterStray.length) {
-          failures.push({
-            fixture: fixture.name,
-            gesture: "press Enter inside a line",
-            detail: enterDelta !== 1
-              ? `Enter changed the line count by ${enterDelta}; the contract allows exactly one new line.`
-              : "Lines changed that the gesture cannot account for.",
-            editedLine: target.number,
-            linesAllowedToChange: [...enterAllowed],
-            linesThatChanged: enterDiff.touchedLineNumbers,
-            lineCountBefore: lineCount(before),
-            lineCountAfter: lineCount(afterEnter),
-          });
-        }
+        // Insert one character inside a line -> that line only.
+        check(await gesture(ctx, fixture, "insert one character inside a line", {
+          allowed: [target.number],
+          delta: 0,
+          act: async (page) => {
+            if (!(await placeCaretInside(page, target.text)).ok) return CARET_NOT_PLACEABLE;
+            await page.sendKeys(["X"]);
+            return null;
+          },
+        }));
 
-        // Gesture: backspace at the start of a line.
-        // Contract: the two lines, merged into one.
+        // Enter -> the line at the caret, plus one new line after it.
+        check(await gesture(ctx, fixture, "press Enter inside a line", {
+          allowed: [target.number, target.number + 1],
+          delta: 1,
+          act: async (page) => {
+            if (!(await placeCaretInside(page, target.text)).ok) return CARET_NOT_PLACEABLE;
+            await page.sendKeys([{ key: "Enter" }]);
+            return null;
+          },
+        }));
+
+        // Backspace across a boundary -> the two lines, merged into one.
         if (target.number > 1) {
-          await ctx.page.open(fixture.text);
-          await ctx.page.focusSurface();
-          const atStart = await placeCaretAtStart(ctx.page, target.text);
-          if (atStart.ok) {
-            await ctx.page.sendKeys([{ key: "Backspace" }]);
-            await ctx.page.settle();
-            const afterMerge = await ctx.page.markdown();
-            const mergeDelta = lineCount(afterMerge) - lineCount(before);
-            const mergeDiff = changedLines(before, afterMerge);
-            const mergeAllowed = new Set([target.number - 1, target.number]);
-            const mergeStray = mergeDiff.touchedLineNumbers.filter((n) => !mergeAllowed.has(n));
-            if (mergeDelta !== -1 || mergeStray.length) {
-              failures.push({
-                fixture: fixture.name,
-                gesture: "backspace across a line boundary",
-                detail: mergeDelta !== -1
-                  ? `The merge changed the line count by ${mergeDelta}; the contract allows exactly minus one.`
-                  : "Lines changed that the gesture cannot account for.",
-                editedLine: target.number,
-                linesAllowedToChange: [...mergeAllowed],
-                linesThatChanged: mergeDiff.touchedLineNumbers,
-              });
-            }
-          }
+          check(await gesture(ctx, fixture, "backspace across a line boundary", {
+            allowed: [target.number - 1, target.number],
+            delta: -1,
+            act: async (page) => {
+              if (!(await placeCaretAtStart(page, target.text)).ok) return CARET_NOT_PLACEABLE;
+              await page.sendKeys([{ key: "Backspace" }]);
+              return null;
+            },
+          }));
         }
+
+        // Paste of N lines -> the caret line plus N-1 new lines.
+        const pasted = ["riga incollata uno", "riga incollata due", "riga incollata tre"];
+        check(await gesture(ctx, fixture, `paste of ${pasted.length} lines`, {
+          allowed: range(target.number, target.number + pasted.length - 1),
+          delta: pasted.length - 1,
+          act: async (page) => {
+            if (!(await placeCaretInside(page, target.text)).ok) return CARET_NOT_PLACEABLE;
+            await page.paste("", pasted.join("\n"));
+            await page.settle(150);
+            return null;
+          },
+        }));
+
+        // Typing over a selection spanning N lines -> those N lines collapsed
+        // into one, plus whatever the typed text itself introduces (nothing
+        // here: the replacement carries no line break).
+        const span = paragraph.slice(0, 3);
+        if (span.length === 3) {
+          check(await gesture(ctx, fixture, "type over a selection spanning 3 lines", {
+            allowed: range(span[0].number, span[2].number),
+            delta: -(span.length - 1),
+            act: async (page) => {
+              const surface = await page.surfaceText();
+              const first = surface.indexOf(span[0].text.trim());
+              const lastText = span[2].text.trim();
+              const last = surface.indexOf(lastText);
+              if (first < 0 || last < 0) return SELECTION_NOT_PLACEABLE;
+              const ok = await page.selectTextRange(first, last + lastText.length);
+              if (!ok) return SELECTION_NOT_PLACEABLE;
+              await page.sendKeys(["sostituito"]);
+              return null;
+            },
+          }));
+        }
+
+        // A toolbar command -> only the lines the affected construct occupies.
+        check(await gesture(ctx, fixture, "apply bold from the toolbar to one word", {
+          allowed: [target.number],
+          delta: 0,
+          act: async (page) => {
+            const surface = await page.surfaceText();
+            const needle = target.text.trim();
+            const at = surface.indexOf(needle);
+            if (at < 0) return SELECTION_NOT_PLACEABLE;
+            const word = needle.split(/\s+/).find((w) => w.length > 3) || needle.slice(0, 4);
+            const wordAt = surface.indexOf(word, at);
+            if (wordAt < 0) return SELECTION_NOT_PLACEABLE;
+            if (!(await page.selectTextRange(wordAt, wordAt + word.length))) return SELECTION_NOT_PLACEABLE;
+            if (!(await page.toolbarAction("bold"))) return "The toolbar has no bold command.";
+            await page.settle(120);
+            return null;
+          },
+        }));
+
+        // Undo -> exactly the lines the reverted edit had touched, and no
+        // others. Asserted at its strongest: the document must come back
+        // identical, so the set of lines differing from the original is empty.
+        check(await undoRedo(ctx, fixture, target));
       }
 
-      return {
-        failures,
-        fixturesExercised: exercised,
-        // Declared, not hidden. The contract lists seven gestures; four are not
-        // yet driven by this harness. Naming them keeps the check from reading
-        // as complete coverage — silence here would be the same failure the
-        // contract exists to prevent, moved into the QA system.
-        notCovered: [
-          "paste of N lines",
-          "typing over a selection spanning several lines",
-          "a toolbar action or keyboard shortcut, including indent and outdent",
-          "undo and redo",
-        ],
-      };
+      // ---- the gesture the contract names explicitly ----------------------
+      // Indenting one list item changes that item's line alone, not the rest
+      // of the list. This is the case a progressive counter breaks.
+
+      for (const fixture of select(ctx.corpus, "hasList")) {
+        const item = indentableListItem(fixture);
+        if (!item) continue;
+        exercised.add(fixture.name);
+        const outcome = await gesture(ctx, fixture, "indent one list item with Tab", {
+          allowed: [item.number],
+          delta: 0,
+          act: async (page) => {
+            if (!(await placeCaretInside(page, item.visible)).ok) return CARET_NOT_PLACEABLE;
+            await page.sendKeys([{ key: "Tab" }]);
+            await page.settle(120);
+            return null;
+          },
+        });
+        if (outcome) failures.push({ fixture: fixture.name, ...outcome });
+      }
+
+      return { failures, fixturesExercised: [...exercised].sort() };
     },
   },
 
@@ -307,6 +322,130 @@ module.exports = [
 
 function lineCount(text) {
   return splitLines(text).length;
+}
+
+function range(from, to) {
+  const out = [];
+  for (let n = from; n <= to; n += 1) out.push(n);
+  return out;
+}
+
+const CARET_NOT_PLACEABLE =
+  "The line is not present as its own run of text in the view, so a caret "
+  + "cannot be placed on it. The view is not showing the file faithfully "
+  + "(see the family B requirements).";
+const SELECTION_NOT_PLACEABLE =
+  "The text to select is not present in the view as its own run, so the "
+  + "selection could not be made.";
+
+// One gesture, from a fresh open, judged against what the contract allows it
+// to change. Returns a failure object or null.
+async function gesture(ctx, fixture, name, { allowed, delta, act }) {
+  await ctx.page.open(fixture.text);
+  const before = await ctx.page.markdown();
+  await ctx.page.focusSurface();
+
+  const problem = await act(ctx.page);
+  if (problem) return { gesture: name, detail: problem };
+  await ctx.page.settle();
+  const after = await ctx.page.markdown();
+
+  const diff = changedLines(before, after);
+  const permitted = new Set(allowed);
+  const stray = diff.touchedLineNumbers.filter((n) => !permitted.has(n));
+  const actualDelta = lineCount(after) - lineCount(before);
+
+  if (!stray.length && actualDelta === delta) return null;
+  return {
+    gesture: name,
+    detail: actualDelta !== delta
+      ? `The gesture changed the line count by ${actualDelta}; the contract allows ${delta}.`
+      : "Lines changed that the gesture cannot account for.",
+    linesAllowedToChange: allowed,
+    linesThatChanged: diff.touchedLineNumbers,
+    strayLines: stray,
+    lineCountBefore: lineCount(before),
+    lineCountAfter: lineCount(after),
+    sampleRemoved: diff.removed.slice(0, 3).map((r) => `${r.line}: ${visible(r.text)}`),
+    sampleAdded: diff.added.slice(0, 3).map((r) => `${r.line}: ${visible(r.text)}`),
+  };
+}
+
+// Undo and redo are judged against the whole document rather than a line set:
+// an undo that leaves ANY line different from the original has not undone.
+async function undoRedo(ctx, fixture, target) {
+  await ctx.page.open(fixture.text);
+  const before = await ctx.page.markdown();
+  await ctx.page.focusSurface();
+  if (!(await placeCaretInside(ctx.page, target.text)).ok) {
+    return { gesture: "undo and redo", detail: CARET_NOT_PLACEABLE };
+  }
+  await ctx.page.sendKeys(["X"]);
+  // The editor batches edits into history entries after a pause. Undoing
+  // before that pause elapses would test the batching, not the undo.
+  await ctx.page.settle(700);
+  const edited = await ctx.page.markdown();
+
+  await ctx.page.sendKeys([{ key: "z", ctrl: true }]);
+  await ctx.page.settle(150);
+  const undone = await ctx.page.markdown();
+
+  if (undone !== before) {
+    const diff = changedLines(before, undone);
+    const where = firstDifference(before, undone);
+    return {
+      gesture: "undo and redo",
+      detail: "Undo did not restore the document. Lines differ from the original "
+        + "that the reverted edit never touched.",
+      linesAllowedToChange: [],
+      linesThatChanged: diff.touchedLineNumbers,
+      line: where.line,
+      firstDifferenceAtByte: where.byteOffset,
+      expected: where.expectedLine,
+      actual: where.actualLine,
+    };
+  }
+
+  await ctx.page.sendKeys([{ key: "y", ctrl: true }]);
+  await ctx.page.settle(150);
+  const redone = await ctx.page.markdown();
+  if (redone !== edited) {
+    const where = firstDifference(edited, redone);
+    return {
+      gesture: "undo and redo",
+      detail: "Redo did not restore the edited document.",
+      line: where.line,
+      firstDifferenceAtByte: where.byteOffset,
+      expected: where.expectedLine,
+      actual: where.actualLine,
+    };
+  }
+  return null;
+}
+
+// A list item with at least one item above it in the same list, so indenting
+// it is meaningful. Skips the first item of a list, which cannot be indented
+// under anything.
+function indentableListItem(fixture) {
+  const lines = classifyLines(fixture.text);
+  const marker = /^(\s*)([*+-]|\d+[.)])\s+\S/;
+  for (let index = 1; index < lines.length; index += 1) {
+    const previous = lines[index - 1];
+    const current = lines[index];
+    if (current.kind !== "block" || !marker.test(current.text)) continue;
+    if (previous.kind !== "block" || !marker.test(previous.text)) continue;
+    const indent = (current.text.match(marker) || [])[1] || "";
+    const previousIndent = (previous.text.match(marker) || [])[1] || "";
+    if (indent.length !== previousIndent.length) continue;
+    // The SOURCE line carries the marker; the view does not render it as text.
+    // Searching the view for the source line finds nothing, and the check then
+    // reports a caret it could not place instead of measuring the product —
+    // a check that always fails for its own reasons measures nothing at all.
+    const visible = current.text.replace(marker, "$1").trim();
+    if (visible.length < 3) continue;
+    return { number: current.number, text: current.text, visible };
+  }
+  return null;
 }
 
 async function placeCaretInside(page, lineText) {

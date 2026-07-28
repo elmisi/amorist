@@ -38,9 +38,10 @@ watching, not that the right thing is.
 
 ## Defects found in the checks themselves
 
-Three, all of the same kind — a check reporting a result it had not earned.
-Recorded because they are the failure this whole apparatus exists to prevent,
-reappearing inside the apparatus.
+Six so far, and every one the same kind: a check, a report or a document
+asserting something it had not earned. Recorded at length because this is the
+failure the whole apparatus exists to prevent, reappearing inside the apparatus
+— including once inside a measurement added specifically to prevent it.
 
 1. **A paragraph finder that ignored fenced code blocks.** It selected the lines
    of a code sample, where line breaks are preserved by definition, and reported
@@ -55,8 +56,28 @@ reappearing inside the apparatus.
    the editor ignored their own "not exercised" list and reported PASS having
    measured nothing. Both paths now share one verdict rule.
 
-The first was found by asking why a fixture passed, not by a failure. That is
-worth noting: nothing in the suite would have reported it.
+4. **A residue described more narrowly than it was.** The gap between the engine
+   under test and the engine in the product was written as a macOS problem. It
+   was sitting on Linux too, unnamed, because the document assumed which host
+   was being driven instead of reading the one the runner printed.
+5. **A font declared pinned that was not.** The harness names a font stack whose
+   faces do not all exist on every platform, and claimed the font was fixed
+   rather than inherited. Then the correction overstated the divergence: measured,
+   the metrics agree, because the two faces that win share the advance ratio
+   conventional to monospaced faces. Both the claim and its correction were
+   reasoned; neither was measured until a real machine was asked.
+6. **A measurement that measured itself.** The probe added to stop the previous
+   defect took the surface's class to pick up the font, and the class carries a
+   fixed width — so it measured the container and returned the same number on
+   every platform. A constant that read as agreement. Twenty glyphs of a
+   fourteen-pixel monospaced face cannot be over a thousand pixels wide; the
+   figure was checkable at a glance and went unchecked for a commit, because it
+   said what was hoped for.
+
+Two of the six were found by asking why something PASSED rather than by any
+failure. Nothing in the suite would have reported either. The other four were
+found by reading what a machine actually printed instead of what the code
+intended — which is the only defence that has worked more than once.
 
 ## Unresolved gaps
 
@@ -71,16 +92,44 @@ worth noting: nothing in the suite would have reported it.
   application started and killed. The suite reports them as not measured, which
   keeps the run red. Separately: the product writes no working copy anywhere, so
   the first has nothing to recover even before the question of measuring it.
-- **Four edit gestures declared but not driven**: pasting several lines, typing
-  over a selection spanning several lines, a toolbar action or shortcut
-  including indent and outdent, and undo and redo. They are named in every
-  report rather than left out.
-- **macOS is not covered by anything automated.** Named in every report with the
-  manual pass that stands in for it, and scoped to the platform remaining
-  published.
+- **The application's own embedding of the engine is covered nowhere.** Every run
+  drives the shipping engine inside a test host — the reference browser that
+  comes with the Linux driver, the system browser on macOS — never inside the
+  webview the application embeds. The engine is covered on both platforms; the
+  embedding on neither. This was first written as a macOS-only gap, which
+  claimed a completeness on Linux that never existed.
+
+## Closed since the first pass
+
+- **All seven edit gestures are now driven**, not three. Pasting several lines,
+  typing over a selection spanning several lines, a toolbar command, indenting
+  one list item with the tab key, and undo and redo joined the three that were
+  already there. Nothing in this family is declared and unexercised any more.
+- **The caret resting on a marker that exists only in the source** is now
+  checked in both halves the contract asks for: that the mapping lands on the
+  first visible character of the construct, and that the same starting position
+  produces the same landing twice. A mapping that is not deterministic cannot be
+  relied on even on the occasions when it is right.
+
+Two findings came out of writing them.
+
+**Undo and redo already hold.** Of the seven gestures, this is the only one that
+passes, on every fixture and both engines. The reason is instructive: the
+history keeps the document as text and puts the same text back, so it never goes
+near the part of the product that damages files. It is worth noting because it
+is evidence about WHERE the damage is, not only that it exists.
+
+**The first version of the list-indent check could not fail for the right
+reason.** It searched the view for the item's source line, marker included —
+which the view does not render — so it always reported a caret it could not
+place, never a line that should not have moved. A check that fails for its own
+reasons measures nothing, and it looks exactly like a check that works. Found by
+reading the failure text rather than the failure count.
 
 ## Release readiness
 
 Not claimable. Nineteen of twenty-one blocking requirements fail or are
 unmeasured, and the two that pass are the ones that already held before this
-work started.
+work started. Adding to those: within the requirement on line locality, one of
+seven gestures — undo and redo — already satisfies its clause, which is a
+sub-result rather than a requirement met.

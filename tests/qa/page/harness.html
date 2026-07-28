@@ -136,6 +136,16 @@
             return fingerprint;
           },
 
+          // Toolbar commands are dispatched by clicking the real control, not
+          // by calling whatever it calls. A check that reaches past the button
+          // stops testing the path the user takes.
+          toolbarAction: function (name) {
+            var button = document.querySelector('[data-action="' + name + '"]');
+            if (!button) return false;
+            button.click();
+            return true;
+          },
+
           setHostWidth: function (pixels) {
             document.documentElement.style.setProperty("--qa-width", pixels + "px");
             // Force layout so a measurement taken immediately after is real.
