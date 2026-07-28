@@ -103,12 +103,6 @@ async function main() {
       const engine = entry.create();
       try {
         await engine.start();
-        report.recordEngine({
-          id: entry.id,
-          role: entry.role,
-          description: entry.description,
-          version: engine.label,
-        });
         await engine.setViewport(VIEWPORT.width, VIEWPORT.height);
         await engine.navigate(`${server.origin}${HARNESS_PATH}`);
         const page = makePage(engine);
@@ -116,6 +110,16 @@ async function main() {
         if (harnessVersion !== 1) {
           throw new Error("The harness page did not load the editor component.");
         }
+        report.recordEngine({
+          id: entry.id,
+          role: entry.role,
+          description: entry.description,
+          version: engine.label,
+          // Measured, not declared: the named faces do not exist on every
+          // platform, so the "pinned" font is a preference that falls through.
+          // Recording what actually won keeps that visible.
+          font: await page.fontFingerprint(),
+        });
 
         for (const check of checks) {
           const started = Date.now();
@@ -231,6 +235,9 @@ function printSummary(report, corpus, file) {
   line(`fixtures: ${corpus.length} file(s) from ${path.relative(ROOT, CORPUS_DIR)}`);
   for (const engine of report.engines) {
     line(`engine:   ${engine.id} (${engine.role}) — ${engine.version}`);
+    if (engine.font) {
+      line(`          font resolved to width ${engine.font.referenceWidthPx}px for the reference string`);
+    }
   }
   for (const blocked of report.blockedEngines) {
     line(`ENGINE UNAVAILABLE: ${blocked.id} (${blocked.role})`);

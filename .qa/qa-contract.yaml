@@ -493,8 +493,17 @@ requirements:
     severity: blocking
     false_positive_risk: medium
     false_positive_note: >
-      Geometry checks are sensitive to fonts, zoom and viewport width. The
-      check must fix all three explicitly rather than inherit defaults.
+      Geometry checks are sensitive to fonts, zoom and viewport width. Zoom and
+      width are fixed explicitly. The FONT is not, and cannot honestly be: a
+      font stack is a preference, and the faces named in it do not all exist on
+      every platform — on macOS the stack falls through to whatever the system
+      calls monospace. What this check needs is weaker than an identical face:
+      a font stable within one run, and a container wide enough that nothing
+      wraps. Both hold, so the assertion is sound. What does not hold is
+      cross-platform identity of metrics, so the runner MEASURES the resolved
+      font and reports it rather than claiming it was pinned. A future check
+      that turns on wrap points rather than line starts would need more than
+      this, and must not assume this note covers it.
     automation: full
     estimated_cost: high
     currently_holds: false

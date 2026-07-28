@@ -13,9 +13,10 @@
 
     <style>
       /*
-        Geometry is measured here (REQ-B1), so font, size and width are pinned
-        rather than inherited. A measurement that depends on the machine's
-        default font is a measurement that disagrees between machines.
+        Geometry is measured here (REQ-B1), so size and width are pinned rather
+        than inherited. Read the note above the surface rules before assuming
+        the font is pinned too — it is a stack, and on one platform it falls
+        through. The runner measures and reports what actually won.
       */
       html {
         font-size: 16px;
@@ -35,11 +36,21 @@
         width: var(--qa-width);
       }
       /*
-        Only the environment is pinned here: which font, at what size, across
-        what width. How the editor renders text is what is under test, so
-        nothing in this page may set white-space, wrapping or line breaking —
-        overriding those would let the harness supply the very behaviour the
-        check is meant to find missing.
+        Size and width are pinned here. The FONT is a stack, and a stack is a
+        preference, not a guarantee: neither of the named faces exists on macOS,
+        where this falls through to whatever the system calls monospace. Saying
+        "the font is fixed" would be claiming a precision that is not there.
+
+        What the geometry check actually needs is weaker than an identical face:
+        a font that is stable within one run, and a container wide enough that
+        nothing wraps. Both hold. What does NOT hold is cross-platform identity
+        of metrics, so the runner measures and reports the resolved metric
+        rather than assuming it away.
+
+        How the editor renders text is what is under test, so nothing in this
+        page may set white-space, wrapping or line breaking — overriding those
+        would let the harness supply the very behaviour a check is meant to find
+        missing.
       */
       .amorist-editor-surface,
       .amorist-editor-source {
@@ -78,6 +89,25 @@
 
         return {
           version: 1,
+
+          // The font that actually won, measured rather than declared. Two
+          // platforms reporting different widths here are measuring with
+          // different faces — which is fine for what the geometry check
+          // asserts, and would not be fine for a check about wrap points. Print
+          // what was really exercised, not what was meant to be.
+          fontFingerprint: function () {
+            var probe = document.createElement("span");
+            probe.textContent = "MMMMMMMMMMiiiiiiiiii";
+            probe.style.position = "absolute";
+            probe.style.visibility = "hidden";
+            probe.style.whiteSpace = "pre";
+            probe.className = "amorist-editor-surface";
+            document.body.appendChild(probe);
+            var width = probe.getBoundingClientRect().width;
+            var stack = window.getComputedStyle(probe).fontFamily;
+            document.body.removeChild(probe);
+            return { stack: stack, referenceWidthPx: Math.round(width * 100) / 100 };
+          },
 
           setHostWidth: function (pixels) {
             document.documentElement.style.setProperty("--qa-width", pixels + "px");

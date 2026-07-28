@@ -74,10 +74,14 @@ class SafariEngine extends WebDriverEngine {
       if (/not (allowed|enabled)|remote automation/i.test(error.message)) {
         throw new Error(
           "Remote automation is turned off on this machine, so the shipping "
-          + "engine could not be driven. Enable it once, as an administrator:\n"
-          + "    sudo safaridriver --enable\n"
-          + "Then also tick Develop > Allow Remote Automation in the browser's "
-          + `menu bar. Original error: ${error.message}`,
+          + "engine could not be driven. It takes two steps, once per machine:\n"
+          + "    1. sudo safaridriver --enable\n"
+          + "    2. tick 'Allow remote automation' in Safari's settings, under\n"
+          + "       the Developer section — the setting is separate from the\n"
+          + "       command above and neither works without the other.\n"
+          + "The exact wording and location of the setting move between system "
+          + "versions, so trust the message below over this text:\n"
+          + `    ${error.message}`,
         );
       }
       throw error;
