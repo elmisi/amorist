@@ -152,9 +152,34 @@ in the file where that word is, so landing there by accident is not available.
 The check also fails if too few anchors could be probed, so a corpus of short
 files cannot quietly reduce this requirement to nothing.
 
+## A requirement that did not exist until someone described what they wanted
+
+Reading the strengthened caret check, the person said the anchoring proves the
+caret is on the same character, but what they want is the caret roughly in the
+same place in both views. Those are two properties, not one: the same character
+can be drawn somewhere else entirely, because one view renders a heading large
+and the other shows it as plain text with a marker.
+
+Which of the two definitions to write was settled by measuring rather than
+choosing. Over the 186-line fixture the two views place the same line a median
+of 23 pixels apart, drifting to 164 near the end, because one gives blocks their
+own spacing and the other lays out uniform lines. So matching position within
+the DOCUMENT would mean making the rendered view resemble the source — giving up
+the rendering to satisfy the check. Matching position ON SCREEN needs none of
+that, and is exact rather than approximate: the arriving view scrolls so the
+caret lands where the eye already is.
+
+The new requirement asks for the vertical only, within one line of text.
+Horizontal was offered and declined for now, with the reason recorded so that
+revisiting it starts from a real case rather than from taste.
+
+It fails immediately and vividly: after switching, the caret sits 1500 pixels
+below the bottom of a 1000-pixel window. Not "drifts a little" — you have to go
+and find it.
+
 ## Release readiness
 
-Not claimable. Nineteen of twenty-one blocking requirements fail or are
+Not claimable. Twenty of twenty-two blocking requirements fail or are
 unmeasured, and the two that pass are the ones that already held before this
 work started. Adding to those: within the requirement on line locality, one of
 seven gestures — undo and redo — already satisfies its clause, which is a

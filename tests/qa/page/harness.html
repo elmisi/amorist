@@ -146,6 +146,72 @@
             return true;
           },
 
+          // Where the caret is drawn ON SCREEN, whichever view is showing.
+          //
+          // The two views scroll by different mechanisms — the rendered view
+          // grows and scrolls the page, the source is a fixed box that scrolls
+          // inside itself — so a measurement written against either mechanism
+          // would be measuring the mechanism. Viewport coordinates are the
+          // common ground, and they are also what the eye actually sees.
+          caretScreenY: function () {
+            var viewport = window.innerHeight;
+            if (this.mode() === "source") {
+              var t = source();
+              var cs = window.getComputedStyle(t);
+              var lineHeight = parseFloat(cs.lineHeight);
+              var before = t.value.slice(0, t.selectionStart);
+              var lineIndex = before.split("\n").length - 1;
+              var box = t.getBoundingClientRect();
+              var y = box.top + parseFloat(cs.paddingTop)
+                + lineIndex * lineHeight - t.scrollTop;
+              return {
+                mode: "source",
+                y: Math.round(y * 100) / 100,
+                lineHeight: lineHeight,
+                viewportHeight: viewport,
+                visible: y >= box.top && y <= Math.min(box.bottom, viewport),
+              };
+            }
+            var selection = window.getSelection();
+            if (!selection.rangeCount) return { mode: "wysiwyg", y: null };
+            var range = selection.getRangeAt(0).cloneRange();
+            var rect = range.getBoundingClientRect();
+            if (!rect.height) {
+              // A collapsed range can measure as nothing. Widening it by one
+              // character gives a real box without moving the caret.
+              try {
+                var probe = range.cloneRange();
+                probe.setEnd(probe.startContainer, Math.min(
+                  probe.startOffset + 1,
+                  probe.startContainer.length || probe.startOffset,
+                ));
+                rect = probe.getBoundingClientRect();
+              } catch (e) { /* keep the empty rect */ }
+            }
+            var surfaceBox = surface().getBoundingClientRect();
+            var lh = parseFloat(window.getComputedStyle(surface()).lineHeight);
+            return {
+              mode: "wysiwyg",
+              y: Math.round(rect.top * 100) / 100,
+              lineHeight: isNaN(lh) ? 21 : lh,
+              viewportHeight: viewport,
+              visible: rect.top >= 0 && rect.top <= viewport,
+              surfaceTop: Math.round(surfaceBox.top),
+            };
+          },
+
+          // Put the caret where a person editing would have it: on screen.
+          scrollCaretIntoView: function () {
+            var selection = window.getSelection();
+            if (!selection.rangeCount) return false;
+            var node = selection.getRangeAt(0).startContainer;
+            var element = node.nodeType === 1 ? node : node.parentElement;
+            if (element && element.scrollIntoView) {
+              element.scrollIntoView({ block: "center" });
+            }
+            return true;
+          },
+
           setHostWidth: function (pixels) {
             document.documentElement.style.setProperty("--qa-width", pixels + "px");
             // Force layout so a measurement taken immediately after is real.

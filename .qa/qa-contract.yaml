@@ -594,6 +594,57 @@ requirements:
     currently_holds: false
     status: confirmed
 
+  - id: REQ-C2
+    statement: >
+      After switching views the caret appears at the same height ON SCREEN as it
+      did before, within one line of text, and it is visible rather than
+      scrolled out of sight.
+    category: invariant
+    origin: user-statement, 2026-07-28 (D-031)
+    motivation: >
+      REQ-C1 asks for the same character. That is identity, not continuity: the
+      same character can be drawn somewhere else entirely, because a heading is
+      rendered large in one view and as plain text with a marker in the other.
+      What keeps a person from losing their place is where the caret APPEARS,
+      and that is a separate property with a separate failure.
+    risk_id: R-011
+    verification:
+      type: deterministic
+      evidence_required:
+        - "the caret's distance from the top of the visible area, before and
+          after the switch, in both directions"
+        - a document long enough that the position requires scrolling
+      success_condition: >
+        The two heights differ by no more than one line of text, and the caret
+        lies inside the visible area in both views.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    why_on_screen_and_not_in_the_document: >
+      Matching the caret's position within the DOCUMENT was measured and
+      rejected. Over a 186-line fixture the two views place the same line a
+      median of 23 pixels apart, drifting to 164 by the end, because one view
+      gives headings, lists and code blocks their own spacing while the other
+      lays out uniform lines. Holding those together would mean making the
+      rendered view resemble the source — giving up the rendering. Matching
+      position ON SCREEN needs none of that: it is obtained exactly by scrolling
+      the arriving view so the caret lands where the eye already is.
+    horizontal_deliberately_excluded: >
+      Only the vertical is required. The same character sits at different
+      columns and different widths between the views, since one hides the
+      markers and scales headings; a tight horizontal tolerance would mean
+      giving up the rendering and a loose one would assert nothing. Reconsider
+      only if using it shows the caret being hunted for sideways — and then pick
+      the tolerance from that case rather than in the abstract.
+    note: >
+      The two views scroll by different mechanisms — the rendered view grows and
+      scrolls the page, the source is a fixed box that scrolls inside itself. A
+      check written against either mechanism would measure the mechanism. On
+      screen is the common ground.
+
   # ---------------------------------------------------------------- family D
 
   - id: REQ-D1

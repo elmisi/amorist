@@ -218,6 +218,104 @@ module.exports = [
       return { failures, fixturesExercised: exercised, metrics: { anchorsProbed } };
     },
   },
+  {
+    id: "REQ-C2",
+    title: "After a view switch the caret is at the same height on screen, within one line",
+    note: "Identity of character is REQ-C1. This is continuity of position: the same character can be drawn somewhere else entirely, and what keeps a person from losing their place is where the caret appears.",
+    async run(ctx) {
+      const failures = [];
+      const exercised = [];
+      let probes = 0;
+
+      // Documents short enough to fit on screen cannot show this failing:
+      // without scrolling, both views put everything where it already was.
+      // The requirement is about not losing your place, which only happens in
+      // a document you have to move around in.
+      const longEnough = ctx.corpus.filter((fixture) => fixture.text.split(/\r?\n/).length >= 60);
+      if (!longEnough.length) {
+        return {
+          failures: [{
+            fixture: "the corpus",
+            detail: "No fixture is long enough to require scrolling, so this "
+              + "requirement could not be exercised at all. A check with nothing "
+              + "to look at must not pass.",
+          }],
+          fixturesExercised: [],
+        };
+      }
+
+      for (const fixture of longEnough) {
+        const candidates = uniqueTokens(fixture.text);
+        if (candidates.length < 3) continue;
+        exercised.push(fixture.name);
+
+        for (const candidate of spread(candidates, ANCHORS_PER_FIXTURE)) {
+          await ctx.page.open(fixture.text);
+          await ctx.page.focusSurface();
+          const surfaceText = await ctx.page.surfaceText();
+          const inView = onlyOccurrence(surfaceText, candidate.token);
+          if (inView < 0) continue;
+
+          await ctx.page.setCaretAtTextOffset(inView + Math.floor(candidate.token.length / 2));
+          // Where a person editing would have it. Measuring a caret that is
+          // already off screen would be measuring a situation nobody is in.
+          await ctx.page.scrollCaretIntoView();
+          await ctx.page.settle(60);
+          const before = await ctx.page.caretScreenY();
+          if (before.y === null) continue;
+          probes += 1;
+
+          await ctx.page.toggleMode();
+          await ctx.page.settle(80);
+          const after = await ctx.page.caretScreenY();
+
+          const tolerance = before.lineHeight || 21;
+          const drift = after.y === null ? null : Math.abs(after.y - before.y);
+
+          if (after.y === null) {
+            failures.push({
+              fixture: fixture.name,
+              anchor: candidate.token,
+              detail: "After the switch there was no caret to measure at all.",
+            });
+            continue;
+          }
+          if (!after.visible) {
+            failures.push({
+              fixture: fixture.name,
+              anchor: candidate.token,
+              detail: "After the switch the caret is outside the visible area. The "
+                + "person has to go and find it before they can carry on.",
+              expected: `a position inside the visible ${after.viewportHeight}px`,
+              actual: `y = ${after.y}`,
+            });
+            continue;
+          }
+          if (drift > tolerance) {
+            failures.push({
+              fixture: fixture.name,
+              anchor: candidate.token,
+              detail: `The caret moved ${Math.round(drift)}px up or down the screen — `
+                + `${(drift / tolerance).toFixed(1)} lines of text.`,
+              expected: `within ${tolerance}px of y = ${before.y}`,
+              actual: `y = ${after.y}`,
+              fromView: before.mode,
+              toView: after.mode,
+            });
+          }
+        }
+      }
+
+      if (!probes) {
+        failures.push({
+          fixture: "the corpus",
+          detail: "No caret position could be measured, so nothing was verified.",
+        });
+      }
+
+      return { failures, fixturesExercised: exercised, metrics: { probes } };
+    },
+  },
 ];
 
 function lineOf(text, offset) {

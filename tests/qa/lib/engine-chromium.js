@@ -238,7 +238,14 @@ class ChromiumEngine {
     if (this.socket) this.socket.close();
     if (this.process) await terminate(this.process);
     if (this.profileDir) {
-      fs.rmSync(this.profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      try {
+        fs.rmSync(this.profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch {
+        // The browser keeps writing into its profile as it shuts down, so the
+        // directory can refuse to go even after the process is gone. A leftover
+        // temporary directory is not a reason to fail a run — but swallowing
+        // the error is only acceptable because nothing depends on the removal.
+      }
     }
   }
 }

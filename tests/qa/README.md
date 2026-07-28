@@ -66,7 +66,7 @@ lib/diff.js           failure localisation: byte offset, line, and what changed
 lib/report.js         the structured result and the exit-status rule
 lib/server.js         a static file server for the harness page — nothing else
 page/harness.html     loads web/editor/ alone: no app shell, no backend
-corpus/               17 synthetic Markdown fixtures
+corpus/               18 synthetic Markdown fixtures, one of them long enough to scroll
 paste/                paste fixtures, each declaring the tokens that must survive
 checks/               one file per family
 ```

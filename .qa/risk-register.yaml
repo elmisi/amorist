@@ -148,8 +148,10 @@ risks:
     likelihood: high
     impact: medium
     unacceptable: true
-    mitigation: Bidirectional character-level mapping between the two views.
-    verification_ids: [REQ-C1]
+    mitigation: >
+      Bidirectional character-level mapping between the two views, plus scroll
+      adjustment so the caret arrives at the height it left from.
+    verification_ids: [REQ-C1, REQ-C2]
     status: open
 
   - id: R-012

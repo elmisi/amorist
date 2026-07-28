@@ -33,6 +33,8 @@ function makePage(engine) {
     setHostWidth: (pixels) => call(engine, "setHostWidth", [pixels]),
     fontFingerprint: () => call(engine, "fontFingerprint"),
     toolbarAction: (name) => call(engine, "toolbarAction", [name]),
+    caretScreenY: () => call(engine, "caretScreenY"),
+    scrollCaretIntoView: () => call(engine, "scrollCaretIntoView"),
 
     sendKeys: (sequence) => engine.sendKeys(sequence),
     evaluate: (expression) => engine.evaluate(expression),

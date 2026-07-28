@@ -188,6 +188,18 @@
       ]
     },
     {
+      "id": "REQ-C2",
+      "statement": "After switching views the caret appears at the same height ON SCREEN as it did before, within one line of text, and it is visible rather than scrolled out of sight.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "C",
+      "currentlyHolds": false,
+      "risks": [
+        "R-011"
+      ]
+    },
+    {
       "id": "REQ-D1",
       "statement": "Content pasted from another application never disappears silently. What amorist cannot convert must still reach the file in a readable form.",
       "severity": "blocking",

@@ -540,6 +540,34 @@ decisions:
       A detected skip would be the silent-pass failure mode arriving through the
       front door.
 
+  - id: D-031
+    statement: >
+      CARET CONTINUITY IS ABOUT WHERE THE CARET APPEARS, NOT ONLY WHICH
+      CHARACTER IT IS ON. After a view switch the caret must sit at the same
+      height on screen, within one line of text, and be visible. Vertical only;
+      horizontal is deliberately excluded for now.
+    source: user-statement
+    date: 2026-07-28
+    status: confirmed
+    affects: [REQ-C2, REQ-C1, R-011]
+    what_prompted_it: >
+      The person read the strengthened caret check and said the anchoring to a
+      unique word proves identity, but what they want is the caret roughly in
+      the same place in both views. Those are different properties: the same
+      character can be drawn somewhere else entirely.
+    measurement_that_shaped_it: >
+      Over a 186-line document the two views place the same line a median of 23
+      pixels apart and up to 164 by the end, because one gives blocks their own
+      spacing and the other lays out uniform lines. So "same position in the
+      document" would require the rendered view to resemble the source. "Same
+      position on screen" needs none of that and is exact rather than
+      approximate — the arriving view scrolls so the caret lands where the eye
+      already is.
+    horizontal_left_out: >
+      Offered three options, the person took the narrowest: vertical only, for
+      now. Recorded with the reason, so that revisiting it later starts from a
+      real case of hunting for the caret sideways rather than from taste.
+
 open_recommendations:
   - id: REC-002
     statement: >
