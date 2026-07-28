@@ -43,9 +43,12 @@
 
         What the geometry check actually needs is weaker than an identical face:
         a font that is stable within one run, and a container wide enough that
-        nothing wraps. Both hold. What does NOT hold is cross-platform identity
-        of metrics, so the runner measures and reports the resolved metric
-        rather than assuming it away.
+        nothing wraps. Both hold.
+
+        Measured, the metrics turn out to agree across platforms anyway — the
+        two faces that win share the advance ratio conventional to monospaced
+        faces. That is a coincidence and not a guarantee, which is why the
+        runner prints the number instead of relying on it.
 
         How the editor renders text is what is under test, so nothing in this
         page may set white-space, wrapping or line breaking — overriding those
