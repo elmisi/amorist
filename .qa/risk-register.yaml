@@ -243,9 +243,21 @@ risks:
     verification_ids: [REQ-G2, REQ-G3]
     status: open
     residual: >
-      macOS only. WKWebView has no equivalent driver and the Tauri WebDriver
-      wrapper does not support it; a different build of WebKit would be a proxy,
-      not the engine that ships.
+      Narrowed on 2026-07-28 (D-030) from a whole platform to the embedding —
+      and then found to be symmetric rather than macOS-specific. On both
+      platforms the engine is driven inside a test host rather than inside the
+      application's own webview. The engine is covered everywhere; the embedding
+      is covered nowhere. No driver reaches it, and a proxy would be claiming
+      coverage rather than having it.
+    how_the_original_assessment_went_wrong: >
+      Twice, the same way. First it weighed two options and rejected the second
+      without noticing a rung between them, concluding "not automatable" from an
+      incomplete list of alternatives. Then, having added the rung, it described
+      the remaining gap as belonging to one platform — when the same gap had been
+      sitting on the other platform all along, unnamed. Both errors are the same
+      shape: a limit stated more narrowly than it is, which reads as coverage.
+      The second was caught only because the runner printed the name of the test
+      host it had actually driven.
 
   - id: R-018
     title: An implementing agent edits the checks instead of the product

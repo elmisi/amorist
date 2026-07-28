@@ -29,7 +29,7 @@ generated; the contract is the source of truth.
 | `REQ-F1` | The file is written atomically. A failure during the write leaves the original file intac… | R-009 | deterministic | blocking | full | low | low | green today |
 | `REQ-F2` | A file modified outside amorist since it was opened is detected on save, and is never ove… | R-009 | deterministic | blocking | full | low | medium | green today |
 | `REQ-G1` | A check that cannot execute is a failure, never a pass. Missing browser, missing corpus,… | R-016 | deterministic | blocking | full | low | low | RED today |
-| `REQ-G2` | The editor checks run on the engine the product actually ships with, not only on a stand-… | R-017 | deterministic | blocking | full | medium | medium | RED today |
+| `REQ-G2` | The editor checks run on the engines the product actually ships with, not only on a stand… | R-017 | deterministic | blocking | full | medium | medium | RED today |
 | `REQ-G3` | Every report names the engines actually exercised, and names any published platform that… | R-017 | manual | advisory | manual | low | low | RED today |
 
 ## Reading this table

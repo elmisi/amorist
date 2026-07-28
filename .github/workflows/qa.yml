@@ -8,6 +8,10 @@ name: QA
 # does block is PUBLICATION — the release job in build.yml calls this workflow
 # and will not publish while it is red.
 #
+# It runs on BOTH published platforms, because a run on one platform is evidence
+# about one platform and nothing more. Each run judges only where it ran; the
+# composition across platforms is what the release gate consumes.
+#
 # Tighten to merges once the suite is green. That is an easy decision to take
 # then, and a costly one to take now.
 
@@ -18,19 +22,30 @@ on:
 
 jobs:
   qa:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            shipping_engine: WebKitGTK
+          - os: macos-latest
+            platform: macos
+            shipping_engine: Safari
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.platform }} (ships on ${{ matrix.shipping_engine }})
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install the shipping engine and its driver
+      - name: Install the shipping engine's driver and the build dependencies
+        if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
           # webkit2gtk-driver brings both the WebDriver server and MiniBrowser,
           # at the same version as the library the application links against.
           # xvfb supplies the display the engine needs; without one the run
-          # fails rather than degrading to a single engine.
-          # webkit2gtk-driver: the engine and its driver, for families A to D.
-          # The rest: what the Tauri crate needs to compile, because the
+          # fails rather than degrading to fewer engines.
+          # The rest is what the Tauri crate needs to compile, because the
           # write-path checks are Rust and a suite that cannot build them
           # verifies nothing about the one part of the product that already
           # works. Same list as the build workflow.
@@ -38,20 +53,38 @@ jobs:
             libwebkit2gtk-4.1-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
+      - name: Turn on remote automation for the shipping engine
+        if: matrix.platform == 'macos'
+        # The driver ships with the system but refuses every session until an
+        # administrator enables it, once per machine. Without this the run does
+        # not lose an engine silently — it fails and names this command — but
+        # failing here on every run would be noise rather than information.
+        run: sudo safaridriver --enable
+
       - name: Record what is actually installed
         run: |
-          echo "WebKitGTK: $(dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0 2>/dev/null || echo absent)"
-          echo "driver:    $(command -v WebKitWebDriver || echo absent)"
-          echo "stand-in:  $(google-chrome --version 2>/dev/null || echo absent)"
+          echo "platform:  ${{ matrix.platform }}"
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            echo "WebKitGTK: $(dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0 2>/dev/null || echo absent)"
+            echo "driver:    $(command -v WebKitWebDriver || echo absent)"
+            echo "stand-in:  $(google-chrome --version 2>/dev/null || echo absent)"
+          else
+            echo "Safari:    $(defaults read /Applications/Safari.app/Contents/Info CFBundleShortVersionString 2>/dev/null || echo absent)"
+            echo "driver:    $(command -v safaridriver || echo absent)"
+            echo "stand-in:  $("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version 2>/dev/null || echo absent)"
+          fi
 
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: qa-ubuntu
+          key: qa-${{ matrix.platform }}
 
       - name: Check the contract and its generated projection agree
+        if: matrix.platform == 'linux'
+        # Once is enough: this compares files in the repository against each
+        # other, and says nothing about any platform.
         run: |
           python3 -m pip install --quiet pyyaml
           python3 .qa/tools/render-eval-matrix.py
@@ -65,9 +98,16 @@ jobs:
             exit 1
           }
 
-      - name: Run the QA suite on both engines
+      - name: Run the QA suite on every engine applicable to this platform
         id: suite
-        run: xvfb-run -a node tests/qa/run.js
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            xvfb-run -a node tests/qa/run.js
+          else
+            # No virtual display here: the shipping engine on this platform
+            # needs a real graphical session, which the runner already has.
+            node tests/qa/run.js
+          fi
 
       - name: Keep the report even when the suite is red
         # Only when the suite actually ran. Demanding a report from a job that
@@ -76,6 +116,6 @@ jobs:
         if: always() && steps.suite.conclusion != 'skipped'
         uses: actions/upload-artifact@v4
         with:
-          name: qa-report
+          name: qa-report-${{ matrix.platform }}
           path: .qa/reports/last-run.json
           if-no-files-found: error

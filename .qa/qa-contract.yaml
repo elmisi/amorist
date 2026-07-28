@@ -16,6 +16,26 @@ status: approved
 approved_by: repository owner
 approved_on: 2026-07-28
 
+amendments:
+  - date: 2026-07-28
+    authorised_by: >
+      repository owner, against the scope described here and no wider
+    what: >
+      REQ-G2 goes from naming one engine on one platform to declaring, per
+      platform, which engines are applicable there — adding Safari on macOS,
+      driven through the system's own WebDriver server. REQ-G3's residue shrinks
+      to match, and release readiness now composes runs across platforms rather
+      than resting on one.
+    why: >
+      The original assessment recorded macOS as beyond automation because the
+      only alternative weighed was a different build of WebKit on a different
+      platform, which would have been a proxy dressed as coverage. It skipped an
+      intermediate rung: WebKit ON macOS, driven by the driver the system
+      already ships. That is still not WKWebView, but it is far closer to it
+      than a Chromium-family stand-in on Linux is — and it speaks the same
+      protocol the suite already implements, so the cost is small.
+    source: D-030
+
 product:
   name: amorist
   primary_value: >
@@ -96,13 +116,20 @@ release_gates:
 
 fallback_policies:
   missing_engine: >
-    If either engine — the WebKitGTK WebDriver server or the Chromium-family
-    browser — cannot be found or started, the run FAILS and names which one.
-    Never skipped-and-green, and never "the other engine passed, so we are fine":
-    one engine missing means half the coverage is absent, which is precisely the
-    situation a report must not hide. The existing tests/app-shell-smoke.test.js
-    exits successfully when it finds no browser; the new runner must not inherit
-    that behaviour. See REQ-G1 and REQ-G2.
+    If an engine APPLICABLE to the running platform cannot be found or started,
+    the run FAILS and names which one. Never skipped-and-green, and never "the
+    other engine passed, so we are fine": an applicable engine missing means part
+    of the coverage is absent, which is precisely the situation a report must not
+    hide. The existing tests/app-shell-smoke.test.js exits successfully when it
+    finds no browser; the new runner must not inherit that behaviour. See REQ-G1,
+    REQ-G2, and inapplicable_engine below for the one permitted skip.
+  inapplicable_engine: >
+    An engine that does not exist on the current platform is skipped and recorded
+    as inapplicable, not as missing, and does not fail the run. This is the ONE
+    place the suite is allowed to pass over something, and it is safe only
+    because the set of applicable engines is declared per platform in REQ-G2
+    rather than inferred: an engine can only be skipped if the contract says it
+    does not belong here.
   missing_display: >
     Where no display is available, a virtual one is started by the runner. If it
     cannot be started, the run FAILS with that cause named. It is not degraded to
@@ -128,18 +155,20 @@ environments:
       Windows is not built by .github/workflows/build.yml and is out of scope.
   - id: ENV-checks
     description: >
-      The editor checks run twice, on two engines, from one set of check code
-      behind a small driver interface. Engine one: WebKitGTK — the engine the
-      Linux application actually runs inside — driven through its WebDriver
-      server over plain HTTP. Engine two: a Chromium-family browser driven over
-      the DevTools protocol. Both use node builtins only and load a test page
-      that pulls in web/editor/*.js alone, with no server and no app shell. The
-      disk checks run as Rust tests over temporary files. Source: D-014, D-020,
-      D-029.
+      The editor checks run once per applicable engine, from one set of check
+      code behind a small driver interface. The shipping engine on Linux is
+      WebKitGTK and on macOS is Safari, each driven through its own WebDriver
+      server over plain HTTP — one protocol, two hosts. Alongside it runs a
+      Chromium-family stand-in over the DevTools protocol. All of them use node
+      builtins only and load a test page that pulls in web/editor/*.js alone,
+      with no server and no app shell. The disk checks run as Rust tests over
+      temporary files. Source: D-014, D-020, D-029, D-030.
     caveat: >
-      WKWebView on macOS is not covered by any automated check: it has no
-      equivalent driver. That residue is recorded as REQ-G3 and is scoped to
-      macOS remaining a published platform.
+      On both platforms the engine is driven inside a TEST host, not inside the
+      application: a small reference browser on Linux, the system browser on
+      macOS. Same engine, different embedding. What the runs cover is the engine;
+      what no run covers is the embedding. That residue is recorded as REQ-G3 and
+      is symmetric across platforms.
 
 requirements:
 
@@ -722,10 +751,26 @@ requirements:
 
   - id: REQ-G2
     statement: >
-      The editor checks run on the engine the product actually ships with, not
-      only on a stand-in. On Linux that is WebKitGTK, driven through its own
-      WebDriver server. Every check in families A, B, C and D runs unchanged on
-      both engines and must pass on both.
+      The editor checks run on the engines the product actually ships with, not
+      only on a stand-in. Which engines those are is declared per platform: on
+      Linux, WebKitGTK through its own WebDriver server; on macOS, Safari
+      through the system's WebDriver server. Every check in families A, B, C and
+      D runs unchanged on every engine applicable to the platform the suite is
+      running on, and must pass on all of them.
+    platform_engines:
+      linux: [webkitgtk, chromium]
+      macos: [safari, chromium]
+    not_applicable_is_not_missing: >
+      An engine that does not exist on the current platform is NOT a failure —
+      Safari on Linux is not a missing engine, it is an inapplicable one. An
+      engine that IS applicable and cannot be started is a failure. Collapsing
+      the two would either turn every Linux run red for want of Safari, or teach
+      the runner to forgive a genuinely absent engine. The report states which
+      of the two it is holding.
+    single_run_proves_one_platform: >
+      A run on one platform says nothing about another. Release readiness
+      therefore requires a green run per published platform, composed across
+      runs rather than claimed from one.
     category: invariant
     origin: user-statement, 2026-07-28 (D-029) — the engine gap is to be closed
       by automation, not carried as a manual pass
@@ -741,16 +786,18 @@ requirements:
         - the engine name and version exercised by each run
         - a per-requirement verdict recorded separately for each engine
       success_condition: >
-        Every check in families A, B, C and D produces a verdict on both engines
-        and passes on both. A requirement that passes on one engine and fails on
-        the other is a failure, and the report names which engine failed.
+        Every check in families A, B, C and D produces a verdict on every engine
+        applicable to the running platform, and passes on all of them. A
+        requirement that passes on one engine and fails on another is a failure,
+        and the report names which engine failed.
     severity: blocking
     false_positive_risk: medium
     false_positive_note: >
       Two engines mean two sets of engine-specific quirks. A divergence is real
       information, but it may indict the check rather than the product. The
       report must name the engine so the difference stays visible instead of
-      being averaged into a single verdict.
+      being averaged into a single verdict. With engines on two platforms the
+      space of quirks grows again, which is the price of the coverage.
     automation: full
     estimated_cost: medium
     currently_holds: false
@@ -761,9 +808,12 @@ requirements:
       application links against (2.52.3 on the development machine). It speaks
       plain HTTP, so it needs no third-party client library and respects the same
       zero-dependency constraint as the rest of the runner. A virtual display is
-      required wherever no real one exists. The stand-in engine stays in the
-      suite rather than being replaced: it is faster to debug, and a check that
-      behaves differently on the two engines is itself a finding.
+      required wherever no real one exists. On macOS the system's own driver
+      must be enabled once by an administrator before it will accept a session;
+      it needs a real graphical session rather than a virtual display. The
+      stand-in engine stays in the suite rather than being replaced: it is
+      faster to debug, and a check that behaves differently between engines is
+      itself a finding.
     engine_naming_note: >
       The stand-in is any Chromium-family browser. It must be located by trying
       the known executable names in order, not by assuming one: the development
@@ -785,9 +835,11 @@ requirements:
     verification:
       type: manual
       evidence_required:
-        - a line in every report naming each engine and version exercised
-        - for each uncovered published platform, the checklist used, how often it
-          is run, and who runs it
+        - a line in every report naming the platform it ran on, and each engine
+          and version exercised there
+        - the published platforms this run did NOT cover
+        - for the residue automation cannot reach, the checklist used, how often
+          it is run, and who runs it
       success_condition: >
         The report never claims coverage it does not have. While a manual pass is
         still needed it is this six-case list, run once per release by the

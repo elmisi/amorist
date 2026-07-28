@@ -27,6 +27,14 @@ const CANDIDATES = [
   "chromium-browser",
 ];
 
+// On macOS the browser is inside an application bundle and is not on the path,
+// so name lookup alone finds nothing. Looking only for names would have made
+// the stand-in silently unavailable on one of the two platforms.
+const BUNDLE_CANDIDATES = [
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+];
+
 function discover() {
   const override = process.env.AMORIST_QA_CHROMIUM;
   if (override) {
@@ -39,6 +47,10 @@ function discover() {
   for (const candidate of CANDIDATES) {
     const found = childProcess.spawnSync("which", [candidate], { encoding: "utf8" });
     if (found.status === 0) return { available: true, binary: found.stdout.trim() };
+    tried.push(candidate);
+  }
+  for (const candidate of BUNDLE_CANDIDATES) {
+    if (fs.existsSync(candidate)) return { available: true, binary: candidate };
     tried.push(candidate);
   }
   return {

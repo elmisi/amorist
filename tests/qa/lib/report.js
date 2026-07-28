@@ -17,7 +17,10 @@ class Report {
     this.engines = [];
     this.results = [];
     this.blockedEngines = [];
+    this.inapplicableEngines = [];
     this.harnessErrors = [];
+    this.platform = "";
+    this.platformsNotCovered = [];
   }
 
   recordEngine(engine) {
@@ -26,6 +29,12 @@ class Report {
 
   blockEngine(id, role, reason) {
     this.blockedEngines.push({ id, role, reason });
+  }
+
+  // Declared as not belonging here, so not a failure. Recorded all the same:
+  // the reader must be able to see what this run did not look at.
+  skipEngine(id, role, reason) {
+    this.inapplicableEngines.push({ id, role, reason });
   }
 
   recordResult(result) {
@@ -77,11 +86,20 @@ class Report {
       // what automation does not reach.
       enginesExercised: this.engines,
       enginesUnavailable: this.blockedEngines,
-      platformsNotAutomated: [
+      enginesNotApplicableHere: this.inapplicableEngines,
+      platform: this.platform,
+      // A run on one platform is evidence about one platform. Naming what it
+      // did not cover is REQ-G3's whole point.
+      publishedPlatformsThisRunDidNotCover: this.platformsNotCovered,
+      notAutomatedAnywhere: [
         {
-          platform: "macOS",
-          engine: "WKWebView",
-          why: "no equivalent driver; the Tauri WebDriver wrapper does not support it",
+          what: "the application's own embedding of the engine, on every platform",
+          why:
+            "Every run drives the engine inside a TEST host — a reference browser "
+            + "on Linux, the system browser on macOS — not inside the webview the "
+            + "application embeds. Same engine, different host. The engine is "
+            + "covered everywhere and the embedding nowhere: window chrome, focus "
+            + "handling, and whatever the embedding changes about editing.",
           manualPass: "once per release, repository owner, six-case list in REQ-G3",
         },
       ],

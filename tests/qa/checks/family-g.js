@@ -47,6 +47,13 @@ module.exports = [
       const failures = [];
       const emptyCorpus = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-qa-empty-"));
 
+      // The shipping engine differs by platform, so the sabotage that hides it
+      // must too. Hard-coding one platform's engine here would silently stop
+      // testing this on the other.
+      const shipping = process.platform === "darwin"
+        ? { id: "safari", variable: "AMORIST_QA_SAFARIDRIVER" }
+        : { id: "webkitgtk", variable: "AMORIST_QA_WEBKIT_DRIVER" };
+
       const sabotages = [
         {
           name: "the fixture directory is empty",
@@ -61,10 +68,10 @@ module.exports = [
           expectInOutput: "does not exist",
         },
         {
-          name: "the shipping engine's driver cannot be found",
-          environment: { AMORIST_QA_WEBKIT_DRIVER: "/nonexistent/driver" },
-          args: ["--only", "A", "--engine", "webkitgtk"],
-          expectInOutput: "was not found",
+          name: `the shipping engine's driver cannot be found (${shipping.id})`,
+          environment: { [shipping.variable]: "/nonexistent/driver" },
+          args: ["--only", "A", "--engine", shipping.id],
+          expectInOutput: "not found",
         },
       ];
 
@@ -114,6 +121,12 @@ module.exports = [
       const failures = [];
       const report = ctx.report;
       const exercised = report.engines.map((engine) => engine.id);
+      // The platforms this run did not cover are RECORDED in the report, not
+      // charged against this requirement. Composing runs across platforms is
+      // the release gate's job (the contract says release readiness needs a
+      // green run per published platform). Charging it here would leave every
+      // single-platform run permanently red for a reason nobody can fix from
+      // that platform — which teaches people to ignore red.
 
       // Running one engine on purpose is a debugging convenience, not a
       // verdict — so the requirement is not asserted in that case, it is
@@ -129,13 +142,28 @@ module.exports = [
         };
       }
 
-      if (!exercised.includes("webkitgtk")) {
+      // Every engine that BELONGS on this platform must have produced a
+      // verdict. Applicability comes from the contract, not from what happened
+      // to start — otherwise a missing engine would excuse itself.
+      const applicable = [...report.engines, ...report.blockedEngines];
+      for (const engine of applicable.filter((e) => e.role === "shipping")) {
+        if (exercised.includes(engine.id)) continue;
         failures.push({
           fixture: "engine coverage",
-          detail: "The engine the application ships with produced no verdict at all. "
-            + "Everything else in this report describes a browser the user does not run.",
-          expected: "a verdict from the shipping engine",
+          detail: `The engine the application ships with on this platform (${engine.id}) `
+            + "produced no verdict at all. Everything else in this report describes "
+            + "a browser the user does not run.",
+          expected: `a verdict from ${engine.id}`,
           actual: `engines exercised: ${exercised.join(", ") || "none"}`,
+        });
+      }
+      if (!applicable.some((e) => e.role === "shipping")) {
+        failures.push({
+          fixture: "engine coverage",
+          detail: `No shipping engine is declared for this platform (${report.platform}). `
+            + "Either the platform is not one the product ships on, or the "
+            + "declaration is incomplete — and the second would let a whole "
+            + "platform run green having tested only a stand-in.",
         });
       }
 

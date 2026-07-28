@@ -12,10 +12,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `tests/qa/` compiles it into checks. The suite reports 4 requirements green,
   15 failing and 2 unmeasured: it describes the editor amorist should be, not the
   one it is, and the failures are the work list.
-- Every check on the editor runs twice, on two engines: WebKitGTK, the engine the
-  Linux application actually runs inside, driven through its own WebDriver server,
-  and a Chromium-family browser as a faster stand-in. Both must pass. No check may
-  name an engine. Needs `webkit2gtk-driver` installed.
+- Every check on the editor runs once per engine that belongs on the platform it
+  is running on, and must pass on all of them: WebKitGTK on Linux and Safari on
+  macOS — each the engine the application there actually runs inside, each driven
+  through its own WebDriver server — plus a Chromium-family browser as a faster
+  stand-in. No check may name an engine. An engine that does not belong on the
+  current platform is recorded as inapplicable rather than missing, which is the
+  only skip the suite permits anywhere and is safe only because the
+  platform-to-engine map is declared in the contract rather than detected.
+  Linux needs `webkit2gtk-driver` installed; macOS needs
+  `sudo safaridriver --enable` once.
+- The suite runs on both published platforms in continuous integration. A run on
+  one platform is evidence about one platform, and the report says which platforms
+  it did not cover.
 - A corpus of 17 synthetic Markdown fixtures, invented rather than borrowed,
   imitating notes with front matter and wiki links, technical documentation with
   fenced code and tables, hand-wrapped prose, and files that have been through
@@ -34,6 +43,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   fails.
 
 ### Changed
+- What the checks do NOT cover is stated symmetrically rather than as a macOS
+  problem: on every platform the engine is driven inside a test host, never inside
+  the webview the application embeds. The engine is covered everywhere and the
+  embedding nowhere. The earlier wording would have claimed a completeness on
+  Linux that never existed.
 - The write path in the Tauri backend is now a standalone `write_document`
   function, with `save_document` a thin wrapper around it. Behaviour is unchanged;
   the extraction is what makes the write path verifiable without standing up a

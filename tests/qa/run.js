@@ -20,7 +20,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { loadCorpus, CORPUS_DIR } = require("./lib/corpus");
-const { resolveEngines } = require("./lib/engines");
+const { resolveEngines, publishedPlatformsNotCovered, platformName } = require("./lib/engines");
 const { makePage } = require("./lib/page");
 const { startStaticServer } = require("./lib/server");
 const { Report } = require("./lib/report");
@@ -77,11 +77,20 @@ async function main() {
     }
   }
 
+  report.platform = platformName();
+  report.platformsNotCovered = publishedPlatformsNotCovered();
+
   const engines = resolveEngines(options.engine ? [options.engine] : null);
   for (const engine of engines) {
+    // Declared as belonging elsewhere: skipped, recorded, not a failure.
+    if (!engine.applicable) {
+      report.skipEngine(engine.id, engine.role, engine.reason);
+      continue;
+    }
+    // Belongs here and will not start: a failure that names itself.
     if (!engine.available) report.blockEngine(engine.id, engine.role, engine.reason);
   }
-  const usable = engines.filter((engine) => engine.available);
+  const usable = engines.filter((engine) => engine.applicable && engine.available);
 
   if (!usable.length) {
     report.recordHarnessError("engines", "No engine could be started, so nothing was verified.");
@@ -218,6 +227,7 @@ function printSummary(report, corpus, file) {
   line("amorist QA — contract-driven run");
   line("=".repeat(72));
 
+  line(`platform: ${report.platform}`);
   line(`fixtures: ${corpus.length} file(s) from ${path.relative(ROOT, CORPUS_DIR)}`);
   for (const engine of report.engines) {
     line(`engine:   ${engine.id} (${engine.role}) — ${engine.version}`);
@@ -225,6 +235,12 @@ function printSummary(report, corpus, file) {
   for (const blocked of report.blockedEngines) {
     line(`ENGINE UNAVAILABLE: ${blocked.id} (${blocked.role})`);
     line(`  ${blocked.reason}`);
+  }
+  for (const skipped of report.inapplicableEngines) {
+    line(`not applicable here: ${skipped.id} (${skipped.role}) — ${skipped.reason}`);
+  }
+  if (report.platformsNotCovered.length) {
+    line(`this run says NOTHING about: ${report.platformsNotCovered.join(", ")}`);
   }
   line();
 

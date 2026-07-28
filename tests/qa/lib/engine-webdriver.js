@@ -1,113 +1,87 @@
 "use strict";
 
-// The engine that ships: WebKitGTK, the same engine the Linux application runs
-// inside, driven through its own WebDriver server over plain HTTP.
+// The shared WebDriver client.
 //
-// No third-party client library is involved — the protocol is HTTP and JSON, so
-// node builtins are enough. This is the requirement that keeps families B and C
-// honest: caret placement and contenteditable behaviour are exactly where
-// engines disagree, and a stand-in cannot speak for this one.
+// Both shipping engines — WebKitGTK on Linux, Safari on macOS — speak the same
+// standard protocol over plain HTTP, so the second platform reused this client
+// rather than adding one. Everything that differs between them is confined to
+// starting the server and opening a session; a subclass supplies those two and
+// inherits the rest.
+//
+// That is also the argument for preferring a standard protocol over a vendor
+// one wherever both exist: the cost of the second platform was a subclass.
 
 const childProcess = require("node:child_process");
-const fs = require("node:fs");
 const http = require("node:http");
-const path = require("node:path");
+const net = require("node:net");
 
 const keys = require("./keys");
 const { terminate } = require("./engine-chromium");
 
-const DRIVER_CANDIDATES = ["WebKitWebDriver"];
-const MINIBROWSER_CANDIDATES = [
-  "/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/MiniBrowser",
-  "/usr/lib/aarch64-linux-gnu/webkit2gtk-4.1/MiniBrowser",
-  "/usr/libexec/webkit2gtk-4.1/MiniBrowser",
-];
-
-function which(name) {
-  const found = childProcess.spawnSync("which", [name], { encoding: "utf8" });
-  return found.status === 0 ? found.stdout.trim() : "";
-}
-
-function discover() {
-  const override = process.env.AMORIST_QA_WEBKIT_DRIVER;
-  const driver = override || DRIVER_CANDIDATES.map(which).find(Boolean) || "";
-  if (!driver || !fs.existsSync(driver)) {
-    return {
-      available: false,
-      reason:
-        "The WebDriver server for the shipping engine was not found "
-        + `(looked for: ${DRIVER_CANDIDATES.join(", ")}). `
-        + "Install it with:  sudo apt install webkit2gtk-driver  "
-        + "— or set AMORIST_QA_WEBKIT_DRIVER to its path. "
-        + "This engine is not optional: REQ-G2 requires every editor check to "
-        + "produce a verdict on the engine the application actually ships with.",
-    };
-  }
-  const browser = process.env.AMORIST_QA_MINIBROWSER
-    || MINIBROWSER_CANDIDATES.find((candidate) => fs.existsSync(candidate))
-    || "";
-  return { available: true, binary: driver, browser };
-}
-
-class WebKitEngine {
-  constructor(binary, browser) {
-    this.id = "webkitgtk";
+class WebDriverEngine {
+  constructor(binary) {
     this.binary = binary;
-    this.browser = browser;
     this.label = "unknown";
     this.process = null;
     this.port = 0;
     this.sessionId = "";
+    this.startupFailure = null;
+    this.output = "";
   }
 
-  static discover() {
-    return discover();
+  // --- supplied by the subclass -------------------------------------------
+
+  // The arguments that make the server listen on this.port.
+  serverArguments() {
+    throw new Error("serverArguments() must be implemented.");
   }
+
+  // The capabilities that open a session against the right browser.
+  sessionCapabilities() {
+    throw new Error("sessionCapabilities() must be implemented.");
+  }
+
+  // Anything that must hold before the server is started. Return a string to
+  // fail the run with that cause named; return nothing to proceed.
+  checkPreconditions() {
+    return "";
+  }
+
+  // --- the shared part ----------------------------------------------------
 
   async start() {
+    const problem = this.checkPreconditions();
+    if (problem) throw new Error(problem);
+
     this.port = await freePort();
     const version = childProcess.spawnSync(this.binary, ["--version"], { encoding: "utf8" });
     this.label = ((version.stdout || "") + (version.stderr || "")).trim().split("\n")[0]
-      || path.basename(this.binary);
+      || this.binary;
 
-    if (!process.env.DISPLAY) {
-      throw new Error(
-        "No display is available and the shipping engine needs one. Start a "
-        + "virtual display (Xvfb) and set DISPLAY before running the suite. "
-        + "The run is not degraded to a single engine: half the coverage "
-        + "missing must not be reported as a pass.",
-      );
-    }
-
-    this.process = childProcess.spawn(this.binary, [`--port=${this.port}`, "--host=127.0.0.1"], {
+    this.process = childProcess.spawn(this.binary, this.serverArguments(), {
       stdio: ["ignore", "pipe", "pipe"],
     });
-    let output = "";
-    this.process.stdout.on("data", (chunk) => { output += chunk.toString("utf8"); });
-    this.process.stderr.on("data", (chunk) => { output += chunk.toString("utf8"); });
+    const collect = (chunk) => { this.output += chunk.toString("utf8"); };
+    this.process.stdout.on("data", collect);
+    this.process.stderr.on("data", collect);
     this.process.on("exit", (code) => {
       if (!this.sessionId) {
         this.startupFailure = new Error(
-          `${this.binary} exited with code ${code} before a session was created. ${output.slice(-400)}`,
+          `${this.binary} exited with code ${code} before a session was created. `
+          + `${this.output.slice(-400)}`,
         );
       }
     });
 
-    await this.waitForDriver(output);
+    await this.waitForDriver();
 
-    const browserOptions = { args: ["--automation"] };
-    if (this.browser) browserOptions.binary = this.browser;
     const created = await this.request("POST", "/session", {
-      capabilities: {
-        alwaysMatch: {
-          "webkitgtk:browserOptions": browserOptions,
-        },
-      },
+      capabilities: { alwaysMatch: this.sessionCapabilities() },
     });
     this.sessionId = created.value.sessionId;
     const reported = created.value.capabilities || {};
     if (reported.browserVersion) {
-      this.label = `WebKitGTK ${reported.browserVersion}`;
+      this.label = `${reported.browserName || this.id} ${reported.browserVersion}`;
     }
     await this.request("POST", `/session/${this.sessionId}/timeouts`, {
       script: 30000,
@@ -115,7 +89,7 @@ class WebKitEngine {
     });
   }
 
-  async waitForDriver(collectedOutput) {
+  async waitForDriver() {
     const deadline = Date.now() + 15000;
     for (;;) {
       if (this.startupFailure) throw this.startupFailure;
@@ -126,7 +100,7 @@ class WebKitEngine {
         if (Date.now() > deadline) {
           throw new Error(
             `${this.binary} did not answer on port ${this.port} within 15s: ${error.message}. `
-            + `Output so far: ${collectedOutput.slice(-400)}`,
+            + `Output so far: ${this.output.slice(-400)}`,
           );
         }
         await new Promise((resolve) => setTimeout(resolve, 150));
@@ -231,7 +205,10 @@ class WebKitEngine {
           }
           if (res.statusCode >= 400) {
             const error = parsed.value || {};
-            reject(new Error(`${method} ${endpoint} failed: ${error.error || res.statusCode} — ${error.message || text.slice(0, 300)}`));
+            reject(new Error(
+              `${method} ${endpoint} failed: ${error.error || res.statusCode} — `
+              + `${error.message || text.slice(0, 300)}`,
+            ));
             return;
           }
           resolve(parsed);
@@ -245,7 +222,6 @@ class WebKitEngine {
 }
 
 function freePort() {
-  const net = require("node:net");
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.on("error", reject);
@@ -256,4 +232,4 @@ function freePort() {
   });
 }
 
-module.exports = { WebKitEngine };
+module.exports = { WebDriverEngine };

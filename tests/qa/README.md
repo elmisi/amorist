@@ -24,12 +24,26 @@ check could not run**. There is no third state.
 
 ### Prerequisites
 
+On Linux:
+
 | What | Why | How |
 | --- | --- | --- |
-| `webkit2gtk-driver` | the engine the Linux application ships inside | `sudo apt install webkit2gtk-driver` |
-| a Chromium-family browser | the stand-in engine | usually already present |
-| a display | the shipping engine needs one | `xvfb-run -a` where there is none |
-| a Rust toolchain | the write-path checks are Rust | already needed to build the app |
+| `webkit2gtk-driver` | the engine the application ships inside | `sudo apt install webkit2gtk-driver` |
+| a display | that engine needs one | `xvfb-run -a` where there is none |
+
+On macOS:
+
+| What | Why | How |
+| --- | --- | --- |
+| remote automation enabled | the system's driver refuses every session until an administrator turns it on | `sudo safaridriver --enable`, once per machine |
+| a real graphical session | the engine will not run headless | already present on a desktop or a hosted runner |
+
+Everywhere:
+
+| What | Why |
+| --- | --- |
+| a Chromium-family browser | the stand-in engine; found by name on Linux and inside the application bundle on macOS |
+| a Rust toolchain | the write-path checks are Rust |
 
 A missing prerequisite fails the run and names itself. It never degrades to a
 partial run that reports success.
@@ -38,8 +52,10 @@ partial run that reports success.
 
 ```
 run.js                the entry point: discovery, orchestration, report, exit status
-lib/engines.js        which engines exist, and why one being absent is fatal
-lib/engine-webkit.js  the shipping engine, over its WebDriver server on plain HTTP
+lib/engines.js        which engines belong to which platform, and the one skip that is allowed
+lib/engine-webdriver.js the shared WebDriver client: one protocol, both shipping engines
+lib/engine-webkitgtk.js the Linux shipping engine — how its server starts, and nothing else
+lib/engine-safari.js  the macOS shipping engine — same, plus the enable-once instruction
 lib/engine-chromium.js the stand-in, over the DevTools protocol on a raw WebSocket
 lib/keys.js           one symbolic key vocabulary, translated per engine
 lib/page.js           the page-side API as a check sees it
@@ -55,11 +71,29 @@ paste/                paste fixtures, each declaring the tokens that must surviv
 checks/               one file per family
 ```
 
-## Two engines, one set of checks
+## Engines are declared per platform
 
-Every check in families A to D runs twice: once on WebKitGTK, the engine the
-Linux application actually runs inside, and once on a Chromium-family browser.
-Both must pass.
+Every check in families A to D runs once per engine that belongs on the platform
+it is running on, and must pass on all of them:
+
+| Platform | Ships on | Plus |
+| --- | --- | --- |
+| Linux | WebKitGTK, through its own WebDriver server | a Chromium-family stand-in |
+| macOS | Safari, through the system's WebDriver server | a Chromium-family stand-in |
+
+Both shipping engines speak the same standard protocol over plain HTTP, so the
+second platform reused the client rather than adding one. What differs between
+them is confined to starting the server and opening a session.
+
+**An engine that does not belong on this platform is skipped and recorded as
+inapplicable — not as missing.** That is the only skip the suite permits
+anywhere, and it is safe only because the platform-to-engine map lives in the
+contract rather than being detected. A skip decided by detection would be the
+silent pass arriving through the front door.
+
+**A run on one platform is evidence about one platform.** The report says which
+platform it covered and which published platforms it did not. Composing runs
+across platforms is the release gate's job, not a single run's.
 
 **No check may name an engine.** A check that branches on which engine it is
 running under has stopped comparing the two, which is the only reason both are
@@ -71,9 +105,13 @@ easier to debug, and a check that behaves differently on the two engines is
 itself a finding — either an engine difference the user will meet, or a check
 depending on something it should not.
 
-macOS is not covered. Its engine has no equivalent driver, so it is named in
-every report together with the manual pass that stands in for it, rather than
-being left to look like coverage.
+**What stays uncovered is the embedding, on every platform — not one platform.**
+Every run drives the shipping engine inside a test host: the small reference
+browser that comes with the Linux driver, the system browser on macOS. The
+application embeds the same engine in its own webview. So the engine is covered
+everywhere and the embedding nowhere — window chrome, focus handling, and
+whatever the embedding changes about editing behaviour. Named in every report,
+together with the manual pass that stands in for it.
 
 ## Adding a case
 

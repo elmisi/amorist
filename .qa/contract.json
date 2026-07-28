@@ -261,7 +261,7 @@
     },
     {
       "id": "REQ-G2",
-      "statement": "The editor checks run on the engine the product actually ships with, not only on a stand-in. On Linux that is WebKitGTK, driven through its own WebDriver server. Every check in families A, B, C and D runs unchanged on both engines and must pass on both.",
+      "statement": "The editor checks run on the engines the product actually ships with, not only on a stand-in. Which engines those are is declared per platform: on Linux, WebKitGTK through its own WebDriver server; on macOS, Safari through the system's WebDriver server. Every check in families A, B, C and D runs unchanged on every engine applicable to the platform the suite is running on, and must pass on all of them.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",

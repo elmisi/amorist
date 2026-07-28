@@ -501,6 +501,45 @@ decisions:
       WebDriver wrapper does not support it. Recorded as REQ-G3 and deliberately
       scoped to published platforms, so that dropping macOS would close it.
 
+  - id: D-030
+    statement: >
+      THE SHIPPING ENGINE IS DRIVEN ON EVERY PUBLISHED PLATFORM, NOT ONLY ON
+      LINUX. macOS is covered by driving Safari through the system's own
+      WebDriver server — the same protocol the Linux engine already speaks. The
+      set of engines applicable to a platform is DECLARED in the contract rather
+      than inferred, and an engine that does not belong to the current platform
+      is recorded as inapplicable rather than missing.
+    source: user-statement
+    date: 2026-07-28
+    supersedes_part_of: D-029
+    status: confirmed
+    affects: [REQ-G2, REQ-G3, R-017]
+    what_changed_and_why: >
+      D-029 recorded macOS as beyond automation. That judgement weighed only two
+      options — the engine that ships, or a different build of WebKit on a
+      different platform — and rejected the second as a proxy dressed as
+      coverage. It missed the rung between them: WebKit ON macOS, driven by the
+      driver the system already ships. Not WKWebView, but far closer to it than a
+      Chromium-family stand-in on Linux, and reachable with the protocol already
+      implemented.
+    prompted_by: >
+      The person volunteering that they do in fact use macOS and have a machine
+      available. Which is itself the evidence for the safeguard decided the same
+      day: whether macOS mattered had been INFERRED from a build configuration
+      and never asked. The inference happened to be right; the practice of not
+      asking is what produced a contract clause built on an unexamined guess.
+    residue: >
+      Safari and WKWebView are the same engine differently embedded. What stays
+      outside automation is the embedding — window chrome, focus handling, and
+      whatever the embedding changes about editing behaviour — not the platform.
+      REQ-G3 shrinks to that.
+    cost_note: >
+      The one permitted skip in the whole suite is introduced here. It is safe
+      only because applicability is declared, not detected: an engine may be
+      skipped only when the contract states it does not belong on this platform.
+      A detected skip would be the silent-pass failure mode arriving through the
+      front door.
+
 open_recommendations:
   - id: REC-002
     statement: >

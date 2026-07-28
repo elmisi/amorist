@@ -55,7 +55,7 @@ doubled across two engines by D-029:
 
 | Layer | What runs | What it verifies |
 | --- | --- | --- |
-| Editor | one set of checks, run twice: once on WebKitGTK through its WebDriver server, once on a Chromium-family browser over the DevTools protocol. Both with node builtins only, both loading a test page that pulls in `web/editor/*.js` alone — no server, no app shell | families A, B, C, D: everything about the text the editor produces, and the caret |
+| Editor | one set of checks, run once per engine applicable to the platform: the shipping engine through its own WebDriver server (WebKitGTK on Linux, Safari on macOS), plus a Chromium-family stand-in over the DevTools protocol. All with node builtins only, all loading a test page that pulls in `web/editor/*.js` alone — no server, no app shell | families A, B, C, D: everything about the text the editor produces, and the caret |
 | Disk | Rust tests over temporary files | family F: atomic write, conflict detection, line endings |
 | Recovery | the built application, started and killed | family E: the working copy and its recovery |
 
@@ -71,6 +71,19 @@ a no-op and then disappear as this lands.
 **The recovery layer does not exist yet.** Its two requirements report as not
 measured, which keeps the run red, and the report says what building it would
 take. Nothing pretends to cover them in the meantime.
+
+**One protocol, two hosts.** Both shipping engines speak the same standard
+WebDriver protocol over plain HTTP, so adding the second platform reused the
+client rather than adding one. The differences are confined to how a session is
+opened. This is why the coverage was cheap, and it is the reason to prefer a
+standard protocol over a vendor one wherever both exist.
+
+**Applicability is declared, not detected.** The contract lists which engines
+belong to which platform. An engine absent from the current platform is recorded
+as *inapplicable* and skipped; an engine that belongs here and will not start is
+a *failure*. This is the only skip the suite permits anywhere, and it is safe
+only because the permission comes from the contract. A skip decided by detection
+would be the silent pass arriving through the front door.
 
 **Driver interface.** The editor layer has exactly one seam: a small driver
 object with the operations the checks need — load the page, evaluate an
@@ -100,10 +113,22 @@ application links against, and a display — virtual where none exists. A missin
 prerequisite fails the run and names itself. It never degrades to a
 single-engine run that reports success.
 
-**Known coverage hole**, stated rather than hidden and now reduced to one
-platform: macOS. Its engine has no equivalent driver, so `REQ-G3` requires every
-report to name it, with the cadence and owner of the manual pass — and scopes
-the obligation to platforms that are actually published.
+**Known coverage hole**, stated rather than hidden, and symmetric across
+platforms rather than special to one: every run drives the shipping engine inside
+a **test host** — the small reference browser that ships with the Linux driver,
+the system browser on macOS — never inside the webview the application itself
+embeds. Same engine, different host. The engine is covered everywhere; the
+embedding is covered nowhere.
+
+This was first written as a macOS problem, which would have claimed a
+completeness on Linux that never existed. It was caught only because the runner
+prints the name of the host it actually drove, and the name was not the one the
+document assumed. Worth keeping as a habit: **print what was really exercised,
+not what was meant to be** — the two diverge quietly.
+
+`REQ-G3` requires every report to name that residue, along with the platform the
+run covered and the published platforms it did not — because a run on one
+platform is evidence about one platform.
 
 ## Fixture boundary
 
