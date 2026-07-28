@@ -126,6 +126,32 @@ place, never a line that should not have moved. A check that fails for its own
 reasons measures nothing, and it looks exactly like a check that works. Found by
 reading the failure text rather than the failure count.
 
+## A weakness found by a question, not by a failure
+
+Asked whether the caret check ran on a document long enough to mean anything,
+the corpus was measured rather than defended. Two answers came back.
+
+The length was inadequate: the longest fixture was 874 characters over 50 lines.
+
+The second answer was worse and nobody had asked for it. The check compared a
+single character before and after the switch, and **64 of 75 probe positions
+sat on a character occurring many times in the same file** — several on a space
+appearing 167 times. A mapping landing on entirely the wrong offset would report
+"same character" in the great majority of cases.
+
+Stated precisely, because the distinction matters: that weakness is **latent,
+not active**. Today the caret is not carried across the switch at all — it lands
+past the end of the document — so the old comparison did fail, for the right
+reason, by accident. It would have started passing wrongly as soon as the
+mapping became partly right, which is exactly when a check stops being watched.
+
+Both are closed. A 186-line fixture joined the corpus, and the assertion is now
+anchored to tokens occurring **exactly once** in the document: the caret must
+land inside that one occurrence at the same offset within it. There is one place
+in the file where that word is, so landing there by accident is not available.
+The check also fails if too few anchors could be probed, so a corpus of short
+files cannot quietly reduce this requirement to nothing.
+
 ## Release readiness
 
 Not claimable. Nineteen of twenty-one blocking requirements fail or are

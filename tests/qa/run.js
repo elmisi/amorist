@@ -153,6 +153,9 @@ async function main() {
             failures: outcome.failures,
             fixturesExercised: outcome.fixturesExercised || [],
             notCovered,
+            // Whatever the check wants on the record about how much it looked
+            // at. A verdict without a sense of scale is hard to trust later.
+            metrics: outcome.metrics || null,
           });
         }
       } catch (error) {
