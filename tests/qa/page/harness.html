@@ -98,15 +98,39 @@
           fontFingerprint: function () {
             var probe = document.createElement("span");
             probe.textContent = "MMMMMMMMMMiiiiiiiiii";
-            probe.style.position = "absolute";
-            probe.style.visibility = "hidden";
-            probe.style.whiteSpace = "pre";
+            // The class carries the font AND the layout, and the layout wins:
+            // taking the class wholesale measured the container's fixed width
+            // instead of the text, and produced the same number on every
+            // platform — a figure that looked like agreement and was a
+            // constant. Take the font properties and nothing else.
             probe.className = "amorist-editor-surface";
+            probe.style.cssText = [
+              "position:absolute",
+              "visibility:hidden",
+              "white-space:pre",
+              "display:inline-block",
+              "width:auto",
+              "min-width:0",
+              "max-width:none",
+              "padding:0",
+              "border:0",
+              "margin:0",
+              "left:-9999px",
+              "top:0",
+            ].join(";");
             document.body.appendChild(probe);
+            var style = window.getComputedStyle(probe);
             var width = probe.getBoundingClientRect().width;
-            var stack = window.getComputedStyle(probe).fontFamily;
+            var fingerprint = {
+              stack: style.fontFamily,
+              sizePx: style.fontSize,
+              // Twenty characters. In a monospaced face every glyph has the
+              // same advance, so this is twenty advances — a number that
+              // differs when the face differs, which is the whole point.
+              referenceWidthPx: Math.round(width * 100) / 100,
+            };
             document.body.removeChild(probe);
-            return { stack: stack, referenceWidthPx: Math.round(width * 100) / 100 };
+            return fingerprint;
           },
 
           setHostWidth: function (pixels) {

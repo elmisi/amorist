@@ -236,7 +236,8 @@ function printSummary(report, corpus, file) {
   for (const engine of report.engines) {
     line(`engine:   ${engine.id} (${engine.role}) — ${engine.version}`);
     if (engine.font) {
-      line(`          font resolved to width ${engine.font.referenceWidthPx}px for the reference string`);
+      line(`          font ${engine.font.sizePx} ${engine.font.stack}`);
+      line(`               20 glyphs measure ${engine.font.referenceWidthPx}px`);
     }
   }
   for (const blocked of report.blockedEngines) {

@@ -35,7 +35,7 @@ On macOS:
 
 | What | Why | How |
 | --- | --- | --- |
-| remote automation enabled | the system's driver refuses every session until an administrator turns it on | `sudo safaridriver --enable`, once per machine |
+| remote automation enabled | the system's driver refuses every session until an administrator turns it on | `sudo safaridriver --enable`, once per machine. On some configurations a separate switch in the browser's hidden web-developer settings is also needed; the failure message says so, and says where |
 | a real graphical session | the engine will not run headless | already present on a desktop or a hosted runner |
 
 Everywhere:
