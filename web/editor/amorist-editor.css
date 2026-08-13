@@ -123,6 +123,33 @@
   content: attr(data-marker);
 }
 
+.amorist-wysiwyg-task {
+  display: inline;
+}
+
+.amorist-wysiwyg-task .amorist-task-checkbox {
+  margin-right: 9px;
+}
+
+.amorist-wysiwyg-task .amorist-task-content {
+  display: inline;
+}
+
+.amorist-wysiwyg-task[data-checked="true"] .amorist-task-checkbox {
+  background: var(--accent, #246b54);
+  border-color: var(--accent, #246b54);
+}
+
+.amorist-wysiwyg-task[data-checked="true"] .amorist-task-checkbox::before {
+  align-items: center;
+  content: "✓";
+  display: flex;
+  font-size: 12px;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+}
+
 .amorist-wysiwyg-fence,
 .amorist-wysiwyg-rule {
   color: var(--muted, #68717d);

@@ -57,6 +57,10 @@
     return visibleIndex;
   }
 
+  function alignedScrollTop(currentScrollTop, caretTop, targetCaretTop) {
+    return Math.max(0, currentScrollTop + caretTop - targetCaretTop);
+  }
+
   function projectionLine(raw) {
     const heading = raw.match(/^ {0,3}(#{1,6})\s+/);
     if (heading) return { prefix: heading[0].length, text: raw.slice(heading[0].length), tag: `h${heading[1].length}` };
@@ -183,7 +187,7 @@
           row.classList.add("amorist-wysiwyg-rule");
         }
         if (typeof projection.checked === "boolean") {
-          row.classList.add("amorist-task-item");
+          row.classList.add("amorist-wysiwyg-task");
           row.dataset.checked = String(projection.checked);
           row.innerHTML = `<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${MarkdownCodec.renderInline(projection.text)}</span>`;
         } else if (projection.rule || projection.fence) {
@@ -360,7 +364,15 @@
         this.source.scrollTop = Math.max(0, line * lineHeight + box.top + padding - targetY);
       });
     }
-    restoreCaretY(y) { if (!y) return; requestAnimationFrame(() => { const selection = window.getSelection(); if (selection && selection.rangeCount) selection.getRangeAt(0).startContainer.parentElement?.scrollIntoView({ block: "center" }); }); }
+    restoreCaretY(y) {
+      if (!y) return;
+      requestAnimationFrame(() => {
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
+        this.surface.scrollTop = alignedScrollTop(this.surface.scrollTop, rect.top, y);
+      });
+    }
     updateSourceButton() { const button = this.toolbar.querySelector('[data-action="source"]'); if (button) button.setAttribute("aria-pressed", String(this.mode === "source")); }
     undo() { const entry = this.history.undo(this.model); if (entry) { this.render({ start: entry.forward.start, end: entry.forward.start }); this.emitChange(); } }
     redo() { const entry = this.history.redo(this.model); if (entry) { const at = entry.forward.start + entry.forward.replacement.length; this.render({ start: at, end: at }); this.emitChange(); } }
@@ -375,6 +387,6 @@
   function midViewportLine(scrollTop, clientHeight, lineHeight) { return lineHeight > 0 ? Math.floor((scrollTop + clientHeight / 2) / lineHeight) : 0; }
   function centerScroll(anchorTop, clientHeight, scrollHeight) { return Math.max(0, Math.min(Math.max(0, scrollHeight - clientHeight), anchorTop - clientHeight / 2)); }
   Internals.MarkdownHistory = TransactionJournal;
-  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, projectionLine };
+  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, alignedScrollTop, projectionLine };
   window.AmoristEditor = { create };
 })();
