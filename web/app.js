@@ -16,7 +16,6 @@
   const state = {
     editor: null,
     savedMarkdown: "",
-    lineEnding: "lf",
     dirty: false,
     demo: Boolean(screenshotMode),
   };
@@ -64,8 +63,8 @@
       async loadDocument() {
         return invoke("read_document");
       },
-      async saveDocument(markdown, lineEnding, force) {
-        return invoke("save_document", { markdown: markdown, lineEnding: lineEnding, force: force || false });
+      async saveDocument(markdown, force) {
+        return invoke("save_document", { markdown: markdown, force: force || false });
       },
       async getVersion() {
         return invoke("get_version");
@@ -98,6 +97,10 @@
       syncDirty(dirty) {
         invoke("set_dirty", { dirty: dirty });
       },
+      persistWorkingCopy(savedSource, unsavedSource, revision) {
+        return invoke("persist_working_copy", { savedSource: savedSource, unsavedSource: unsavedSource, revision: revision });
+      },
+      discardWorkingCopy() { return invoke("discard_working_copy"); },
       async setWindowTitle(name) {
         try {
           var appWindow = getAppWindow();
@@ -144,12 +147,12 @@
         }
         return response.json();
       },
-      async saveDocument(markdown, lineEnding, force) {
+      async saveDocument(markdown, force) {
         var url = "/api/document?token=" + encodeURIComponent(token);
         var opts = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ markdown: markdown, lineEnding: lineEnding }),
+          body: JSON.stringify({ markdown: markdown }),
         };
 
         async function attemptSave() {
@@ -187,6 +190,8 @@
         });
       },
       syncDirty(dirty) {},
+      persistWorkingCopy() { return Promise.resolve(); },
+      discardWorkingCopy() { return Promise.resolve(); },
       async setWindowTitle(_name) {},
       startHeartbeat() {
         var pingFailures = 0;
@@ -266,13 +271,16 @@
     setBusy("Loading");
     try {
       var doc = await backend.loadDocument();
-      state.lineEnding = doc.lineEnding || "lf";
       state.savedMarkdown = doc.markdown || "";
       setDocumentLabel(doc);
-      mountEditor(state.savedMarkdown);
+      mountEditor(doc.recoveryMarkdown || state.savedMarkdown);
       setDirty(false);
-      setStatus(doc.exists ? "Loaded" : "New file");
       hideNotice();
+      if (doc.recoveryMarkdown && doc.recoveryMarkdown !== state.savedMarkdown) {
+        setDirty(true);
+        showWarning("Recovered unsaved work. Save to apply it to the file, or Reload to discard it.");
+      }
+      setStatus(doc.exists ? "Loaded" : "New file");
       backend.setWindowTitle(doc.name || "");
     } catch (error) {
       if (error && error.name === "AbortError") {
@@ -303,17 +311,18 @@
     var markdown = state.editor.getValue();
 
     try {
-      await backend.saveDocument(markdown, state.lineEnding);
+      await backend.saveDocument(markdown);
       state.savedMarkdown = markdown;
       setDirty(false);
       setStatus("Saved");
       hideNotice();
+      backend.discardWorkingCopy();
     } catch (error) {
       var msg = errorMessage(error, "The document could not be saved.");
       if (msg === "CONFLICT") {
         if (await confirmDialog("The file was modified outside amorist.\n\nOverwrite with your version?")) {
           try {
-            await backend.saveDocument(markdown, state.lineEnding, true);
+            await backend.saveDocument(markdown, true);
             state.savedMarkdown = markdown;
             setDirty(false);
             setStatus("Saved");
@@ -374,6 +383,7 @@
       spellcheck: true,
       onChange: function (value) {
         setDirty(value !== state.savedMarkdown);
+        scheduleWorkingCopy(value);
       },
     });
   }
@@ -415,6 +425,16 @@
     document.body.classList.toggle("is-dirty", dirty);
     backend.syncDirty(dirty);
     setStatus(dirty ? "Modified" : "Saved");
+  }
+
+  let workingCopyTimer = null;
+  function scheduleWorkingCopy(value) {
+    if (state.demo || value === state.savedMarkdown) return;
+    clearTimeout(workingCopyTimer);
+    workingCopyTimer = setTimeout(function () {
+      backend.persistWorkingCopy(state.savedMarkdown, value, state.editor && state.editor.model ? state.editor.model.revision : 0)
+        .catch(function () { showWarning("Could not persist recovery copy. Your file was not changed."); });
+    }, 2000);
   }
 
   function showError(message, source) {

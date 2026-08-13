@@ -77,6 +77,12 @@
   padding: 28px 34px;
 }
 
+/* The projection keeps physical source lines visible without adding a DOM
+   separator that browser selection APIs cannot count. */
+.amorist-source-line {
+  white-space: pre-wrap;
+}
+
 .amorist-editor-source {
   background: var(--panel, #fff);
   border: 0;

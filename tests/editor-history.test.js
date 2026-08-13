@@ -2,82 +2,28 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
-function loadClassicScript(path, window = {}) {
-  const context = vm.createContext({ window, console, Intl, document: {}, NodeFilter: {}, Promise });
+function load(path, window) {
+  const context = vm.createContext({ window, console });
   vm.runInContext(fs.readFileSync(path, "utf8"), context, { filename: path });
   return context.window;
 }
 
-function loadMarkdownHistory() {
-  const window = loadClassicScript("web/editor/amorist-text-utils.js");
-  loadClassicScript("web/editor/amorist-table-codec.js", window);
-  loadClassicScript("web/editor/amorist-markdown-codec.js", window);
-  window.AmoristInternals.EditingPolicy = { create: function () { return {}; } };
-  window.AmoristInternals.HtmlToMarkdown = { convert: function (html) { return html; } };
-  loadClassicScript("web/editor/amorist-editor.js", window);
-  return window.AmoristInternals.MarkdownHistory;
-}
+const window = load("web/editor/amorist-document-model.js", {});
+const { DocumentModel, TransactionJournal } = window.AmoristInternals;
+const model = new DocumentModel("uno\r\ndue\ntre");
+const journal = new TransactionJournal(3);
+const first = model.transaction(5, 5, "!", "insert");
+journal.push(first);
+assert.equal(model.source, "uno\r\n!due\ntre");
+assert.equal(model.display, "uno\n!due\ntre");
+assert.equal(model.rawOffset(4), 5, "display offset maps around CRLF without changing it");
+journal.undo(model);
+assert.equal(model.source, "uno\r\ndue\ntre", "undo applies only the inverse transaction");
+journal.redo(model);
+assert.equal(model.source, "uno\r\n!due\ntre", "redo reapplies only the forward transaction");
 
-const MarkdownHistory = loadMarkdownHistory();
-
-// Basic push and undo
-var h = new MarkdownHistory(100, 50 * 1024 * 1024);
-h.push("a");
-h.push("b");
-h.push("c");
-assert.equal(h.undo(), "b");
-assert.equal(h.undo(), "a");
-assert.equal(h.undo(), null);
-
-// Redo
-assert.equal(h.redo(), "b");
-assert.equal(h.redo(), "c");
-assert.equal(h.redo(), null);
-
-// New edit after undo clears forward history
-h = new MarkdownHistory(100, 50 * 1024 * 1024);
-h.push("a");
-h.push("b");
-h.push("c");
-h.undo();
-h.push("d");
-assert.equal(h.redo(), null);
-assert.equal(h.undo(), "b");
-
-// Duplicate push is skipped
-h = new MarkdownHistory(100, 50 * 1024 * 1024);
-h.push("a");
-h.push("a");
-assert.equal(h.entries.length, 1);
-
-// Entry cap
-h = new MarkdownHistory(3, 50 * 1024 * 1024);
-h.push("a");
-h.push("b");
-h.push("c");
-h.push("d");
-assert.equal(h.entries.length, 3);
-assert.equal(h.entries[0], "b");
-assert.equal(h.entries[1], "c");
-assert.equal(h.entries[2], "d");
-
-// Code unit cap
-h = new MarkdownHistory(100, 10);
-h.push("aaaa");
-h.push("bbbb");
-h.push("cccc");
-assert.ok(h.totalCodeUnits <= 10);
-assert.equal(h.entries[h.entries.length - 1], "cccc");
-assert.ok(h.entries.length <= 2);
-
-// Undo on empty history
-h = new MarkdownHistory(100, 50 * 1024 * 1024);
-assert.equal(h.undo(), null);
-assert.equal(h.redo(), null);
-
-// Undo with single entry
-h = new MarkdownHistory(100, 50 * 1024 * 1024);
-h.push("only");
-assert.equal(h.undo(), null);
-
-console.log("editor-history: all tests passed");
+const second = model.transaction(5, 6, "", "delete");
+journal.push(second);
+assert.equal(journal.redo(model), null, "a new transaction drops redo history");
+assert.ok(journal.entries.every((entry) => entry.forward && entry.inverse));
+console.log("editor-history: transaction journal tests passed");

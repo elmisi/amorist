@@ -1,9 +1,5 @@
 (function () {
   const Internals = window.AmoristInternals || (window.AmoristInternals = {});
-  const MarkdownCodec = Internals.MarkdownCodec;
-  if (!MarkdownCodec) {
-    throw new Error("AmoristMarkdownCodec must be loaded before AmoristHtmlToMarkdown.");
-  }
 
   // Elements removed entirely (content discarded).
   const STRIPPED = new Set(["SCRIPT", "STYLE", "HEAD", "META", "LINK", "TITLE", "NOSCRIPT"]);
@@ -52,32 +48,39 @@
         return;
       }
 
-      // Strip every attribute except href on anchors.
+      // Keep the only Markdown-representable attributes.  In particular an
+      // image without alt/src is a silent paste loss.
       Array.from(node.attributes || []).forEach((attr) => {
-        if (!(tag === "A" && attr.name === "href")) {
+        const allowed = (tag === "A" && attr.name === "href")
+          || (tag === "IMG" && (attr.name === "src" || attr.name === "alt"));
+        if (!allowed) {
           node.removeAttribute(attr.name);
         }
       });
     });
   }
 
-  // serializeBlocks only iterates element children, so loose top-level text /
-  // inline runs must be wrapped in <p> or they would be dropped.
-  function wrapLooseInline(root, doc) {
-    let para = null;
-    Array.from(root.childNodes).forEach((node) => {
-      const loose =
-        node.nodeType === 3 || (node.nodeType === 1 && INLINE_TAGS.has(node.tagName));
-      if (loose) {
-        if (!para) {
-          para = doc.createElement("p");
-          root.insertBefore(para, node);
-        }
-        para.appendChild(node);
-      } else {
-        para = null;
-      }
-    });
+  // This converter owns its source output.  It must not route through the
+  // editor renderer/serializer: a paste is a local replacement transaction,
+  // not a temporary DOM document that can reformat the open file.
+  function nodeToSource(node) {
+    if (node.nodeType === 3) return node.textContent || "";
+    if (node.nodeType !== 1) return "";
+    const tag = node.tagName;
+    const children = () => Array.from(node.childNodes).map(nodeToSource).join("");
+    if (tag === "BR") return "\n";
+    if (tag === "STRONG" || tag === "B") return `**${children()}**`;
+    if (tag === "EM" || tag === "I") return `*${children()}*`;
+    if (tag === "CODE") return `\`${children()}\``;
+    if (tag === "A") return `[${children()}](${node.getAttribute("href") || ""})`;
+    if (tag === "IMG") return `![${node.getAttribute("alt") || ""}](${node.getAttribute("src") || ""})`;
+    if (tag === "LI") return `- ${children().trim()}\n`;
+    if (tag === "TD" || tag === "TH") return children().trim();
+    if (tag === "TR") return Array.from(node.children).map(nodeToSource).join(" | ") + "\n";
+    if (tag === "TABLE") return Array.from(node.querySelectorAll("tr")).map(nodeToSource).join("");
+    const block = new Set(["P", "DIV", "SECTION", "ARTICLE", "HEADER", "FOOTER", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "UL", "OL", "PRE"]);
+    const text = children();
+    return block.has(tag) ? text + "\n\n" : text;
   }
 
   function convert(html) {
@@ -85,8 +88,7 @@
     const doc = new DOMParser().parseFromString(html, "text/html");
     const body = doc.body;
     sanitize(body);
-    wrapLooseInline(body, doc);
-    const md = MarkdownCodec.serializeBlocks(body);
+    const md = Array.from(body.childNodes).map(nodeToSource).join("");
     return cleanupMarkdown(md);
   }
 
@@ -95,5 +97,6 @@
     _isStripped: isStripped,
     _isUnwrapped: isUnwrapped,
     _cleanupMarkdown: cleanupMarkdown,
+    _nodeToSource: nodeToSource,
   };
 })();

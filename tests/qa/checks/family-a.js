@@ -16,6 +16,25 @@
 const { firstDifference, changedLines, splitLines, visible } = require("../lib/diff");
 const { select } = require("../lib/fixtures");
 const { findHandWrappedParagraph, classifyLines } = require("../lib/markdown-shape");
+const contract = require("../../../.qa/contract.json");
+
+const A2_GESTURE = Object.freeze({
+  "insert one character inside a line": "insert",
+  "press Enter inside a line": "enter",
+  "backspace across a line boundary": "backspace",
+  "paste of 3 lines": "paste",
+  "type over a selection spanning 3 lines": "selection-replace",
+  "apply bold from the toolbar to one word": "format",
+  "indent one list item with Tab": "indent",
+  "undo and redo": "undo-redo",
+});
+
+function declaredGesture(name) {
+  const id = A2_GESTURE[name];
+  const req = contract.requirements.find((item) => item.id === "REQ-A2");
+  const gestures = req && req.allowedChange && req.allowedChange.gestures;
+  return id && Array.isArray(gestures) && gestures.some((item) => item.id === id) ? id : "";
+}
 
 // Open, type one character, delete it. The neutral edit: a real edit gesture
 // whose net effect on the content is nothing at all.
@@ -341,6 +360,9 @@ const SELECTION_NOT_PLACEABLE =
 // One gesture, from a fresh open, judged against what the contract allows it
 // to change. Returns a failure object or null.
 async function gesture(ctx, fixture, name, { allowed, delta, act }) {
+  if (!declaredGesture(name)) {
+    return { gesture: name, detail: "This gesture is not declared by REQ-A2's projected allowed_change." };
+  }
   await ctx.page.open(fixture.text);
   const before = await ctx.page.markdown();
   await ctx.page.focusSurface();
@@ -374,6 +396,9 @@ async function gesture(ctx, fixture, name, { allowed, delta, act }) {
 // Undo and redo are judged against the whole document rather than a line set:
 // an undo that leaves ANY line different from the original has not undone.
 async function undoRedo(ctx, fixture, target) {
+  if (!declaredGesture("undo and redo")) {
+    return { gesture: "undo and redo", detail: "This gesture is not declared by REQ-A2's projected allowed_change." };
+  }
   await ctx.page.open(fixture.text);
   const before = await ctx.page.markdown();
   await ctx.page.focusSurface();

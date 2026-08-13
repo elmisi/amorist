@@ -212,6 +212,32 @@ requirements:
       "Only what I changed shows up in the diff" is the property that makes the
       editor usable in a reviewed repository.
     risk_id: R-010
+    allowed_change:
+      gestures:
+        - id: insert
+          affected_lines: caret
+          line_delta: 0
+        - id: enter
+          affected_lines: caret-and-next
+          line_delta: 1
+        - id: backspace
+          affected_lines: boundary-pair
+          line_delta: -1
+        - id: paste
+          affected_lines: caret-plus-inserted-lines
+          line_delta: inserted-lines-minus-one
+        - id: selection-replace
+          affected_lines: selected-lines-and-inserted-lines
+          line_delta: replacement-dependent
+        - id: format
+          affected_lines: affected-construct
+          line_delta: 0
+        - id: indent
+          affected_lines: affected-list-item
+          line_delta: 0
+        - id: undo-redo
+          affected_lines: reverted-transaction
+          line_delta: transaction-dependent
     verification:
       type: deterministic
       evidence_required:

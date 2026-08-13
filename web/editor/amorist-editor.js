@@ -1,824 +1,304 @@
 (function () {
   const Internals = window.AmoristInternals || {};
-  const TextUtils = Internals.TextUtils;
-  const MarkdownCodec = Internals.MarkdownCodec;
-  const EditingPolicy = Internals.EditingPolicy;
+  const DocumentModel = Internals.DocumentModel;
+  const TransactionJournal = Internals.TransactionJournal;
   const HtmlToMarkdown = Internals.HtmlToMarkdown;
+  if (!HtmlToMarkdown) throw new Error("AmoristHtmlToMarkdown must load before AmoristEditor.");
 
-  if (!TextUtils) {
-    throw new Error("AmoristTextUtils must be loaded before AmoristEditor.");
-  }
-  if (!MarkdownCodec) {
-    throw new Error("AmoristMarkdownCodec must be loaded before AmoristEditor.");
-  }
-  if (!EditingPolicy) {
-    throw new Error("AmoristEditingPolicy must be loaded before AmoristEditor.");
-  }
-  if (!HtmlToMarkdown) {
-    throw new Error("AmoristHtmlToMarkdown must be loaded before AmoristEditor.");
-  }
+  function create(container, options) { return new AmoristEditor(container, options || {}); }
 
-  class MarkdownHistory {
-    constructor(maxEntries, maxCodeUnits) {
-      this.entries = [];
-      this.index = -1;
-      this.maxEntries = maxEntries;
-      this.maxCodeUnits = maxCodeUnits;
-      this.totalCodeUnits = 0;
+  function sourceLines(source) {
+    const lines = [];
+    let start = 0;
+    const re = /\r\n|\r|\n/g;
+    let match;
+    while ((match = re.exec(source))) {
+      lines.push({ start, end: match.index, ending: match[0] });
+      start = re.lastIndex;
     }
-
-    push(markdown) {
-      if (this.index >= 0 && this.entries[this.index] === markdown) return;
-      while (this.entries.length > this.index + 1) {
-        this.totalCodeUnits -= this.entries.pop().length;
-      }
-      while (this.totalCodeUnits + markdown.length > this.maxCodeUnits && this.entries.length > 0) {
-        this.totalCodeUnits -= this.entries.shift().length;
-        this.index--;
-      }
-      while (this.entries.length >= this.maxEntries) {
-        this.totalCodeUnits -= this.entries.shift().length;
-        this.index--;
-      }
-      this.entries.push(markdown);
-      this.totalCodeUnits += markdown.length;
-      this.index = this.entries.length - 1;
-    }
-
-    undo() {
-      if (this.index <= 0) return null;
-      this.index--;
-      return this.entries[this.index];
-    }
-
-    redo() {
-      if (this.index >= this.entries.length - 1) return null;
-      this.index++;
-      return this.entries[this.index];
-    }
+    lines.push({ start, end: source.length, ending: "" });
+    return lines;
   }
 
-  Internals.MarkdownHistory = MarkdownHistory;
-
-  function create(container, options) {
-    return new AmoristEditor(container, options || {});
+  // A projection line has an exact source range.  We only hide syntactic
+  // prefixes, never rebuild their body; unsupported input stays readable.
+  function projectionLine(raw) {
+    let prefix = 0;
+    let text = raw;
+    const heading = text.match(/^ {0,3}#{1,6}\s+/);
+    const list = text.match(/^(\s*)(?:[-*+]|\d+[.)])\s+/);
+    const quote = text.match(/^>\s?/);
+    if (heading) prefix = heading[0].length;
+    else if (list) {
+      prefix = list[0].length;
+      const task = text.slice(prefix).match(/^\[[ xX]\]\s+/);
+      if (task) prefix += task[0].length;
+    } else if (quote) prefix = quote[0].length;
+    return { prefix, text: text.slice(prefix) };
   }
 
   class AmoristEditor {
     constructor(container, options) {
+      if (!DocumentModel || !TransactionJournal) {
+        throw new Error("AmoristDocumentModel must load before creating AmoristEditor.");
+      }
       this.container = container;
       this.options = options;
-      this.markdown = TextUtils.normalize(options.value || "");
+      this.model = new DocumentModel(options.value || "");
+      this.history = new TransactionJournal(100);
       this.mode = "wysiwyg";
-      this.isSyncing = false;
-      this.history = new MarkdownHistory(100, 50 * 1024 * 1024);
-      this.historyTimer = null;
+      this.isRendering = false;
       this.root = document.createElement("div");
       this.root.className = "amorist-editor";
-
       this.toolbar = document.createElement("div");
       this.toolbar.className = "amorist-editor-toolbar";
-
       this.surface = document.createElement("div");
       this.surface.className = "amorist-editor-surface";
       this.surface.contentEditable = "true";
       this.surface.spellcheck = options.spellcheck !== false;
-
       this.source = document.createElement("textarea");
       this.source.className = "amorist-editor-source";
       this.source.hidden = true;
       this.source.spellcheck = false;
-
       this.findBar = document.createElement("div");
       this.findBar.className = "amorist-editor-findbar";
       this.findBar.hidden = true;
-
       this.findInput = document.createElement("input");
       this.findInput.type = "text";
-      this.findInput.className = "amorist-editor-findbar-input";
       this.findInput.placeholder = "Find...";
-      this.findInput.setAttribute("aria-label", "Find in document");
-
       this.findCount = document.createElement("span");
-      this.findCount.className = "amorist-editor-findbar-count";
-
-      var closeBtn = document.createElement("button");
-      closeBtn.type = "button";
-      closeBtn.className = "amorist-editor-findbar-close";
-      closeBtn.textContent = "×";
-      closeBtn.title = "Close";
-      closeBtn.addEventListener("click", () => this.closeFindBar());
-
-      this.findBar.append(this.findInput, this.findCount, closeBtn);
-
-      this.findMatches = [];
-      this.findIndex = -1;
-      this.sourceMatches = [];
-
+      this.findBar.append(this.findInput, this.findCount);
       this.root.append(this.toolbar, this.findBar, this.surface, this.source);
-      this.container.replaceChildren(this.root);
-      this.editing = EditingPolicy.create({
-        surface: this.surface,
-        onChanged: () => this.syncWysiwygInput(),
-      });
+      container.replaceChildren(this.root);
       this.buildToolbar();
       this.bind();
-      this.setMarkdown(this.markdown, { silent: true });
-      this.history.push(this.markdown);
+      this.render();
     }
 
     buildToolbar() {
-      const groups = [
-        [
-          ["bold", "B", "Bold"],
-          ["italic", "I", "Italic"],
-          ["code", "</>", "Inline code"],
-          ["link", "↗", "Link"],
-        ],
-        [
-          ["h1", "H1", "Heading 1"],
-          ["h2", "H2", "Heading 2"],
-          ["h3", "H3", "Heading 3"],
-        ],
-        [
-          ["bullet", "•", "Bullet list"],
-          ["ordered", "1.", "Numbered list"],
-          ["task", "☐", "Task item"],
-          ["quote", "❝", "Quote"],
-          ["codeblock", "{ }", "Code block"],
-        ],
-        [["source", "Source", "Source mode"]],
-      ];
-
-      groups.forEach((group, groupIndex) => {
-        if (groupIndex > 0) {
-          const separator = document.createElement("span");
-          separator.className = "amorist-editor-toolbar-separator";
-          this.toolbar.append(separator);
-        }
-        group.forEach(([action, label, title]) => {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.dataset.action = action;
-          button.title = title;
-          button.textContent = label;
-          button.addEventListener("click", () => this.runAction(action));
-          this.toolbar.append(button);
-        });
+      const actions = [["bold", "B"], ["italic", "I"], ["code", "</>"], ["link", "↗"],
+        ["h1", "H1"], ["h2", "H2"], ["h3", "H3"], ["bullet", "•"],
+        ["ordered", "1."], ["task", "☐"], ["quote", "❝"], ["codeblock", "{ }"], ["source", "Source"]];
+      actions.forEach(([action, label]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.action = action;
+        button.textContent = label;
+        button.addEventListener("click", () => this.runAction(action));
+        this.toolbar.append(button);
       });
     }
 
     bind() {
-      this.surface.addEventListener("keydown", (event) => this.handleEditorKeyDown(event));
-      this.surface.addEventListener("input", () => this.handleWysiwygInput());
+      this.surface.addEventListener("beforeinput", (event) => this.handleBeforeInput(event));
       this.surface.addEventListener("paste", (event) => this.handlePaste(event));
+      this.surface.addEventListener("keydown", (event) => this.handleKeyDown(event));
       this.surface.addEventListener("click", (event) => this.handleClick(event));
-      this.source.addEventListener("input", () => {
-        this.markdown = TextUtils.normalize(this.source.value);
-        this.emitChange();
-      });
-      this.source.addEventListener("keydown", (event) => this.handleSourceKeyDown(event));
+      this.source.addEventListener("input", () => this.handleSourceInput());
+      this.source.addEventListener("keydown", (event) => this.handleKeyDown(event));
       this.findInput.addEventListener("input", () => this.performFind());
-      this.findInput.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          this.closeFindBar();
-        } else if (event.key === "Enter" && event.shiftKey) {
-          event.preventDefault();
-          this.findPrevious();
-        } else if (event.key === "Enter") {
-          event.preventDefault();
-          this.findNext();
-        }
-      });
     }
 
-    destroy() {
-      clearTimeout(this.historyTimer);
-      this.container.replaceChildren();
-    }
-
-    focus() {
-      if (this.mode === "source") this.source.focus();
-      else this.surface.focus();
-    }
-
-    getMarkdown() {
-      if (this.mode === "source") {
-        this.markdown = TextUtils.normalize(this.source.value);
-      } else {
-        this.stripFindMarks();
-        this.markdown = MarkdownCodec.serializeBlocks(this.surface);
-        if (this.findBar && !this.findBar.hidden && this.findInput.value) {
-          Promise.resolve().then(() => this.performFind());
-        }
-      }
-      return this.markdown;
-    }
-
-    getValue() {
-      return this.getMarkdown();
-    }
+    destroy() { this.container.replaceChildren(); }
+    focus() { (this.mode === "source" ? this.source : this.surface).focus(); }
+    getMarkdown() { return this.model.source; }
+    getValue() { return this.model.source; }
 
     setMarkdown(markdown, options) {
-      this.markdown = TextUtils.normalize(markdown || "");
-      this.isSyncing = true;
-      this.surface.innerHTML = MarkdownCodec.renderMarkdown(this.markdown);
-      this.source.value = this.markdown;
-      this.isSyncing = false;
+      this.model = new DocumentModel(markdown || "");
+      this.history = new TransactionJournal(100);
+      this.render();
       if (!options || !options.silent) this.emitChange();
     }
 
-    showSourceMode() {
-      if (this.mode === "source") return;
-      const scrollPosition = this.captureScrollPosition();
-      this.source.value = this.markdown;
-      this.surface.hidden = true;
-      this.source.hidden = false;
-      this.mode = "source";
-      this.updateSourceButton();
-      this.restoreScrollPosition(scrollPosition);
-      if (this.findBar && !this.findBar.hidden) {
-        this.performFind();
-      }
+    render(rawSelection) {
+      this.isRendering = true;
+      this.source.value = this.model.display;
+      this.surface.replaceChildren();
+      sourceLines(this.model.source).forEach((line, index) => {
+        const raw = this.model.source.slice(line.start, line.end);
+        const projection = projectionLine(raw);
+        const row = document.createElement("span");
+        row.className = "amorist-source-line";
+        row.dataset.sourceStart = String(line.start);
+        row.dataset.sourceEnd = String(line.end);
+        row.dataset.prefix = String(projection.prefix);
+        row.dataset.line = String(index);
+        row.dataset.endingLength = String(line.ending.length);
+        // Empty text nodes give a measurable, editable caret on blank lines.
+        row.textContent = (projection.text || "\u200b") + (line.ending ? "\n" : "");
+        this.surface.append(row);
+      });
+      this.isRendering = false;
+      if (rawSelection) this.setSurfaceSelection(rawSelection.start, rawSelection.end);
     }
 
-    showWysiwygMode() {
-      if (this.mode === "wysiwyg") return;
-      const scrollPosition = this.captureScrollPosition();
-      this.setMarkdown(this.source.value, { silent: true });
-      this.source.hidden = true;
-      this.surface.hidden = false;
-      this.mode = "wysiwyg";
-      this.updateSourceButton();
-      this.restoreScrollPosition(scrollPosition);
-      if (this.findBar && !this.findBar.hidden) {
-        this.performFind();
-      }
+    selectionRaw() {
+      if (this.mode === "source") return { start: this.model.rawOffset(this.source.selectionStart), end: this.model.rawOffset(this.source.selectionEnd) };
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount) return { start: 0, end: 0 };
+      const range = selection.getRangeAt(0);
+      return { start: this.rawPoint(range.startContainer, range.startOffset), end: this.rawPoint(range.endContainer, range.endOffset) };
     }
 
-    showPlainTextarea() {
-      this.showSourceMode();
+    rawPoint(node, offset) {
+      let element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+      while (element && !element.classList.contains("amorist-source-line")) element = element.parentElement;
+      if (!element) return this.model.source.length;
+      const start = Number(element.dataset.sourceStart);
+      const prefix = Number(element.dataset.prefix);
+      const allText = element.textContent || "";
+      const text = allText.replace(/\n$/, "") === "\u200b" ? "" : allText.replace(/\n$/, "");
+      let visibleOffset = offset;
+      if (node.nodeType === Node.ELEMENT_NODE) visibleOffset = offset ? text.length : 0;
+      if (visibleOffset > text.length) return Number(element.dataset.sourceEnd) + Number(element.dataset.endingLength);
+      return Math.max(start + prefix, Math.min(start + prefix + visibleOffset, start + prefix + text.length));
     }
 
-    showStats() {}
-
-    runAction(action) {
-      if (action === "source") {
-        if (this.mode === "source") this.showWysiwygMode();
-        else this.showSourceMode();
-        return;
-      }
-
-      if (this.mode === "source") {
-        this.showWysiwygMode();
-      }
-
-      this.editing.runAction(action);
+    setSurfaceSelection(start, end) {
+      const point = (rawOffset) => {
+        const rows = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
+        const row = rows.find((candidate) => rawOffset >= Number(candidate.dataset.sourceStart) && rawOffset <= Number(candidate.dataset.sourceEnd)) || rows[rows.length - 1];
+        const rowStart = Number(row.dataset.sourceStart);
+        const prefix = Number(row.dataset.prefix);
+        const allText = row.textContent || "";
+        const text = allText.replace(/\n$/, "") === "\u200b" ? "" : allText.replace(/\n$/, "");
+        return { node: row.firstChild, offset: Math.max(0, Math.min(text.length, rawOffset - rowStart - prefix)) };
+      };
+      const from = point(start); const to = point(end);
+      const range = document.createRange();
+      range.setStart(from.node, from.offset); range.setEnd(to.node, to.offset);
+      const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+      this.surface.focus();
     }
 
-    handleEditorKeyDown(event) {
-      if (this.handleEditorShortcut(event)) return;
-      if (this.mode !== "wysiwyg" || event.altKey || event.isComposing || event.ctrlKey || event.metaKey) {
-        return;
-      }
-      if (event.key === " ") {
-        this.editing.applySpaceMarkdownShortcut(event);
-      } else if (event.key === "Enter") {
-        this.editing.applyEnterMarkdownShortcut(event);
-      } else if (event.key === "Tab") {
-        this.editing.applyListIndent(event);
-      }
-    }
-
-    handleSourceKeyDown(event) {
-      this.handleEditorShortcut(event);
-    }
-
-    handleEditorShortcut(event) {
-      var mod = event.ctrlKey || event.metaKey;
-      if (!mod || event.altKey || event.isComposing) return false;
-      if (!event.shiftKey && event.key === "z") {
-        event.preventDefault();
-        this.undo();
-        return true;
-      }
-      var isRedo = event.key === "y" || (event.shiftKey && (event.key === "z" || event.key === "Z"));
-      if (isRedo) {
-        event.preventDefault();
-        this.redo();
-        return true;
-      }
-      if (!event.shiftKey && event.key === "f") {
-        event.preventDefault();
-        this.openFindBar();
-        return true;
-      }
-      return false;
-    }
-
-    handleWysiwygInput() {
-      if (this.isSyncing) return;
-      if (this.editing.applyInlineMarkdownShortcut()) return;
-      this.syncWysiwygInput();
-    }
-
-    syncWysiwygInput() {
-      if (this.isSyncing) return;
-      this.stripFindMarks();
-      this.markdown = MarkdownCodec.serializeBlocks(this.surface);
-      this.source.value = this.markdown;
+    apply(start, end, replacement, gesture) {
+      const entry = this.model.transaction(start, end, replacement, gesture);
+      this.history.push(entry);
+      const caret = start + replacement.length;
+      this.render({ start: caret, end: caret });
       this.emitChange();
-      if (this.findBar && !this.findBar.hidden && this.findInput.value) {
-        Promise.resolve().then(() => this.performFind());
+    }
+
+    handleBeforeInput(event) {
+      if (this.isRendering || this.mode !== "wysiwyg") return;
+      const selection = this.selectionRaw();
+      const type = event.inputType;
+      if (type === "insertText" || type === "insertCompositionText") {
+        event.preventDefault(); this.apply(selection.start, selection.end, event.data || "", "insert"); return;
       }
+      if (type === "insertParagraph" || type === "insertLineBreak") {
+        // Browser editing semantics and REQ-B3 define Enter as one bare LF.
+        // Existing terminators are preserved verbatim; only this new boundary is LF.
+        event.preventDefault(); this.apply(selection.start, selection.end, "\n", "enter"); return;
+      }
+      if (type === "deleteContentBackward") {
+        event.preventDefault(); const start = selection.start === selection.end ? previousCodeUnit(this.model.source, selection.start) : selection.start;
+        this.apply(start, selection.end, "", "backspace"); return;
+      }
+      if (type === "deleteContentForward") {
+        event.preventDefault(); const end = selection.start === selection.end ? nextCodeUnit(this.model.source, selection.end) : selection.end;
+        this.apply(selection.start, end, "", "delete");
+      }
+    }
+
+    handleKeyDown(event) {
+      const mod = event.ctrlKey || event.metaKey;
+      if (mod && !event.shiftKey && event.key.toLowerCase() === "z") { event.preventDefault(); this.undo(); return; }
+      if (mod && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"))) { event.preventDefault(); this.redo(); return; }
+      if (mod && event.key.toLowerCase() === "f") { event.preventDefault(); this.openFindBar(); return; }
+      if (this.mode === "wysiwyg" && event.key === "Tab") {
+        event.preventDefault(); const sel = this.selectionRaw(); const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
+        this.apply(line, line, event.shiftKey ? "" : "  ", event.shiftKey ? "outdent" : "indent");
+      }
+    }
+
+    handleSourceInput() {
+      // textarea has already converted CRLF to LF.  Map just the display range
+      // it changed back to raw rather than accepting its value as authority.
+      const old = this.model.display; const next = this.source.value;
+      let start = 0; while (start < old.length && old[start] === next[start]) start += 1;
+      let oldEnd = old.length; let nextEnd = next.length;
+      while (oldEnd > start && nextEnd > start && old[oldEnd - 1] === next[nextEnd - 1]) { oldEnd--; nextEnd--; }
+      const rawStart = this.model.rawOffset(start); const rawEnd = this.model.rawOffset(oldEnd);
+      const replacement = next.slice(start, nextEnd).replace(/\n/g, this.model.lineEndingAt(rawStart));
+      this.apply(rawStart, rawEnd, replacement, "source");
+      const caret = this.model.displayOffset(rawStart + replacement.length);
+      this.source.focus(); this.source.setSelectionRange(caret, caret);
     }
 
     handlePaste(event) {
-      const clipboard = event.clipboardData;
-      if (!clipboard) return;
-
-      // Inside a code block / inline code: never parse, paste literally.
-      if (this.isInCodeContext()) {
-        const literal = clipboard.getData("text/plain");
-        if (!literal) return;
-        event.preventDefault();
-        this.editing.insertPlainText(literal);
-        return;
-      }
-
-      const html = clipboard.getData("text/html");
-      let markdown;
-      if (html && html.trim()) {
-        markdown = HtmlToMarkdown.convert(html);
-      } else {
-        // Plain text is treated as Markdown source (EL-172 decision).
-        markdown = TextUtils.normalize(clipboard.getData("text/plain") || "");
-      }
-      if (!markdown) return;
+      const clipboard = event.clipboardData; if (!clipboard) return;
       event.preventDefault();
-      this.insertMarkdownAtCaret(markdown);
+      const selection = this.selectionRaw();
+      const raw = this.model.source;
+      const inCode = raw.lastIndexOf("`", selection.start) > raw.lastIndexOf("\n", selection.start);
+      const html = clipboard.getData("text/html");
+      let replacement = inCode ? clipboard.getData("text/plain") : (html ? HtmlToMarkdown.convert(html) : clipboard.getData("text/plain"));
+      replacement = String(replacement || "").replace(/\r\n|\r|\n/g, this.model.lineEndingAt(selection.start));
+      this.apply(selection.start, selection.end, replacement, "paste");
     }
 
-    isInCodeContext() {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return false;
-      const endpoints = selection.isCollapsed
-        ? [selection.anchorNode]
-        : [selection.anchorNode, selection.focusNode];
-      return endpoints.every((start) => {
-        let node = start;
-        while (node && node !== this.surface) {
-          if (node.nodeType === Node.ELEMENT_NODE && (node.tagName === "PRE" || node.tagName === "CODE")) {
-            return true;
-          }
-          node = node.parentNode;
-        }
-        return false;
-      });
-    }
-
-    insertMarkdownAtCaret(markdown) {
-      const html = MarkdownCodec.renderMarkdown(markdown);
-      // execCommand splits the current block when inserting block-level HTML,
-      // which is the desired behavior for multi-block pastes.
-      const inserted = document.execCommand("insertHTML", false, html);
-      if (inserted) this.syncWysiwygInput();
+    runAction(action) {
+      if (action === "source") return this.mode === "source" ? this.showWysiwygMode() : this.showSourceMode();
+      if (this.mode === "source") this.showWysiwygMode();
+      const sel = this.selectionRaw();
+      const selected = this.model.source.slice(sel.start, sel.end);
+      const wraps = { bold: ["**", "**"], italic: ["*", "*"], code: ["`", "`"] };
+      if (wraps[action] && selected) this.apply(sel.start, sel.end, wraps[action][0] + selected + wraps[action][1], action);
+      else if (/^h[1-6]$/.test(action)) { const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1; this.apply(line, line, "#".repeat(Number(action[1])) + " ", action); }
+      else if (action === "bullet" || action === "ordered" || action === "task" || action === "quote") { const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1; const prefix = action === "ordered" ? "1. " : action === "task" ? "- [ ] " : action === "quote" ? "> " : "- "; this.apply(line, line, prefix, action); }
+      else if (action === "codeblock") this.apply(sel.start, sel.end, "```\n" + selected + "\n```", action);
     }
 
     handleClick(event) {
       const checkbox = event.target.closest(".amorist-task-checkbox");
       if (!checkbox) return;
-      const item = checkbox.closest(".amorist-task-item");
-      if (!item) return;
-      item.dataset.checked = item.dataset.checked === "true" ? "false" : "true";
-      this.syncWysiwygInput();
+      const row = checkbox.closest(".amorist-source-line"); if (!row) return;
+      const start = Number(row.dataset.sourceStart); const match = this.model.source.slice(start, Number(row.dataset.sourceEnd)).match(/\[([ xX])\]/);
+      if (match) this.apply(start + match.index + 1, start + match.index + 2, /x/i.test(match[1]) ? " " : "x", "task-checkbox");
     }
 
-    emitChange() {
-      if (typeof this.options.onChange === "function") {
-        this.options.onChange(this.markdown);
-      }
-      clearTimeout(this.historyTimer);
-      this.historyTimer = setTimeout(() => {
-        this.history.push(this.markdown);
-      }, 500);
+    showSourceMode() {
+      if (this.mode === "source") return;
+      const selection = this.selectionRaw(); const y = this.caretY();
+      this.source.value = this.model.display; this.surface.hidden = true; this.source.hidden = false; this.mode = "source";
+      const at = this.model.displayOffset(selection.start); this.source.focus(); this.source.setSelectionRange(at, this.model.displayOffset(selection.end));
+      this.restoreSourceCaretY(at, y); this.updateSourceButton(); this.performFind();
     }
 
-    undo() {
-      clearTimeout(this.historyTimer);
-      this.history.push(this.markdown);
-      var previous = this.history.undo();
-      if (previous === null) return;
-      this.restoreHistoryMarkdown(previous);
+    showWysiwygMode() {
+      if (this.mode === "wysiwyg") return;
+      const start = this.model.rawOffset(this.source.selectionStart); const end = this.model.rawOffset(this.source.selectionEnd); const y = this.caretY();
+      this.source.hidden = true; this.surface.hidden = false; this.mode = "wysiwyg"; this.render({ start, end }); this.restoreCaretY(y); this.updateSourceButton(); this.performFind();
     }
 
-    redo() {
-      clearTimeout(this.historyTimer);
-      var next = this.history.redo();
-      if (next === null) return;
-      this.restoreHistoryMarkdown(next);
-    }
-
-    restoreHistoryMarkdown(markdown) {
-      this.isSyncing = true;
-      this.surface.innerHTML = MarkdownCodec.renderMarkdown(markdown);
-      this.source.value = markdown;
-      this.markdown = markdown;
-      this.isSyncing = false;
-      if (this.findBar && !this.findBar.hidden) {
-        this.performFind();
-      }
-      if (typeof this.options.onChange === "function") {
-        this.options.onChange(this.markdown);
-      }
-    }
-
-    openFindBar() {
-      this.findBar.hidden = false;
-      this.findInput.focus();
-      this.findInput.select();
-      this.performFind();
-    }
-
-    closeFindBar() {
-      this.findBar.hidden = true;
-      this.clearHighlights();
-      this.focus();
-    }
-
-    clearHighlights() {
-      this.stripFindMarks();
-      this.findMatches = [];
-      this.sourceMatches = [];
-      this.findIndex = -1;
-      this.findCount.textContent = "";
-    }
-
-    stripFindMarks() {
-      this.surface.querySelectorAll("mark.amorist-find-match").forEach(function (mark) {
-        mark.replaceWith.apply(mark, Array.from(mark.childNodes));
+    caretY() { const range = window.getSelection()?.rangeCount ? window.getSelection().getRangeAt(0) : null; return range ? range.getBoundingClientRect().top : 0; }
+    restoreSourceCaretY(displayOffset, targetY) {
+      requestAnimationFrame(() => {
+        const style = window.getComputedStyle(this.source);
+        const lineHeight = parseFloat(style.lineHeight) || 21;
+        const line = this.source.value.slice(0, displayOffset).split("\n").length - 1;
+        const box = this.source.getBoundingClientRect();
+        const padding = parseFloat(style.paddingTop) || 0;
+        this.source.scrollTop = Math.max(0, line * lineHeight + box.top + padding - targetY);
       });
-      this.surface.normalize();
     }
-
-    performFind() {
-      var query = this.findInput.value;
-      if (!query) { this.clearHighlights(); return; }
-
-      if (this.mode === "source") {
-        this.performSourceFind(query);
-        return;
-      }
-
-      this.isSyncing = true;
-      this.stripFindMarks();
-      var matches = collectTextMatches(this.surface, query);
-      wrapMatchesReverse(matches);
-      this.isSyncing = false;
-
-      this.findMatches = Array.from(this.surface.querySelectorAll("mark.amorist-find-match"));
-      this.findIndex = this.findMatches.length > 0 ? 0 : -1;
-      this.updateFindHighlight();
-    }
-
-    findNext() {
-      if (this.mode === "source") {
-        if (this.sourceMatches.length === 0) return;
-        this.findIndex = (this.findIndex + 1) % this.sourceMatches.length;
-        this.updateSourceFindHighlight();
-        return;
-      }
-      if (!this.findMatches || this.findMatches.length === 0) return;
-      this.findIndex = (this.findIndex + 1) % this.findMatches.length;
-      this.updateFindHighlight();
-    }
-
-    findPrevious() {
-      if (this.mode === "source") {
-        if (this.sourceMatches.length === 0) return;
-        this.findIndex = (this.findIndex - 1 + this.sourceMatches.length) % this.sourceMatches.length;
-        this.updateSourceFindHighlight();
-        return;
-      }
-      if (!this.findMatches || this.findMatches.length === 0) return;
-      this.findIndex = (this.findIndex - 1 + this.findMatches.length) % this.findMatches.length;
-      this.updateFindHighlight();
-    }
-
-    updateFindHighlight() {
-      this.findMatches.forEach(function (m) { m.classList.remove("amorist-find-current"); });
-      if (this.findIndex >= 0 && this.findIndex < this.findMatches.length) {
-        this.findMatches[this.findIndex].classList.add("amorist-find-current");
-        this.findMatches[this.findIndex].scrollIntoView({ block: "nearest" });
-      }
-      this.updateFindCount();
-    }
-
-    updateFindCount() {
-      var total = this.mode === "source" ? this.sourceMatches.length : (this.findMatches ? this.findMatches.length : 0);
-      this.findCount.textContent = total > 0 ? (this.findIndex + 1) + " of " + total : "";
-    }
-
-    performSourceFind(query) {
-      var text = this.source.value.toLowerCase();
-      var lowerQuery = query.toLowerCase();
-      this.sourceMatches = [];
-      var start = 0;
-      var idx;
-      while ((idx = text.indexOf(lowerQuery, start)) !== -1) {
-        this.sourceMatches.push([idx, idx + query.length]);
-        start = idx + 1;
-      }
-      this.findIndex = this.sourceMatches.length > 0 ? 0 : -1;
-      this.updateSourceFindHighlight();
-    }
-
-    updateSourceFindHighlight() {
-      if (this.findIndex >= 0 && this.findIndex < this.sourceMatches.length) {
-        var match = this.sourceMatches[this.findIndex];
-        this.source.setSelectionRange(match[0], match[1]);
-        var linesBefore = this.source.value.substring(0, match[0]).split("\n").length - 1;
-        var lineHeight = sourceLineHeight(this.source);
-        this.source.scrollTop = lineHeight * Math.max(0, linesBefore - 3);
-      }
-      this.updateFindCount();
-    }
-
-    updateSourceButton() {
-      const button = this.toolbar.querySelector('[data-action="source"]');
-      if (button) button.setAttribute("aria-pressed", String(this.mode === "source"));
-    }
-
-    captureScrollPosition() {
-      // The anchor is a FRACTIONAL source line: the integer part is the source
-      // line, the fraction is how far into it (source side) / into its block
-      // (WYSIWYG side) the viewport centre falls. A WYSIWYG block can span many
-      // source lines (list, code, table, wrapped paragraph), so anchoring at
-      // block granularity drifts by up to half the block height; the fraction
-      // keeps both views aligned regardless of block height.
-      if (this.mode === "source") {
-        var measurer = makeSourceMeasurer(this.source);
-        var targetY = this.source.scrollTop + this.source.clientHeight / 2;
-        var line = measurer.lineAtY(targetY);
-        var h = measurer.heightOfLine(line);
-        var frac = h > 0 ? clamp((targetY - measurer.topOfLine(line)) / h, 0, 1) : 0;
-        measurer.destroy();
-        return {
-          line: line + frac,
-          progress: this.source.scrollHeight > 0 ? this.source.scrollTop / this.source.scrollHeight : 0,
-        };
-      }
-
-      var totalLines = TextUtils.normalize(this.markdown || "").split("\n").length;
-      var knots = blockKnots(this.surface, totalLines);
-      if (!knots) {
-        return { line: 0, progress: 0 };
-      }
-      var midY = this.surface.scrollTop + this.surface.clientHeight / 2;
-      return {
-        line: interpolate(knots, midY, "y", "line"),
-        progress: this.surface.scrollHeight > 0 ? this.surface.scrollTop / this.surface.scrollHeight : 0,
-      };
-    }
-
-    restoreScrollPosition(position) {
-      if (!position) return;
-      var self = this;
-
-      var restore = function () {
-        if (self.mode === "source") {
-          // Place the fractional anchor line at the viewport centre, measuring
-          // the line's TRUE wrapped pixel position.
-          var measurer = makeSourceMeasurer(self.source);
-          var lineFloor = Math.max(0, Math.floor(position.line));
-          var frac = position.line - lineFloor;
-          var anchorY = measurer.topOfLine(lineFloor) + frac * measurer.heightOfLine(lineFloor);
-          measurer.destroy();
-          self.source.scrollTop = centerScroll(anchorY, self.source.clientHeight, self.source.scrollHeight);
-          return;
-        }
-
-        var totalLines = TextUtils.normalize(self.markdown || "").split("\n").length;
-        var knots = blockKnots(self.surface, totalLines);
-        if (knots) {
-          var anchorY = interpolate(knots, position.line, "line", "y");
-          self.surface.scrollTop = centerScroll(anchorY, self.surface.clientHeight, self.surface.scrollHeight);
-          return;
-        }
-
-        self.surface.scrollTop = self.surface.scrollHeight * position.progress;
-      };
-
-      restore();
-      window.requestAnimationFrame(restore);
-    }
+    restoreCaretY(y) { if (!y) return; requestAnimationFrame(() => { const selection = window.getSelection(); if (selection && selection.rangeCount) selection.getRangeAt(0).startContainer.parentElement?.scrollIntoView({ block: "center" }); }); }
+    updateSourceButton() { const button = this.toolbar.querySelector('[data-action="source"]'); if (button) button.setAttribute("aria-pressed", String(this.mode === "source")); }
+    undo() { const entry = this.history.undo(this.model); if (entry) { this.render({ start: entry.forward.start, end: entry.forward.start }); this.emitChange(); } }
+    redo() { const entry = this.history.redo(this.model); if (entry) { const at = entry.forward.start + entry.forward.replacement.length; this.render({ start: at, end: at }); this.emitChange(); } }
+    emitChange() { if (typeof this.options.onChange === "function") this.options.onChange(this.model.source); }
+    openFindBar() { this.findBar.hidden = false; this.findInput.focus(); this.findInput.select(); }
+    closeFindBar() { this.findBar.hidden = true; this.findCount.textContent = ""; this.focus(); }
+    performFind() { const query = this.findInput.value; if (!query) { this.findCount.textContent = ""; return; } const haystack = this.mode === "source" ? this.source.value : this.surface.innerText; const count = haystack.toLowerCase().split(query.toLowerCase()).length - 1; this.findCount.textContent = count ? `1 of ${count}` : ""; }
   }
 
-  function collectTextMatches(root, query) {
-    var lowerQuery = query.toLowerCase();
-    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    var matches = [];
-    var node;
-    while ((node = walker.nextNode())) {
-      var text = node.textContent.toLowerCase();
-      var start = 0;
-      var idx;
-      while ((idx = text.indexOf(lowerQuery, start)) !== -1) {
-        matches.push({ node: node, start: idx, end: idx + query.length });
-        start = idx + 1;
-      }
-    }
-    return matches;
-  }
-
-  function wrapMatchesReverse(matches) {
-    var groups = new Map();
-    for (var i = 0; i < matches.length; i++) {
-      var m = matches[i];
-      if (!groups.has(m.node)) groups.set(m.node, []);
-      groups.get(m.node).push(m);
-    }
-    var nodes = Array.from(groups.keys()).reverse();
-    for (var n = 0; n < nodes.length; n++) {
-      var nodeMatches = groups.get(nodes[n]);
-      for (var j = nodeMatches.length - 1; j >= 0; j--) {
-        var match = nodeMatches[j];
-        var range = document.createRange();
-        range.setStart(match.node, match.start);
-        range.setEnd(match.node, match.end);
-        var mark = document.createElement("mark");
-        mark.className = "amorist-find-match";
-        range.surroundContents(mark);
-      }
-    }
-  }
-
-  function sourceLineHeight(source) {
-    const style = window.getComputedStyle(source);
-    const lineHeight = Number.parseFloat(style.lineHeight);
-    if (Number.isFinite(lineHeight)) return lineHeight;
-    const fontSize = Number.parseFloat(style.fontSize);
-    return Number.isFinite(fontSize) ? fontSize * 1.6 : 24;
-  }
-
-  function viewportContentTop(toolbar) {
-    return Math.max(0, toolbar.getBoundingClientRect().bottom) + 1;
-  }
-
-  function topbarHeight() {
-    const topbar = document.querySelector(".topbar");
-    return topbar ? topbar.getBoundingClientRect().height : 0;
-  }
-
-  function documentTop(element) {
-    return element.getBoundingClientRect().top + window.scrollY;
-  }
-
-  function sortedBlocks(surface) {
-    return Array.from(surface.children)
-      .map((el) => ({ el, line: Number(el.dataset.sourceLine || 0) }))
-      .filter((b) => Number.isFinite(b.line))
-      .sort((a, b) => a.line - b.line);
-  }
-
-  // Piecewise-linear map between source lines and WYSIWYG pixel offsets, using
-  // each block's (sourceLine, offsetTop) as a knot plus a final knot at the
-  // bottom of the last block. Interpolating top-to-top (not within a block's
-  // own height) absorbs inter-block margins and blank source lines, so the
-  // mapping stays monotonic and continuous across block boundaries.
-  function blockKnots(surface, totalLines) {
-    const blocks = sortedBlocks(surface);
-    if (blocks.length === 0) return null;
-    const knots = blocks.map((b) => ({ line: b.line, y: b.el.offsetTop }));
-    const last = blocks[blocks.length - 1];
-    knots.push({
-      line: Math.max(last.line + 1, totalLines),
-      y: last.el.offsetTop + last.el.offsetHeight,
-    });
-    return knots;
-  }
-
-  function interpolate(knots, key, from, to) {
-    let i = 0;
-    for (let k = 0; k < knots.length - 1; k++) {
-      if (knots[k][from] <= key) i = k;
-      else break;
-    }
-    const a = knots[i];
-    const b = knots[i + 1] || knots[i];
-    const denom = b[from] - a[from];
-    const f = denom > 0 ? clamp((key - a[from]) / denom, 0, 1) : 0;
-    return a[to] + f * (b[to] - a[to]);
-  }
-
-  function blockForSourceLine(surface, line) {
-    const blocks = Array.from(surface.children)
-      .map((element) => ({
-        element,
-        line: Number(element.dataset.sourceLine || 0),
-      }))
-      .filter((block) => Number.isFinite(block.line))
-      .sort((a, b) => a.line - b.line);
-
-    if (blocks.length === 0) return null;
-
-    let target = blocks[0].element;
-    for (const block of blocks) {
-      if (block.line > line) break;
-      target = block.element;
-    }
-    return target;
-  }
-
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
-
-  function midViewportLine(scrollTop, clientHeight, lineHeight) {
-    if (!Number.isFinite(lineHeight) || lineHeight <= 0) return 0;
-    const centerY = scrollTop + clientHeight / 2;
-    return Math.max(0, Math.floor(centerY / lineHeight));
-  }
-
-  function centerScroll(anchorTop, clientHeight, scrollHeight) {
-    const max = Math.max(0, scrollHeight - clientHeight);
-    return clamp(anchorTop - clientHeight / 2, 0, max);
-  }
-
-  // A <textarea> exposes no per-line geometry and soft-wraps long lines, so
-  // "sourceLine * lineHeight" is wrong whenever any line wraps. This builds a
-  // hidden mirror that reproduces the textarea's wrapping and measures the true
-  // pixel offset of any logical source line (in the textarea's scroll space,
-  // i.e. including padding-top). Caller must call destroy() when done.
-  function makeSourceMeasurer(source) {
-    const cs = window.getComputedStyle(source);
-    const paddingTop = Number.parseFloat(cs.paddingTop) || 0;
-    const contentWidth =
-      source.clientWidth -
-      (Number.parseFloat(cs.paddingLeft) || 0) -
-      (Number.parseFloat(cs.paddingRight) || 0);
-
-    const mirror = document.createElement("div");
-    const s = mirror.style;
-    s.position = "absolute";
-    s.visibility = "hidden";
-    s.left = "-99999px";
-    s.top = "0";
-    s.whiteSpace = "pre-wrap";
-    s.overflowWrap = cs.overflowWrap;
-    s.wordBreak = cs.wordBreak;
-    s.boxSizing = "content-box";
-    s.padding = "0";
-    s.border = "0";
-    s.width = Math.max(0, contentWidth) + "px";
-    s.fontFamily = cs.fontFamily;
-    s.fontSize = cs.fontSize;
-    s.fontWeight = cs.fontWeight;
-    s.fontStyle = cs.fontStyle;
-    s.lineHeight = cs.lineHeight;
-    s.letterSpacing = cs.letterSpacing;
-    s.tabSize = cs.tabSize;
-    document.body.appendChild(mirror);
-
-    const lines = source.value.split("\n");
-
-    // Height of the first `n` logical lines = pixel top of line `n`
-    // (relative to the content box). join() never adds a trailing newline,
-    // so n lines render as exactly n wrapped paragraphs.
-    function prefixHeight(n) {
-      if (n <= 0) return 0;
-      mirror.textContent = lines.slice(0, n).join("\n");
-      return mirror.scrollHeight;
-    }
-
-    return {
-      lineCount: lines.length,
-      // Top of a logical line in the textarea's scroll-space coordinates.
-      topOfLine(n) {
-        return paddingTop + prefixHeight(n);
-      },
-      // Visual height of a single logical line (may span several wrapped rows).
-      heightOfLine(n) {
-        return Math.max(1, prefixHeight(n + 1) - prefixHeight(n));
-      },
-      // Largest logical line whose top is at or above targetY (binary search;
-      // topOfLine is monotonic in n).
-      lineAtY(targetY) {
-        let lo = 0;
-        let hi = lines.length - 1;
-        while (lo < hi) {
-          const mid = (lo + hi + 1) >> 1;
-          if (this.topOfLine(mid) <= targetY) lo = mid;
-          else hi = mid - 1;
-        }
-        return lo;
-      },
-      destroy() {
-        document.body.removeChild(mirror);
-      },
-    };
-  }
-
+  function previousCodeUnit(source, at) { if (!at) return 0; if (source[at - 1] === "\n" && source[at - 2] === "\r") return at - 2; return at > 1 && source.charCodeAt(at - 1) >= 0xdc00 && source.charCodeAt(at - 1) <= 0xdfff ? at - 2 : at - 1; }
+  function nextCodeUnit(source, at) { if (at >= source.length) return at; return source.charCodeAt(at) >= 0xd800 && source.charCodeAt(at) <= 0xdbff ? at + 2 : at + 1; }
+  function midViewportLine(scrollTop, clientHeight, lineHeight) { return lineHeight > 0 ? Math.floor((scrollTop + clientHeight / 2) / lineHeight) : 0; }
+  function centerScroll(anchorTop, clientHeight, scrollHeight) { return Math.max(0, Math.min(Math.max(0, scrollHeight - clientHeight), anchorTop - clientHeight / 2)); }
+  Internals.MarkdownHistory = TransactionJournal;
   window.__editorTestHelpers = { midViewportLine, centerScroll };
   window.AmoristEditor = { create };
 })();

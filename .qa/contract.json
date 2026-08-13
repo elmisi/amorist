@@ -11,6 +11,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-001",
         "R-002",
@@ -29,6 +30,50 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": {
+        "gestures": [
+          {
+            "id": "insert",
+            "affected_lines": "caret",
+            "line_delta": 0
+          },
+          {
+            "id": "enter",
+            "affected_lines": "caret-and-next",
+            "line_delta": 1
+          },
+          {
+            "id": "backspace",
+            "affected_lines": "boundary-pair",
+            "line_delta": -1
+          },
+          {
+            "id": "paste",
+            "affected_lines": "caret-plus-inserted-lines",
+            "line_delta": "inserted-lines-minus-one"
+          },
+          {
+            "id": "selection-replace",
+            "affected_lines": "selected-lines-and-inserted-lines",
+            "line_delta": "replacement-dependent"
+          },
+          {
+            "id": "format",
+            "affected_lines": "affected-construct",
+            "line_delta": 0
+          },
+          {
+            "id": "indent",
+            "affected_lines": "affected-list-item",
+            "line_delta": 0
+          },
+          {
+            "id": "undo-redo",
+            "affected_lines": "reverted-transaction",
+            "line_delta": "transaction-dependent"
+          }
+        ]
+      },
       "risks": [
         "R-005",
         "R-006",
@@ -44,6 +89,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-005"
       ]
@@ -56,6 +102,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-014"
       ]
@@ -68,6 +115,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-002",
         "R-003",
@@ -83,6 +131,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-012"
       ]
@@ -95,6 +144,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-013"
       ]
@@ -107,6 +157,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-001"
       ]
@@ -119,6 +170,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": "partially",
+      "allowedChange": null,
       "risks": [
         "R-010"
       ]
@@ -131,6 +183,7 @@
       "automation": "full",
       "family": "A",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-002",
         "R-007",
@@ -145,6 +198,7 @@
       "automation": "full",
       "family": "B",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-005",
         "R-015"
@@ -158,6 +212,7 @@
       "automation": "full",
       "family": "B",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-005"
       ]
@@ -170,6 +225,7 @@
       "automation": "full",
       "family": "B",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-015"
       ]
@@ -182,6 +238,7 @@
       "automation": "full",
       "family": "C",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-007",
         "R-011"
@@ -195,6 +252,7 @@
       "automation": "full",
       "family": "C",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-011"
       ]
@@ -207,6 +265,7 @@
       "automation": "full",
       "family": "D",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-008"
       ]
@@ -219,6 +278,7 @@
       "automation": "full",
       "family": "E",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-009"
       ]
@@ -231,6 +291,7 @@
       "automation": "full",
       "family": "E",
       "currentlyHolds": true,
+      "allowedChange": null,
       "risks": [
         "R-010"
       ]
@@ -243,6 +304,7 @@
       "automation": "full",
       "family": "F",
       "currentlyHolds": true,
+      "allowedChange": null,
       "risks": [
         "R-009"
       ]
@@ -255,6 +317,7 @@
       "automation": "full",
       "family": "F",
       "currentlyHolds": true,
+      "allowedChange": null,
       "risks": [
         "R-009"
       ]
@@ -267,6 +330,7 @@
       "automation": "full",
       "family": "G",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-016"
       ]
@@ -279,6 +343,7 @@
       "automation": "full",
       "family": "G",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-017"
       ]
@@ -291,6 +356,7 @@
       "automation": "manual",
       "family": "G",
       "currentlyHolds": false,
+      "allowedChange": null,
       "risks": [
         "R-017"
       ]

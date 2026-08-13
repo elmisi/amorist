@@ -129,6 +129,7 @@ strength of the other.
             "automation": r["automation"],
             "family": r["id"].split("-")[1][0],
             "currentlyHolds": r.get("currently_holds"),
+            "allowedChange": r.get("allowed_change"),
             "risks": sorted(risks_for.get(r["id"], [])),
         }
         for r in reqs

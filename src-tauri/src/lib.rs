@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{App, Emitter, Manager, State};
 use tauri_plugin_cli::CliExt;
 
@@ -16,14 +16,23 @@ struct AppState {
     force_close: Mutex<bool>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkingCopy {
+    path: String,
+    saved_source: String,
+    unsaved_source: String,
+    revision: u64,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DocumentResponse {
     path: String,
     name: String,
     exists: bool,
-    line_ending: String,
     markdown: String,
+    recovery_markdown: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -33,7 +42,10 @@ struct SaveResponse {
 }
 
 #[tauri::command]
-fn read_document(state: State<AppState>) -> Result<DocumentResponse, String> {
+fn read_document(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+) -> Result<DocumentResponse, String> {
     let guard = state.file_path.lock().unwrap();
     let path = guard.as_ref().ok_or("No file open.")?;
 
@@ -46,8 +58,7 @@ fn read_document(state: State<AppState>) -> Result<DocumentResponse, String> {
         let raw = fs::read(path).map_err(|e| e.to_string())?;
         let text = String::from_utf8(raw.clone())
             .map_err(|_| "Markdown files must be UTF-8 encoded.".to_string())?;
-        let line_ending = detect_line_ending(&raw);
-        let markdown = normalize_line_endings(&text);
+        let markdown = text.clone();
 
         if let Ok(mtime) = metadata.modified() {
             *state.last_modified.lock().unwrap() = Some(mtime);
@@ -55,40 +66,40 @@ fn read_document(state: State<AppState>) -> Result<DocumentResponse, String> {
 
         Ok(DocumentResponse {
             path: path.display().to_string(),
-            name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+            name: path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default(),
             exists: true,
-            line_ending,
             markdown,
+            recovery_markdown: load_recovery(&app, path, &text),
         })
     } else {
         Ok(DocumentResponse {
             path: path.display().to_string(),
-            name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+            name: path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default(),
             exists: false,
-            line_ending: "lf".into(),
             markdown: String::new(),
+            recovery_markdown: load_recovery(&app, path, ""),
         })
     }
 }
 
 #[tauri::command]
 fn save_document(
+    app: tauri::AppHandle,
     state: State<AppState>,
     markdown: String,
-    line_ending: String,
     force: Option<bool>,
 ) -> Result<SaveResponse, String> {
     let guard = state.file_path.lock().unwrap();
     let path = guard.as_ref().ok_or("No file open.")?;
 
     let expected_mtime = *state.last_modified.lock().unwrap();
-    write_document(
-        path,
-        &markdown,
-        &line_ending,
-        expected_mtime,
-        force.unwrap_or(false),
-    )?;
+    write_document(path, &markdown, expected_mtime, force.unwrap_or(false))?;
 
     // Update last_modified after successful save
     if let Ok(meta) = fs::metadata(path) {
@@ -96,6 +107,7 @@ fn save_document(
             *state.last_modified.lock().unwrap() = Some(mtime);
         }
     }
+    let _ = fs::remove_file(working_copy_path(&app)?);
 
     Ok(SaveResponse {
         saved: true,
@@ -143,7 +155,6 @@ fn force_close(app_handle: tauri::AppHandle) {
 fn write_document(
     path: &std::path::Path,
     markdown: &str,
-    line_ending: &str,
     expected_mtime: Option<std::time::SystemTime>,
     force: bool,
 ) -> Result<(), String> {
@@ -173,8 +184,7 @@ fn write_document(
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
-    let contents = encode_line_endings(markdown, line_ending);
-    if let Err(e) = fs::write(&tmp_path, contents.as_bytes()) {
+    if let Err(e) = fs::write(&tmp_path, markdown.as_bytes()) {
         let _ = fs::remove_file(&tmp_path);
         return Err(e.to_string());
     }
@@ -187,24 +197,73 @@ fn write_document(
     Ok(())
 }
 
-fn detect_line_ending(raw: &[u8]) -> String {
-    if raw.windows(2).any(|w| w == b"\r\n") {
-        "crlf".into()
+fn app_data_home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    #[cfg(target_os = "linux")]
+    let _ = app;
+    #[cfg(target_os = "linux")]
+    let base = data_home()?;
+    #[cfg(not(target_os = "linux"))]
+    let base = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let dir = base.join("amorist");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn working_copy_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(app_data_home(app)?.join("working-copy.json"))
+}
+
+fn load_recovery(
+    app: &tauri::AppHandle,
+    path: &std::path::Path,
+    saved_source: &str,
+) -> Option<String> {
+    let file = working_copy_path(app).ok()?;
+    let record: WorkingCopy = serde_json::from_slice(&fs::read(file).ok()?).ok()?;
+    if record.path == path.display().to_string()
+        && record.saved_source == saved_source
+        && record.unsaved_source != saved_source
+    {
+        Some(record.unsaved_source)
     } else {
-        "lf".into()
+        None
     }
 }
 
-fn normalize_line_endings(text: &str) -> String {
-    text.replace("\r\n", "\n").replace('\r', "\n")
+#[tauri::command]
+fn persist_working_copy(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+    saved_source: String,
+    unsaved_source: String,
+    revision: u64,
+) -> Result<(), String> {
+    if unsaved_source.len() as u64 > MAX_MARKDOWN_BYTES
+        || saved_source.len() as u64 > MAX_MARKDOWN_BYTES
+    {
+        return Err("File is too large (max 10 MB).".into());
+    }
+    let guard = state.file_path.lock().unwrap();
+    let path = guard.as_ref().ok_or("No file open.")?;
+    let record = WorkingCopy {
+        path: path.display().to_string(),
+        saved_source,
+        unsaved_source,
+        revision,
+    };
+    fs::write(
+        working_copy_path(&app)?,
+        serde_json::to_vec(&record).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())
 }
 
-fn encode_line_endings(markdown: &str, line_ending: &str) -> String {
-    let normalized = normalize_line_endings(markdown);
-    if line_ending == "crlf" {
-        normalized.replace('\n', "\r\n")
-    } else {
-        normalized
+#[tauri::command]
+fn discard_working_copy(app: tauri::AppHandle) -> Result<(), String> {
+    match fs::remove_file(working_copy_path(&app)?) {
+        Ok(()) => Ok(()),
+        Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
     }
 }
 
@@ -214,10 +273,8 @@ fn percent_decode(input: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(val) = u8::from_str_radix(
-                &String::from_utf8_lossy(&bytes[i + 1..i + 3]),
-                16,
-            ) {
+            if let Ok(val) = u8::from_str_radix(&String::from_utf8_lossy(&bytes[i + 1..i + 3]), 16)
+            {
                 out.push(val);
                 i += 3;
                 continue;
@@ -255,8 +312,7 @@ fn run_install_cli() -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
     let home = std::env::var("HOME").map_err(|e| format!("HOME unset: {e}"))?;
     let bin_dir = PathBuf::from(&home).join(".local").join("bin");
-    fs::create_dir_all(&bin_dir)
-        .map_err(|e| format!("create {}: {e}", bin_dir.display()))?;
+    fs::create_dir_all(&bin_dir).map_err(|e| format!("create {}: {e}", bin_dir.display()))?;
     let link = bin_dir.join("amorist");
 
     if let Ok(meta) = link.symlink_metadata() {
@@ -326,11 +382,7 @@ fn exec_path() -> Result<String, String> {
 
 #[cfg(target_os = "linux")]
 fn install_icon(data: &std::path::Path, size: &str, bytes: &[u8]) -> Result<PathBuf, String> {
-    let dir = data
-        .join("icons")
-        .join("hicolor")
-        .join(size)
-        .join("apps");
+    let dir = data.join("icons").join("hicolor").join(size).join("apps");
     fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
     let path = dir.join("amorist.png");
     fs::write(&path, bytes).map_err(|e| format!("write {}: {e}", path.display()))?;
@@ -617,6 +669,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_document,
             save_document,
+            persist_working_copy,
+            discard_working_copy,
             get_version,
             set_dirty,
             force_close,
@@ -665,7 +719,7 @@ mod tests {
         let file = dir.join("nota.md");
         fs::write(&file, b"# prima\n").unwrap();
 
-        write_document(&file, "# dopo\n", "lf", None, false).unwrap();
+        write_document(&file, "# dopo\n", None, false).unwrap();
 
         assert_eq!(fs::read(&file).unwrap(), b"# dopo\n");
         assert!(
@@ -687,7 +741,7 @@ mod tests {
 
         // Make the directory unwritable so the temporary file cannot be created.
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
-        let outcome = write_document(&file, "# sovrascritto\n", "lf", None, false);
+        let outcome = write_document(&file, "# sovrascritto\n", None, false);
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
 
         // Running as root would defeat the read-only directory. Say so rather
@@ -725,7 +779,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(1100));
         fs::write(&file, b"# cambiata da un altro programma\n").unwrap();
 
-        let outcome = write_document(&file, "# sovrascritta\n", "lf", Some(opened_at), false);
+        let outcome = write_document(&file, "# sovrascritta\n", Some(opened_at), false);
 
         assert_eq!(outcome, Err("CONFLICT".to_string()));
         assert_eq!(
@@ -746,7 +800,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(1100));
         fs::write(&file, b"# cambiata altrove\n").unwrap();
 
-        write_document(&file, "# forzata\n", "lf", Some(opened_at), true).unwrap();
+        write_document(&file, "# forzata\n", Some(opened_at), true).unwrap();
 
         assert_eq!(fs::read(&file).unwrap(), b"# forzata\n");
         assert!(temporary_files_in(&dir).is_empty());
