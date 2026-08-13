@@ -3,7 +3,9 @@
   const DocumentModel = Internals.DocumentModel;
   const TransactionJournal = Internals.TransactionJournal;
   const HtmlToMarkdown = Internals.HtmlToMarkdown;
+  const MarkdownCodec = Internals.MarkdownCodec;
   if (!HtmlToMarkdown) throw new Error("AmoristHtmlToMarkdown must load before AmoristEditor.");
+  if (!MarkdownCodec) throw new Error("AmoristMarkdownCodec must load before AmoristEditor.");
 
   function create(container, options) { return new AmoristEditor(container, options || {}); }
 
@@ -20,21 +22,62 @@
     return lines;
   }
 
-  // A projection line has an exact source range.  We only hide syntactic
-  // prefixes, never rebuild their body; unsupported input stays readable.
+  // The Markdown renderer owns only the view.  The source model remains the
+  // edit authority, so selection offsets are aligned back to its raw bytes.
+  function sourceOffsetForVisibleText(raw, visible, offset) {
+    const target = String(visible || "").slice(0, Math.max(0, Number(offset) || 0));
+    if (!target) {
+      const first = String(visible || "")[0];
+      if (!first) return 0;
+      const found = raw.search(new RegExp(first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+      return found < 0 ? 0 : found;
+    }
+    let rawIndex = 0;
+    let visibleIndex = 0;
+    while (rawIndex < raw.length && visibleIndex < target.length) {
+      const rawChar = raw[rawIndex];
+      const visibleChar = target[visibleIndex];
+      const same = rawChar === visibleChar || ((rawChar === "\n" || rawChar === "\r") && visibleChar === " ");
+      rawIndex += 1;
+      if (same) visibleIndex += 1;
+    }
+    return rawIndex;
+  }
+
+  function visibleOffsetForSourcePrefix(raw, visible) {
+    let rawIndex = 0;
+    let visibleIndex = 0;
+    while (rawIndex < raw.length && visibleIndex < visible.length) {
+      const rawChar = raw[rawIndex];
+      const visibleChar = visible[visibleIndex];
+      const same = rawChar === visibleChar || ((rawChar === "\n" || rawChar === "\r") && visibleChar === " ");
+      rawIndex += 1;
+      if (same) visibleIndex += 1;
+    }
+    return visibleIndex;
+  }
+
   function projectionLine(raw) {
-    let prefix = 0;
-    let text = raw;
-    const heading = text.match(/^ {0,3}#{1,6}\s+/);
-    const list = text.match(/^(\s*)(?:[-*+]|\d+[.)])\s+/);
-    const quote = text.match(/^>\s?/);
-    if (heading) prefix = heading[0].length;
-    else if (list) {
-      prefix = list[0].length;
-      const task = text.slice(prefix).match(/^\[[ xX]\]\s+/);
-      if (task) prefix += task[0].length;
-    } else if (quote) prefix = quote[0].length;
-    return { prefix, text: text.slice(prefix) };
+    const heading = raw.match(/^ {0,3}(#{1,6})\s+/);
+    if (heading) return { prefix: heading[0].length, text: raw.slice(heading[0].length), tag: `h${heading[1].length}` };
+    const quote = raw.match(/^>\s?/);
+    if (quote) return { prefix: quote[0].length, text: raw.slice(quote[0].length), tag: "blockquote" };
+    const list = raw.match(/^(\s*)([-*+]|\d+[.)])\s+/);
+    if (list) {
+      const task = raw.slice(list[0].length).match(/^\[([ xX])\]\s+/);
+      return {
+        prefix: list[0].length + (task ? task[0].length : 0),
+        text: raw.slice(list[0].length + (task ? task[0].length : 0)),
+        tag: "div",
+        list: /\d/.test(list[2]) ? "ordered" : "bullet",
+        marker: list[2],
+        indent: list[1].length,
+        checked: task ? /x/i.test(task[1]) : null,
+      };
+    }
+    if (/^ {0,3}(`{3,}|~{3,}).*$/.test(raw)) return { prefix: raw.length, text: "", tag: "pre", fence: true };
+    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(raw)) return { prefix: raw.length, text: "", tag: "hr", rule: true };
+    return { prefix: 0, text: raw, tag: "div" };
   }
 
   class AmoristEditor {
@@ -114,8 +157,9 @@
     render(rawSelection) {
       this.isRendering = true;
       this.source.value = this.model.display;
+      const lines = sourceLines(this.model.source);
       this.surface.replaceChildren();
-      sourceLines(this.model.source).forEach((line, index) => {
+      lines.forEach((line, index) => {
         const raw = this.model.source.slice(line.start, line.end);
         const projection = projectionLine(raw);
         const row = document.createElement("span");
@@ -125,8 +169,33 @@
         row.dataset.prefix = String(projection.prefix);
         row.dataset.line = String(index);
         row.dataset.endingLength = String(line.ending.length);
-        // Empty text nodes give a measurable, editable caret on blank lines.
-        row.textContent = (projection.text || "\u200b") + (line.ending ? "\n" : "");
+        if (projection.list) {
+          row.classList.add("amorist-wysiwyg-list-item", `amorist-wysiwyg-${projection.list}`);
+          row.dataset.marker = projection.list === "ordered" ? projection.marker : "•";
+          row.style.paddingInlineStart = `${projection.indent * 0.6 + 1.4}em`;
+        } else if (/^h[1-6]$/.test(projection.tag)) {
+          row.classList.add(`amorist-wysiwyg-${projection.tag}`);
+        } else if (projection.tag === "blockquote") {
+          row.classList.add("amorist-wysiwyg-quote");
+        } else if (projection.fence) {
+          row.classList.add("amorist-wysiwyg-fence");
+        } else if (projection.rule) {
+          row.classList.add("amorist-wysiwyg-rule");
+        }
+        if (typeof projection.checked === "boolean") {
+          row.classList.add("amorist-task-item");
+          row.dataset.checked = String(projection.checked);
+          row.innerHTML = `<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${MarkdownCodec.renderInline(projection.text)}</span>`;
+        } else if (projection.rule || projection.fence) {
+          row.setAttribute("aria-label", projection.rule ? "Horizontal rule" : "Code fence");
+        } else if (projection.text) {
+          row.innerHTML = MarkdownCodec.renderInline(projection.text);
+        } else if (!line.ending) {
+          row.append(document.createElement("br"));
+        }
+        // Keep the editable text stream aligned with physical source lines.
+        // Block layout alone is invisible to TreeWalker-based selection APIs.
+        if (line.ending) row.append(document.createTextNode("\n"));
         this.surface.append(row);
       });
       this.isRendering = false;
@@ -146,24 +215,30 @@
       while (element && !element.classList.contains("amorist-source-line")) element = element.parentElement;
       if (!element) return this.model.source.length;
       const start = Number(element.dataset.sourceStart);
-      const prefix = Number(element.dataset.prefix);
-      const allText = element.textContent || "";
-      const text = allText.replace(/\n$/, "") === "\u200b" ? "" : allText.replace(/\n$/, "");
-      let visibleOffset = offset;
-      if (node.nodeType === Node.ELEMENT_NODE) visibleOffset = offset ? text.length : 0;
-      if (visibleOffset > text.length) return Number(element.dataset.sourceEnd) + Number(element.dataset.endingLength);
-      return Math.max(start + prefix, Math.min(start + prefix + visibleOffset, start + prefix + text.length));
+      const prefix = document.createRange();
+      prefix.setStart(element, 0);
+      prefix.setEnd(node, offset);
+      const visible = element.textContent || "";
+      // Harnesses and browsers may represent a caret at a source-line boundary
+      // as the end of the preceding text node.  Its terminal display newline
+      // maps to the real line terminator, not to the preceding character.
+      if (visible.endsWith("\n") && prefix.toString().length >= visible.length) {
+        return Number(element.dataset.sourceEnd) + Number(element.dataset.endingLength);
+      }
+      return start + sourceOffsetForVisibleText(this.model.source.slice(start, Number(element.dataset.sourceEnd)), visible, prefix.toString().length);
     }
 
     setSurfaceSelection(start, end) {
       const point = (rawOffset) => {
-        const rows = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
-        const row = rows.find((candidate) => rawOffset >= Number(candidate.dataset.sourceStart) && rawOffset <= Number(candidate.dataset.sourceEnd)) || rows[rows.length - 1];
-        const rowStart = Number(row.dataset.sourceStart);
-        const prefix = Number(row.dataset.prefix);
-        const allText = row.textContent || "";
-        const text = allText.replace(/\n$/, "") === "\u200b" ? "" : allText.replace(/\n$/, "");
-        return { node: row.firstChild, offset: Math.max(0, Math.min(text.length, rawOffset - rowStart - prefix)) };
+        const blocks = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
+        const block = blocks.find((candidate) => rawOffset >= Number(candidate.dataset.sourceStart) && rawOffset <= Number(candidate.dataset.sourceEnd)) || blocks[blocks.length - 1];
+        const visible = block.textContent || "";
+        const visibleOffset = visibleOffsetForSourcePrefix(this.model.source.slice(Number(block.dataset.sourceStart), rawOffset), visible);
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+        let textNode = walker.nextNode() || block;
+        let remaining = visibleOffset;
+        while (textNode && remaining > textNode.textContent.length) { remaining -= textNode.textContent.length; textNode = walker.nextNode(); }
+        return { node: textNode || block, offset: Math.max(0, Math.min(remaining, (textNode || block).textContent.length)) };
       };
       const from = point(start); const to = point(end);
       const range = document.createRange();
@@ -254,8 +329,9 @@
     handleClick(event) {
       const checkbox = event.target.closest(".amorist-task-checkbox");
       if (!checkbox) return;
-      const row = checkbox.closest(".amorist-source-line"); if (!row) return;
-      const start = Number(row.dataset.sourceStart); const match = this.model.source.slice(start, Number(row.dataset.sourceEnd)).match(/\[([ xX])\]/);
+      const block = checkbox.closest(".amorist-source-line"); if (!block) return;
+      const start = Number(block.dataset.sourceStart);
+      const match = this.model.source.slice(start, Number(block.dataset.sourceEnd)).match(/\[([ xX])\]/);
       if (match) this.apply(start + match.index + 1, start + match.index + 2, /x/i.test(match[1]) ? " " : "x", "task-checkbox");
     }
 
@@ -299,6 +375,6 @@
   function midViewportLine(scrollTop, clientHeight, lineHeight) { return lineHeight > 0 ? Math.floor((scrollTop + clientHeight / 2) / lineHeight) : 0; }
   function centerScroll(anchorTop, clientHeight, scrollHeight) { return Math.max(0, Math.min(Math.max(0, scrollHeight - clientHeight), anchorTop - clientHeight / 2)); }
   Internals.MarkdownHistory = TransactionJournal;
-  window.__editorTestHelpers = { midViewportLine, centerScroll };
+  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, projectionLine };
   window.AmoristEditor = { create };
 })();

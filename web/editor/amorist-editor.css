@@ -83,6 +83,51 @@
   white-space: pre-wrap;
 }
 
+.amorist-source-line {
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.amorist-wysiwyg-h1,
+.amorist-wysiwyg-h2,
+.amorist-wysiwyg-h3,
+.amorist-wysiwyg-h4,
+.amorist-wysiwyg-h5,
+.amorist-wysiwyg-h6 {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.amorist-wysiwyg-h1 { font-size: 32px; }
+.amorist-wysiwyg-h2 { font-size: 24px; }
+.amorist-wysiwyg-h3 { font-size: 19px; }
+.amorist-wysiwyg-h4 { font-size: 16px; }
+.amorist-wysiwyg-h5 { font-size: 14px; }
+.amorist-wysiwyg-h6 { color: var(--muted, #68717d); font-size: 13px; }
+
+.amorist-wysiwyg-quote {
+  border-left: 3px solid var(--accent, #246b54);
+  color: #40566b;
+  padding-left: 8px;
+}
+
+.amorist-wysiwyg-list-item::before {
+  color: var(--muted, #68717d);
+  content: attr(data-marker);
+  display: inline-block;
+  margin-left: -1.35em;
+  width: 1.15em;
+}
+
+.amorist-wysiwyg-list-item.amorist-wysiwyg-ordered::before {
+  content: attr(data-marker);
+}
+
+.amorist-wysiwyg-fence,
+.amorist-wysiwyg-rule {
+  color: var(--muted, #68717d);
+}
+
 .amorist-editor-source {
   background: var(--panel, #fff);
   border: 0;
