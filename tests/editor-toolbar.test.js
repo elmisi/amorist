@@ -101,6 +101,32 @@ async function main() {
       };
     })()`);
     assert.deepEqual(richProjection, { codeText: "**literal**", codeHasStrong: false, tableRows: 3, ruleBorder: "1px" });
+
+    const multiLineSource = "before\r\none\rtwo\nthree\r\nafter";
+    const multiLine = await evaluate(engine, `(() => {
+      const source = ${JSON.stringify(multiLineSource)};
+      const selectMiddle = () => {
+        const view = window.__qa.surfaceText();
+        const start = view.indexOf("one") + 1;
+        const end = view.indexOf("three") + "three".length;
+        window.__qa.selectTextRange(start, end);
+      };
+      window.__qa.open(source); selectMiddle(); window.__qa.toolbarAction("quote");
+      const quoted = window.__qa.markdown();
+      window.__qa.open(quoted); selectMiddle(); window.__qa.toolbarAction("quote");
+      const unquoted = window.__qa.markdown();
+      window.__qa.open(source); selectMiddle(); window.__qa.toolbarAction("h2");
+      const heading = window.__qa.markdown();
+      window.__qa.open(source); selectMiddle(); window.__qa.toolbarAction("codeblock");
+      const codeBlock = window.__qa.markdown();
+      return { quoted, unquoted, heading, codeBlock };
+    })()`);
+    assert.deepEqual(multiLine, {
+      quoted: "before\r\n> one\r> two\n> three\r\nafter",
+      unquoted: multiLineSource,
+      heading: "before\r\n## one\r## two\n## three\r\nafter",
+      codeBlock: "before\r\n```\rone\rtwo\nthree\r```\r\nafter",
+    });
   } finally {
     await engine.close();
     await server.stop();

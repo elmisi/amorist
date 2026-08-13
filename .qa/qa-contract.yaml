@@ -232,6 +232,9 @@ requirements:
         - id: format
           affected_lines: affected-construct
           line_delta: 0
+        - id: codeblock
+          affected_lines: selected-lines-plus-fence-lines
+          line_delta: 2
         - id: indent
           affected_lines: affected-list-item
           line_delta: 0
@@ -257,6 +260,8 @@ requirements:
             Tab / Shift-Tab indent) -> only the lines the affected construct
             occupies; indenting one list item changes that item's line alone,
             not the rest of the list
+          - code-block toolbar action -> the selected lines plus the two fence
+            lines the command adds
           - undo or redo -> exactly the lines the reverted edit had touched,
             and no others
         Any edit kind not in this list must be added here before it is tested.

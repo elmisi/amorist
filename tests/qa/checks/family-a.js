@@ -25,6 +25,7 @@ const A2_GESTURE = Object.freeze({
   "paste of 3 lines": "paste",
   "type over a selection spanning 3 lines": "selection-replace",
   "apply bold from the toolbar to one word": "format",
+  "wrap 3 selected lines in a code block": "codeblock",
   "indent one list item with Tab": "indent",
   "undo and redo": "undo-redo",
 });
@@ -246,6 +247,27 @@ module.exports = [
               const ok = await page.selectTextRange(first, last + lastText.length);
               if (!ok) return SELECTION_NOT_PLACEABLE;
               await page.sendKeys(["sostituito"]);
+              return null;
+            },
+          }));
+
+          // A code-block command is deliberately not `format`: the user asks
+          // it to insert one fence on each side of the selected source lines.
+          // Its envelope includes precisely those selected lines and the two
+          // new fence lines, never neighbouring prose.
+          check(await gesture(ctx, fixture, "wrap 3 selected lines in a code block", {
+            allowed: range(span[0].number, span[2].number + 2),
+            delta: 2,
+            act: async (page) => {
+              const surface = await page.surfaceText();
+              const firstText = span[0].text.trim();
+              const lastText = span[2].text.trim();
+              const first = surface.indexOf(firstText);
+              const last = surface.indexOf(lastText, first);
+              if (first < 0 || last < 0) return SELECTION_NOT_PLACEABLE;
+              if (!(await page.selectTextRange(first, last + lastText.length))) return SELECTION_NOT_PLACEABLE;
+              if (!(await page.toolbarAction("codeblock"))) return "The toolbar has no code-block command.";
+              await page.settle(120);
               return null;
             },
           }));

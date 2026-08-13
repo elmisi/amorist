@@ -394,9 +394,6 @@
       if (this.mode === "source") this.showWysiwygMode();
       const sel = this.selectionRaw();
       const selected = this.model.source.slice(sel.start, sel.end);
-      const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
-      const lineEnding = this.model.source.slice(line).search(/\r\n|\r|\n/);
-      const sourceLine = this.model.source.slice(line, lineEnding < 0 ? this.model.source.length : line + lineEnding);
       const wraps = { bold: ["**", "**"], italic: ["*", "*"], code: ["`", "`"] };
       if (wraps[action] && selected) this.apply(sel.start, sel.end, wraps[action][0] + selected + wraps[action][1], action);
       else if (wraps[action]) this.toggleInlineMode(action, wraps[action], sel);
@@ -407,29 +404,36 @@
         this.apply(sel.start, sel.end, `[${label}](${String(href).trim().replace(/\)/g, "%29")})`, action);
       }
       else if (/^h[1-6]$/.test(action)) {
-        const heading = sourceLine.match(/^(\s*)(#{1,6})\s+/);
-        const prefixStart = line + (heading ? heading[1].length : 0);
-        const prefixEnd = heading ? line + heading[0].length : prefixStart;
         const requested = "#".repeat(Number(action[1])) + " ";
-        this.apply(prefixStart, prefixEnd, heading && heading[2].length === Number(action[1]) ? "" : requested, action);
+        this.applyLineTransform(sel, action, (lines) => {
+          const allRequested = lines.every((text) => new RegExp(`^(\\s*)#{${Number(action[1])}}\\s+`).test(text));
+          return lines.map((text) => {
+            const heading = text.match(/^(\s*)(#{1,6})\s+/);
+            const indent = heading ? heading[1] : (text.match(/^\s*/) || [""])[0];
+            const body = heading ? text.slice(heading[0].length) : text.slice(indent.length);
+            return indent + (allRequested ? "" : requested) + body;
+          });
+        });
       }
       else if (action === "bullet" || action === "ordered" || action === "task" || action === "quote") {
-        const patterns = {
-          bullet: /^(\s*)([-*+])\s+/,
-          ordered: /^(\s*)(\d+[.)])\s+/,
-          task: /^(\s*)([-*+])\s+\[[ xX]\]\s+/,
-          quote: /^(\s*)>\s?/,
-        };
-        const current = sourceLine.match(patterns[action]);
-        const prefixStart = line + (current ? current[1].length : 0);
-        const prefixEnd = current ? line + current[0].length : prefixStart;
         const prefix = action === "ordered" ? "1. " : action === "task" ? "- [ ] " : action === "quote" ? "> " : "- ";
-        this.apply(prefixStart, prefixEnd, current ? "" : prefix, action);
+        const markerPattern = action === "quote" ? /^(\s*)>\s?/ : /^(\s*)(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/;
+        const requestedPattern = action === "bullet" ? /^(\s*)[-*+]\s+(?!\[[ xX]\]\s+)/
+          : action === "ordered" ? /^(\s*)\d+[.)]\s+/
+            : action === "task" ? /^(\s*)[-*+]\s+\[[ xX]\]\s+/
+              : /^(\s*)>\s?/;
+        this.applyLineTransform(sel, action, (lines) => {
+          const allRequested = lines.every((text) => requestedPattern.test(text));
+          return lines.map((text) => {
+            const current = text.match(markerPattern);
+            const indent = current ? current[1] : (text.match(/^\s*/) || [""])[0];
+            const body = current ? text.slice(current[0].length) : text.slice(indent.length);
+            return indent + (allRequested ? "" : prefix) + body;
+          });
+        });
       }
       else if (action === "codeblock") {
-        const start = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
-        const nextEnding = this.model.source.slice(Math.max(sel.end, start)).search(/\r\n|\r|\n/);
-        const end = nextEnding < 0 ? this.model.source.length : Math.max(sel.end, start) + nextEnding;
+        const { start, end } = selectedLineRange(this.model.source, sel.start, sel.end);
         const body = this.model.source.slice(start, end);
         const ending = this.model.lineEndingAt(start);
         this.apply(start, end, "```" + ending + body + ending + "```", action);
@@ -454,6 +458,12 @@
           this.setSurfaceSelection(closeAt + close.length, closeAt + close.length);
         }
       } else this.inlineMode = { action, marks };
+    }
+
+    applyLineTransform(selection, gesture, transform) {
+      const range = selectedLineRange(this.model.source, selection.start, selection.end);
+      const replacement = transformPhysicalLines(this.model.source.slice(range.start, range.end), transform);
+      this.apply(range.start, range.end, replacement, gesture);
     }
 
     showSourceMode() {
@@ -525,9 +535,29 @@
 
   function previousCodeUnit(source, at) { if (!at) return 0; if (source[at - 1] === "\n" && source[at - 2] === "\r") return at - 2; return at > 1 && source.charCodeAt(at - 1) >= 0xdc00 && source.charCodeAt(at - 1) <= 0xdfff ? at - 2 : at - 1; }
   function nextCodeUnit(source, at) { if (at >= source.length) return at; return source.charCodeAt(at) >= 0xd800 && source.charCodeAt(at) <= 0xdbff ? at + 2 : at + 1; }
+  function lineStart(source, at) { return Math.max(source.lastIndexOf("\n", Math.max(0, at - 1)), source.lastIndexOf("\r", Math.max(0, at - 1))) + 1; }
+  function lineEnd(source, at) { const match = source.slice(Math.max(0, at)).search(/\r\n|\r|\n/); return match < 0 ? source.length : Math.max(0, at) + match; }
+  function selectedLineRange(source, start, end) {
+    const first = lineStart(source, start);
+    const anchor = end > start ? Math.max(start, end - 1) : start;
+    return { start: first, end: lineEnd(source, anchor) };
+  }
+  function transformPhysicalLines(source, transform) {
+    const lines = [];
+    const endings = [];
+    let cursor = 0;
+    while (cursor < source.length) {
+      const found = source.slice(cursor).match(/\r\n|\r|\n/);
+      if (!found) { lines.push(source.slice(cursor)); endings.push(""); break; }
+      const at = cursor + found.index;
+      lines.push(source.slice(cursor, at)); endings.push(found[0]); cursor = at + found[0].length;
+    }
+    if (!lines.length) { lines.push(""); endings.push(""); }
+    return transform(lines).map((line, index) => line + endings[index]).join("");
+  }
   function midViewportLine(scrollTop, clientHeight, lineHeight) { return lineHeight > 0 ? Math.floor((scrollTop + clientHeight / 2) / lineHeight) : 0; }
   function centerScroll(anchorTop, clientHeight, scrollHeight) { return Math.max(0, Math.min(Math.max(0, scrollHeight - clientHeight), anchorTop - clientHeight / 2)); }
   Internals.MarkdownHistory = TransactionJournal;
-  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, alignedScrollTop, projectionLine };
+  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, alignedScrollTop, projectionLine, selectedLineRange, transformPhysicalLines };
   window.AmoristEditor = { create };
 })();
