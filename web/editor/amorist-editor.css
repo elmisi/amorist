@@ -155,6 +155,29 @@
   color: var(--muted, #68717d);
 }
 
+.amorist-wysiwyg-code,
+.amorist-wysiwyg-table {
+  background: #f3f6f7;
+  color: #2b3a47;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.amorist-wysiwyg-code {
+  white-space: pre;
+}
+
+.amorist-wysiwyg-table {
+  color: #10202c;
+  font-size: 14px;
+}
+
+.amorist-wysiwyg-rule {
+  border-top: 1px solid #ccc;
+  display: inline-block;
+  margin: 0.65em 0;
+  min-width: 100%;
+}
+
 .amorist-editor-source {
   background: var(--panel, #fff);
   border: 0;

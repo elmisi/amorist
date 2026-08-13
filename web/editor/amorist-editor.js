@@ -4,6 +4,7 @@
   const TransactionJournal = Internals.TransactionJournal;
   const HtmlToMarkdown = Internals.HtmlToMarkdown;
   const MarkdownCodec = Internals.MarkdownCodec;
+  const TableCodec = Internals.TableCodec;
   if (!HtmlToMarkdown) throw new Error("AmoristHtmlToMarkdown must load before AmoristEditor.");
   if (!MarkdownCodec) throw new Error("AmoristMarkdownCodec must load before AmoristEditor.");
 
@@ -57,6 +58,20 @@
     return visibleIndex;
   }
 
+  function inlineClosingDelimiterBefore(node, boundary) {
+    let current = node;
+    while (current && current !== boundary) {
+      const previous = current.previousSibling;
+      if (previous && previous.nodeType === Node.ELEMENT_NODE) {
+        if (previous.tagName === "STRONG") return "**";
+        if (previous.tagName === "EM") return "*";
+        if (previous.tagName === "CODE") return "`";
+      }
+      current = current.parentElement;
+    }
+    return "";
+  }
+
   function alignedScrollTop(currentScrollTop, caretTop, targetCaretTop) {
     return Math.max(0, currentScrollTop + caretTop - targetCaretTop);
   }
@@ -94,6 +109,7 @@
       this.model = new DocumentModel(options.value || "");
       this.history = new TransactionJournal(100);
       this.mode = "wysiwyg";
+      this.inlineMode = null;
       this.isRendering = false;
       this.root = document.createElement("div");
       this.root.className = "amorist-editor";
@@ -112,9 +128,17 @@
       this.findBar.hidden = true;
       this.findInput = document.createElement("input");
       this.findInput.type = "text";
+      this.findInput.className = "amorist-editor-findbar-input";
       this.findInput.placeholder = "Find...";
       this.findCount = document.createElement("span");
-      this.findBar.append(this.findInput, this.findCount);
+      this.findCount.className = "amorist-editor-findbar-count";
+      const closeFind = document.createElement("button");
+      closeFind.type = "button";
+      closeFind.className = "amorist-editor-findbar-close";
+      closeFind.textContent = "×";
+      closeFind.title = "Close";
+      closeFind.addEventListener("click", () => this.closeFindBar());
+      this.findBar.append(this.findInput, this.findCount, closeFind);
       this.root.append(this.toolbar, this.findBar, this.surface, this.source);
       container.replaceChildren(this.root);
       this.buildToolbar();
@@ -144,6 +168,7 @@
       this.source.addEventListener("input", () => this.handleSourceInput());
       this.source.addEventListener("keydown", (event) => this.handleKeyDown(event));
       this.findInput.addEventListener("input", () => this.performFind());
+      this.findInput.addEventListener("keydown", (event) => this.handleFindKeyDown(event));
     }
 
     destroy() { this.container.replaceChildren(); }
@@ -154,6 +179,7 @@
     setMarkdown(markdown, options) {
       this.model = new DocumentModel(markdown || "");
       this.history = new TransactionJournal(100);
+      this.inlineMode = null;
       this.render();
       if (!options || !options.silent) this.emitChange();
     }
@@ -162,6 +188,9 @@
       this.isRendering = true;
       this.source.value = this.model.display;
       const lines = sourceLines(this.model.source);
+      const rawLines = lines.map((line) => this.model.source.slice(line.start, line.end));
+      let tableUntil = -1;
+      let fence = null;
       this.surface.replaceChildren();
       lines.forEach((line, index) => {
         const raw = this.model.source.slice(line.start, line.end);
@@ -186,7 +215,25 @@
         } else if (projection.rule) {
           row.classList.add("amorist-wysiwyg-rule");
         }
-        if (typeof projection.checked === "boolean") {
+        const fenceMatch = raw.match(/^ {0,3}(`{3,}|~{3,}).*$/);
+        const closesFence = fence && new RegExp(`^ {0,3}\\${fence.marker}{${fence.length},}\\s*$`).test(raw);
+        if (!fence && fenceMatch) fence = { marker: fenceMatch[1][0], length: fenceMatch[1].length };
+        else if (closesFence) fence = null;
+        const codeContent = Boolean(fence) && !fenceMatch;
+        if (TableCodec && TableCodec.isTableStart(rawLines, index)) tableUntil = index + 1;
+        if (tableUntil >= index) {
+          row.classList.add("amorist-wysiwyg-table");
+          if (index === tableUntil) {
+            let next = index + 1;
+            const columns = TableCodec.splitTableRow(rawLines[index]).length;
+            while (next < rawLines.length && TableCodec.looksLikeTableRow(rawLines[next], columns)) next += 1;
+            tableUntil = next - 1;
+          }
+        }
+        if (codeContent) {
+          row.classList.add("amorist-wysiwyg-code");
+          row.textContent = raw || "\u200b";
+        } else if (typeof projection.checked === "boolean") {
           row.classList.add("amorist-wysiwyg-task");
           row.dataset.checked = String(projection.checked);
           row.innerHTML = `<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${MarkdownCodec.renderInline(projection.text)}</span>`;
@@ -229,7 +276,12 @@
       if (visible.endsWith("\n") && prefix.toString().length >= visible.length) {
         return Number(element.dataset.sourceEnd) + Number(element.dataset.endingLength);
       }
-      return start + sourceOffsetForVisibleText(this.model.source.slice(start, Number(element.dataset.sourceEnd)), visible, prefix.toString().length);
+      let rawOffset = start + sourceOffsetForVisibleText(this.model.source.slice(start, Number(element.dataset.sourceEnd)), visible, prefix.toString().length);
+      if (offset === 0) {
+        const closing = inlineClosingDelimiterBefore(node, element);
+        if (closing && this.model.source.slice(rawOffset, rawOffset + closing.length) === closing) rawOffset += closing.length;
+      }
+      return rawOffset;
     }
 
     setSurfaceSelection(start, end) {
@@ -237,11 +289,15 @@
         const blocks = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
         const block = blocks.find((candidate) => rawOffset >= Number(candidate.dataset.sourceStart) && rawOffset <= Number(candidate.dataset.sourceEnd)) || blocks[blocks.length - 1];
         const visible = block.textContent || "";
-        const visibleOffset = visibleOffsetForSourcePrefix(this.model.source.slice(Number(block.dataset.sourceStart), rawOffset), visible);
+        const rawPrefix = this.model.source.slice(Number(block.dataset.sourceStart), rawOffset);
+        const visibleOffset = visibleOffsetForSourcePrefix(rawPrefix, visible);
+        const afterInlineDelimiter = /(?:\*\*|\*|`)$/.test(rawPrefix);
         const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
         let textNode = walker.nextNode() || block;
         let remaining = visibleOffset;
-        while (textNode && remaining > textNode.textContent.length) { remaining -= textNode.textContent.length; textNode = walker.nextNode(); }
+        while (textNode && (remaining > textNode.textContent.length || (afterInlineDelimiter && remaining === textNode.textContent.length))) {
+          remaining -= textNode.textContent.length; textNode = walker.nextNode();
+        }
         return { node: textNode || block, offset: Math.max(0, Math.min(remaining, (textNode || block).textContent.length)) };
       };
       const from = point(start); const to = point(end);
@@ -264,7 +320,19 @@
       const selection = this.selectionRaw();
       const type = event.inputType;
       if (type === "insertText" || type === "insertCompositionText") {
-        event.preventDefault(); this.apply(selection.start, selection.end, event.data || "", "insert"); return;
+        event.preventDefault();
+        const text = event.data || "";
+        if (this.inlineMode && selection.start === selection.end) {
+          const [open, close] = this.inlineMode.marks;
+          if (this.model.source.slice(selection.start, selection.start + close.length) === close) {
+            this.apply(selection.start, selection.end, text, "insert");
+          } else {
+            this.apply(selection.start, selection.end, open + text + close, `insert-${this.inlineMode.action}`);
+            const caret = selection.start + open.length + text.length;
+            this.setSurfaceSelection(caret, caret);
+          }
+        } else this.apply(selection.start, selection.end, text, "insert");
+        return;
       }
       if (type === "insertParagraph" || type === "insertLineBreak") {
         // Browser editing semantics and REQ-B3 define Enter as one bare LF.
@@ -288,7 +356,10 @@
       if (mod && event.key.toLowerCase() === "f") { event.preventDefault(); this.openFindBar(); return; }
       if (this.mode === "wysiwyg" && event.key === "Tab") {
         event.preventDefault(); const sel = this.selectionRaw(); const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
-        this.apply(line, line, event.shiftKey ? "" : "  ", event.shiftKey ? "outdent" : "indent");
+        const indent = this.model.source.slice(line).match(/^ {1,2}/);
+        if (event.shiftKey) {
+          if (indent) this.apply(line, line + indent[0].length, "", "outdent");
+        } else this.apply(line, line, "  ", "indent");
       }
     }
 
@@ -323,11 +394,46 @@
       if (this.mode === "source") this.showWysiwygMode();
       const sel = this.selectionRaw();
       const selected = this.model.source.slice(sel.start, sel.end);
+      const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
+      const lineEnding = this.model.source.slice(line).search(/\r\n|\r|\n/);
+      const sourceLine = this.model.source.slice(line, lineEnding < 0 ? this.model.source.length : line + lineEnding);
       const wraps = { bold: ["**", "**"], italic: ["*", "*"], code: ["`", "`"] };
       if (wraps[action] && selected) this.apply(sel.start, sel.end, wraps[action][0] + selected + wraps[action][1], action);
-      else if (/^h[1-6]$/.test(action)) { const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1; this.apply(line, line, "#".repeat(Number(action[1])) + " ", action); }
-      else if (action === "bullet" || action === "ordered" || action === "task" || action === "quote") { const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1; const prefix = action === "ordered" ? "1. " : action === "task" ? "- [ ] " : action === "quote" ? "> " : "- "; this.apply(line, line, prefix, action); }
-      else if (action === "codeblock") this.apply(sel.start, sel.end, "```\n" + selected + "\n```", action);
+      else if (wraps[action]) this.toggleInlineMode(action, wraps[action], sel);
+      else if (action === "link" && selected) {
+        const href = window.prompt("URL");
+        if (!href) return;
+        const label = selected.replace(/]/g, "\\]");
+        this.apply(sel.start, sel.end, `[${label}](${String(href).trim().replace(/\)/g, "%29")})`, action);
+      }
+      else if (/^h[1-6]$/.test(action)) {
+        const heading = sourceLine.match(/^(\s*)(#{1,6})\s+/);
+        const prefixStart = line + (heading ? heading[1].length : 0);
+        const prefixEnd = heading ? line + heading[0].length : prefixStart;
+        const requested = "#".repeat(Number(action[1])) + " ";
+        this.apply(prefixStart, prefixEnd, heading && heading[2].length === Number(action[1]) ? "" : requested, action);
+      }
+      else if (action === "bullet" || action === "ordered" || action === "task" || action === "quote") {
+        const patterns = {
+          bullet: /^(\s*)([-*+])\s+/,
+          ordered: /^(\s*)(\d+[.)])\s+/,
+          task: /^(\s*)([-*+])\s+\[[ xX]\]\s+/,
+          quote: /^(\s*)>\s?/,
+        };
+        const current = sourceLine.match(patterns[action]);
+        const prefixStart = line + (current ? current[1].length : 0);
+        const prefixEnd = current ? line + current[0].length : prefixStart;
+        const prefix = action === "ordered" ? "1. " : action === "task" ? "- [ ] " : action === "quote" ? "> " : "- ";
+        this.apply(prefixStart, prefixEnd, current ? "" : prefix, action);
+      }
+      else if (action === "codeblock") {
+        const start = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
+        const nextEnding = this.model.source.slice(Math.max(sel.end, start)).search(/\r\n|\r|\n/);
+        const end = nextEnding < 0 ? this.model.source.length : Math.max(sel.end, start) + nextEnding;
+        const body = this.model.source.slice(start, end);
+        const ending = this.model.lineEndingAt(start);
+        this.apply(start, end, "```" + ending + body + ending + "```", action);
+      }
     }
 
     handleClick(event) {
@@ -337,6 +443,17 @@
       const start = Number(block.dataset.sourceStart);
       const match = this.model.source.slice(start, Number(block.dataset.sourceEnd)).match(/\[([ xX])\]/);
       if (match) this.apply(start + match.index + 1, start + match.index + 2, /x/i.test(match[1]) ? " " : "x", "task-checkbox");
+    }
+
+    toggleInlineMode(action, marks, selection) {
+      if (this.inlineMode && this.inlineMode.action === action) {
+        const close = marks[1];
+        this.inlineMode = null;
+        const closeAt = this.model.source.indexOf(close, selection.start);
+        if (selection.start === selection.end && closeAt >= selection.start && closeAt - selection.start <= close.length) {
+          this.setSurfaceSelection(closeAt + close.length, closeAt + close.length);
+        }
+      } else this.inlineMode = { action, marks };
     }
 
     showSourceMode() {
@@ -377,9 +494,33 @@
     undo() { const entry = this.history.undo(this.model); if (entry) { this.render({ start: entry.forward.start, end: entry.forward.start }); this.emitChange(); } }
     redo() { const entry = this.history.redo(this.model); if (entry) { const at = entry.forward.start + entry.forward.replacement.length; this.render({ start: at, end: at }); this.emitChange(); } }
     emitChange() { if (typeof this.options.onChange === "function") this.options.onChange(this.model.source); }
-    openFindBar() { this.findBar.hidden = false; this.findInput.focus(); this.findInput.select(); }
-    closeFindBar() { this.findBar.hidden = true; this.findCount.textContent = ""; this.focus(); }
-    performFind() { const query = this.findInput.value; if (!query) { this.findCount.textContent = ""; return; } const haystack = this.mode === "source" ? this.source.value : this.surface.innerText; const count = haystack.toLowerCase().split(query.toLowerCase()).length - 1; this.findCount.textContent = count ? `1 of ${count}` : ""; }
+    openFindBar() { this.findBar.hidden = false; this.findInput.focus(); this.findInput.select(); this.performFind(); }
+    closeFindBar() { this.findBar.hidden = true; this.findMatches = []; this.findIndex = -1; this.findCount.textContent = ""; this.focus(); }
+    performFind() {
+      const query = this.findInput.value.toLocaleLowerCase();
+      this.findMatches = [];
+      this.findIndex = -1;
+      if (!query) { this.findCount.textContent = ""; return; }
+      const haystack = this.model.display.toLocaleLowerCase();
+      let at = 0;
+      while ((at = haystack.indexOf(query, at)) >= 0) { this.findMatches.push(at); at += Math.max(1, query.length); }
+      this.findIndex = this.findMatches.length ? 0 : -1;
+      this.updateFindCount();
+    }
+    handleFindKeyDown(event) {
+      if (event.key === "Escape") { event.preventDefault(); this.closeFindBar(); }
+      else if (event.key === "Enter") { event.preventDefault(); this.findMove(event.shiftKey ? -1 : 1); }
+    }
+    findMove(step) {
+      if (!this.findMatches.length) return;
+      this.findIndex = (this.findIndex + step + this.findMatches.length) % this.findMatches.length;
+      const start = this.findMatches[this.findIndex];
+      const end = start + this.findInput.value.length;
+      this.updateFindCount();
+      if (this.mode === "source") { this.source.focus(); this.source.setSelectionRange(start, end); }
+      else this.setSurfaceSelection(this.model.rawOffset(start), this.model.rawOffset(end));
+    }
+    updateFindCount() { this.findCount.textContent = this.findMatches.length ? `${this.findIndex + 1} of ${this.findMatches.length}` : "0 of 0"; }
   }
 
   function previousCodeUnit(source, at) { if (!at) return 0; if (source[at - 1] === "\n" && source[at - 2] === "\r") return at - 2; return at > 1 && source.charCodeAt(at - 1) >= 0xdc00 && source.charCodeAt(at - 1) <= 0xdfff ? at - 2 : at - 1; }
