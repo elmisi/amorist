@@ -260,7 +260,11 @@ fn persist_working_copy(
 
 #[tauri::command]
 fn discard_working_copy(app: tauri::AppHandle) -> Result<(), String> {
-    match fs::remove_file(working_copy_path(&app)?) {
+    discard_working_copy_file(&working_copy_path(&app)?)
+}
+
+fn discard_working_copy_file(file: &std::path::Path) -> Result<(), String> {
+    match fs::remove_file(file) {
         Ok(()) => Ok(()),
         Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(e) => Err(e.to_string()),
@@ -804,6 +808,19 @@ mod tests {
 
         assert_eq!(fs::read(&file).unwrap(), b"# forzata\n");
         assert!(temporary_files_in(&dir).is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn discard_recovery_removes_the_copy_and_is_idempotent() {
+        let dir = scratch_dir("recovery-discard");
+        let copy = dir.join("working-copy.json");
+        fs::write(&copy, br#"{\"unsavedSource\":\"da scartare\"}"#).unwrap();
+
+        discard_working_copy_file(&copy).unwrap();
+        assert!(!copy.exists(), "discard left the recovery copy in place");
+        discard_working_copy_file(&copy).unwrap();
+
         fs::remove_dir_all(&dir).ok();
     }
 

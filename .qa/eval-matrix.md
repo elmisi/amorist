@@ -23,7 +23,7 @@ generated; the contract is the source of truth.
 | `REQ-B2` | Typing lengthens the current line. It never moves the other lines of the same paragraph. | R-005 | deterministic | blocking | full | low | low | RED today |
 | `REQ-B3` | Enter inserts a bare newline at the caret. It does not create a paragraph break and never… | R-015 | deterministic | blocking | full | low | low | RED today |
 | `REQ-C1` | Switching between WYSIWYG and source leaves the caret on the same character of the text,… | R-007, R-011 | deterministic | blocking | full | medium | medium | RED today |
-| `REQ-C2` | After switching views the caret appears at the same height ON SCREEN as it did before, wi… | R-011 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-C2` | After switching views, the physical source line displayed at the vertical midpoint of the… | R-011 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-D1` | Content pasted from another application never disappears silently. What amorist cannot co… | R-008 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-E1` | Work not yet saved survives an abrupt termination. A working copy is written periodically… | R-009 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-E2` | amorist never writes to the user's .md file except on an explicit save. The working copy… | R-010 | deterministic | blocking | full | low | low | green today |

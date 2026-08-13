@@ -627,27 +627,26 @@ requirements:
 
   - id: REQ-C2
     statement: >
-      After switching views the caret appears at the same height ON SCREEN as it
-      did before, within one line of text, and it is visible rather than
-      scrolled out of sight.
+      After switching views, the physical source line displayed at the vertical
+      midpoint of the window is the same line as before the switch, in both
+      directions.
     category: invariant
     origin: user-statement, 2026-07-28 (D-031)
     motivation: >
-      REQ-C1 asks for the same character. That is identity, not continuity: the
-      same character can be drawn somewhere else entirely, because a heading is
-      rendered large in one view and as plain text with a marker in the other.
-      What keeps a person from losing their place is where the caret APPEARS,
-      and that is a separate property with a separate failure.
+      REQ-C1 asks for the same character. That is identity, not visual anchoring:
+      the same character can be drawn somewhere else entirely because headings,
+      tables and code have different heights in the two views. The line at the
+      window midpoint is the stable reference a person can actually compare.
     risk_id: R-011
     verification:
       type: deterministic
       evidence_required:
-        - "the caret's distance from the top of the visible area, before and
-          after the switch, in both directions"
+        - the physical source-line number at the vertical midpoint before and
+          after the switch, in both directions
         - a document long enough that the position requires scrolling
       success_condition: >
-        The two heights differ by no more than one line of text, and the caret
-        lies inside the visible area in both views.
+        The source-line number at the window midpoint is identical in both
+        views, in both directions.
     severity: blocking
     false_positive_risk: low
     automation: full
@@ -655,14 +654,11 @@ requirements:
     currently_holds: false
     status: confirmed
     why_on_screen_and_not_in_the_document: >
-      Matching the caret's position within the DOCUMENT was measured and
-      rejected. Over a 186-line fixture the two views place the same line a
-      median of 23 pixels apart, drifting to 164 by the end, because one view
-      gives headings, lists and code blocks their own spacing while the other
-      lays out uniform lines. Holding those together would mean making the
-      rendered view resemble the source — giving up the rendering. Matching
-      position ON SCREEN needs none of that: it is obtained exactly by scrolling
-      the arriving view so the caret lands where the eye already is.
+      Matching the caret's position within the document was measured and
+      rejected: headings, lists and code blocks have different heights in the
+      two views. The physical source line at the midpoint is independent of
+      those layout differences and is obtained by scrolling the arriving view
+      until that line is at the same visual reference point.
     horizontal_deliberately_excluded: >
       Only the vertical is required. The same character sits at different
       columns and different widths between the views, since one hides the

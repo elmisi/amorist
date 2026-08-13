@@ -268,6 +268,17 @@
       return;
     }
 
+    if (state.dirty) {
+      clearTimeout(workingCopyTimer);
+      workingCopyTimer = null;
+      try {
+        await backend.discardWorkingCopy();
+      } catch (error) {
+        showError(errorMessage(error, "Could not discard recovered work."), "reload");
+        return;
+      }
+    }
+
     setBusy("Loading");
     try {
       var doc = await backend.loadDocument();

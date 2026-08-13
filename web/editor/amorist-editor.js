@@ -76,6 +76,10 @@
     return Math.max(0, currentScrollTop + caretTop - targetCaretTop);
   }
 
+  function clampedLine(number, lineCount) {
+    return Math.max(0, Math.min(Math.max(0, lineCount - 1), number));
+  }
+
   function projectionLine(raw) {
     const heading = raw.match(/^ {0,3}(#{1,6})\s+/);
     if (heading) return { prefix: heading[0].length, text: raw.slice(heading[0].length), tag: `h${heading[1].length}` };
@@ -468,55 +472,83 @@
 
     showSourceMode() {
       if (this.mode === "source") return;
-      const selection = this.selectionRaw(); const y = this.caretY();
+      const selection = this.selectionRaw();
+      const anchorLine = this.wysiwygViewportLine();
       this.source.style.paddingTop = "";
+      this.source.style.paddingBottom = "";
       this.source.value = this.model.display; this.surface.hidden = true; this.source.hidden = false; this.mode = "source";
       const at = this.model.displayOffset(selection.start); this.source.focus(); this.source.setSelectionRange(at, this.model.displayOffset(selection.end));
-      this.restoreSourceCaretY(at, y); this.updateSourceButton(); this.performFind();
+      this.restoreSourceViewportLine(anchorLine); this.updateSourceButton(); this.performFind();
     }
 
     showWysiwygMode() {
       if (this.mode === "wysiwyg") return;
-      const start = this.model.rawOffset(this.source.selectionStart); const end = this.model.rawOffset(this.source.selectionEnd); const y = this.caretY();
+      const start = this.model.rawOffset(this.source.selectionStart); const end = this.model.rawOffset(this.source.selectionEnd);
+      const anchorLine = this.sourceViewportLine();
       this.source.style.paddingTop = "";
-      this.source.hidden = true; this.surface.hidden = false; this.mode = "wysiwyg"; this.render({ start, end }); this.restoreCaretY(y); this.updateSourceButton(); this.performFind();
+      this.source.style.paddingBottom = "";
+      this.surface.style.paddingTop = "";
+      this.surface.style.paddingBottom = "";
+      this.source.hidden = true; this.surface.hidden = false; this.mode = "wysiwyg"; this.render({ start, end }); this.restoreWysiwygViewportLine(anchorLine); this.updateSourceButton(); this.performFind();
     }
 
-    caretY() {
-      if (this.mode === "source") {
-        const style = window.getComputedStyle(this.source);
-        const lineHeight = parseFloat(style.lineHeight) || 21;
-        const line = this.source.value.slice(0, this.source.selectionStart).split("\n").length - 1;
-        const box = this.source.getBoundingClientRect();
-        return box.top + (parseFloat(style.paddingTop) || 0) + line * lineHeight - this.source.scrollTop;
-      }
-      const range = window.getSelection()?.rangeCount ? window.getSelection().getRangeAt(0) : null;
-      return range ? range.getBoundingClientRect().top : 0;
+    sourceViewportLine() {
+      const style = window.getComputedStyle(this.source);
+      const lineHeight = parseFloat(style.lineHeight) || 21;
+      const box = this.source.getBoundingClientRect();
+      const contentY = this.source.scrollTop + window.innerHeight / 2 - box.top - (parseFloat(style.paddingTop) || 0);
+      return clampedLine(Math.floor(contentY / lineHeight), sourceLines(this.model.source).length);
     }
-    restoreSourceCaretY(displayOffset, targetY) {
+    wysiwygViewportLine() {
+      const middle = window.innerHeight / 2;
+      const rows = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
+      const row = rows.find((candidate) => {
+        const rect = candidate.getBoundingClientRect();
+        return rect.top <= middle && rect.bottom >= middle;
+      }) || rows.reduce((nearest, candidate) => {
+        if (!nearest) return candidate;
+        const distance = (rect) => Math.abs((rect.top + rect.bottom) / 2 - middle);
+        return distance(candidate.getBoundingClientRect()) < distance(nearest.getBoundingClientRect()) ? candidate : nearest;
+      }, null);
+      return row ? Number(row.dataset.line) : 0;
+    }
+    restoreSourceViewportLine(line) {
       requestAnimationFrame(() => {
         const style = window.getComputedStyle(this.source);
         const lineHeight = parseFloat(style.lineHeight) || 21;
-        const line = this.source.value.slice(0, displayOffset).split("\n").length - 1;
         const box = this.source.getBoundingClientRect();
         const padding = parseFloat(style.paddingTop) || 0;
-        const naturalY = box.top + padding + line * lineHeight;
-        // At the top of a textarea, scrollTop cannot go negative.  Add only
-        // the missing space so the visible caret stays where it was instead
-        // of being snapped to the source editor's first visible line.
-        const extraPadding = Math.max(0, targetY - naturalY);
-        if (extraPadding) this.source.style.paddingTop = `${padding + extraPadding}px`;
-        this.source.scrollTop = Math.max(0, naturalY + extraPadding - targetY);
+        const targetY = window.innerHeight / 2;
+        const wanted = box.top + padding + line * lineHeight - targetY;
+        if (wanted < 0) this.source.style.paddingTop = `${padding - wanted}px`;
+        this.source.scrollTop = Math.max(0, wanted);
+        const maximum = this.source.scrollHeight - this.source.clientHeight;
+        if (wanted > maximum) {
+          const bottom = parseFloat(style.paddingBottom) || 0;
+          this.source.style.paddingBottom = `${bottom + wanted - maximum}px`;
+          this.source.scrollTop = wanted;
+        }
       });
     }
-    restoreCaretY(y) {
-      if (!y) return;
+    restoreWysiwygViewportLine(line) {
       requestAnimationFrame(() => {
-        const selection = window.getSelection();
-        if (!selection || !selection.rangeCount) return;
-        const rect = selection.getRangeAt(0).getBoundingClientRect();
+        const row = this.surface.querySelector(`.amorist-source-line[data-line="${line}"]`);
+        if (!row) return;
         const page = document.scrollingElement || document.documentElement;
-        page.scrollTop = alignedScrollTop(page.scrollTop, rect.top, y);
+        const targetY = window.innerHeight / 2;
+        const wanted = page.scrollTop + row.getBoundingClientRect().top - targetY;
+        if (wanted < 0) {
+          const style = window.getComputedStyle(this.surface);
+          this.surface.style.paddingTop = `${(parseFloat(style.paddingTop) || 0) - wanted}px`;
+          page.scrollTop = 0;
+          return;
+        }
+        const maximum = Math.max(0, page.scrollHeight - window.innerHeight);
+        if (wanted > maximum) {
+          const style = window.getComputedStyle(this.surface);
+          this.surface.style.paddingBottom = `${(parseFloat(style.paddingBottom) || 0) + wanted - maximum}px`;
+        }
+        page.scrollTop = wanted;
       });
     }
     updateSourceButton() { const button = this.toolbar.querySelector('[data-action="source"]'); if (button) button.setAttribute("aria-pressed", String(this.mode === "source")); }
@@ -577,6 +609,6 @@
   function midViewportLine(scrollTop, clientHeight, lineHeight) { return lineHeight > 0 ? Math.floor((scrollTop + clientHeight / 2) / lineHeight) : 0; }
   function centerScroll(anchorTop, clientHeight, scrollHeight) { return Math.max(0, Math.min(Math.max(0, scrollHeight - clientHeight), anchorTop - clientHeight / 2)); }
   Internals.MarkdownHistory = TransactionJournal;
-  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, alignedScrollTop, projectionLine, selectedLineRange, transformPhysicalLines };
+  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, alignedScrollTop, clampedLine, projectionLine, selectedLineRange, transformPhysicalLines };
   window.AmoristEditor = { create };
 })();

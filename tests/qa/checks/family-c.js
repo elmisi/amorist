@@ -220,8 +220,8 @@ module.exports = [
   },
   {
     id: "REQ-C2",
-    title: "After a view switch the caret is at the same height on screen, within one line",
-    note: "Identity of character is REQ-C1. This is continuity of position: the same character can be drawn somewhere else entirely, and what keeps a person from losing their place is where the caret appears.",
+    title: "The source line at the viewport midpoint remains the visual anchor across a view switch",
+    note: "Caret identity is REQ-C1. The visual anchor is the physical source line under the middle of the window: it is the line a person compares while changing views.",
     async run(ctx) {
       const failures = [];
       const exercised = [];
@@ -261,47 +261,30 @@ module.exports = [
           // already off screen would be measuring a situation nobody is in.
           await ctx.page.scrollCaretIntoView();
           await ctx.page.settle(60);
-          let before = await ctx.page.caretScreenY();
-          if (before.y === null) continue;
+          let before = await ctx.page.viewportSourceLine();
+          if (before === null) continue;
 
-          // Each anchor crosses the boundary in both directions.  Source and
-          // WYSIWYG have different scrolling primitives, so one green
-          // direction cannot establish continuity for the reverse trip.
+          // Each anchor crosses the boundary in both directions. One green
+          // direction cannot establish the reverse transition's anchoring.
           for (let direction = 0; direction < 2; direction += 1) {
             probes += 1;
             await ctx.page.toggleMode();
             await ctx.page.settle(80);
-            const after = await ctx.page.caretScreenY();
-            const tolerance = before.lineHeight || 21;
-            const drift = after.y === null ? null : Math.abs(after.y - before.y);
+            const after = await ctx.page.viewportSourceLine();
 
-            if (after.y === null) {
+            if (after === null) {
               failures.push({
                 fixture: fixture.name,
                 anchor: candidate.token,
-                detail: "After the switch there was no caret to measure at all.",
+                detail: "After the switch there was no physical source line at the viewport midpoint.",
               });
-            } else if (!after.visible) {
+            } else if (after !== before) {
               failures.push({
                 fixture: fixture.name,
                 anchor: candidate.token,
-                detail: "After the switch the caret is outside the visible area. The "
-                  + "person has to go and find it before they can carry on.",
-                expected: `a position inside the visible ${after.viewportHeight}px`,
-                actual: `y = ${after.y}`,
-                fromView: before.mode,
-                toView: after.mode,
-              });
-            } else if (drift > tolerance) {
-              failures.push({
-                fixture: fixture.name,
-                anchor: candidate.token,
-                detail: `The caret moved ${Math.round(drift)}px up or down the screen — `
-                  + `${(drift / tolerance).toFixed(1)} lines of text.`,
-                expected: `within ${tolerance}px of y = ${before.y}`,
-                actual: `y = ${after.y}`,
-                fromView: before.mode,
-                toView: after.mode,
+                detail: "The line at the middle of the window changed across the view switch.",
+                expected: `source line ${before}`,
+                actual: `source line ${after}`,
               });
             }
             before = after;

@@ -201,6 +201,37 @@
             };
           },
 
+          // The source line under the vertical midpoint is the visual anchor
+          // a person uses when comparing the two views.
+          viewportSourceLine: function () {
+            var middle = window.innerHeight / 2;
+            if (this.mode() === "source") {
+              var t = source();
+              var cs = window.getComputedStyle(t);
+              var lineHeight = parseFloat(cs.lineHeight) || 21;
+              var box = t.getBoundingClientRect();
+              var contentY = t.scrollTop + middle - box.top - (parseFloat(cs.paddingTop) || 0);
+              var count = t.value.split("\n").length;
+              return Math.max(0, Math.min(count - 1, Math.floor(contentY / lineHeight)));
+            }
+            var rows = Array.prototype.slice.call(surface().querySelectorAll(".amorist-source-line"));
+            var row = rows.find(function (candidate) {
+              var rect = candidate.getBoundingClientRect();
+              return rect.top <= middle && rect.bottom >= middle;
+            });
+            if (!row) {
+              row = rows.reduce(function (nearest, candidate) {
+                if (!nearest) return candidate;
+                var distance = function (element) {
+                  var rect = element.getBoundingClientRect();
+                  return Math.abs((rect.top + rect.bottom) / 2 - middle);
+                };
+                return distance(candidate) < distance(nearest) ? candidate : nearest;
+              }, null);
+            }
+            return row ? Number(row.dataset.line) : null;
+          },
+
           // Put the caret where a person editing would have it: on screen.
           scrollCaretIntoView: function () {
             var selection = window.getSelection();

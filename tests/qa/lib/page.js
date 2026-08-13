@@ -34,6 +34,7 @@ function makePage(engine) {
     fontFingerprint: () => call(engine, "fontFingerprint"),
     toolbarAction: (name) => call(engine, "toolbarAction", [name]),
     caretScreenY: () => call(engine, "caretScreenY"),
+    viewportSourceLine: () => call(engine, "viewportSourceLine"),
     scrollCaretIntoView: () => call(engine, "scrollCaretIntoView"),
 
     sendKeys: (sequence) => engine.sendKeys(sequence),

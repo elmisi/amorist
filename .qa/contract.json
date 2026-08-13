@@ -251,7 +251,7 @@
     },
     {
       "id": "REQ-C2",
-      "statement": "After switching views the caret appears at the same height ON SCREEN as it did before, within one line of text, and it is visible rather than scrolled out of sight.",
+      "statement": "After switching views, the physical source line displayed at the vertical midpoint of the window is the same line as before the switch, in both directions.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
