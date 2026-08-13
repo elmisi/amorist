@@ -469,6 +469,7 @@
     showSourceMode() {
       if (this.mode === "source") return;
       const selection = this.selectionRaw(); const y = this.caretY();
+      this.source.style.paddingTop = "";
       this.source.value = this.model.display; this.surface.hidden = true; this.source.hidden = false; this.mode = "source";
       const at = this.model.displayOffset(selection.start); this.source.focus(); this.source.setSelectionRange(at, this.model.displayOffset(selection.end));
       this.restoreSourceCaretY(at, y); this.updateSourceButton(); this.performFind();
@@ -477,10 +478,21 @@
     showWysiwygMode() {
       if (this.mode === "wysiwyg") return;
       const start = this.model.rawOffset(this.source.selectionStart); const end = this.model.rawOffset(this.source.selectionEnd); const y = this.caretY();
+      this.source.style.paddingTop = "";
       this.source.hidden = true; this.surface.hidden = false; this.mode = "wysiwyg"; this.render({ start, end }); this.restoreCaretY(y); this.updateSourceButton(); this.performFind();
     }
 
-    caretY() { const range = window.getSelection()?.rangeCount ? window.getSelection().getRangeAt(0) : null; return range ? range.getBoundingClientRect().top : 0; }
+    caretY() {
+      if (this.mode === "source") {
+        const style = window.getComputedStyle(this.source);
+        const lineHeight = parseFloat(style.lineHeight) || 21;
+        const line = this.source.value.slice(0, this.source.selectionStart).split("\n").length - 1;
+        const box = this.source.getBoundingClientRect();
+        return box.top + (parseFloat(style.paddingTop) || 0) + line * lineHeight - this.source.scrollTop;
+      }
+      const range = window.getSelection()?.rangeCount ? window.getSelection().getRangeAt(0) : null;
+      return range ? range.getBoundingClientRect().top : 0;
+    }
     restoreSourceCaretY(displayOffset, targetY) {
       requestAnimationFrame(() => {
         const style = window.getComputedStyle(this.source);
@@ -488,7 +500,13 @@
         const line = this.source.value.slice(0, displayOffset).split("\n").length - 1;
         const box = this.source.getBoundingClientRect();
         const padding = parseFloat(style.paddingTop) || 0;
-        this.source.scrollTop = Math.max(0, line * lineHeight + box.top + padding - targetY);
+        const naturalY = box.top + padding + line * lineHeight;
+        // At the top of a textarea, scrollTop cannot go negative.  Add only
+        // the missing space so the visible caret stays where it was instead
+        // of being snapped to the source editor's first visible line.
+        const extraPadding = Math.max(0, targetY - naturalY);
+        if (extraPadding) this.source.style.paddingTop = `${padding + extraPadding}px`;
+        this.source.scrollTop = Math.max(0, naturalY + extraPadding - targetY);
       });
     }
     restoreCaretY(y) {
@@ -497,7 +515,8 @@
         const selection = window.getSelection();
         if (!selection || !selection.rangeCount) return;
         const rect = selection.getRangeAt(0).getBoundingClientRect();
-        this.surface.scrollTop = alignedScrollTop(this.surface.scrollTop, rect.top, y);
+        const page = document.scrollingElement || document.documentElement;
+        page.scrollTop = alignedScrollTop(page.scrollTop, rect.top, y);
       });
     }
     updateSourceButton() { const button = this.toolbar.querySelector('[data-action="source"]'); if (button) button.setAttribute("aria-pressed", String(this.mode === "source")); }

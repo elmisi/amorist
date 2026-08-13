@@ -261,47 +261,50 @@ module.exports = [
           // already off screen would be measuring a situation nobody is in.
           await ctx.page.scrollCaretIntoView();
           await ctx.page.settle(60);
-          const before = await ctx.page.caretScreenY();
+          let before = await ctx.page.caretScreenY();
           if (before.y === null) continue;
-          probes += 1;
 
-          await ctx.page.toggleMode();
-          await ctx.page.settle(80);
-          const after = await ctx.page.caretScreenY();
+          // Each anchor crosses the boundary in both directions.  Source and
+          // WYSIWYG have different scrolling primitives, so one green
+          // direction cannot establish continuity for the reverse trip.
+          for (let direction = 0; direction < 2; direction += 1) {
+            probes += 1;
+            await ctx.page.toggleMode();
+            await ctx.page.settle(80);
+            const after = await ctx.page.caretScreenY();
+            const tolerance = before.lineHeight || 21;
+            const drift = after.y === null ? null : Math.abs(after.y - before.y);
 
-          const tolerance = before.lineHeight || 21;
-          const drift = after.y === null ? null : Math.abs(after.y - before.y);
-
-          if (after.y === null) {
-            failures.push({
-              fixture: fixture.name,
-              anchor: candidate.token,
-              detail: "After the switch there was no caret to measure at all.",
-            });
-            continue;
-          }
-          if (!after.visible) {
-            failures.push({
-              fixture: fixture.name,
-              anchor: candidate.token,
-              detail: "After the switch the caret is outside the visible area. The "
-                + "person has to go and find it before they can carry on.",
-              expected: `a position inside the visible ${after.viewportHeight}px`,
-              actual: `y = ${after.y}`,
-            });
-            continue;
-          }
-          if (drift > tolerance) {
-            failures.push({
-              fixture: fixture.name,
-              anchor: candidate.token,
-              detail: `The caret moved ${Math.round(drift)}px up or down the screen — `
-                + `${(drift / tolerance).toFixed(1)} lines of text.`,
-              expected: `within ${tolerance}px of y = ${before.y}`,
-              actual: `y = ${after.y}`,
-              fromView: before.mode,
-              toView: after.mode,
-            });
+            if (after.y === null) {
+              failures.push({
+                fixture: fixture.name,
+                anchor: candidate.token,
+                detail: "After the switch there was no caret to measure at all.",
+              });
+            } else if (!after.visible) {
+              failures.push({
+                fixture: fixture.name,
+                anchor: candidate.token,
+                detail: "After the switch the caret is outside the visible area. The "
+                  + "person has to go and find it before they can carry on.",
+                expected: `a position inside the visible ${after.viewportHeight}px`,
+                actual: `y = ${after.y}`,
+                fromView: before.mode,
+                toView: after.mode,
+              });
+            } else if (drift > tolerance) {
+              failures.push({
+                fixture: fixture.name,
+                anchor: candidate.token,
+                detail: `The caret moved ${Math.round(drift)}px up or down the screen — `
+                  + `${(drift / tolerance).toFixed(1)} lines of text.`,
+                expected: `within ${tolerance}px of y = ${before.y}`,
+                actual: `y = ${after.y}`,
+                fromView: before.mode,
+                toView: after.mode,
+              });
+            }
+            before = after;
           }
         }
       }
