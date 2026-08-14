@@ -26,6 +26,8 @@ function makePage(engine) {
     sourceValue: () => call(engine, "sourceValue"),
     sourceSelection: () => call(engine, "sourceSelection"),
     setSourceSelection: (start, end) => call(engine, "setSourceSelection", [start, end]),
+    setRawSelection: (start, end) => call(engine, "setRawSelection", [start, end]),
+    projectedCaretGeometry: () => call(engine, "projectedCaretGeometry"),
     lineBoxes: () => call(engine, "lineBoxes"),
     firstCharacterTop: (needle) => call(engine, "firstCharacterTop", [needle]),
     selectTextRange: (start, end) => call(engine, "selectTextRange", [start, end]),

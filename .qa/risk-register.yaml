@@ -152,7 +152,7 @@ risks:
       Bidirectional character-level mapping between the two views and every
       projected construct, bounded scroll adjustment, and a visible Source
       fallback when WYSIWYG cannot be produced.
-    verification_ids: [REQ-B4, REQ-C1, REQ-C2, REQ-C3]
+    verification_ids: [REQ-B4, REQ-B6, REQ-B7, REQ-C1, REQ-C2, REQ-C3]
     status: open
 
   - id: R-012
@@ -180,7 +180,7 @@ risks:
     impact: medium
     unacceptable: true
     mitigation: Preserve the author's marker and numbering for untouched items.
-    verification_ids: [REQ-A7, REQ-A2]
+    verification_ids: [REQ-A7, REQ-A2, REQ-B6]
     status: open
 
   - id: R-014

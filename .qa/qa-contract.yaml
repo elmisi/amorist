@@ -18,6 +18,22 @@ approved_on: 2026-07-28
 
 amendments:
   - date: 2026-08-14
+    authorised_by: repository owner, after hands-on testing of version 0.10.5
+    what: >
+      WYSIWYG editing must implement conventional list workflows as local
+      source transactions. REQ-B6 covers marker shortcuts, Enter continuation
+      and splitting, empty-item exit, and Backspace removal; REQ-B7 applies the
+      same boundary discipline to headings and quotes. REQ-B3 remains the
+      plain-prose Enter rule and no longer claims that structural Enter can
+      insert only a bare newline.
+    why: >
+      Source preservation and correct view switching are insufficient when
+      ordinary list editing regresses behind every established text editor.
+      The repository owner explicitly required these conventions to be derived
+      and tested as a workflow matrix rather than reported one defect at a time.
+    source: repository owner statements and implementation approval, 2026-08-14
+
+  - date: 2026-08-14
     authorised_by: repository owner, during hands-on testing of version 0.10.4
     what: >
       Preservation is necessary but not sufficient for release: REQ-B4 requires
@@ -240,6 +256,24 @@ requirements:
         - id: enter
           affected_lines: caret-and-next
           line_delta: 1
+        - id: list-enter
+          affected_lines: current-list-item-and-new-item
+          line_delta: 1
+        - id: list-exit
+          affected_lines: empty-list-item
+          line_delta: 0
+        - id: list-backspace
+          affected_lines: current-list-item
+          line_delta: 0
+        - id: block-enter
+          affected_lines: current-block-and-next-line
+          line_delta: 1
+        - id: block-exit
+          affected_lines: empty-structural-block
+          line_delta: 0
+        - id: block-backspace
+          affected_lines: current-structural-block
+          line_delta: 0
         - id: backspace
           affected_lines: boundary-pair
           line_delta: -1
@@ -594,8 +628,9 @@ requirements:
 
   - id: REQ-B3
     statement: >
-      Enter inserts a bare newline at the caret. It does not create a paragraph
-      break and never writes the two-space hard break.
+      In ordinary prose, Enter inserts a bare newline at the caret. It does not
+      create a paragraph break and never writes the two-space hard break.
+      Structural list behavior is specified separately by REQ-B6.
     category: invariant
     origin: user-statement (Q-010 answer, D-018)
     motivation: >
@@ -631,6 +666,8 @@ requirements:
       evidence_required:
         - real key sequences for an empty bullet, ordered item, quote, heading,
           and task item in every applicable browser engine
+        - the measured caret position immediately after a bullet or ordered
+          marker shortcut, before the first item character is typed
         - the resulting Markdown bytes and the visible text
       success_condition: >
         Each sequence remains in its typed order, its text is visible after the
@@ -639,7 +676,74 @@ requirements:
     false_positive_risk: low
     automation: full
     estimated_cost: low
-    currently_holds: false
+    currently_holds: true
+    status: confirmed
+
+  - id: REQ-B6
+    statement: >
+      WYSIWYG list editing follows conventional editor behavior while retaining
+      exact Markdown authority. Typing a bullet or ordered marker followed by
+      Space leaves the caret after the visual marker. Enter continues the list
+      with the same bullet spelling or the next ordered number; in the middle it
+      splits the item. Enter on an empty item exits the list. Backspace at the
+      start of item content removes that item's list prefix.
+    category: invariant
+    origin: user-statement, 2026-08-14
+    motivation: >
+      An editor that preserves bytes but cannot continue, split or exit a list
+      is not usable for ordinary writing. These are baseline editing semantics,
+      not optional Markdown automation.
+    risk_id: R-011
+    verification:
+      type: deterministic
+      evidence_required:
+        - real key sequences for -, *, +, dotted and parenthesized ordered
+          markers, and task items
+        - Enter at the end, in the middle and on an empty item
+        - Backspace at the first visible item character
+        - exact resulting Markdown and visible caret placement in every
+          applicable browser engine
+      success_condition: >
+        Every sequence produces only its declared local source transaction.
+        Bullet spelling and indentation are retained; ordered continuation uses
+        the next integer with the same delimiter; a continued task starts
+        unchecked; and subsequent typing appears after the visual marker.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: true
+    status: confirmed
+
+  - id: REQ-B7
+    statement: >
+      Hidden heading and quote prefixes participate in conventional WYSIWYG
+      editing. Enter continues a non-empty quote and exits an empty quote.
+      Enter in or at the end of a heading creates an ordinary text line rather
+      than another heading. Enter on an empty heading exits it. Backspace at the
+      first visible character removes the complete structural prefix.
+    category: invariant
+    origin: derived from the repository owner's editing-usability mandate, 2026-08-14
+    motivation: >
+      The same projection boundary that broke list typing also affects headings
+      and quotes. Leaving those paths to browser-specific contenteditable
+      behavior would knowingly retain the same class of regression.
+    risk_id: R-011
+    verification:
+      type: deterministic
+      evidence_required:
+        - real Enter keys at the end, middle and empty state of headings and quotes
+        - real Backspace at the first visible character
+        - exact resulting Markdown in every applicable browser engine
+      success_condition: >
+        Quote continuation retains its exact marker spelling; heading Enter
+        creates plain text; empty structures exit; Backspace removes the whole
+        hidden prefix; and no unrelated source line changes.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: low
+    currently_holds: true
     status: confirmed
 
   - id: REQ-B5

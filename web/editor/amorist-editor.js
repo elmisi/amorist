@@ -5,6 +5,7 @@
   const HtmlToMarkdown = Internals.HtmlToMarkdown;
   const MarkdownCodec = Internals.MarkdownCodec;
   const TableCodec = Internals.TableCodec;
+  const CARET_SENTINEL = "\u200b";
   if (!HtmlToMarkdown) throw new Error("AmoristHtmlToMarkdown must load before AmoristEditor.");
   if (!MarkdownCodec) throw new Error("AmoristMarkdownCodec must load before AmoristEditor.");
 
@@ -101,6 +102,61 @@
     if (/^ {0,3}(`{3,}|~{3,}).*$/.test(raw)) return { prefix: raw.length, text: "", tag: "pre", fence: true };
     if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(raw)) return { prefix: raw.length, text: "", tag: "hr", rule: true };
     return { prefix: 0, text: raw, tag: "div" };
+  }
+
+  function listContextAt(source, offset) {
+    const start = lineStart(source, offset);
+    const end = lineEnd(source, offset);
+    const text = source.slice(start, end);
+    const match = text.match(/^(\s*)([-*+]|\d+[.)])([ \t]+)(?:\[([ xX])\]([ \t]+))?/);
+    if (!match) return null;
+    return {
+      kind: "list",
+      start,
+      end,
+      indent: match[1],
+      marker: match[2],
+      spacing: match[3],
+      task: match[4] !== undefined,
+      taskSpacing: match[5] || " ",
+      markerStart: start + match[1].length,
+      contentStart: start + match[0].length,
+    };
+  }
+
+  function structuralContextAt(source, offset) {
+    const list = listContextAt(source, offset);
+    if (list) return list;
+    const start = lineStart(source, offset);
+    const end = lineEnd(source, offset);
+    const text = source.slice(start, end);
+    const heading = text.match(/^( {0,3})(#{1,6})([ \t]+)/);
+    const quote = text.match(/^(\s*)(>)([ \t]?)/);
+    const match = heading || quote;
+    if (!match) return null;
+    return {
+      kind: heading ? "heading" : "quote",
+      start,
+      end,
+      indent: match[1],
+      marker: match[2],
+      spacing: match[3],
+      markerStart: start + match[1].length,
+      contentStart: start + match[0].length,
+    };
+  }
+
+  function continuedListPrefix(context) {
+    let marker = context.marker;
+    const ordered = marker.match(/^(\d+)([.)])$/);
+    if (ordered) marker = String(Number(ordered[1]) + 1) + ordered[2];
+    return context.indent + marker + context.spacing
+      + (context.task ? "[ ]" + context.taskSpacing : "");
+  }
+
+  function continuedStructuralPrefix(context) {
+    if (context.kind === "quote") return context.indent + context.marker + context.spacing;
+    return continuedListPrefix(context);
   }
 
   class AmoristEditor {
@@ -247,7 +303,11 @@
           row.classList.add("amorist-wysiwyg-task");
           row.dataset.checked = String(projection.checked);
           row.innerHTML = `<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${MarkdownCodec.renderInline(projection.text)}</span>`;
-          if (!projection.text) row.querySelector(".amorist-task-content").classList.add("amorist-empty-caret");
+          if (!projection.text) {
+            const content = row.querySelector(".amorist-task-content");
+            content.classList.add("amorist-empty-caret");
+            content.textContent = CARET_SENTINEL;
+          }
         } else if (projection.rule || projection.fence) {
           row.setAttribute("aria-label", projection.rule ? "Horizontal rule" : "Code fence");
         } else if (projection.text) {
@@ -259,6 +319,7 @@
           // before "- ", "# ", "> ", and similar prefixes.
           const caret = document.createElement("span");
           caret.className = "amorist-empty-caret";
+          caret.textContent = CARET_SENTINEL;
           row.append(caret);
           if (!line.ending) row.append(document.createElement("br"));
         } else if (!line.ending) {
@@ -342,7 +403,7 @@
       while (element && !element.classList.contains("amorist-source-line")) element = element.parentElement;
       if (!element) return this.model.source.length;
       const start = Number(element.dataset.sourceStart);
-      const visible = element.textContent || "";
+      const visible = (element.textContent || "").replaceAll(CARET_SENTINEL, "");
       if (!visible.replace(/\n$/, "") && Number(element.dataset.prefix)) {
         return start + Number(element.dataset.prefix);
       }
@@ -352,10 +413,11 @@
       // Harnesses and browsers may represent a caret at a source-line boundary
       // as the end of the preceding text node.  Its terminal display newline
       // maps to the real line terminator, not to the preceding character.
-      if (visible.endsWith("\n") && prefix.toString().length >= visible.length) {
+      const prefixLength = prefix.toString().replaceAll(CARET_SENTINEL, "").length;
+      if (visible.endsWith("\n") && prefixLength >= visible.length) {
         return Number(element.dataset.sourceEnd) + Number(element.dataset.endingLength);
       }
-      let rawOffset = start + sourceOffsetForVisibleText(this.model.source.slice(start, Number(element.dataset.sourceEnd)), visible, prefix.toString().length);
+      let rawOffset = start + sourceOffsetForVisibleText(this.model.source.slice(start, Number(element.dataset.sourceEnd)), visible, prefixLength);
       if (offset === 0) {
         const closing = inlineClosingDelimiterBefore(node, element);
         if (closing && this.model.source.slice(rawOffset, rawOffset + closing.length) === closing) rawOffset += closing.length;
@@ -371,7 +433,10 @@
         const rawPrefix = this.model.source.slice(Number(block.dataset.sourceStart), rawOffset);
         const emptyCaret = block.querySelector(".amorist-empty-caret");
         if (emptyCaret && rawOffset >= Number(block.dataset.sourceStart) + Number(block.dataset.prefix)) {
-          return { node: emptyCaret, offset: 0 };
+          const sentinel = emptyCaret.firstChild;
+          return sentinel
+            ? { node: sentinel, offset: sentinel.textContent.length }
+            : { node: emptyCaret, offset: 0 };
         }
         const visibleOffset = visibleOffsetForSourcePrefix(rawPrefix, visible);
         const afterInlineDelimiter = /(?:\*\*|\*|`)$/.test(rawPrefix);
@@ -418,11 +483,33 @@
         return;
       }
       if (type === "insertParagraph" || type === "insertLineBreak") {
-        // Browser editing semantics and REQ-B3 define Enter as one bare LF.
-        // Existing terminators are preserved verbatim; only this new boundary is LF.
+        const context = selection.start === selection.end
+          ? structuralContextAt(this.model.source, selection.start)
+          : null;
+        if (context && selection.start >= context.contentStart && selection.start <= context.end) {
+          event.preventDefault();
+          if (context.contentStart === context.end) {
+            this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-exit" : "block-exit");
+          } else if (context.kind === "heading") {
+            this.apply(selection.start, selection.end, "\n", "block-enter");
+          } else {
+            this.apply(selection.start, selection.end, "\n" + continuedStructuralPrefix(context), context.kind === "list" ? "list-enter" : "block-enter");
+          }
+          return;
+        }
+        // REQ-B3 defines ordinary prose Enter as one bare LF. Existing
+        // terminators stay verbatim; only the new boundary is LF.
         event.preventDefault(); this.apply(selection.start, selection.end, "\n", "enter"); return;
       }
       if (type === "deleteContentBackward") {
+        const context = selection.start === selection.end
+          ? structuralContextAt(this.model.source, selection.start)
+          : null;
+        if (context && selection.start === context.contentStart) {
+          event.preventDefault();
+          this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-backspace" : "block-backspace");
+          return;
+        }
         event.preventDefault(); const start = selection.start === selection.end ? previousCodeUnit(this.model.source, selection.start) : selection.start;
         this.apply(start, selection.end, "", "backspace"); return;
       }
@@ -437,6 +524,20 @@
       if (mod && !event.shiftKey && event.key.toLowerCase() === "z") { event.preventDefault(); this.undo(); return; }
       if (mod && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"))) { event.preventDefault(); this.redo(); return; }
       if (mod && event.key.toLowerCase() === "f") { event.preventDefault(); this.openFindBar(); return; }
+      if (this.mode === "wysiwyg" && event.key === "Backspace") {
+        const selection = this.selectionRaw();
+        const context = selection.start === selection.end
+          ? structuralContextAt(this.model.source, selection.start)
+          : null;
+        // WebKitGTK does not consistently follow this boundary keydown with a
+        // deleteContentBackward beforeinput. Own the structural shortcut here;
+        // ordinary Backspace is still handled by beforeinput on every engine.
+        if (context && selection.start === context.contentStart) {
+          event.preventDefault();
+          this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-backspace" : "block-backspace");
+          return;
+        }
+      }
       if (this.mode === "wysiwyg" && event.key === "Tab") {
         event.preventDefault(); const sel = this.selectionRaw(); const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
         const indent = this.model.source.slice(line).match(/^ {1,2}/);

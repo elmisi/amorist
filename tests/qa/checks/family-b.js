@@ -10,6 +10,7 @@
 const { changedLines, splitLines, visible } = require("../lib/diff");
 const { select } = require("../lib/fixtures");
 const { findHandWrappedParagraph } = require("../lib/markdown-shape");
+const { runTauriAppChecks } = require("../lib/tauri-app-e2e");
 
 module.exports = [
   {
@@ -206,27 +207,150 @@ module.exports = [
     async run(ctx) {
       const failures = [];
       const cases = [
-        { name: "bullet", keys: "- alpha", expected: "- alpha", visible: "alpha" },
-        { name: "ordered item", keys: "1. alpha", expected: "1. alpha", visible: "alpha" },
-        { name: "quote", keys: "> alpha", expected: "> alpha", visible: "alpha" },
-        { name: "heading", keys: "# alpha", expected: "# alpha", visible: "alpha" },
-        { name: "task item", keys: "- [ ] alpha", expected: "- [ ] alpha", visible: "alpha" },
+        { name: "bullet", prefix: "- ", text: "alpha", expected: "- alpha", measureMarker: true },
+        { name: "ordered item", prefix: "1. ", text: "alpha", expected: "1. alpha", measureMarker: true },
+        { name: "quote", prefix: "> ", text: "alpha", expected: "> alpha" },
+        { name: "heading", prefix: "# ", text: "alpha", expected: "# alpha" },
+        { name: "task item", prefix: "- [ ] ", text: "alpha", expected: "- [ ] alpha", measureMarker: true },
       ];
 
       for (const sample of cases) {
         await ctx.page.open("");
         await ctx.page.focusSurface();
-        await ctx.page.sendKeys(Array.from(sample.keys));
+        await ctx.page.sendKeys(Array.from(sample.prefix));
+        if (sample.measureMarker) {
+          const geometry = await ctx.page.projectedCaretGeometry();
+          if (!geometry || !geometry.afterMarker) {
+            failures.push({
+              fixture: sample.name,
+              detail: "Immediately after the Markdown shortcut, the visible caret was not after its projected marker.",
+              expected: "caret x at or beyond the marker's right edge",
+              actual: JSON.stringify(geometry),
+            });
+          }
+        }
+        await ctx.page.sendKeys(Array.from(sample.text));
         await ctx.page.settle(80);
         const markdown = await ctx.page.markdown();
         const rendered = await ctx.page.surfaceText();
-        if (markdown !== sample.expected || !rendered.includes(sample.visible)) {
+        if (markdown !== sample.expected || !rendered.includes(sample.text)) {
           failures.push({
             fixture: sample.name,
             detail: "Typing did not continue after the projected Markdown marker.",
             expected: sample.expected,
             actual: markdown,
             rendered,
+          });
+        }
+      }
+
+      return { failures, fixturesExercised: cases.map((sample) => sample.name) };
+    },
+  },
+
+  {
+    id: "REQ-B6",
+    title: "Lists continue, split, exit and lose their marker like a conventional editor",
+    note: "Every case uses real keys and asserts exact Markdown. Continuation is inspected before typing the next item so a misplaced caret cannot be hidden by the following render.",
+    async run(ctx) {
+      const failures = [];
+      const cases = [
+        { name: "dash item continues", source: "- alpha", caret: 7, first: { key: "Enter" }, intermediate: "- alpha\n- ", text: "beta", expected: "- alpha\n- beta", marker: true },
+        { name: "asterisk item continues", source: "* alpha", caret: 7, first: { key: "Enter" }, intermediate: "* alpha\n* ", text: "beta", expected: "* alpha\n* beta", marker: true },
+        { name: "plus item continues", source: "+ alpha", caret: 7, first: { key: "Enter" }, intermediate: "+ alpha\n+ ", text: "beta", expected: "+ alpha\n+ beta", marker: true },
+        { name: "dotted ordered item increments", source: "7. alpha", caret: 8, first: { key: "Enter" }, intermediate: "7. alpha\n8. ", text: "beta", expected: "7. alpha\n8. beta", marker: true },
+        { name: "ordered item increments", source: "7) alpha", caret: 8, first: { key: "Enter" }, intermediate: "7) alpha\n8) ", text: "beta", expected: "7) alpha\n8) beta", marker: true },
+        { name: "indented marker and spacing are retained", source: "  *  alpha", caret: 10, first: { key: "Enter" }, intermediate: "  *  alpha\n  *  ", text: "beta", expected: "  *  alpha\n  *  beta", marker: true },
+        { name: "item splits in the middle", source: "- alpha", caret: 4, first: { key: "Enter" }, intermediate: "- al\n- pha", text: "X", expected: "- al\n- Xpha", marker: true },
+        { name: "task continuation starts unchecked", source: "- [x] done", caret: 10, first: { key: "Enter" }, intermediate: "- [x] done\n- [ ] ", text: "next", expected: "- [x] done\n- [ ] next", marker: true },
+        { name: "empty item exits the list", source: "- alpha\n- ", caret: 10, first: { key: "Enter" }, intermediate: "- alpha\n", text: "beta", expected: "- alpha\nbeta" },
+        { name: "Backspace removes the item prefix", source: "- alpha", caret: 2, first: { key: "Backspace" }, intermediate: "alpha", text: "", expected: "alpha" },
+      ];
+
+      for (const sample of cases) {
+        await ctx.page.open(sample.source);
+        await ctx.page.setRawSelection(sample.caret);
+        await ctx.page.sendKeys([sample.first]);
+        await ctx.page.settle(60);
+        const intermediate = await ctx.page.markdown();
+        if (intermediate !== sample.intermediate) {
+          failures.push({
+            fixture: sample.name,
+            detail: "The structural key did not produce the expected local list transaction.",
+            expected: sample.intermediate,
+            actual: intermediate,
+          });
+          continue;
+        }
+        if (sample.marker) {
+          const geometry = await ctx.page.projectedCaretGeometry();
+          if (!geometry || !geometry.afterMarker) {
+            failures.push({
+              fixture: sample.name,
+              detail: "The continued item caret was not visibly placed after its marker.",
+              expected: "caret x at or beyond the marker's right edge",
+              actual: JSON.stringify(geometry),
+            });
+          }
+        }
+        if (sample.text) await ctx.page.sendKeys(Array.from(sample.text));
+        await ctx.page.settle(60);
+        const actual = await ctx.page.markdown();
+        if (actual !== sample.expected) {
+          failures.push({
+            fixture: sample.name,
+            detail: "Typing after the structural key did not stay in the intended item.",
+            expected: sample.expected,
+            actual,
+          });
+        }
+      }
+
+      return { failures, fixturesExercised: cases.map((sample) => sample.name) };
+    },
+  },
+
+  {
+    id: "REQ-B7",
+    title: "Headings and quotes continue or exit without exposing broken prefixes",
+    note: "These are the non-list instances of the same hidden-prefix boundary. Real keys assert the whole workflow, including the text typed after the structural action.",
+    async run(ctx) {
+      const failures = [];
+      const cases = [
+        { name: "quote continues", source: "> alpha", caret: 7, key: "Enter", intermediate: "> alpha\n> ", text: "beta", expected: "> alpha\n> beta" },
+        { name: "quote splits", source: "> alpha", caret: 4, key: "Enter", intermediate: "> al\n> pha", text: "X", expected: "> al\n> Xpha" },
+        { name: "empty quote exits", source: "> alpha\n> ", caret: 10, key: "Enter", intermediate: "> alpha\n", text: "beta", expected: "> alpha\nbeta" },
+        { name: "quote Backspace removes prefix", source: "> alpha", caret: 2, key: "Backspace", intermediate: "alpha", text: "", expected: "alpha" },
+        { name: "heading Enter creates prose", source: "## alpha", caret: 8, key: "Enter", intermediate: "## alpha\n", text: "beta", expected: "## alpha\nbeta" },
+        { name: "heading splits into prose", source: "## alpha", caret: 5, key: "Enter", intermediate: "## al\npha", text: "X", expected: "## al\nXpha" },
+        { name: "empty heading exits", source: "# ", caret: 2, key: "Enter", intermediate: "", text: "beta", expected: "beta" },
+        { name: "heading Backspace removes prefix", source: "## alpha", caret: 3, key: "Backspace", intermediate: "alpha", text: "", expected: "alpha" },
+      ];
+
+      for (const sample of cases) {
+        await ctx.page.open(sample.source);
+        await ctx.page.setRawSelection(sample.caret);
+        await ctx.page.sendKeys([{ key: sample.key }]);
+        await ctx.page.settle(60);
+        const intermediate = await ctx.page.markdown();
+        if (intermediate !== sample.intermediate) {
+          failures.push({
+            fixture: sample.name,
+            detail: "The structural key did not produce the expected heading/quote transaction.",
+            expected: sample.intermediate,
+            actual: intermediate,
+          });
+          continue;
+        }
+        if (sample.text) await ctx.page.sendKeys(Array.from(sample.text));
+        await ctx.page.settle(60);
+        const actual = await ctx.page.markdown();
+        if (actual !== sample.expected) {
+          failures.push({
+            fixture: sample.name,
+            detail: "Typing after the structural key landed in the wrong source position.",
+            expected: sample.expected,
+            actual,
           });
         }
       }
@@ -280,6 +404,45 @@ module.exports = [
       }
 
       return { failures, fixturesExercised: ["ragged pipe table"] };
+    },
+  },
+  {
+    id: "REQ-B4",
+    scope: "run",
+    title: "The built application places the caret after projected markers",
+    async run() {
+      const app = await runTauriAppChecks();
+      return {
+        failures: app.B4,
+        fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("structural editing")),
+        notCovered: app.unsupported ? [app.unsupported] : [],
+      };
+    },
+  },
+  {
+    id: "REQ-B6",
+    scope: "run",
+    title: "The built application supports conventional list workflows",
+    async run() {
+      const app = await runTauriAppChecks();
+      return {
+        failures: app.B6,
+        fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("structural editing")),
+        notCovered: app.unsupported ? [app.unsupported] : [],
+      };
+    },
+  },
+  {
+    id: "REQ-B7",
+    scope: "run",
+    title: "The built application supports heading and quote workflows",
+    async run() {
+      const app = await runTauriAppChecks();
+      return {
+        failures: app.B7,
+        fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("structural editing")),
+        notCovered: app.unsupported ? [app.unsupported] : [],
+      };
     },
   },
 ];

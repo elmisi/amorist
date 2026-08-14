@@ -43,6 +43,36 @@
             "line_delta": 1
           },
           {
+            "id": "list-enter",
+            "affected_lines": "current-list-item-and-new-item",
+            "line_delta": 1
+          },
+          {
+            "id": "list-exit",
+            "affected_lines": "empty-list-item",
+            "line_delta": 0
+          },
+          {
+            "id": "list-backspace",
+            "affected_lines": "current-list-item",
+            "line_delta": 0
+          },
+          {
+            "id": "block-enter",
+            "affected_lines": "current-block-and-next-line",
+            "line_delta": 1
+          },
+          {
+            "id": "block-exit",
+            "affected_lines": "empty-structural-block",
+            "line_delta": 0
+          },
+          {
+            "id": "block-backspace",
+            "affected_lines": "current-structural-block",
+            "line_delta": 0
+          },
+          {
             "id": "backspace",
             "affected_lines": "boundary-pair",
             "line_delta": -1
@@ -224,7 +254,7 @@
     },
     {
       "id": "REQ-B3",
-      "statement": "Enter inserts a bare newline at the caret. It does not create a paragraph break and never writes the two-space hard break.",
+      "statement": "In ordinary prose, Enter inserts a bare newline at the caret. It does not create a paragraph break and never writes the two-space hard break. Structural list behavior is specified separately by REQ-B6.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
@@ -242,7 +272,34 @@
       "verification": "deterministic",
       "automation": "full",
       "family": "B",
-      "currentlyHolds": false,
+      "currentlyHolds": true,
+      "allowedChange": null,
+      "risks": [
+        "R-011"
+      ]
+    },
+    {
+      "id": "REQ-B6",
+      "statement": "WYSIWYG list editing follows conventional editor behavior while retaining exact Markdown authority. Typing a bullet or ordered marker followed by Space leaves the caret after the visual marker. Enter continues the list with the same bullet spelling or the next ordered number; in the middle it splits the item. Enter on an empty item exits the list. Backspace at the start of item content removes that item's list prefix.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": true,
+      "allowedChange": null,
+      "risks": [
+        "R-011",
+        "R-013"
+      ]
+    },
+    {
+      "id": "REQ-B7",
+      "statement": "Hidden heading and quote prefixes participate in conventional WYSIWYG editing. Enter continues a non-empty quote and exits an empty quote. Enter in or at the end of a heading creates an ordinary text line rather than another heading. Enter on an empty heading exits it. Backspace at the first visible character removes the complete structural prefix.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": true,
       "allowedChange": null,
       "risks": [
         "R-011"

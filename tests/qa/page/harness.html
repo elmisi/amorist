@@ -447,6 +447,45 @@
             return true;
           },
 
+          setRawSelection: function (start, end) {
+            editor.setSurfaceSelection(start, end === undefined ? start : end);
+            return true;
+          },
+
+          projectedCaretGeometry: function () {
+            var selection = window.getSelection();
+            if (!selection || !selection.rangeCount) return null;
+            var range = selection.getRangeAt(0);
+            var row = range.startContainer.nodeType === 1
+              ? range.startContainer
+              : range.startContainer.parentElement;
+            while (row && !row.classList.contains("amorist-source-line")) row = row.parentElement;
+            if (!row) return null;
+            var caretX = null;
+            if (range.startContainer.nodeType === Node.TEXT_NODE && range.startOffset > 0) {
+              var probe = document.createRange();
+              probe.setStart(range.startContainer, range.startOffset - 1);
+              probe.setEnd(range.startContainer, range.startOffset);
+              var probeRect = probe.getBoundingClientRect();
+              caretX = probeRect.right;
+            } else {
+              var rect = range.getBoundingClientRect();
+              if (rect) caretX = rect.left;
+            }
+            var rowRect = row.getBoundingClientRect();
+            var rowStyle = window.getComputedStyle(row);
+            var markerStyle = window.getComputedStyle(row, "::before");
+            var markerRight = rowRect.left
+              + (parseFloat(rowStyle.paddingLeft) || 0)
+              + (parseFloat(markerStyle.marginLeft) || 0)
+              + (parseFloat(markerStyle.width) || 0);
+            return {
+              caretX: Math.round(caretX * 100) / 100,
+              markerRight: Math.round(markerRight * 100) / 100,
+              afterMarker: caretX >= markerRight - 1,
+            };
+          },
+
           // The rendered position of the first character of a given piece of
           // text. REQ-B1 turns on whether two source lines occupy two rendered
           // lines, which is a question about pixels, not about the document

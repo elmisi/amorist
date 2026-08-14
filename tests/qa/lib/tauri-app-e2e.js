@@ -21,7 +21,7 @@ function runTauriAppChecks() {
 }
 
 async function runOnce() {
-  const results = { C2: [], E1: [], E2: [], fixtures: [] };
+  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], fixtures: [] };
   if (process.platform !== "linux") {
     results.unsupported = "Direct tauri-driver application automation is unavailable on this platform; Linux supplies the embedding verdict.";
     return results;
@@ -36,6 +36,9 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.C2.push(failure);
+    results.B4.push(failure);
+    results.B6.push(failure);
+    results.B7.push(failure);
     return results;
   }
   if (!process.env.DISPLAY) {
@@ -46,6 +49,9 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.C2.push(failure);
+    results.B4.push(failure);
+    results.B6.push(failure);
+    results.B7.push(failure);
     return results;
   }
 
@@ -63,6 +69,9 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.C2.push(failure);
+    results.B4.push(failure);
+    results.B6.push(failure);
+    results.B7.push(failure);
     return results;
   }
 
@@ -97,6 +106,12 @@ async function runOnce() {
       longLines[0], longLines[45], longLines[89],
     ]));
     results.fixtures.push("built app: six position/content combinations in both view-switch directions");
+
+    const editing = await verifyApplicationEditing(engine, documentPath);
+    results.B4.push(...editing.B4);
+    results.B6.push(...editing.B6);
+    results.B7.push(...editing.B7);
+    results.fixtures.push("built app: projected caret and structural editing workflows");
 
     fs.writeFileSync(documentPath, saved, "utf8");
     await reloadCleanDocument(engine, saved);
@@ -164,11 +179,154 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.C2.push(failure);
+    results.B4.push(failure);
+    results.B6.push(failure);
+    results.B7.push(failure);
   } finally {
     if (engine) await engine.close().catch(() => {});
     fs.rmSync(scratch, { recursive: true, force: true });
   }
   return results;
+}
+
+async function verifyApplicationEditing(engine, documentPath) {
+  const failures = { B4: [], B6: [], B7: [] };
+  await engine.evaluate(`(function () {
+    if (window.__TAURI__ && window.__TAURI__.dialog) {
+      window.__TAURI__.dialog.confirm = function () { return Promise.resolve(true); };
+    }
+  })()`);
+
+  await loadApplicationFixture(engine, documentPath, "");
+  await ensureApplicationWysiwyg(engine);
+  await engine.evaluate(`document.querySelector(".amorist-editor-surface").focus()`);
+  await engine.sendKeys(["-", " "]);
+  const shortcutGeometry = await applicationCaretGeometry(engine);
+  if (!shortcutGeometry || !shortcutGeometry.afterMarker) {
+    failures.B4.push({
+      fixture: "built app bullet shortcut",
+      detail: "The compiled application's caret was not after the projected bullet.",
+      expected: "caret x at or beyond the marker's right edge",
+      actual: JSON.stringify(shortcutGeometry),
+    });
+  }
+  await engine.sendKeys(["alpha"]);
+  if (await applicationMarkdown(engine) !== "- alpha") {
+    failures.B4.push({ fixture: "built app bullet shortcut", detail: "Typing after the projected bullet reordered the source." });
+  }
+
+  const listCases = [
+    { name: "built app bullet continuation", source: "- alpha", caret: 7, key: "Enter", intermediate: "- alpha\n- ", text: "beta", expected: "- alpha\n- beta", marker: true },
+    { name: "built app ordered continuation", source: "7) alpha", caret: 8, key: "Enter", intermediate: "7) alpha\n8) ", text: "beta", expected: "7) alpha\n8) beta", marker: true },
+    { name: "built app list split", source: "- alpha", caret: 4, key: "Enter", intermediate: "- al\n- pha", text: "X", expected: "- al\n- Xpha", marker: true },
+    { name: "built app empty-list exit", source: "- alpha\n- ", caret: 10, key: "Enter", intermediate: "- alpha\n", text: "beta", expected: "- alpha\nbeta" },
+    { name: "built app list Backspace", source: "- alpha", caret: 2, key: "Backspace", intermediate: "alpha", text: "", expected: "alpha" },
+    { name: "built app task continuation", source: "- [x] done", caret: 10, key: "Enter", intermediate: "- [x] done\n- [ ] ", text: "next", expected: "- [x] done\n- [ ] next", marker: true },
+  ];
+  for (const sample of listCases) {
+    const problem = await runApplicationEditingCase(engine, documentPath, sample);
+    if (problem) failures.B6.push(problem);
+  }
+
+  const blockCases = [
+    { name: "built app quote continuation", source: "> alpha", caret: 7, key: "Enter", intermediate: "> alpha\n> ", text: "beta", expected: "> alpha\n> beta" },
+    { name: "built app empty-quote exit", source: "> alpha\n> ", caret: 10, key: "Enter", intermediate: "> alpha\n", text: "beta", expected: "> alpha\nbeta" },
+    { name: "built app heading to prose", source: "## alpha", caret: 8, key: "Enter", intermediate: "## alpha\n", text: "beta", expected: "## alpha\nbeta" },
+    { name: "built app heading Backspace", source: "## alpha", caret: 3, key: "Backspace", intermediate: "alpha", text: "", expected: "alpha" },
+  ];
+  for (const sample of blockCases) {
+    const problem = await runApplicationEditingCase(engine, documentPath, sample);
+    if (problem) failures.B7.push(problem);
+  }
+  return failures;
+}
+
+async function runApplicationEditingCase(engine, documentPath, sample) {
+  await loadApplicationFixture(engine, documentPath, sample.source);
+  await setApplicationRawSelection(engine, sample.caret);
+  await engine.sendKeys([{ key: sample.key }]);
+  await delay(60);
+  const intermediate = await applicationMarkdown(engine);
+  if (intermediate !== sample.intermediate) {
+    return { fixture: sample.name, detail: "The compiled app produced the wrong structural transaction.", expected: sample.intermediate, actual: intermediate };
+  }
+  if (sample.marker) {
+    const geometry = await applicationCaretGeometry(engine);
+    if (!geometry || !geometry.afterMarker) {
+      return { fixture: sample.name, detail: "The compiled app caret was not after the continued marker.", actual: JSON.stringify(geometry) };
+    }
+  }
+  if (sample.text) await engine.sendKeys([sample.text]);
+  await delay(60);
+  const actual = await applicationMarkdown(engine);
+  return actual === sample.expected ? null : {
+    fixture: sample.name,
+    detail: "Typing after the structural action landed at the wrong source position.",
+    expected: sample.expected,
+    actual,
+  };
+}
+
+async function loadApplicationFixture(engine, documentPath, source) {
+  fs.writeFileSync(documentPath, source, "utf8");
+  await reloadCleanDocument(engine, source);
+}
+
+async function ensureApplicationWysiwyg(engine) {
+  await engine.evaluate(`(function () {
+    var source = document.querySelector(".amorist-editor-source");
+    if (!source.hidden) document.querySelector('[data-action="source"]').click();
+  })()`);
+  await delay(60);
+}
+
+async function setApplicationRawSelection(engine, offset) {
+  await engine.evaluate(`(function () {
+    var source = document.querySelector(".amorist-editor-source");
+    var button = document.querySelector('[data-action="source"]');
+    if (source.hidden) button.click();
+    source.focus();
+    source.setSelectionRange(${offset}, ${offset});
+    button.click();
+  })()`);
+  await delay(60);
+}
+
+async function applicationMarkdown(engine) {
+  const value = await engine.evaluate(`(function () {
+    var source = document.querySelector(".amorist-editor-source");
+    var button = document.querySelector('[data-action="source"]');
+    if (source.hidden) button.click();
+    var value = source.value;
+    button.click();
+    return value;
+  })()`);
+  await delay(60);
+  return value;
+}
+
+async function applicationCaretGeometry(engine) {
+  return engine.evaluate(`(function () {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    var range = selection.getRangeAt(0);
+    var row = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+    while (row && !row.classList.contains("amorist-source-line")) row = row.parentElement;
+    if (!row) return null;
+    var caretX = null;
+    if (range.startContainer.nodeType === Node.TEXT_NODE && range.startOffset > 0) {
+      var probe = document.createRange();
+      probe.setStart(range.startContainer, range.startOffset - 1);
+      probe.setEnd(range.startContainer, range.startOffset);
+      caretX = probe.getBoundingClientRect().right;
+    } else caretX = range.getBoundingClientRect().left;
+    var rowRect = row.getBoundingClientRect();
+    var rowStyle = window.getComputedStyle(row);
+    var markerStyle = window.getComputedStyle(row, "::before");
+    var markerRight = rowRect.left + (parseFloat(rowStyle.paddingLeft) || 0)
+      + (parseFloat(markerStyle.marginLeft) || 0) + (parseFloat(markerStyle.width) || 0);
+    return { caretX: caretX, markerRight: markerRight, afterMarker: caretX >= markerRight - 1 };
+  })()`);
 }
 
 async function reloadCleanDocument(engine, expected) {

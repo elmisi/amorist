@@ -614,6 +614,27 @@ decisions:
       application it is the editor surface; in the component harness it may be
       the document page. Reading the page unconditionally is incorrect.
 
+  - id: D-034
+    statement: >
+      WYSIWYG STRUCTURAL EDITING IS AN EXPLICIT WORKFLOW MATRIX, NOT NATIVE
+      CONTENTEDITABLE BEHAVIOR. List, task, heading and quote actions are local
+      transactions against the authoritative Markdown source, with the visible
+      caret restored after the projected marker.
+    source: user-statement
+    date: 2026-08-14
+    status: confirmed
+    affects: [REQ-A2, REQ-B3, REQ-B4, REQ-B6, REQ-B7, R-011, R-013]
+    baseline_semantics: >
+      Enter continues or splits lists and quotes; an empty item or quote exits;
+      heading Enter creates prose; Backspace at the first visible character
+      removes the hidden structural prefix; ordered lists increment without
+      changing their delimiter; continued tasks start unchecked.
+    verification_consequence: >
+      Every workflow is driven with real keys in both applicable browser
+      engines. Representative critical paths also run through the compiled
+      Tauri application on Linux, including measured caret geometry before
+      subsequent text is typed.
+
 open_recommendations:
   - id: REC-002
     statement: >

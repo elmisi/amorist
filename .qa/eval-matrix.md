@@ -21,8 +21,10 @@ generated; the contract is the source of truth.
 | `REQ-A10` | Switching between WYSIWYG and source, any number of times and in any order, leaves the do… | R-002, R-007, R-012 | deterministic | blocking | full | low | low | RED today |
 | `REQ-B1` | Every line of the file is shown as its own line in the WYSIWYG view. Soft breaks are not… | R-005, R-015 | deterministic | blocking | full | high | medium | RED today |
 | `REQ-B2` | Typing lengthens the current line. It never moves the other lines of the same paragraph. | R-005 | deterministic | blocking | full | low | low | RED today |
-| `REQ-B3` | Enter inserts a bare newline at the caret. It does not create a paragraph break and never… | R-015 | deterministic | blocking | full | low | low | RED today |
-| `REQ-B4` | When typed Markdown becomes a visual construct, subsequent typing remains at the visible… | R-011 | deterministic | blocking | full | low | low | RED today |
+| `REQ-B3` | In ordinary prose, Enter inserts a bare newline at the caret. It does not create a paragr… | R-015 | deterministic | blocking | full | low | low | RED today |
+| `REQ-B4` | When typed Markdown becomes a visual construct, subsequent typing remains at the visible… | R-011 | deterministic | blocking | full | low | low | green today |
+| `REQ-B6` | WYSIWYG list editing follows conventional editor behavior while retaining exact Markdown… | R-011, R-013 | deterministic | blocking | full | medium | low | green today |
+| `REQ-B7` | Hidden heading and quote prefixes participate in conventional WYSIWYG editing. Enter cont… | R-011 | deterministic | blocking | full | low | low | green today |
 | `REQ-B5` | Pipe-table columns are visually aligned in WYSIWYG without changing the source spacing. A… | R-012 | deterministic | blocking | full | low | medium | RED today |
 | `REQ-C1` | Switching between WYSIWYG and source leaves the caret on the same character of the text,… | R-007, R-011 | deterministic | blocking | full | medium | medium | RED today |
 | `REQ-C2` | After switching views, the physical source line displayed at the vertical midpoint of the… | R-011 | deterministic | blocking | full | medium | low | green today |
@@ -39,15 +41,15 @@ generated; the contract is the source of truth.
 ## Reading this table
 
 **State** is measured against the repository at commit a9d7e73, not assumed:
-5 requirements hold today, 1 holds partially, 20 fail. The suite is
+8 requirements hold today, 1 holds partially, 19 fail. The suite is
 expected to be red on first run — the contract specifies the editor that must
 exist, not the one that does.
 
-**Gate**: 25 blocking, 1 advisory. A blocking failure stops
+**Gate**: 27 blocking, 1 advisory. A blocking failure stops
 publication of a release; it does not stop a commit, a merge or a push
 (`G-PUSH` in the contract).
 
-**Verification**: 25 deterministic, 1 manual. No requirement is verified by
+**Verification**: 27 deterministic, 1 manual. No requirement is verified by
 a model. The runner never calls one, so a red result always means the code is
 wrong — never that a service was unavailable or a model was inconsistent.
 
