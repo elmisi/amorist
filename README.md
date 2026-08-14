@@ -104,13 +104,19 @@ cargo install tauri-cli --version "^2"
 
 **Linux:**
 
+The release version is read from the repository-level `VERSION` file. Update
+that file before building; `src-tauri/build.rs` keeps the Tauri configuration in
+sync.
+
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
   libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-cd src-tauri && cargo tauri build
+cd src-tauri && cargo tauri build --bundles deb
 ```
 
-The release binary is at `src-tauri/target/release/amorist`. A `.deb` package is generated in `src-tauri/target/release/bundle/deb/`.
+The release binary is at `src-tauri/target/release/amorist`. The installable
+package is generated as
+`src-tauri/target/release/bundle/deb/amorist_<version>_amd64.deb`.
 
 **macOS:**
 

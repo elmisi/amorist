@@ -4,6 +4,32 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.6] - 2026-08-14
+
+### Changed
+- Raw Markdown is now the edit authority in both Source and WYSIWYG views.
+  Editing uses bounded source transactions instead of serialising the rendered
+  DOM, so opening, switching views, recovery and saving do not normalise
+  untouched bytes.
+- Switching between Source and WYSIWYG preserves the same document location at
+  the start, middle and end of both short and scrollable documents.
+- Pipe tables regain display-only column alignment without rewriting their
+  source spacing.
+- WYSIWYG list editing follows conventional workflows: marker shortcuts leave
+  the caret after the projected marker; Enter continues or splits bullet,
+  ordered and task lists; empty items exit; and Backspace removes the hidden
+  prefix. Heading and quote boundaries follow the corresponding structural
+  behaviour.
+- Discarding recovered changes through Reload now removes the recovery state,
+  and a failed WYSIWYG projection keeps Source visible with a warning instead
+  of leaving a blank editor.
+
+### Quality
+- The contract-driven suite now exercises 27 deterministic requirements on
+  WebKitGTK and Chromium. Critical view-switch, editing and recovery paths also
+  run through the compiled Tauri application on Linux. This evidence does not
+  claim coverage of the macOS application embedding.
+
 ## [0.10.0] - 2026-07-28
 
 ### Added
