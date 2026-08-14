@@ -596,16 +596,16 @@
     sourceViewportAnchor() {
       const style = window.getComputedStyle(this.source);
       const lineHeight = parseFloat(style.lineHeight) || 21;
-      const box = this.source.getBoundingClientRect();
-      const contentY = this.source.scrollTop + window.innerHeight / 2 - box.top - (parseFloat(style.paddingTop) || 0);
+      const contentY = this.source.scrollTop + this.source.clientHeight / 2 - (parseFloat(style.paddingTop) || 0);
       const maximum = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
       return {
         line: clampedLine(Math.floor(contentY / lineHeight), sourceLines(this.model.source).length),
-        edge: this.source.scrollTop <= 1 ? "start" : (this.source.scrollTop >= maximum - 1 ? "end" : null),
+        edge: maximum <= 1 ? "both" : (this.source.scrollTop <= 1 ? "start" : (this.source.scrollTop >= maximum - 1 ? "end" : null)),
       };
     }
     wysiwygViewportAnchor() {
-      const middle = window.innerHeight / 2;
+      const scroller = scrollViewportFor(this.surface);
+      const middle = scrollViewportMiddle(scroller);
       const rows = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
       const row = rows.find((candidate) => {
         const rect = candidate.getBoundingClientRect();
@@ -615,11 +615,10 @@
         const distance = (rect) => Math.abs((rect.top + rect.bottom) / 2 - middle);
         return distance(candidate.getBoundingClientRect()) < distance(nearest.getBoundingClientRect()) ? candidate : nearest;
       }, null);
-      const page = document.scrollingElement || document.documentElement;
-      const maximum = Math.max(0, page.scrollHeight - window.innerHeight);
+      const maximum = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
       return {
         line: row ? Number(row.dataset.line) : 0,
-        edge: page.scrollTop <= 1 ? "start" : (page.scrollTop >= maximum - 1 ? "end" : null),
+        edge: maximum <= 1 ? "both" : (scroller.scrollTop <= 1 ? "start" : (scroller.scrollTop >= maximum - 1 ? "end" : null)),
       };
     }
     restoreSourceViewportAnchor(anchor) {
@@ -627,10 +626,8 @@
         requestAnimationFrame(() => {
           const style = window.getComputedStyle(this.source);
           const lineHeight = parseFloat(style.lineHeight) || 21;
-          const box = this.source.getBoundingClientRect();
           const padding = parseFloat(style.paddingTop) || 0;
-          const targetY = window.innerHeight / 2 - lineHeight / 2;
-          const wanted = box.top + padding + anchor.line * lineHeight - targetY;
+          const wanted = padding + anchor.line * lineHeight + lineHeight / 2 - this.source.clientHeight / 2;
           const maximum = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
           // The first and last viewport have no space on one side. Preserve the
           // edge in that case; never invent blank document padding to fake C2.
@@ -644,12 +641,12 @@
         requestAnimationFrame(() => {
           const row = this.surface.querySelector(`.amorist-source-line[data-line="${anchor.line}"]`);
           if (!row) return;
-          const page = document.scrollingElement || document.documentElement;
-          const targetY = window.innerHeight / 2;
+          const scroller = scrollViewportFor(this.surface);
+          const targetY = scrollViewportMiddle(scroller);
           const rect = row.getBoundingClientRect();
-          const wanted = page.scrollTop + (rect.top + rect.bottom) / 2 - targetY;
-          const maximum = Math.max(0, page.scrollHeight - window.innerHeight);
-          page.scrollTop = anchor.edge === "start" ? 0
+          const wanted = scroller.scrollTop + (rect.top + rect.bottom) / 2 - targetY;
+          const maximum = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          scroller.scrollTop = anchor.edge === "start" ? 0
             : (anchor.edge === "end" ? maximum : Math.max(0, Math.min(maximum, wanted)));
         });
       });
@@ -711,6 +708,23 @@
   }
   function midViewportLine(scrollTop, clientHeight, lineHeight) { return lineHeight > 0 ? Math.floor((scrollTop + clientHeight / 2) / lineHeight) : 0; }
   function centerScroll(anchorTop, clientHeight, scrollHeight) { return Math.max(0, Math.min(Math.max(0, scrollHeight - clientHeight), anchorTop - clientHeight / 2)); }
+  function scrollViewportFor(element) {
+    let candidate = element;
+    while (candidate && candidate !== document.body && candidate !== document.documentElement) {
+      const overflow = window.getComputedStyle(candidate).overflowY;
+      if ((overflow === "auto" || overflow === "scroll")
+        && candidate.scrollHeight > candidate.clientHeight + 1) return candidate;
+      candidate = candidate.parentElement;
+    }
+    return document.scrollingElement || document.documentElement;
+  }
+  function scrollViewportMiddle(scroller) {
+    if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
+      return window.innerHeight / 2;
+    }
+    const box = scroller.getBoundingClientRect();
+    return box.top + scroller.clientHeight / 2;
+  }
   Internals.MarkdownHistory = TransactionJournal;
   window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, alignedScrollTop, clampedLine, projectionLine, selectedLineRange, transformPhysicalLines };
   window.AmoristEditor = { create };

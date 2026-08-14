@@ -706,6 +706,8 @@ requirements:
       directions, wherever both views can centre that line naturally. At the
       beginning or end of the document, both views instead preserve the same
       natural scroll edge and must not create blank padding to fake centring.
+      When the whole document fits in the viewport, it remains wholly visible
+      and unscrolled whether the active position is at its start, middle or end.
     category: invariant
     origin: user-statement, 2026-07-28 (D-031)
     motivation: >
@@ -719,17 +721,21 @@ requirements:
       evidence_required:
         - the physical source-line number at the vertical midpoint before and
           after the switch, in both directions
-        - a document long enough that the position requires scrolling
+        - all six combinations of start/middle/end and content shorter/longer
+          than the viewport, in both directions
+        - the contained scroll viewport used by the actual application layout
       success_condition: >
         Away from a document edge, the source-line number at the window midpoint
         is identical in both views and both directions. At the first or last
         viewport, the arriving view is at the corresponding natural edge, with
-        no synthetic blank area.
+        no synthetic blank area. If the content fits entirely, both views have
+        zero scroll range and keep the entire document visible for all three
+        active positions.
     severity: blocking
     false_positive_risk: low
     automation: full
     estimated_cost: medium
-    currently_holds: false
+    currently_holds: true
     status: confirmed
     why_on_screen_and_not_in_the_document: >
       Matching the caret's position within the document was measured and

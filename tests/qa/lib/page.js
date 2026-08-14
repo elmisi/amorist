@@ -31,6 +31,7 @@ function makePage(engine) {
     selectTextRange: (start, end) => call(engine, "selectTextRange", [start, end]),
     paste: (html, text) => call(engine, "paste", [html, text]),
     setHostWidth: (pixels) => call(engine, "setHostWidth", [pixels]),
+    setContainedViewport: (enabled) => call(engine, "setContainedViewport", [enabled]),
     fontFingerprint: () => call(engine, "fontFingerprint"),
     toolbarAction: (name) => call(engine, "toolbarAction", [name]),
     caretScreenY: () => call(engine, "caretScreenY"),

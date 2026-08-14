@@ -21,7 +21,7 @@ function runTauriAppChecks() {
 }
 
 async function runOnce() {
-  const results = { E1: [], E2: [], fixtures: [] };
+  const results = { C2: [], E1: [], E2: [], fixtures: [] };
   if (process.platform !== "linux") {
     results.unsupported = "Direct tauri-driver application automation is unavailable on this platform; Linux supplies the embedding verdict.";
     return results;
@@ -35,6 +35,7 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.C2.push(failure);
     return results;
   }
   if (!process.env.DISPLAY) {
@@ -44,6 +45,7 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.C2.push(failure);
     return results;
   }
 
@@ -60,6 +62,7 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.C2.push(failure);
     return results;
   }
 
@@ -70,9 +73,13 @@ async function runOnce() {
   const saved = "# Recovery fixture\n\nOriginal line with two spaces  \nUnicode: caffè λ\n";
   const crashSuffix = "\nUnsaved before crash  \nSecond line Ω\n";
   const saveSuffix = "\nExplicitly saved ✓\n";
+  const longLines = Array.from({ length: 90 }, (_, index) => `application matrix line ${String(index).padStart(2, "0")}`);
+  longLines[0] = "ApplicationLongStartUnique";
+  longLines[45] = "ApplicationLongMiddleUnique";
+  longLines[89] = "ApplicationLongEndUnique";
+  const longDocument = longLines.join("\n");
   fs.mkdirSync(dataHome, { recursive: true });
   fs.writeFileSync(documentPath, saved, "utf8");
-  const originalStat = fs.statSync(documentPath, { bigint: true });
   const environment = { ...process.env, XDG_DATA_HOME: dataHome };
 
   let engine = null;
@@ -80,6 +87,20 @@ async function runOnce() {
     engine = new TauriEngine(driver, APPLICATION, [documentPath], environment);
     await engine.start();
     await waitForEditor(engine, saved);
+    results.C2.push(...await verifyApplicationPositionMatrix(engine, "short", [
+      "Recovery fixture", "Original line", "caffè",
+    ]));
+
+    fs.writeFileSync(documentPath, longDocument, "utf8");
+    await reloadCleanDocument(engine, longDocument);
+    results.C2.push(...await verifyApplicationPositionMatrix(engine, "long", [
+      longLines[0], longLines[45], longLines[89],
+    ]));
+    results.fixtures.push("built app: six position/content combinations in both view-switch directions");
+
+    fs.writeFileSync(documentPath, saved, "utf8");
+    await reloadCleanDocument(engine, saved);
+    const originalStat = fs.statSync(documentPath, { bigint: true });
     await appendInSource(engine, crashSuffix);
 
     await delay(900);
@@ -142,11 +163,133 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.C2.push(failure);
   } finally {
     if (engine) await engine.close().catch(() => {});
     fs.rmSync(scratch, { recursive: true, force: true });
   }
   return results;
+}
+
+async function reloadCleanDocument(engine, expected) {
+  await engine.evaluate(`document.getElementById("reload-button").click()`);
+  await waitForEditor(engine, expected, { noticeHidden: true });
+}
+
+async function verifyApplicationPositionMatrix(engine, size, tokens) {
+  const failures = [];
+  for (const [index, position] of ["start", "middle", "end"].entries()) {
+    await setApplicationPosition(engine, position, tokens[index]);
+    let before = await applicationPositionSnapshot(engine);
+    for (const direction of ["WYSIWYG to Source", "Source to WYSIWYG"]) {
+      await engine.evaluate(`document.querySelector('[data-action="source"]').click()`);
+      await delay(100);
+      const after = await applicationPositionSnapshot(engine);
+      const fixture = `${size} content, ${position}`;
+      if (after.views.source === after.views.wysiwyg) {
+        failures.push({ fixture, direction, detail: "The built app did not leave exactly one view visible.", actual: JSON.stringify(after) });
+      } else if (size === "short") {
+        if (before.maximum > 1 || after.maximum > 1 || before.top > 1 || after.top > 1) {
+          failures.push({
+            fixture,
+            direction,
+            detail: "The built app scrolled content that fits entirely in its editor viewport.",
+            expected: "top 0 and maximum 0 in both views",
+            actual: `before ${JSON.stringify(before)}, after ${JSON.stringify(after)}`,
+          });
+        }
+      } else if (position === "start" || position === "end") {
+        if (after.edge !== position) {
+          failures.push({
+            fixture,
+            direction,
+            detail: "The built app lost the requested document boundary.",
+            expected: position,
+            actual: JSON.stringify(after),
+          });
+        }
+      } else if (after.line !== before.line) {
+        failures.push({
+          fixture,
+          direction,
+          detail: "The built app changed the physical line at the editor viewport midpoint.",
+          expected: `source line ${before.line}`,
+          actual: `source line ${after.line}`,
+        });
+      }
+      before = after;
+    }
+  }
+  return failures;
+}
+
+async function setApplicationPosition(engine, position, token) {
+  await engine.evaluate(`(function () {
+    var source = document.querySelector(".amorist-editor-source");
+    var button = document.querySelector('[data-action="source"]');
+    if (!source.hidden) button.click();
+    var surface = document.querySelector(".amorist-editor-surface");
+    var rows = Array.prototype.slice.call(surface.querySelectorAll(".amorist-source-line"));
+    var row = rows.find(function (candidate) { return candidate.textContent.indexOf(${JSON.stringify(token)}) >= 0; });
+    if (!row) throw new Error("position token not found: " + ${JSON.stringify(token)});
+    var walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+    var node = walker.nextNode();
+    if (node) {
+      var range = document.createRange();
+      range.setStart(node, Math.min(2, node.textContent.length));
+      range.collapse(true);
+      var selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      surface.focus();
+    }
+    if (${JSON.stringify(position)} === "middle") row.scrollIntoView({ block: "center" });
+    else surface.scrollTop = ${JSON.stringify(position)} === "end" ? surface.scrollHeight : 0;
+  })()`);
+  await delay(60);
+}
+
+async function applicationPositionSnapshot(engine) {
+  return engine.evaluate(`(function () {
+    var source = document.querySelector(".amorist-editor-source");
+    var surface = document.querySelector(".amorist-editor-surface");
+    var sourceMode = !source.hidden;
+    var scroller = sourceMode ? source : surface;
+    var maximum = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    var top = scroller.scrollTop;
+    var edge = maximum <= 1 ? "both" : (top <= 1 ? "start" : (top >= maximum - 1 ? "end" : null));
+    var line = null;
+    if (sourceMode) {
+      var style = window.getComputedStyle(source);
+      var lineHeight = parseFloat(style.lineHeight) || 21;
+      var contentY = top + source.clientHeight / 2 - (parseFloat(style.paddingTop) || 0);
+      line = Math.max(0, Math.min(source.value.split("\\n").length - 1, Math.floor(contentY / lineHeight)));
+    } else {
+      var box = surface.getBoundingClientRect();
+      var middle = box.top + surface.clientHeight / 2;
+      var rows = Array.prototype.slice.call(surface.querySelectorAll(".amorist-source-line"));
+      var row = rows.find(function (candidate) {
+        var rect = candidate.getBoundingClientRect();
+        return rect.top <= middle && rect.bottom >= middle;
+      }) || rows.reduce(function (nearest, candidate) {
+        if (!nearest) return candidate;
+        var distance = function (element) {
+          var rect = element.getBoundingClientRect();
+          return Math.abs((rect.top + rect.bottom) / 2 - middle);
+        };
+        return distance(candidate) < distance(nearest) ? candidate : nearest;
+      }, null);
+      line = row ? Number(row.dataset.line) : null;
+    }
+    return {
+      mode: sourceMode ? "source" : "wysiwyg",
+      line: line,
+      top: Math.round(top),
+      maximum: Math.round(maximum),
+      edge: edge,
+      views: { source: !source.hidden, wysiwyg: !surface.hidden }
+    };
+  })()`);
 }
 
 async function waitForEditor(engine, expectedSource, options) {

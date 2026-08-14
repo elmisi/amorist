@@ -35,6 +35,31 @@
       #host {
         width: var(--qa-width);
       }
+      body.qa-contained-viewport {
+        overflow: hidden;
+      }
+      body.qa-contained-viewport #host,
+      body.qa-contained-viewport .amorist-editor {
+        height: 720px;
+        min-height: 0;
+      }
+      body.qa-contained-viewport .amorist-editor {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      body.qa-contained-viewport .amorist-editor-toolbar,
+      body.qa-contained-viewport .amorist-editor-findbar {
+        flex: none;
+        position: static;
+      }
+      body.qa-contained-viewport .amorist-editor-surface,
+      body.qa-contained-viewport .amorist-editor-source {
+        flex: 1;
+        height: 0;
+        min-height: 0;
+        overflow-y: auto;
+      }
       /*
         Size and width are pinned here. The FONT is a stack, and a stack is a
         preference, not a guarantee: neither of the named faces exists on macOS,
@@ -90,6 +115,27 @@
 
         function source() {
           return document.querySelector(".amorist-editor-source");
+        }
+
+        function wysiwygScroller() {
+          var target = surface();
+          var overflow = window.getComputedStyle(target).overflowY;
+          return (overflow === "auto" || overflow === "scroll")
+            && target.scrollHeight > target.clientHeight + 1
+            ? target
+            : (document.scrollingElement || document.documentElement);
+        }
+
+        function activeScroller() {
+          return source() && !source().hidden ? source() : wysiwygScroller();
+        }
+
+        function viewportMiddle(element) {
+          if (element === document.scrollingElement || element === document.documentElement || element === document.body) {
+            return window.innerHeight / 2;
+          }
+          var box = element.getBoundingClientRect();
+          return box.top + element.clientHeight / 2;
         }
 
         return {
@@ -205,16 +251,15 @@
           // The source line under the vertical midpoint is the visual anchor
           // a person uses when comparing the two views.
           viewportSourceLine: function () {
-            var middle = window.innerHeight / 2;
             if (this.mode() === "source") {
               var t = source();
               var cs = window.getComputedStyle(t);
               var lineHeight = parseFloat(cs.lineHeight) || 21;
-              var box = t.getBoundingClientRect();
-              var contentY = t.scrollTop + middle - box.top - (parseFloat(cs.paddingTop) || 0);
+              var contentY = t.scrollTop + t.clientHeight / 2 - (parseFloat(cs.paddingTop) || 0);
               var count = t.value.split("\n").length;
               return Math.max(0, Math.min(count - 1, Math.floor(contentY / lineHeight)));
             }
+            var middle = viewportMiddle(wysiwygScroller());
             var rows = Array.prototype.slice.call(surface().querySelectorAll(".amorist-source-line"));
             var row = rows.find(function (candidate) {
               var rect = candidate.getBoundingClientRect();
@@ -251,6 +296,11 @@
             return document.getElementById("host").getBoundingClientRect().width;
           },
 
+          setContainedViewport: function (enabled) {
+            document.body.classList.toggle("qa-contained-viewport", Boolean(enabled));
+            return Boolean(enabled);
+          },
+
           open: function (text) {
             if (editor) editor.destroy();
             host.replaceChildren();
@@ -276,9 +326,7 @@
           },
 
           scrollToEdge: function (edge) {
-            var element = this.mode() === "source"
-              ? source()
-              : (document.scrollingElement || document.documentElement);
+            var element = activeScroller();
             // WebKitGTK converts Number.MAX_SAFE_INTEGER assigned to scrollTop
             // back to zero. Use the actual content extent as the end target.
             element.scrollTop = edge === "end" ? element.scrollHeight : 0;
@@ -286,9 +334,7 @@
           },
 
           scrollState: function () {
-            var element = this.mode() === "source"
-              ? source()
-              : (document.scrollingElement || document.documentElement);
+            var element = activeScroller();
             var maximum = Math.max(0, element.scrollHeight - element.clientHeight);
             return { top: Math.round(element.scrollTop), maximum: Math.round(maximum) };
           },

@@ -22,6 +22,7 @@
 // place in the file where that token is.
 
 const { splitLines } = require("../lib/diff");
+const { runTauriAppChecks } = require("../lib/tauri-app-e2e");
 
 // Words long enough to be distinctive. Shorter ones repeat too often to be
 // unique in a document of any size.
@@ -234,10 +235,100 @@ module.exports = [
       const exercised = [];
       let probes = 0;
 
-      // Documents short enough to fit on screen cannot show this failing:
-      // without scrolling, both views put everything where it already was.
-      // The requirement is about not losing your place, which only happens in
-      // a document you have to move around in.
+      // The application does not scroll the document page: each editor view
+      // is its own scroll viewport inside the app grid. Exercise the complete
+      // state matrix explicitly so an edge case cannot hide inside a general
+      // midpoint probe.
+      const shortLines = ["ShortStartUnique", "ShortMiddleUnique", "ShortEndUnique"];
+      const longLines = Array.from({ length: 90 }, (_, index) => `matrix line ${String(index).padStart(2, "0")}`);
+      longLines[0] = "LongStartUnique";
+      longLines[45] = "LongMiddleUnique";
+      longLines[89] = "LongEndUnique";
+      const positionMatrix = [
+        { position: "start", shortToken: shortLines[0], longToken: longLines[0] },
+        { position: "middle", shortToken: shortLines[1], longToken: longLines[45] },
+        { position: "end", shortToken: shortLines[2], longToken: longLines[89] },
+      ];
+
+      await ctx.page.setContainedViewport(true);
+      for (const content of [
+        { size: "short", text: shortLines.join("\n"), fillsViewport: false },
+        { size: "long", text: longLines.join("\n"), fillsViewport: true },
+      ]) {
+        for (const item of positionMatrix) {
+          const token = content.size === "short" ? item.shortToken : item.longToken;
+          const fixture = `${content.size} content, ${item.position}`;
+          exercised.push(`${fixture}, contained app viewport`);
+          await ctx.page.open(content.text);
+          await ctx.page.focusSurface();
+          const surfaceText = await ctx.page.surfaceText();
+          const offset = surfaceText.indexOf(token);
+          await ctx.page.setCaretAtTextOffset(offset + Math.min(4, token.length));
+          if (content.fillsViewport && item.position !== "middle") {
+            await ctx.page.scrollToEdge(item.position);
+          } else {
+            await ctx.page.scrollCaretIntoView();
+          }
+          await ctx.page.settle(60);
+
+          let beforeLine = await ctx.page.viewportSourceLine();
+          let beforeState = await ctx.page.scrollState();
+          for (const direction of ["WYSIWYG to Source", "Source to WYSIWYG"]) {
+            await ctx.page.toggleMode();
+            await ctx.page.settle(100);
+            probes += 1;
+            const afterLine = await ctx.page.viewportSourceLine();
+            const afterState = await ctx.page.scrollState();
+            const views = await ctx.page.visibleViews();
+
+            if (views.source === views.wysiwyg) {
+              failures.push({
+                fixture,
+                direction,
+                detail: "The switch did not leave exactly one editor view visible.",
+                actual: JSON.stringify(views),
+              });
+            } else if (!content.fillsViewport) {
+              if (beforeState.maximum > 1 || afterState.maximum > 1
+                || beforeState.top > 1 || afterState.top > 1) {
+                failures.push({
+                  fixture,
+                  direction,
+                  detail: "Content declared shorter than the viewport acquired a scroll position during the switch.",
+                  expected: "top 0 and maximum 0 in both views",
+                  actual: `before ${JSON.stringify(beforeState)}, after ${JSON.stringify(afterState)}`,
+                });
+              }
+            } else if (item.position === "start" || item.position === "end") {
+              const actualEdge = scrollEdge(afterState);
+              if (actualEdge !== item.position) {
+                failures.push({
+                  fixture,
+                  direction,
+                  detail: "The switch lost the requested document boundary.",
+                  expected: item.position,
+                  actual: `${actualEdge || "middle"}; before ${JSON.stringify(beforeState)}, after ${JSON.stringify(afterState)}`,
+                });
+              }
+            } else if (afterLine !== beforeLine) {
+              failures.push({
+                fixture,
+                direction,
+                detail: "The physical line at the contained viewport midpoint changed.",
+                expected: `source line ${beforeLine}`,
+                actual: `source line ${afterLine}`,
+              });
+            }
+            beforeLine = afterLine;
+            beforeState = afterState;
+          }
+        }
+      }
+      await ctx.page.setContainedViewport(false);
+
+      // The explicit matrix above covers short and long documents in the app
+      // layout. These corpus probes add varied Markdown geometry at positions
+      // where a midpoint line can be compared.
       const longEnough = ctx.corpus.filter((fixture) => fixture.text.split(/\r?\n/).length >= 60);
       if (!longEnough.length) {
         return {
@@ -383,6 +474,20 @@ module.exports = [
         });
       }
       return { failures, fixturesExercised: ["injected render failure"] };
+    },
+  },
+  {
+    id: "REQ-C2",
+    scope: "run",
+    title: "The built application preserves the six view-position combinations",
+    note: "The component matrix is repeated through the compiled Linux Tauri application so its contained scroll owner cannot drift from the harness.",
+    async run() {
+      const app = await runTauriAppChecks();
+      return {
+        failures: app.C2,
+        fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("six position")),
+        notCovered: app.unsupported ? [app.unsupported] : [],
+      };
     },
   },
 ];

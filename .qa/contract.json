@@ -277,12 +277,12 @@
     },
     {
       "id": "REQ-C2",
-      "statement": "After switching views, the physical source line displayed at the vertical midpoint of the window is the same line as before the switch, in both directions, wherever both views can centre that line naturally. At the beginning or end of the document, both views instead preserve the same natural scroll edge and must not create blank padding to fake centring.",
+      "statement": "After switching views, the physical source line displayed at the vertical midpoint of the window is the same line as before the switch, in both directions, wherever both views can centre that line naturally. At the beginning or end of the document, both views instead preserve the same natural scroll edge and must not create blank padding to fake centring. When the whole document fits in the viewport, it remains wholly visible and unscrolled whether the active position is at its start, middle or end.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
       "family": "C",
-      "currentlyHolds": false,
+      "currentlyHolds": true,
       "allowedChange": null,
       "risks": [
         "R-011"

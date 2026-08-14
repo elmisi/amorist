@@ -591,6 +591,29 @@ decisions:
       macOS. A macOS run records that limitation and may not claim Linux's
       application-embedding evidence as its own.
 
+  - id: D-033
+    statement: >
+      VIEW SWITCH POSITIONING IS A SIX-CASE MATRIX: start, middle and end,
+      crossed with content that does or does not fill the viewport. Every case
+      is checked in both directions using the contained scroll viewport of the
+      application layout.
+    source: user-statement
+    date: 2026-08-14
+    status: confirmed
+    affects: [REQ-C2, R-011]
+    short_content_meaning: >
+      A short document has no distinct scroll start, middle and end: its scroll
+      range is zero. The three positions therefore refer to the active caret
+      position, while the geometric invariant is that all content stays visible
+      and neither view invents scrolling or blank padding.
+    long_content_meaning: >
+      Start and end preserve the corresponding natural boundary. In the middle,
+      the physical source line at the viewport centre remains the anchor.
+    implementation_consequence: >
+      The scroll owner must be discovered from actual vertical overflow. In the
+      application it is the editor surface; in the component harness it may be
+      the document page. Reading the page unconditionally is incorrect.
+
 open_recommendations:
   - id: REC-002
     statement: >
