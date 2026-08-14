@@ -47,6 +47,13 @@ class WebDriverEngine {
     return "";
   }
 
+  // A specialized embedding driver may need to give the application an
+  // isolated environment. Ordinary browser engines inherit the runner's
+  // environment unchanged.
+  serverEnvironment() {
+    return process.env;
+  }
+
   // --- the shared part ----------------------------------------------------
 
   async start() {
@@ -60,6 +67,7 @@ class WebDriverEngine {
 
     this.process = childProcess.spawn(this.binary, this.serverArguments(), {
       stdio: ["ignore", "pipe", "pipe"],
+      env: this.serverEnvironment(),
     });
     const collect = (chunk) => { this.output += chunk.toString("utf8"); };
     this.process.stdout.on("data", collect);

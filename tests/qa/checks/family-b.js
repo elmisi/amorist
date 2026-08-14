@@ -198,4 +198,88 @@ module.exports = [
       return { failures, fixturesExercised: exercised };
     },
   },
+
+  {
+    id: "REQ-B4",
+    title: "Visual Markdown projection keeps subsequent typing at the caret",
+    note: "Real key sequences catch the empty-projection case where a hidden marker has no visible character available for caret mapping.",
+    async run(ctx) {
+      const failures = [];
+      const cases = [
+        { name: "bullet", keys: "- alpha", expected: "- alpha", visible: "alpha" },
+        { name: "ordered item", keys: "1. alpha", expected: "1. alpha", visible: "alpha" },
+        { name: "quote", keys: "> alpha", expected: "> alpha", visible: "alpha" },
+        { name: "heading", keys: "# alpha", expected: "# alpha", visible: "alpha" },
+        { name: "task item", keys: "- [ ] alpha", expected: "- [ ] alpha", visible: "alpha" },
+      ];
+
+      for (const sample of cases) {
+        await ctx.page.open("");
+        await ctx.page.focusSurface();
+        await ctx.page.sendKeys(Array.from(sample.keys));
+        await ctx.page.settle(80);
+        const markdown = await ctx.page.markdown();
+        const rendered = await ctx.page.surfaceText();
+        if (markdown !== sample.expected || !rendered.includes(sample.visible)) {
+          failures.push({
+            fixture: sample.name,
+            detail: "Typing did not continue after the projected Markdown marker.",
+            expected: sample.expected,
+            actual: markdown,
+            rendered,
+          });
+        }
+      }
+
+      return { failures, fixturesExercised: cases.map((sample) => sample.name) };
+    },
+  },
+
+  {
+    id: "REQ-B5",
+    title: "Pipe-table columns align visually without changing the Markdown",
+    note: "The source is deliberately ragged; corresponding pipe positions are measured in pixels while byte identity is asserted separately.",
+    async run(ctx) {
+      const markdown = [
+        "| a | bbbbbbbb | c |",
+        "|---|---|---|",
+        "| longer | b | ccccc |",
+      ].join("\n");
+      await ctx.page.open(markdown);
+      await ctx.page.settle(80);
+      const positions = await ctx.page.tableColumnPositions();
+      const after = await ctx.page.markdown();
+      const failures = [];
+
+      if (after !== markdown) {
+        failures.push({
+          fixture: "ragged pipe table",
+          detail: "Visual alignment changed the source Markdown.",
+          expected: markdown,
+          actual: after,
+        });
+      }
+      if (positions.length !== 3 || positions.some((row) => row.length !== positions[0].length)) {
+        failures.push({
+          fixture: "ragged pipe table",
+          detail: "The rendered table did not expose the same pipe boundaries on every row.",
+          actual: JSON.stringify(positions),
+        });
+      } else {
+        positions[0].forEach((_, column) => {
+          const values = positions.map((row) => row[column]);
+          if (Math.max(...values) - Math.min(...values) > 1) {
+            failures.push({
+              fixture: "ragged pipe table",
+              detail: `Pipe boundary ${column + 1} is not visually aligned.`,
+              expected: "positions within 1px",
+              actual: values.join(", "),
+            });
+          }
+        });
+      }
+
+      return { failures, fixturesExercised: ["ragged pipe table"] };
+    },
+  },
 ];

@@ -68,9 +68,13 @@ information normalised away on the way in cannot be restored on the way out by
 anything downstream. Expect `encode_line_endings` in the Rust backend to become
 a no-op and then disappear as this lands.
 
-**The recovery layer does not exist yet.** Its two requirements report as not
-measured, which keeps the run red, and the report says what building it would
-take. Nothing pretends to cover them in the meantime.
+**The recovery layer is a Linux application test.** It builds the debug binary,
+starts it through `tauri-driver` with a disposable document and isolated
+`XDG_DATA_HOME`, types through WebDriver, asserts the declared 2-second timer,
+samples the user's bytes and mtime, sends `SIGKILL` to the exact application
+PID, and restarts it. It then exercises both Reload/discard and explicit Save.
+Direct Tauri WebDriver automation is unavailable on macOS, so that run records
+the platform limitation rather than borrowing Linux evidence.
 
 **One protocol, two hosts.** Both shipping engines speak the same standard
 WebDriver protocol over plain HTTP, so adding the second platform reused the
@@ -113,12 +117,12 @@ application links against, and a display — virtual where none exists. A missin
 prerequisite fails the run and names itself. It never degrades to a
 single-engine run that reports success.
 
-**Known coverage hole**, stated rather than hidden, and symmetric across
-platforms rather than special to one: every run drives the shipping engine inside
-a **test host** — the small reference browser that ships with the Linux driver,
-the system browser on macOS — never inside the webview the application itself
-embeds. Same engine, different host. The engine is covered everywhere; the
-embedding is covered nowhere.
+**Known coverage hole**, stated rather than hidden: families A-D drive the
+shipping engine inside a **test host** — the small reference browser that ships
+with the Linux driver, the system browser on macOS — rather than the webview the
+application embeds. Same engine, different host. Family E now covers the Linux
+application embedding for recovery and write isolation only; it does not turn
+that focused scenario into general app-host coverage.
 
 This was first written as a macOS problem, which would have claimed a
 completeness on Linux that never existed. It was caught only because the runner

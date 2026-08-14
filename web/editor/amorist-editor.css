@@ -88,6 +88,16 @@
   line-height: 1.65;
 }
 
+.amorist-empty-caret {
+  display: inline-block;
+  min-width: 1px;
+}
+
+.amorist-wysiwyg-task .amorist-task-content.amorist-empty-caret {
+  display: inline-block;
+  min-width: 1px;
+}
+
 .amorist-wysiwyg-h1,
 .amorist-wysiwyg-h2,
 .amorist-wysiwyg-h3,
@@ -169,6 +179,11 @@
 .amorist-wysiwyg-table {
   color: #10202c;
   font-size: 14px;
+  white-space: pre;
+}
+
+.amorist-wysiwyg-table-cell {
+  box-sizing: content-box;
 }
 
 .amorist-wysiwyg-rule {

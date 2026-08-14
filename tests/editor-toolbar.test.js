@@ -87,20 +87,48 @@ async function main() {
     await engine.sendKeys(["Y"]);
     assert.equal(await evaluate(engine, "window.__qa.markdown()"), "alp**X**Yha bravo");
 
-    const richMarkdown = "```\n**literal**\n```\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n---";
+    await evaluate(engine, `(() => {
+      window.__qa.open("");
+      window.__qa.focusSurface();
+      return true;
+    })()`);
+    await engine.sendKeys(["-", " ", "a", "l", "p", "h", "a"]);
+    assert.equal(
+      await evaluate(engine, "window.__qa.markdown()"),
+      "- alpha",
+      "typing into a newly projected bullet keeps the caret after its hidden marker",
+    );
+
+    const richMarkdown = "```\n**literal**\n```\n\n| a | bbbbbbbb |\n| --- | --- |\n| longer | b |\n\n---";
     const richProjection = await evaluate(engine, `(() => {
       window.__qa.open(${JSON.stringify(richMarkdown)});
       const code = document.querySelector(".amorist-wysiwyg-code");
-      const tableRows = document.querySelectorAll(".amorist-wysiwyg-table").length;
+      const rows = Array.from(document.querySelectorAll(".amorist-wysiwyg-table"));
+      const tableRows = rows.length;
+      const markers = rows.map((row) => Array.from(row.querySelectorAll(".amorist-wysiwyg-table-marker"))
+        .map((marker) => Math.round(marker.getBoundingClientRect().left * 10) / 10));
+      const tableAligned = markers[0].every((_, column) => {
+        const positions = markers.map((row) => row[column]);
+        return Math.max(...positions) - Math.min(...positions) <= 0.5;
+      });
       const rule = document.querySelector(".amorist-wysiwyg-rule");
       return {
         codeText: code && code.textContent.trim(),
         codeHasStrong: Boolean(code && code.querySelector("strong")),
         tableRows,
+        tableAligned,
+        markdownUnchanged: window.__qa.markdown() === ${JSON.stringify(richMarkdown)},
         ruleBorder: rule && getComputedStyle(rule).borderTopWidth,
       };
     })()`);
-    assert.deepEqual(richProjection, { codeText: "**literal**", codeHasStrong: false, tableRows: 3, ruleBorder: "1px" });
+    assert.deepEqual(richProjection, {
+      codeText: "**literal**",
+      codeHasStrong: false,
+      tableRows: 3,
+      tableAligned: true,
+      markdownUnchanged: true,
+      ruleBorder: "1px",
+    });
 
     const multiLineSource = "before\r\none\rtwo\nthree\r\nafter";
     const multiLine = await evaluate(engine, `(() => {

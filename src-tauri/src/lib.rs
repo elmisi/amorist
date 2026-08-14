@@ -219,6 +219,14 @@ fn load_recovery(
     saved_source: &str,
 ) -> Option<String> {
     let file = working_copy_path(app).ok()?;
+    load_recovery_file(&file, path, saved_source)
+}
+
+fn load_recovery_file(
+    file: &std::path::Path,
+    path: &std::path::Path,
+    saved_source: &str,
+) -> Option<String> {
     let record: WorkingCopy = serde_json::from_slice(&fs::read(file).ok()?).ok()?;
     if record.path == path.display().to_string()
         && record.saved_source == saved_source
@@ -251,11 +259,15 @@ fn persist_working_copy(
         unsaved_source,
         revision,
     };
-    fs::write(
-        working_copy_path(&app)?,
-        serde_json::to_vec(&record).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())
+    persist_working_copy_file(&working_copy_path(&app)?, &record)
+}
+
+fn persist_working_copy_file(file: &std::path::Path, record: &WorkingCopy) -> Result<(), String> {
+    let encoded = serde_json::to_string(record).map_err(|e| e.to_string())?;
+    // Recovery must survive a crash during the recovery write itself. Reuse
+    // the same adjacent-temp-and-rename path as an explicit document save, but
+    // target only Amorist's private app-data file.
+    write_document(file, &encoded, None, false)
 }
 
 #[tauri::command]
@@ -812,7 +824,34 @@ mod tests {
     }
 
     #[test]
-    fn discard_recovery_removes_the_copy_and_is_idempotent() {
+    fn qa_req_e1_working_copy_survives_a_restart_with_exact_source() {
+        let dir = scratch_dir("e1-restart");
+        let document = dir.join("nota.md");
+        let copy = dir.join("working-copy.json");
+        let saved = "# Titolo\r\n\r\nprima  \r\n";
+        let unsaved = "# Titolo\r\n\r\nprima  \r\naggiunta 👨‍👩‍👧\r\n";
+        fs::write(&document, saved.as_bytes()).unwrap();
+        let record = WorkingCopy {
+            path: document.display().to_string(),
+            saved_source: saved.to_string(),
+            unsaved_source: unsaved.to_string(),
+            revision: 7,
+        };
+
+        persist_working_copy_file(&copy, &record).unwrap();
+        // Loading from disk through a new call is the storage boundary that a
+        // terminated and restarted process crosses.
+        assert_eq!(
+            load_recovery_file(&copy, &document, saved),
+            Some(unsaved.to_string())
+        );
+        assert_eq!(fs::read(&document).unwrap(), saved.as_bytes());
+        assert!(temporary_files_in(&dir).is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_e1_discard_recovery_removes_the_copy_and_is_idempotent() {
         let dir = scratch_dir("recovery-discard");
         let copy = dir.join("working-copy.json");
         fs::write(&copy, br#"{\"unsavedSource\":\"da scartare\"}"#).unwrap();
@@ -821,6 +860,29 @@ mod tests {
         assert!(!copy.exists(), "discard left the recovery copy in place");
         discard_working_copy_file(&copy).unwrap();
 
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_e2_persisting_recovery_never_writes_the_user_document() {
+        let dir = scratch_dir("e2-no-user-write");
+        let document = dir.join("nota.md");
+        let copy = dir.join("working-copy.json");
+        let saved = "# Originale\n";
+        fs::write(&document, saved.as_bytes()).unwrap();
+        let before = fs::metadata(&document).unwrap().modified().unwrap();
+        let record = WorkingCopy {
+            path: document.display().to_string(),
+            saved_source: saved.to_string(),
+            unsaved_source: "# Modifica non salvata\n".to_string(),
+            revision: 1,
+        };
+
+        persist_working_copy_file(&copy, &record).unwrap();
+
+        assert_eq!(fs::read(&document).unwrap(), saved.as_bytes());
+        assert_eq!(fs::metadata(&document).unwrap().modified().unwrap(), before);
+        assert!(copy.exists(), "the separate recovery file was not written");
         fs::remove_dir_all(&dir).ok();
     }
 

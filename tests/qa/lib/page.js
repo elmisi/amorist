@@ -36,6 +36,11 @@ function makePage(engine) {
     caretScreenY: () => call(engine, "caretScreenY"),
     viewportSourceLine: () => call(engine, "viewportSourceLine"),
     scrollCaretIntoView: () => call(engine, "scrollCaretIntoView"),
+    scrollToEdge: (edge) => call(engine, "scrollToEdge", [edge]),
+    scrollState: () => call(engine, "scrollState"),
+    visibleViews: () => call(engine, "visibleViews"),
+    tableColumnPositions: () => call(engine, "tableColumnPositions"),
+    forceWysiwygFailure: () => call(engine, "forceWysiwygFailure"),
 
     sendKeys: (sequence) => engine.sendKeys(sequence),
     evaluate: (expression) => engine.evaluate(expression),

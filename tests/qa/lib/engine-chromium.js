@@ -217,21 +217,12 @@ class ChromiumEngine {
   }
 
   async dispatchChar(char) {
-    const code = char.codePointAt(0);
-    await this.socket.send("Input.dispatchKeyEvent", {
-      type: "keyDown",
-      key: char,
-      text: char,
-      unmodifiedText: char,
-      windowsVirtualKeyCode: code,
-      nativeVirtualKeyCode: code,
-    });
-    await this.socket.send("Input.dispatchKeyEvent", {
-      type: "keyUp",
-      key: char,
-      windowsVirtualKeyCode: code,
-      nativeVirtualKeyCode: code,
-    });
+    // A Unicode code point is not a Windows virtual-key code: '#' is 35
+    // (End) and '.' is 46 (Delete). Passing code points here made a literal
+    // typing check silently press navigation/editing keys. CDP provides the
+    // protocol-neutral text insertion primitive for exactly this case; named
+    // and modified keys still use dispatchKeyEvent in sendKeys above.
+    await this.socket.send("Input.insertText", { text: char });
   }
 
   async close() {

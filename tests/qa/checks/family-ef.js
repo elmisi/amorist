@@ -2,16 +2,17 @@
 
 // Families E and F — unsaved work, and the write path.
 //
-// These do not run in a browser. The write path is Rust and is verified in
-// Rust, over real temporary files; the recovery requirements need the built
-// application, started and killed, which is a layer that does not exist yet and
-// is named here rather than left out.
+// These do not run in the component harness. Rust verifies the storage and
+// write boundaries over real temporary files; on Linux tauri-driver also
+// starts the compiled application, drives its timer, kills it and reopens it.
 //
 // The Rust tests are executed once and their results fed into the same report
 // as everything else, so that one command still produces one verdict.
 
 const childProcess = require("node:child_process");
 const path = require("node:path");
+
+const { runTauriAppChecks } = require("../lib/tauri-app-e2e");
 
 const MANIFEST = path.resolve(__dirname, "..", "..", "..", "src-tauri", "Cargo.toml");
 
@@ -117,17 +118,17 @@ module.exports = [
     id: "REQ-E1",
     scope: "run",
     title: "Work not yet saved survives an abrupt termination",
-    note: "Nothing in the product writes a working copy today, so there is nothing to recover. Verifying this properly needs the built application started and killed.",
+    note: "Rust verifies the storage boundary; on Linux tauri-driver also types in the built app, waits for persistence, kills it and verifies recovery after restart.",
     async run() {
+      const app = await runTauriAppChecks();
       return {
-        failures: [],
-        fixturesExercised: [],
-        notCovered: [
-          "typing, killing the process without a save, and recovering on the next start — "
-          + "this needs the built application driven end to end, a layer the suite does not "
-          + "have yet. Independently of the measurement: the product writes no working copy "
-          + "anywhere, so today there is nothing that could be recovered",
+        failures: [...collect("qa_req_e1_", "REQ-E1"), ...app.E1],
+        fixturesExercised: [
+          "exact CRLF, trailing-space and Unicode recovery after a disk reload",
+          "discarding a recovery copy twice",
+          ...app.fixtures.filter((fixture) => fixture.includes("SIGKILL")),
         ],
+        notCovered: app.unsupported ? [app.unsupported] : [],
       };
     },
   },
@@ -136,17 +137,16 @@ module.exports = [
     id: "REQ-E2",
     scope: "run",
     title: "The user's file is never written except on an explicit save",
-    note: "Holds today. Verifying it as stated means sampling the file during a real editing session, which needs the application rather than the component.",
+    note: "Rust verifies the backend boundary; on Linux tauri-driver samples the real file before and after the recovery timer and observes a change only after Save.",
     async run() {
+      const app = await runTauriAppChecks();
       return {
-        failures: [],
-        fixturesExercised: [],
-        notCovered: [
-          "sampling the bytes and the modification time of the user's file throughout an "
-          + "editing session with no save — this needs the built application driven end to "
-          + "end. The write path itself is covered by the two checks above, which are the "
-          + "only place the product writes to that file at all",
+        failures: [...collect("qa_req_e2_", "REQ-E2"), ...app.E2],
+        fixturesExercised: [
+          "working-copy persistence beside an unchanged user document",
+          ...app.fixtures.filter((fixture) => fixture.includes("sampled")),
         ],
+        notCovered: app.unsupported ? [app.unsupported] : [],
       };
     },
   },

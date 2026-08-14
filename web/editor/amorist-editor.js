@@ -127,9 +127,9 @@
       this.source.className = "amorist-editor-source";
       this.source.hidden = true;
       this.source.spellcheck = false;
-      // Source is a view of physical Markdown lines.  Soft-wrapping it makes
-      // the line at the viewport midpoint ambiguous, so the user cannot keep
-      // a stable visual anchor while comparing it with the rendered view.
+      // C2 is defined over physical Markdown lines, not soft-wrapped display
+      // fragments.  Horizontal scrolling is preferable to changing the line
+      // identity used while comparing Source with WYSIWYG.
       this.source.wrap = "off";
       this.findBar = document.createElement("div");
       this.findBar.className = "amorist-editor-findbar";
@@ -241,14 +241,26 @@
         if (codeContent) {
           row.classList.add("amorist-wysiwyg-code");
           row.textContent = raw || "\u200b";
+        } else if (row.classList.contains("amorist-wysiwyg-table")) {
+          this.renderTableRow(row, raw);
         } else if (typeof projection.checked === "boolean") {
           row.classList.add("amorist-wysiwyg-task");
           row.dataset.checked = String(projection.checked);
           row.innerHTML = `<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${MarkdownCodec.renderInline(projection.text)}</span>`;
+          if (!projection.text) row.querySelector(".amorist-task-content").classList.add("amorist-empty-caret");
         } else if (projection.rule || projection.fence) {
           row.setAttribute("aria-label", projection.rule ? "Horizontal rule" : "Code fence");
         } else if (projection.text) {
           row.innerHTML = MarkdownCodec.renderInline(projection.text);
+        } else if (projection.prefix) {
+          // An empty rendered construct still needs a real DOM position after
+          // its hidden Markdown marker.  Without it WebKit/Chromium place the
+          // caret before the pseudo-marker and the next character is inserted
+          // before "- ", "# ", "> ", and similar prefixes.
+          const caret = document.createElement("span");
+          caret.className = "amorist-empty-caret";
+          row.append(caret);
+          if (!line.ending) row.append(document.createElement("br"));
         } else if (!line.ending) {
           row.append(document.createElement("br"));
         }
@@ -257,8 +269,61 @@
         if (line.ending) row.append(document.createTextNode("\n"));
         this.surface.append(row);
       });
+      this.layoutTables();
       this.isRendering = false;
       if (rawSelection) this.setSurfaceSelection(rawSelection.start, rawSelection.end);
+    }
+
+    renderTableRow(row, raw) {
+      // Keep every source character in the editable text stream.  The visual
+      // columns below are CSS layout only: unlike the former table formatter,
+      // they never manufacture padding in the Markdown model.
+      let cellStart = 0;
+      let escaped = false;
+      const appendCell = (text) => {
+        const cell = document.createElement("span");
+        cell.className = "amorist-wysiwyg-table-cell";
+        if (text) cell.innerHTML = MarkdownCodec.renderInline(text);
+        row.append(cell);
+      };
+      for (let index = 0; index < raw.length; index += 1) {
+        const char = raw[index];
+        if (char === "|" && !escaped) {
+          appendCell(raw.slice(cellStart, index));
+          const marker = document.createElement("span");
+          marker.className = "amorist-wysiwyg-table-marker";
+          marker.textContent = "|";
+          row.append(marker);
+          cellStart = index + 1;
+        }
+        escaped = char === "\\" && !escaped;
+        if (char !== "\\") escaped = false;
+      }
+      appendCell(raw.slice(cellStart));
+    }
+
+    layoutTables() {
+      let rows = [];
+      const align = () => {
+        if (!rows.length) return;
+        const widths = [];
+        rows.forEach((row) => {
+          row.querySelectorAll(".amorist-wysiwyg-table-cell").forEach((cell, index) => {
+            widths[index] = Math.max(widths[index] || 0, cell.getBoundingClientRect().width);
+          });
+        });
+        rows.forEach((row) => {
+          row.querySelectorAll(".amorist-wysiwyg-table-cell").forEach((cell, index) => {
+            cell.style.paddingInlineEnd = `${Math.max(0, widths[index] - cell.getBoundingClientRect().width)}px`;
+          });
+        });
+        rows = [];
+      };
+      Array.from(this.surface.querySelectorAll(".amorist-source-line")).forEach((row) => {
+        if (row.classList.contains("amorist-wysiwyg-table")) rows.push(row);
+        else align();
+      });
+      align();
     }
 
     selectionRaw() {
@@ -266,6 +331,9 @@
       const selection = window.getSelection();
       if (!selection || !selection.rangeCount) return { start: 0, end: 0 };
       const range = selection.getRangeAt(0);
+      if (!this.surface.contains(range.startContainer) || !this.surface.contains(range.endContainer)) {
+        return { start: 0, end: 0 };
+      }
       return { start: this.rawPoint(range.startContainer, range.startOffset), end: this.rawPoint(range.endContainer, range.endOffset) };
     }
 
@@ -274,10 +342,13 @@
       while (element && !element.classList.contains("amorist-source-line")) element = element.parentElement;
       if (!element) return this.model.source.length;
       const start = Number(element.dataset.sourceStart);
+      const visible = element.textContent || "";
+      if (!visible.replace(/\n$/, "") && Number(element.dataset.prefix)) {
+        return start + Number(element.dataset.prefix);
+      }
       const prefix = document.createRange();
       prefix.setStart(element, 0);
       prefix.setEnd(node, offset);
-      const visible = element.textContent || "";
       // Harnesses and browsers may represent a caret at a source-line boundary
       // as the end of the preceding text node.  Its terminal display newline
       // maps to the real line terminator, not to the preceding character.
@@ -298,6 +369,10 @@
         const block = blocks.find((candidate) => rawOffset >= Number(candidate.dataset.sourceStart) && rawOffset <= Number(candidate.dataset.sourceEnd)) || blocks[blocks.length - 1];
         const visible = block.textContent || "";
         const rawPrefix = this.model.source.slice(Number(block.dataset.sourceStart), rawOffset);
+        const emptyCaret = block.querySelector(".amorist-empty-caret");
+        if (emptyCaret && rawOffset >= Number(block.dataset.sourceStart) + Number(block.dataset.prefix)) {
+          return { node: emptyCaret, offset: 0 };
+        }
         const visibleOffset = visibleOffsetForSourcePrefix(rawPrefix, visible);
         const afterInlineDelimiter = /(?:\*\*|\*|`)$/.test(rawPrefix);
         const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
@@ -477,33 +552,59 @@
     showSourceMode() {
       if (this.mode === "source") return;
       const selection = this.selectionRaw();
-      const anchorLine = this.wysiwygViewportLine();
+      const anchor = this.wysiwygViewportAnchor();
       this.source.style.paddingTop = "";
       this.source.style.paddingBottom = "";
       this.source.value = this.model.display; this.surface.hidden = true; this.source.hidden = false; this.mode = "source";
       const at = this.model.displayOffset(selection.start); this.source.focus(); this.source.setSelectionRange(at, this.model.displayOffset(selection.end));
-      this.restoreSourceViewportLine(anchorLine); this.updateSourceButton(); this.performFind();
+      this.restoreSourceViewportAnchor(anchor); this.updateSourceButton(); this.performFind();
     }
 
     showWysiwygMode() {
       if (this.mode === "wysiwyg") return;
       const start = this.model.rawOffset(this.source.selectionStart); const end = this.model.rawOffset(this.source.selectionEnd);
-      const anchorLine = this.sourceViewportLine();
+      const anchor = this.sourceViewportAnchor();
       this.source.style.paddingTop = "";
       this.source.style.paddingBottom = "";
       this.surface.style.paddingTop = "";
       this.surface.style.paddingBottom = "";
-      this.source.hidden = true; this.surface.hidden = false; this.mode = "wysiwyg"; this.render({ start, end }); this.restoreWysiwygViewportLine(anchorLine); this.updateSourceButton(); this.performFind();
+      try {
+        // Render the arriving view before hiding the safe source view.  A view
+        // failure must be an explicit fallback, never an empty editor.
+        this.surface.hidden = false;
+        this.render({ start, end });
+        this.source.hidden = true;
+        this.mode = "wysiwyg";
+        this.restoreWysiwygViewportAnchor(anchor);
+        this.updateSourceButton(); this.performFind();
+      } catch (error) {
+        this.isRendering = false;
+        this.surface.hidden = true;
+        this.source.hidden = false;
+        this.mode = "source";
+        this.source.value = this.model.display;
+        const displayStart = this.model.displayOffset(start);
+        this.source.focus(); this.source.setSelectionRange(displayStart, this.model.displayOffset(end));
+        this.updateSourceButton();
+        if (typeof this.options.onWarning === "function") {
+          this.options.onWarning("WYSIWYG could not be rendered. Source view remains available; your text is unchanged.");
+        }
+        console.error("Amorist WYSIWYG render failed; Source view was kept visible.", error);
+      }
     }
 
-    sourceViewportLine() {
+    sourceViewportAnchor() {
       const style = window.getComputedStyle(this.source);
       const lineHeight = parseFloat(style.lineHeight) || 21;
       const box = this.source.getBoundingClientRect();
       const contentY = this.source.scrollTop + window.innerHeight / 2 - box.top - (parseFloat(style.paddingTop) || 0);
-      return clampedLine(Math.floor(contentY / lineHeight), sourceLines(this.model.source).length);
+      const maximum = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
+      return {
+        line: clampedLine(Math.floor(contentY / lineHeight), sourceLines(this.model.source).length),
+        edge: this.source.scrollTop <= 1 ? "start" : (this.source.scrollTop >= maximum - 1 ? "end" : null),
+      };
     }
-    wysiwygViewportLine() {
+    wysiwygViewportAnchor() {
       const middle = window.innerHeight / 2;
       const rows = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
       const row = rows.find((candidate) => {
@@ -514,46 +615,43 @@
         const distance = (rect) => Math.abs((rect.top + rect.bottom) / 2 - middle);
         return distance(candidate.getBoundingClientRect()) < distance(nearest.getBoundingClientRect()) ? candidate : nearest;
       }, null);
-      return row ? Number(row.dataset.line) : 0;
+      const page = document.scrollingElement || document.documentElement;
+      const maximum = Math.max(0, page.scrollHeight - window.innerHeight);
+      return {
+        line: row ? Number(row.dataset.line) : 0,
+        edge: page.scrollTop <= 1 ? "start" : (page.scrollTop >= maximum - 1 ? "end" : null),
+      };
     }
-    restoreSourceViewportLine(line) {
+    restoreSourceViewportAnchor(anchor) {
       requestAnimationFrame(() => {
-        const style = window.getComputedStyle(this.source);
-        const lineHeight = parseFloat(style.lineHeight) || 21;
-        const box = this.source.getBoundingClientRect();
-        const padding = parseFloat(style.paddingTop) || 0;
-        const targetY = window.innerHeight / 2 - lineHeight / 2;
-        const wanted = box.top + padding + line * lineHeight - targetY;
-        if (wanted < 0) this.source.style.paddingTop = `${padding - wanted}px`;
-        this.source.scrollTop = Math.max(0, wanted);
-        const maximum = this.source.scrollHeight - this.source.clientHeight;
-        if (wanted > maximum) {
-          const bottom = parseFloat(style.paddingBottom) || 0;
-          this.source.style.paddingBottom = `${bottom + wanted - maximum}px`;
-          this.source.scrollTop = wanted;
-        }
+        requestAnimationFrame(() => {
+          const style = window.getComputedStyle(this.source);
+          const lineHeight = parseFloat(style.lineHeight) || 21;
+          const box = this.source.getBoundingClientRect();
+          const padding = parseFloat(style.paddingTop) || 0;
+          const targetY = window.innerHeight / 2 - lineHeight / 2;
+          const wanted = box.top + padding + anchor.line * lineHeight - targetY;
+          const maximum = Math.max(0, this.source.scrollHeight - this.source.clientHeight);
+          // The first and last viewport have no space on one side. Preserve the
+          // edge in that case; never invent blank document padding to fake C2.
+          this.source.scrollTop = anchor.edge === "start" ? 0
+            : (anchor.edge === "end" ? maximum : Math.max(0, Math.min(maximum, wanted)));
+        });
       });
     }
-    restoreWysiwygViewportLine(line) {
+    restoreWysiwygViewportAnchor(anchor) {
       requestAnimationFrame(() => {
-        const row = this.surface.querySelector(`.amorist-source-line[data-line="${line}"]`);
-        if (!row) return;
-        const page = document.scrollingElement || document.documentElement;
-        const targetY = window.innerHeight / 2;
-        const rect = row.getBoundingClientRect();
-        const wanted = page.scrollTop + (rect.top + rect.bottom) / 2 - targetY;
-        if (wanted < 0) {
-          const style = window.getComputedStyle(this.surface);
-          this.surface.style.paddingTop = `${(parseFloat(style.paddingTop) || 0) - wanted}px`;
-          page.scrollTop = 0;
-          return;
-        }
-        const maximum = Math.max(0, page.scrollHeight - window.innerHeight);
-        if (wanted > maximum) {
-          const style = window.getComputedStyle(this.surface);
-          this.surface.style.paddingBottom = `${(parseFloat(style.paddingBottom) || 0) + wanted - maximum}px`;
-        }
-        page.scrollTop = wanted;
+        requestAnimationFrame(() => {
+          const row = this.surface.querySelector(`.amorist-source-line[data-line="${anchor.line}"]`);
+          if (!row) return;
+          const page = document.scrollingElement || document.documentElement;
+          const targetY = window.innerHeight / 2;
+          const rect = row.getBoundingClientRect();
+          const wanted = page.scrollTop + (rect.top + rect.bottom) / 2 - targetY;
+          const maximum = Math.max(0, page.scrollHeight - window.innerHeight);
+          page.scrollTop = anchor.edge === "start" ? 0
+            : (anchor.edge === "end" ? maximum : Math.max(0, Math.min(maximum, wanted)));
+        });
       });
     }
     updateSourceButton() { const button = this.toolbar.querySelector('[data-action="source"]'); if (button) button.setAttribute("aria-pressed", String(this.mode === "source")); }

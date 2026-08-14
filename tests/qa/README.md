@@ -29,6 +29,7 @@ On Linux:
 | What | Why | How |
 | --- | --- | --- |
 | `webkit2gtk-driver` | the engine the application ships inside | `sudo apt install webkit2gtk-driver` |
+| `tauri-driver` | E1/E2 through the compiled application, including timer and restart | `cargo install tauri-driver --locked` |
 | a display | that engine needs one | `xvfb-run -a` where there is none |
 
 On macOS:
@@ -54,6 +55,8 @@ partial run that reports success.
 run.js                the entry point: discovery, orchestration, report, exit status
 lib/engines.js        which engines belong to which platform, and the one skip that is allowed
 lib/engine-webdriver.js the shared WebDriver client: one protocol, both shipping engines
+lib/engine-tauri.js   the Linux compiled-application host through tauri-driver
+lib/tauri-app-e2e.js E1/E2: isolated file/data root, timer, SIGKILL, restart, discard and Save
 lib/engine-webkitgtk.js the Linux shipping engine — how its server starts, and nothing else
 lib/engine-safari.js  the macOS shipping engine — same, plus the enable-once instruction
 lib/engine-chromium.js the stand-in, over the DevTools protocol on a raw WebSocket
@@ -105,13 +108,12 @@ easier to debug, and a check that behaves differently on the two engines is
 itself a finding — either an engine difference the user will meet, or a check
 depending on something it should not.
 
-**What stays uncovered is the embedding, on every platform — not one platform.**
-Every run drives the shipping engine inside a test host: the small reference
-browser that comes with the Linux driver, the system browser on macOS. The
-application embeds the same engine in its own webview. So the engine is covered
-everywhere and the embedding nowhere — window chrome, focus handling, and
-whatever the embedding changes about editing behaviour. Named in every report,
-together with the manual pass that stands in for it.
+**Most editor checks still exercise a test host, not the app embedding.** E1/E2
+are the deliberate exception on Linux: `tauri-driver` starts the compiled
+Amorist binary with a disposable document and isolated `XDG_DATA_HOME`, then the
+check kills that exact process and restarts it. Families A-D still run in the
+small reference browser on Linux and Safari on macOS, so window chrome, focus
+and other host-dependent editing behavior remain in REQ-G3.
 
 ## Adding a case
 

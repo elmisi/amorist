@@ -204,7 +204,7 @@
             .catch(function () {
               pingFailures += 1;
               if (pingFailures >= 3) {
-                showWarning("Connection to server lost. Save is unavailable.");
+                showWarning("Connection to server lost. Save is unavailable.", "heartbeat");
               }
             });
         };
@@ -396,6 +396,9 @@
         setDirty(value !== state.savedMarkdown);
         scheduleWorkingCopy(value);
       },
+      onWarning: function (message) {
+        showWarning(message, "editor");
+      },
     });
   }
 
@@ -459,12 +462,12 @@
     noticeSource = source || null;
   }
 
-  function showWarning(message) {
+  function showWarning(message, source) {
     elements.notice.hidden = false;
     elements.notice.classList.remove("error");
     elements.notice.classList.add("warning");
     elements.notice.textContent = message;
-    noticeSource = "heartbeat";
+    noticeSource = source || "warning";
   }
 
   function hideNotice() {

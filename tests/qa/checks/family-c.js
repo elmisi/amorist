@@ -59,6 +59,13 @@ function onlyOccurrence(haystack, needle) {
   return haystack.indexOf(needle, first + 1) === -1 ? first : -1;
 }
 
+function scrollEdge(state) {
+  if (!state || state.maximum <= 1) return "both";
+  if (state.top <= 1) return "start";
+  if (state.top >= state.maximum - 1) return "end";
+  return null;
+}
+
 module.exports = [
   {
     id: "REQ-C1",
@@ -264,6 +271,7 @@ module.exports = [
             await ctx.page.scrollCaretIntoView();
             await ctx.page.settle(60);
             let before = await ctx.page.viewportSourceLine();
+            let beforeEdge = scrollEdge(await ctx.page.scrollState());
             if (before === null) continue;
 
           // Each anchor crosses the boundary in both directions. One green
@@ -273,14 +281,31 @@ module.exports = [
               await ctx.page.toggleMode();
               await ctx.page.settle(80);
               const after = await ctx.page.viewportSourceLine();
+              const afterEdge = scrollEdge(await ctx.page.scrollState());
+              const views = await ctx.page.visibleViews();
 
-              if (after === null) {
+              if (views.source === views.wysiwyg) {
+                failures.push({
+                  fixture: fixture.name,
+                  anchor: candidate.token,
+                  detail: "A view switch must leave exactly one editor surface visible.",
+                  actual: JSON.stringify(views),
+                });
+              } else if (after === null) {
                 failures.push({
                   fixture: fixture.name,
                   anchor: candidate.token,
                   detail: "After the switch there was no physical source line at the viewport midpoint.",
                 });
-              } else if (after !== before) {
+              } else if (beforeEdge && beforeEdge !== "both" && afterEdge !== beforeEdge) {
+                failures.push({
+                  fixture: fixture.name,
+                  anchor: candidate.token,
+                  detail: "The natural document edge changed across the view switch.",
+                  expected: beforeEdge,
+                  actual: afterEdge || "not at an edge",
+                });
+              } else if (!beforeEdge && !afterEdge && after !== before) {
                 failures.push({
                   fixture: fixture.name,
                   anchor: candidate.token,
@@ -290,7 +315,36 @@ module.exports = [
                 });
               }
               before = after;
+              beforeEdge = afterEdge;
             }
+          }
+        }
+      }
+
+      // At the two geometrical limits there is not enough document on one side
+      // to centre an arbitrary line. The edge itself is the stable anchor; fake
+      // padding would make this pass visually while creating a blank viewport.
+      const boundaryFixture = longEnough[0];
+      for (const edge of ["start", "end"]) {
+        await ctx.page.open(boundaryFixture.text);
+        await ctx.page.scrollToEdge(edge);
+        await ctx.page.settle(40);
+        for (let direction = 0; direction < 2; direction += 1) {
+          const beforeState = await ctx.page.scrollState();
+          await ctx.page.toggleMode();
+          await ctx.page.settle(80);
+          const state = await ctx.page.scrollState();
+          const actual = scrollEdge(state);
+          const views = await ctx.page.visibleViews();
+          probes += 1;
+          if (actual !== edge || views.source === views.wysiwyg) {
+            failures.push({
+              fixture: boundaryFixture.name,
+              anchor: `${edge} of document`,
+              detail: "The view switch lost the natural document boundary or left an invalid view visible.",
+              expected: `${edge}, exactly one visible view`,
+              actual: `${actual || "not at an edge"}, before ${JSON.stringify(beforeState)}, after ${JSON.stringify(state)}, ${JSON.stringify(views)}`,
+            });
           }
         }
       }
@@ -304,6 +358,31 @@ module.exports = [
       }
 
       return { failures, fixturesExercised: exercised, metrics: { probes } };
+    },
+  },
+
+  {
+    id: "REQ-C3",
+    title: "A WYSIWYG render failure falls back to visible Source",
+    note: "The render is made to throw after Source is visible; the editor must remain usable and report the failure without changing Markdown.",
+    async run(ctx) {
+      const markdown = "# Safe fallback\n\nThe source must remain visible.";
+      await ctx.page.open(markdown);
+      const result = await ctx.page.forceWysiwygFailure();
+      const failures = [];
+      if (result.mode !== "source"
+        || !result.views.source
+        || result.views.wysiwyg
+        || result.markdown !== markdown
+        || !/Source view remains available/.test(result.warning)) {
+        failures.push({
+          fixture: "injected render failure",
+          detail: "The editor did not fail safely to Source.",
+          expected: "Source visible, WYSIWYG hidden, unchanged Markdown, explicit warning",
+          actual: JSON.stringify(result),
+        });
+      }
+      return { failures, fixturesExercised: ["injected render failure"] };
     },
   },
 ];

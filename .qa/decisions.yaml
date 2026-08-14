@@ -568,6 +568,29 @@ decisions:
       now. Recorded with the reason, so that revisiting it later starts from a
       real case of hunting for the caret sideways rather than from taste.
 
+  - id: D-032
+    statement: >
+      REQ-E1 AND REQ-E2 ARE VERIFIED THROUGH THE COMPILED TAURI APPLICATION ON
+      LINUX. The check uses tauri-driver, an isolated application-data root and
+      disposable document; it types, waits for the declared recovery interval,
+      samples the real file, kills the exact Amorist PID, restarts, discards the
+      recovery through Reload, and finally observes a write only after Save.
+    source: user-statement
+    date: 2026-08-14
+    status: confirmed
+    supersedes_part_of: [D-014, D-029]
+    affects: [REQ-E1, REQ-E2, R-009, R-010]
+    why_the_earlier_rejection_no_longer_holds: >
+      D-014 rejected a built-app gate because it would add fragile machinery.
+      The approved recovery requirements cannot be established at the component
+      or storage layer alone, and tauri-driver supplies the missing boundary
+      without an npm client dependency. Missing driver, display or build output
+      is a loud failure under REQ-G1.
+    platform_limit: >
+      Direct tauri-driver application automation is supported on Linux, not
+      macOS. A macOS run records that limitation and may not claim Linux's
+      application-embedding evidence as its own.
+
 open_recommendations:
   - id: REC-002
     statement: >

@@ -236,6 +236,32 @@
       ]
     },
     {
+      "id": "REQ-B4",
+      "statement": "When typed Markdown becomes a visual construct, subsequent typing remains at the visible caret after that construct's hidden marker. Projection must never reorder the characters the user types.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-011"
+      ]
+    },
+    {
+      "id": "REQ-B5",
+      "statement": "Pipe-table columns are visually aligned in WYSIWYG without changing the source spacing. Alignment is a display projection, never a source rewrite.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-012"
+      ]
+    },
+    {
       "id": "REQ-C1",
       "statement": "Switching between WYSIWYG and source leaves the caret on the same character of the text, in both directions. Column numbers may differ where the file contains markers the WYSIWYG does not display.",
       "severity": "blocking",
@@ -251,7 +277,20 @@
     },
     {
       "id": "REQ-C2",
-      "statement": "After switching views, the physical source line displayed at the vertical midpoint of the window is the same line as before the switch, in both directions.",
+      "statement": "After switching views, the physical source line displayed at the vertical midpoint of the window is the same line as before the switch, in both directions, wherever both views can centre that line naturally. At the beginning or end of the document, both views instead preserve the same natural scroll edge and must not create blank padding to fake centring.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "C",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-011"
+      ]
+    },
+    {
+      "id": "REQ-C3",
+      "statement": "A failure while producing WYSIWYG never leaves the editor empty. Source remains visible with the same text and an explicit warning.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
@@ -282,7 +321,7 @@
       "verification": "deterministic",
       "automation": "full",
       "family": "E",
-      "currentlyHolds": false,
+      "currentlyHolds": true,
       "allowedChange": null,
       "risks": [
         "R-009"

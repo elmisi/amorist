@@ -82,6 +82,7 @@
       window.__qa = (function () {
         var host = document.getElementById("host");
         var editor = null;
+        var lastWarning = "";
 
         function surface() {
           return document.querySelector(".amorist-editor-surface");
@@ -253,7 +254,11 @@
           open: function (text) {
             if (editor) editor.destroy();
             host.replaceChildren();
-            editor = window.AmoristEditor.create(host, { value: text });
+            lastWarning = "";
+            editor = window.AmoristEditor.create(host, {
+              value: text,
+              onWarning: function (message) { lastWarning = message; },
+            });
             return true;
           },
 
@@ -268,6 +273,58 @@
           toggleMode: function () {
             document.querySelector('[data-action="source"]').click();
             return this.mode();
+          },
+
+          scrollToEdge: function (edge) {
+            var element = this.mode() === "source"
+              ? source()
+              : (document.scrollingElement || document.documentElement);
+            // WebKitGTK converts Number.MAX_SAFE_INTEGER assigned to scrollTop
+            // back to zero. Use the actual content extent as the end target.
+            element.scrollTop = edge === "end" ? element.scrollHeight : 0;
+            return this.scrollState();
+          },
+
+          scrollState: function () {
+            var element = this.mode() === "source"
+              ? source()
+              : (document.scrollingElement || document.documentElement);
+            var maximum = Math.max(0, element.scrollHeight - element.clientHeight);
+            return { top: Math.round(element.scrollTop), maximum: Math.round(maximum) };
+          },
+
+          visibleViews: function () {
+            return {
+              source: Boolean(source() && !source().hidden),
+              wysiwyg: Boolean(surface() && !surface().hidden),
+            };
+          },
+
+          tableColumnPositions: function () {
+            return Array.prototype.slice.call(document.querySelectorAll(".amorist-wysiwyg-table"))
+              .map(function (row) {
+                return Array.prototype.slice.call(row.querySelectorAll(".amorist-wysiwyg-table-marker"))
+                  .map(function (marker) {
+                    return Math.round(marker.getBoundingClientRect().left * 100) / 100;
+                  });
+              });
+          },
+
+          forceWysiwygFailure: function () {
+            if (editor.mode !== "source") editor.showSourceMode();
+            var original = editor.render;
+            editor.render = function () { throw new Error("injected WYSIWYG render failure"); };
+            try {
+              editor.showWysiwygMode();
+            } finally {
+              editor.render = original;
+            }
+            return {
+              mode: editor.mode,
+              views: this.visibleViews(),
+              warning: lastWarning,
+              markdown: editor.getMarkdown(),
+            };
           },
 
           focusSurface: function () {

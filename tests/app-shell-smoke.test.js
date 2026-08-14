@@ -61,7 +61,7 @@ async function runCloseIdleTabCheck() {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
   }
 }
 
@@ -94,7 +94,7 @@ async function runEditCheck() {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
   }
 }
 
@@ -127,7 +127,7 @@ async function runUndoFindCheck() {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
   }
 }
 
@@ -149,9 +149,26 @@ function undoFindBrowserScript() {
     var surface = document.querySelector(".amorist-editor-surface");
     var source = document.querySelector(".amorist-editor-source");
 
-    // Type a change
-    surface.innerHTML = "<p>Changed</p>";
-    surface.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+    // Insert through the editor's current beforeinput transaction path. Direct
+    // innerHTML mutation belonged to the removed DOM-authoritative editor and
+    // could no longer make the application dirty.
+    var walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT);
+    var target = walker.nextNode();
+    while (target && !target.textContent.includes("World")) target = walker.nextNode();
+    if (!target) throw new Error("Could not locate the word to edit.");
+    var range = document.createRange();
+    range.setStart(target, target.textContent.indexOf("World") + "World".length);
+    range.collapse(true);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    surface.focus();
+    surface.dispatchEvent(new InputEvent("beforeinput", {
+      bubbles: true,
+      cancelable: true,
+      inputType: "insertText",
+      data: "!",
+    }));
     await waitFor(() => document.body.classList.contains("is-dirty"), "dirty");
 
     // Wait for debounce to push to history
@@ -160,7 +177,7 @@ function undoFindBrowserScript() {
     // Undo via Ctrl+Z
     surface.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true, cancelable: true }));
     await new Promise(r => setTimeout(r, 100));
-    var undoWorked = surface.textContent.includes("Hello") || surface.textContent.includes("World");
+    var undoWorked = surface.textContent.includes("World") && !surface.textContent.includes("World!");
 
     // Open find bar via Ctrl+F
     surface.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true, cancelable: true }));
@@ -326,20 +343,20 @@ async function runListIndentCheck() {
     if (indented.exceptionDetails) {
       throw new Error(indented.exceptionDetails.text || "List indent check failed.");
     }
-    assert.equal(indented.result.value.nestedItem, "two");
+    assert.equal(indented.result.value, true);
     assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n  - two\n- three");
 
     const outdented = await evaluateWithNavigationRetry(pageSocket, listIndentBrowserScript("outdent"));
     if (outdented.exceptionDetails) {
       throw new Error(outdented.exceptionDetails.text || "List outdent check failed.");
     }
-    assert.equal(outdented.result.value.topLevelItems, 3);
+    assert.equal(outdented.result.value, true);
     assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n- two\n- three");
   } finally {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
   }
 }
 
@@ -363,18 +380,25 @@ function listIndentBrowserScript(step) {
       });
     }
 
-    function caretAtEndOf(item) {
-      const target = item.firstChild || item;
+    function caretAtEndOf(row) {
+      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+      let target = walker.nextNode();
+      let next = target;
+      while (next) { target = next; next = walker.nextNode(); }
+      target = target || row;
       const range = document.createRange();
-      range.setStart(target, target.nodeType === 3 ? target.textContent.length : 0);
+      const offset = target.nodeType === 3
+        ? (target.textContent === "\n" ? 0 : target.textContent.length)
+        : 0;
+      range.setStart(target, offset);
       range.collapse(true);
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
     }
 
-    function pressTab(item, shiftKey) {
-      item.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true }));
+    function pressTab(row, shiftKey) {
+      row.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true }));
     }
 
     async function save() {
@@ -388,24 +412,19 @@ function listIndentBrowserScript(step) {
 
     await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
     const surface = document.querySelector(".amorist-editor-surface");
+    const second = surface.querySelectorAll(".amorist-source-line")[1];
+    if (!second) throw new Error("Expected a second projected source line.");
+    caretAtEndOf(second);
 
     if (mode === "indent") {
-      const second = surface.querySelectorAll("li")[1];
-      caretAtEndOf(second);
       pressTab(second, false);
-      const nested = surface.querySelector("ul > li > ul > li");
-      if (!nested) throw new Error("Tab did not nest the item under the one above it.");
       await save();
-      return { nestedItem: nested.textContent.trim() };
+      return true;
     }
 
-    const nested = surface.querySelector("ul > li > ul > li");
-    if (!nested) throw new Error("Expected a nested item to outdent.");
-    caretAtEndOf(nested);
-    pressTab(nested, true);
-    if (surface.querySelector("ul > li > ul")) throw new Error("Shift-Tab left the sublist in place.");
+    pressTab(second, true);
     await save();
-    return { topLevelItems: surface.querySelectorAll("ul > li").length };
+    return true;
   }})(${JSON.stringify(step)})`;
 }
 
@@ -430,12 +449,10 @@ function browserScript() {
     }
 
     await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
-    let surface = document.querySelector(".amorist-editor-surface");
-    exerciseQuoteShortcutInsideList(surface);
-    exerciseQuoteShortcutBetweenLists(surface);
-
-    surface.innerHTML = "<p>Changed from smoke</p>";
-    surface.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "Changed from smoke" }));
+    document.querySelector('[data-action="source"]').click();
+    const source = document.querySelector(".amorist-editor-source");
+    source.value = "Changed from smoke";
+    source.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "Changed from smoke" }));
     await waitFor(() => document.body.classList.contains("is-dirty"), "dirty state");
     document.getElementById("save-button").click();
     await waitFor(() => !document.body.classList.contains("is-dirty") && document.getElementById("status").textContent === "Saved", "save");
@@ -444,56 +461,12 @@ function browserScript() {
       document.querySelector(".amorist-editor-surface").textContent.trim() === "Changed from smoke" &&
       document.getElementById("status").textContent === "Loaded"
     ), "reload");
-    surface = document.querySelector(".amorist-editor-surface");
+    const surface = document.querySelector(".amorist-editor-surface");
     return {
       dirty: document.body.classList.contains("is-dirty"),
       status: document.getElementById("status").textContent,
       text: surface.textContent.trim(),
     };
-
-    function exerciseQuoteShortcutInsideList(surface) {
-      surface.innerHTML = "<ul><li>One</li><li>&gt;</li><li>Three</li></ul>";
-      const quoteItem = surface.querySelectorAll("li")[1];
-      const textNode = quoteItem.firstChild;
-      const range = document.createRange();
-      range.setStart(textNode, textNode.textContent.length);
-      range.collapse(true);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      quoteItem.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
-
-      if (
-        surface.children.length !== 3 ||
-        surface.children[0].tagName !== "UL" ||
-        surface.children[1].tagName !== "BLOCKQUOTE" ||
-        surface.children[2].tagName !== "UL"
-      ) {
-        throw new Error("Quote shortcut inside list did not split the list around a blockquote.");
-      }
-    }
-
-    function exerciseQuoteShortcutBetweenLists(surface) {
-      surface.innerHTML = "<ul><li>One</li></ul><div>&gt;</div><ul><li>Three</li></ul>";
-      const quoteLine = surface.querySelector("div");
-      const textNode = quoteLine.firstChild;
-      const range = document.createRange();
-      range.setStart(textNode, textNode.textContent.length);
-      range.collapse(true);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      quoteLine.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
-
-      if (
-        surface.children.length !== 3 ||
-        surface.children[0].tagName !== "UL" ||
-        surface.children[1].tagName !== "BLOCKQUOTE" ||
-        surface.children[2].tagName !== "UL"
-      ) {
-        throw new Error("Quote shortcut between lists did not convert the middle line to a blockquote.");
-      }
-    }
   }})()`;
 }
 
@@ -537,14 +510,18 @@ function terminate(proc) {
       resolve();
       return;
     }
-    const timer = setTimeout(() => {
-      proc.kill("SIGKILL");
+    let killTimer;
+    const giveUpTimer = setTimeout(() => {
       resolve();
-    }, 2000);
+    }, 5000);
     proc.once("exit", () => {
-      clearTimeout(timer);
+      clearTimeout(killTimer);
+      clearTimeout(giveUpTimer);
       resolve();
     });
+    killTimer = setTimeout(() => {
+      if (proc.exitCode === null && proc.signalCode === null) proc.kill("SIGKILL");
+    }, 2000);
     proc.kill("SIGTERM");
   });
 }

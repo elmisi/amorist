@@ -81,6 +81,13 @@ jobs:
           workspaces: src-tauri
           key: qa-${{ matrix.platform }}
 
+      - name: Install the Tauri application WebDriver intermediary
+        if: matrix.platform == 'linux'
+        # WebKitWebDriver covers the engine in a browser. tauri-driver starts
+        # the compiled executable, which is required to verify the recovery
+        # timer, invoke boundary, app-data and restart behavior in E1/E2.
+        run: cargo install tauri-driver --locked
+
       - name: Check the contract and its generated projection agree
         if: matrix.platform == 'linux'
         # Once is enough: this compares files in the repository against each

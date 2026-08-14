@@ -140,18 +140,19 @@ risks:
     status: open
 
   - id: R-011
-    title: Caret is not preserved across the view toggle
+    title: Caret mapping loses the intended edit position
     source: repo-evidence
     consequence: >
-      The user loses their place on every switch, which discourages using the
-      source view — the view that would reveal the damage.
+      The user loses their place on a view switch, or newly typed text is
+      inserted before a visual marker instead of at the displayed caret.
     likelihood: high
     impact: medium
     unacceptable: true
     mitigation: >
-      Bidirectional character-level mapping between the two views, plus scroll
-      adjustment so the caret arrives at the height it left from.
-    verification_ids: [REQ-C1, REQ-C2]
+      Bidirectional character-level mapping between the two views and every
+      projected construct, bounded scroll adjustment, and a visible Source
+      fallback when WYSIWYG cannot be produced.
+    verification_ids: [REQ-B4, REQ-C1, REQ-C2, REQ-C3]
     status: open
 
   - id: R-012
@@ -164,8 +165,9 @@ risks:
     impact: high
     unacceptable: true
     mitigation: >
-      Preserve source spacing; re-alignment becomes a command the user invokes.
-    verification_ids: [REQ-A6, REQ-A1, REQ-A10]
+      Preserve source spacing. Any automatic alignment is layout-only; a command
+      may still explicitly rewrite a table when the user asks for it.
+    verification_ids: [REQ-A6, REQ-A1, REQ-A10, REQ-B5]
     status: open
 
   - id: R-013
