@@ -127,6 +127,10 @@
       this.source.className = "amorist-editor-source";
       this.source.hidden = true;
       this.source.spellcheck = false;
+      // Source is a view of physical Markdown lines.  Soft-wrapping it makes
+      // the line at the viewport midpoint ambiguous, so the user cannot keep
+      // a stable visual anchor while comparing it with the rendered view.
+      this.source.wrap = "off";
       this.findBar = document.createElement("div");
       this.findBar.className = "amorist-editor-findbar";
       this.findBar.hidden = true;
@@ -518,7 +522,7 @@
         const lineHeight = parseFloat(style.lineHeight) || 21;
         const box = this.source.getBoundingClientRect();
         const padding = parseFloat(style.paddingTop) || 0;
-        const targetY = window.innerHeight / 2;
+        const targetY = window.innerHeight / 2 - lineHeight / 2;
         const wanted = box.top + padding + line * lineHeight - targetY;
         if (wanted < 0) this.source.style.paddingTop = `${padding - wanted}px`;
         this.source.scrollTop = Math.max(0, wanted);
@@ -536,7 +540,8 @@
         if (!row) return;
         const page = document.scrollingElement || document.documentElement;
         const targetY = window.innerHeight / 2;
-        const wanted = page.scrollTop + row.getBoundingClientRect().top - targetY;
+        const rect = row.getBoundingClientRect();
+        const wanted = page.scrollTop + (rect.top + rect.bottom) / 2 - targetY;
         if (wanted < 0) {
           const style = window.getComputedStyle(this.surface);
           this.surface.style.paddingTop = `${(parseFloat(style.paddingTop) || 0) - wanted}px`;

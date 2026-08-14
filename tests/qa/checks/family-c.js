@@ -244,53 +244,57 @@ module.exports = [
         };
       }
 
-      for (const fixture of longEnough) {
-        const candidates = uniqueTokens(fixture.text);
-        if (candidates.length < 3) continue;
-        exercised.push(fixture.name);
+      for (const width of [1200, 640]) {
+        await ctx.page.setHostWidth(width);
+        for (const fixture of longEnough) {
+          const candidates = uniqueTokens(fixture.text);
+          if (candidates.length < 3) continue;
+          exercised.push(`${fixture.name} at ${width}px`);
 
-        for (const candidate of spread(candidates, ANCHORS_PER_FIXTURE)) {
-          await ctx.page.open(fixture.text);
-          await ctx.page.focusSurface();
-          const surfaceText = await ctx.page.surfaceText();
-          const inView = onlyOccurrence(surfaceText, candidate.token);
-          if (inView < 0) continue;
+          for (const candidate of spread(candidates, ANCHORS_PER_FIXTURE)) {
+            await ctx.page.open(fixture.text);
+            await ctx.page.focusSurface();
+            const surfaceText = await ctx.page.surfaceText();
+            const inView = onlyOccurrence(surfaceText, candidate.token);
+            if (inView < 0) continue;
 
-          await ctx.page.setCaretAtTextOffset(inView + Math.floor(candidate.token.length / 2));
+            await ctx.page.setCaretAtTextOffset(inView + Math.floor(candidate.token.length / 2));
           // Where a person editing would have it. Measuring a caret that is
           // already off screen would be measuring a situation nobody is in.
-          await ctx.page.scrollCaretIntoView();
-          await ctx.page.settle(60);
-          let before = await ctx.page.viewportSourceLine();
-          if (before === null) continue;
+            await ctx.page.scrollCaretIntoView();
+            await ctx.page.settle(60);
+            let before = await ctx.page.viewportSourceLine();
+            if (before === null) continue;
 
           // Each anchor crosses the boundary in both directions. One green
           // direction cannot establish the reverse transition's anchoring.
-          for (let direction = 0; direction < 2; direction += 1) {
-            probes += 1;
-            await ctx.page.toggleMode();
-            await ctx.page.settle(80);
-            const after = await ctx.page.viewportSourceLine();
+            for (let direction = 0; direction < 2; direction += 1) {
+              probes += 1;
+              await ctx.page.toggleMode();
+              await ctx.page.settle(80);
+              const after = await ctx.page.viewportSourceLine();
 
-            if (after === null) {
-              failures.push({
-                fixture: fixture.name,
-                anchor: candidate.token,
-                detail: "After the switch there was no physical source line at the viewport midpoint.",
-              });
-            } else if (after !== before) {
-              failures.push({
-                fixture: fixture.name,
-                anchor: candidate.token,
-                detail: "The line at the middle of the window changed across the view switch.",
-                expected: `source line ${before}`,
-                actual: `source line ${after}`,
-              });
+              if (after === null) {
+                failures.push({
+                  fixture: fixture.name,
+                  anchor: candidate.token,
+                  detail: "After the switch there was no physical source line at the viewport midpoint.",
+                });
+              } else if (after !== before) {
+                failures.push({
+                  fixture: fixture.name,
+                  anchor: candidate.token,
+                  detail: "The line at the middle of the window changed across the view switch.",
+                  expected: `source line ${before}`,
+                  actual: `source line ${after}`,
+                });
+              }
+              before = after;
             }
-            before = after;
           }
         }
       }
+      await ctx.page.setHostWidth(1200);
 
       if (!probes) {
         failures.push({
