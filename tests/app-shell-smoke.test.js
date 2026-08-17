@@ -30,7 +30,107 @@ async function run() {
   await runEditCheck();
   await runUndoFindCheck();
   await runListIndentCheck();
+  await runDirtyIpcCheck();
   console.log("app-shell-smoke.test.js passed");
+}
+
+async function runDirtyIpcCheck() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-smoke-dirty-ipc-"));
+  const markdownPath = path.join(tempDir, "stub.md");
+  fs.writeFileSync(markdownPath, "stub server document", "utf8");
+  let server;
+  let chrome;
+  let pageSocket;
+  try {
+    server = await startAmorist(markdownPath);
+    chrome = await startChrome(browser, tempDir);
+    const instrumented = await openInstrumentedPage(chrome.debuggingUrl, server.url, tauriStubScript());
+    pageSocket = instrumented.socket;
+    const result = await evaluateWithNavigationRetry(pageSocket, dirtyIpcBrowserScript());
+    if (result.exceptionDetails) throw new Error(result.exceptionDetails.text || "Dirty IPC check failed.");
+    assert.deepEqual(result.result.value, {
+      dirtyBeforeSave: true,
+      dirtyAfterSave: false,
+      setDirtyArguments: [true, false],
+      savedLength: 20,
+    });
+  } finally {
+    if (pageSocket) pageSocket.close();
+    if (chrome) await terminate(chrome.process);
+    if (server) await terminate(server.process);
+    await removeTempDir(tempDir);
+  }
+}
+
+function tauriStubScript() {
+  return `(() => {
+    const calls = [];
+    let markdown = "";
+    window.__TAURI_INVOKES__ = calls;
+    window.__TAURI__ = {
+      core: {
+        invoke: async function (command, args) {
+          calls.push({ command: command, args: args || {} });
+          if (command === "read_document") return { markdown: markdown, recoveryMarkdown: null, exists: true, name: "stub.md", path: "/tmp/stub.md" };
+          if (command === "get_version") return "test";
+          if (command === "set_dirty" || command === "discard_working_copy" || command === "persist_working_copy" || command === "force_close") return null;
+          if (command === "save_document") { markdown = args.markdown; window.__TAURI_SAVED__ = markdown; return null; }
+          throw new Error("Unexpected Tauri command: " + command);
+        }
+      },
+      event: { listen: async function () { return function () {}; } },
+      dialog: { confirm: async function () { return true; } },
+      window: { getCurrentWindow: function () { return { setTitle: async function () {} }; } }
+    };
+  })();`;
+}
+
+function dirtyIpcBrowserScript() {
+  return `(${async function () {
+    function waitFor(predicate, label) {
+      return new Promise((resolve, reject) => {
+        const deadline = Date.now() + 10000;
+        const tick = () => {
+          if (predicate()) { resolve(); return; }
+          if (Date.now() > deadline) { reject(new Error("Timed out: " + label)); return; }
+          setTimeout(tick, 25);
+        };
+        tick();
+      });
+    }
+    await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
+    const surface = document.querySelector(".amorist-editor-surface");
+    const row = surface.querySelector(".amorist-source-line");
+    const range = document.createRange();
+    range.selectNodeContents(row);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    surface.focus();
+    for (let index = 0; index < 20; index += 1) {
+      surface.dispatchEvent(new InputEvent("beforeinput", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: "x",
+      }));
+    }
+    await waitFor(() => document.body.classList.contains("is-dirty"), "dirty transition");
+    const dirtyBeforeSave = document.body.classList.contains("is-dirty");
+    document.getElementById("save-button").click();
+    await waitFor(() => !document.body.classList.contains("is-dirty"), "clean transition");
+    document.getElementById("reload-button").click();
+    await waitFor(() => document.getElementById("status").textContent === "Loaded", "clean reload");
+    return {
+      dirtyBeforeSave: dirtyBeforeSave,
+      dirtyAfterSave: document.body.classList.contains("is-dirty"),
+      setDirtyArguments: window.__TAURI_INVOKES__
+        .filter(function (call) { return call.command === "set_dirty"; })
+        .map(function (call) { return call.args.dirty; }),
+      savedLength: (window.__TAURI_SAVED__ || "").length,
+    };
+  }})()`;
 }
 
 async function runCloseIdleTabCheck() {
@@ -61,7 +161,7 @@ async function runCloseIdleTabCheck() {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -94,7 +194,7 @@ async function runEditCheck() {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -120,14 +220,14 @@ async function runUndoFindCheck() {
     assert.deepEqual(result.result.value, {
       undoWorked: true,
       findBarOpened: true,
-      matchCount: "1 of 2",
+      matchCount: "1 of 3",
       findBarClosed: true,
     });
   } finally {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -185,7 +285,7 @@ function undoFindBrowserScript() {
     var findBar = document.querySelector(".amorist-editor-findbar");
     var findBarOpened = findBar && !findBar.hidden;
 
-    // Type a search query — "l" appears in Hello and World
+    // Type a search query — "l" appears twice in Hello and once in World.
     var findInput = document.querySelector(".amorist-editor-findbar-input");
     findInput.value = "l";
     findInput.dispatchEvent(new Event("input", { bubbles: true }));
@@ -271,6 +371,15 @@ async function openPage(browserWebSocketUrl, targetUrl) {
   return JSON.parse(body);
 }
 
+async function openInstrumentedPage(browserWebSocketUrl, targetUrl, preloadScript) {
+  const page = await openPage(browserWebSocketUrl, "about:blank");
+  const socket = await WebSocketConnection.open(page.webSocketDebuggerUrl);
+  await socket.send("Page.enable", {});
+  await socket.send("Page.addScriptToEvaluateOnNewDocument", { source: preloadScript });
+  await socket.send("Page.navigate", { url: targetUrl });
+  return { page, socket };
+}
+
 async function closePage(browserWebSocketUrl, pageId) {
   const browserUrl = new URL(browserWebSocketUrl);
   await httpRequest({
@@ -344,19 +453,19 @@ async function runListIndentCheck() {
       throw new Error(indented.exceptionDetails.text || "List indent check failed.");
     }
     assert.equal(indented.result.value, true);
-    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n  - two\n- three");
+    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n  - two\n- three\n");
 
     const outdented = await evaluateWithNavigationRetry(pageSocket, listIndentBrowserScript("outdent"));
     if (outdented.exceptionDetails) {
       throw new Error(outdented.exceptionDetails.text || "List outdent check failed.");
     }
     assert.equal(outdented.result.value, true);
-    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n- two\n- three");
+    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n- two\n- three\n");
   } finally {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 50, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -524,6 +633,21 @@ function terminate(proc) {
     }, 2000);
     proc.kill("SIGTERM");
   });
+}
+
+async function removeTempDir(tempDir) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (error.code !== "ENOTEMPTY" && error.code !== "EBUSY" && error.code !== "EPERM") throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+  throw lastError;
 }
 
 class WebSocketConnection {

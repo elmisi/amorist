@@ -4,6 +4,24 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.7] - 2026-08-17
+
+### Changed
+- Ordinary WYSIWYG typing now patches only its affected source row, fenced-code
+  row or pipe-table block instead of rebuilding the complete projection.
+- Pipe tables and fenced code are again framed, independently horizontally
+  scrollable blocks. Typing in a scrolled table preserves its horizontal anchor.
+- Pipe-table alignment batches all geometry reads before applying display-only
+  padding, and edits outside tables perform no table layout work.
+- Native dirty-state IPC is sent only when the Boolean state changes.
+
+### Quality
+- The approved QA contract now contains 30 requirements, including blocking
+  visual-containment, DOM-locality and event-to-frame latency checks. The Linux
+  run is green on WebKitGTK and Chromium, with eight view-position scenarios
+  repeated through the compiled Tauri application. This evidence does not claim
+  coverage of the macOS application embedding.
+
 ## [0.10.6] - 2026-08-14
 
 ### Changed

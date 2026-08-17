@@ -324,6 +324,48 @@ module.exports = [
           }
         }
       }
+
+      const wrapperLines = Array.from({ length: 120 }, (_, index) => `wrapper matrix filler ${String(index).padStart(3, "0")}`);
+      wrapperLines.splice(44, 3,
+        "| TableMidpointUnique | compact |",
+        "|---|---|",
+        "| wider cell | value |",
+      );
+      wrapperLines.splice(76, 3, "```javascript", "CodeMidpointUnique const value = 1;", "```");
+      const wrapperDocument = wrapperLines.join("\n");
+      for (const sample of [
+        { name: "table midpoint", token: "TableMidpointUnique" },
+        { name: "fenced-code midpoint", token: "CodeMidpointUnique" },
+      ]) {
+        const fixture = `long mixed geometry, ${sample.name}`;
+        exercised.push(`${fixture}, contained app viewport`);
+        await ctx.page.open(wrapperDocument);
+        await ctx.page.focusSurface();
+        const surfaceText = await ctx.page.surfaceText();
+        const offset = surfaceText.indexOf(sample.token);
+        if (offset < 0) throw new Error(`Could not locate ${sample.token} in the wrapper projection.`);
+        await ctx.page.setCaretAtTextOffset(offset + 4);
+        await ctx.page.scrollCaretIntoView();
+        await ctx.page.settle(60);
+        let before = await ctx.page.viewportSourceLine();
+        for (const direction of ["WYSIWYG to Source", "Source to WYSIWYG"]) {
+          await ctx.page.toggleMode();
+          await ctx.page.settle(100);
+          probes += 1;
+          const after = await ctx.page.viewportSourceLine();
+          const views = await ctx.page.visibleViews();
+          if (views.source === views.wysiwyg || after !== before) {
+            failures.push({
+              fixture,
+              direction,
+              detail: "The wrapper changed the physical line at the contained viewport midpoint.",
+              expected: `source line ${before}, exactly one visible view`,
+              actual: `source line ${after}, ${JSON.stringify(views)}`,
+            });
+          }
+          before = after;
+        }
+      }
       await ctx.page.setContainedViewport(false);
 
       // The explicit matrix above covers short and long documents in the app
@@ -479,13 +521,13 @@ module.exports = [
   {
     id: "REQ-C2",
     scope: "run",
-    title: "The built application preserves the six view-position combinations",
-    note: "The component matrix is repeated through the compiled Linux Tauri application so its contained scroll owner cannot drift from the harness.",
+    title: "The built application preserves the eight view-position scenarios",
+    note: "The six position/content combinations plus table and code midpoint cases are repeated through the compiled Linux Tauri application.",
     async run() {
       const app = await runTauriAppChecks();
       return {
         failures: app.C2,
-        fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("six position")),
+        fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("eight view-position")),
         notCovered: app.unsupported ? [app.unsupported] : [],
       };
     },

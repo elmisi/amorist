@@ -16,6 +16,11 @@ two disagree, the code is wrong.
 is the raw Discovery log with the reproductions and is never a source of
 obligations. `.qa/eval-matrix.md` is generated and must never be hand-edited.
 
+`.qa/risks.yaml` is frozen at the end of Discovery: it is evidence, not a
+mutable backlog. Product risks discovered after that boundary are added directly
+to `.qa/risk-register.yaml`, as `R-016` through `R-020` demonstrate. This keeps
+new obligations traceable without rewriting the historical reproductions.
+
 **Invalidation rule.** Any change to the product's intended behaviour invalidates
 the affected requirement, not the check that implements it. The order is always:
 amend the contract, get it approved, then change the check. A check changed
@@ -67,6 +72,21 @@ per-line terminator rule (`REQ-A9`, `D-027`) is only reachable this way —
 information normalised away on the way in cannot be restored on the way out by
 anything downstream. Expect `encode_line_endings` in the Rust backend to become
 a no-op and then disappear as this lands.
+
+**Projection-unit boundary.** Raw Markdown and its transaction journal remain
+authoritative. The WYSIWYG is an indexed projection of physical source lines,
+grouped only where a pipe table or fenced region needs one visual wrapper. A
+stable same-line edit replaces its row, or its enclosing table/code unit, and
+must retain every unrelated DOM node. Initial load, explicit `setMarkdown`, a
+Source-to-WYSIWYG switch, a newline/cross-line change, and a change in table or
+fence membership may each perform one complete render. No other ordinary key may
+use that fallback, and a structural gesture may not retry it.
+
+**Layout phase boundary.** Table alignment never changes raw spacing. A complete
+render collects natural widths for every cell in every table before applying any
+padding write. A local table edit applies the same two phases to that wrapper
+alone. Reading geometry after the first layout write in the same pass is a
+contract breach because it reintroduces synchronous layout amplification.
 
 **The recovery layer is a Linux application test.** It builds the debug binary,
 starts it through `tauri-driver` with a disposable document and isolated

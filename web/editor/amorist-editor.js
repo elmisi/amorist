@@ -248,24 +248,94 @@
       if (!options || !options.silent) this.emitChange();
     }
 
+    buildProjection() {
+      const lines = sourceLines(this.model.source);
+      const rawLines = lines.map((line) => this.model.source.slice(line.start, line.end));
+      const descriptors = lines.map((line, index) => ({
+        ...line,
+        index,
+        raw: rawLines[index],
+        projection: projectionLine(rawLines[index]),
+        unitType: "line",
+        unitStart: index,
+        unitEnd: index,
+        codeContent: false,
+      }));
+
+      let index = 0;
+      while (index < descriptors.length) {
+        const opening = descriptors[index].raw.match(/^ {0,3}(`{3,}|~{3,}).*$/);
+        if (opening) {
+          const marker = opening[1][0];
+          const length = opening[1].length;
+          let end = index + 1;
+          const closing = new RegExp(`^ {0,3}\\${marker}{${length},}\\s*$`);
+          while (end < descriptors.length && !closing.test(descriptors[end].raw)) end += 1;
+          const hasClosingFence = end < descriptors.length;
+          if (!hasClosingFence) end = descriptors.length - 1;
+          for (let at = index; at <= end; at += 1) {
+            Object.assign(descriptors[at], {
+              unitType: "code",
+              unitStart: index,
+              unitEnd: end,
+              codeContent: at > index && (!hasClosingFence || at < end),
+            });
+          }
+          index = end + 1;
+          continue;
+        }
+        if (TableCodec && TableCodec.isTableStart(rawLines, index)) {
+          const columns = TableCodec.splitTableRow(rawLines[index]).length;
+          let end = index + 2;
+          while (end < rawLines.length && TableCodec.looksLikeTableRow(rawLines[end], columns)) end += 1;
+          end -= 1;
+          for (let at = index; at <= end; at += 1) {
+            Object.assign(descriptors[at], { unitType: "table", unitStart: index, unitEnd: end });
+          }
+          index = end + 1;
+          continue;
+        }
+        index += 1;
+      }
+      return descriptors;
+    }
+
     render(rawSelection) {
       this.isRendering = true;
       this.source.value = this.model.display;
-      const lines = sourceLines(this.model.source);
-      const rawLines = lines.map((line) => this.model.source.slice(line.start, line.end));
-      let tableUntil = -1;
-      let fence = null;
-      this.surface.replaceChildren();
-      lines.forEach((line, index) => {
-        const raw = this.model.source.slice(line.start, line.end);
-        const projection = projectionLine(raw);
+      this.lineDescriptors = this.buildProjection();
+      this.rowNodes = new Array(this.lineDescriptors.length);
+      const fragment = document.createDocumentFragment();
+      const tableBlocks = [];
+      let index = 0;
+      while (index < this.lineDescriptors.length) {
+        const descriptor = this.lineDescriptors[index];
+        if (descriptor.unitType === "table") {
+          const block = this.renderTableBlock(descriptor.unitStart, descriptor.unitEnd);
+          tableBlocks.push(block);
+          fragment.append(block);
+          index = descriptor.unitEnd + 1;
+        } else if (descriptor.unitType === "code") {
+          fragment.append(this.renderCodeBlock(descriptor.unitStart, descriptor.unitEnd));
+          index = descriptor.unitEnd + 1;
+        } else {
+          const row = this.renderSourceLine(descriptor);
+          this.rowNodes[index] = row;
+          fragment.append(row);
+          index += 1;
+        }
+      }
+      this.surface.replaceChildren(fragment);
+      this.layoutTableBlocks(tableBlocks);
+      this.isRendering = false;
+      if (rawSelection) this.setSurfaceSelection(rawSelection.start, rawSelection.end);
+    }
+
+    renderSourceLine(descriptor) {
+        const { raw, projection } = descriptor;
         const row = document.createElement("span");
         row.className = "amorist-source-line";
-        row.dataset.sourceStart = String(line.start);
-        row.dataset.sourceEnd = String(line.end);
-        row.dataset.prefix = String(projection.prefix);
-        row.dataset.line = String(index);
-        row.dataset.endingLength = String(line.ending.length);
+        this.updateRowMetadata(row, descriptor);
         if (projection.list) {
           row.classList.add("amorist-wysiwyg-list-item", `amorist-wysiwyg-${projection.list}`);
           row.dataset.marker = projection.list === "ordered" ? projection.marker : "•";
@@ -279,25 +349,11 @@
         } else if (projection.rule) {
           row.classList.add("amorist-wysiwyg-rule");
         }
-        const fenceMatch = raw.match(/^ {0,3}(`{3,}|~{3,}).*$/);
-        const closesFence = fence && new RegExp(`^ {0,3}\\${fence.marker}{${fence.length},}\\s*$`).test(raw);
-        if (!fence && fenceMatch) fence = { marker: fenceMatch[1][0], length: fenceMatch[1].length };
-        else if (closesFence) fence = null;
-        const codeContent = Boolean(fence) && !fenceMatch;
-        if (TableCodec && TableCodec.isTableStart(rawLines, index)) tableUntil = index + 1;
-        if (tableUntil >= index) {
-          row.classList.add("amorist-wysiwyg-table");
-          if (index === tableUntil) {
-            let next = index + 1;
-            const columns = TableCodec.splitTableRow(rawLines[index]).length;
-            while (next < rawLines.length && TableCodec.looksLikeTableRow(rawLines[next], columns)) next += 1;
-            tableUntil = next - 1;
-          }
-        }
-        if (codeContent) {
+        if (descriptor.unitType === "table") row.classList.add("amorist-wysiwyg-table");
+        if (descriptor.codeContent) {
           row.classList.add("amorist-wysiwyg-code");
           row.textContent = raw || "\u200b";
-        } else if (row.classList.contains("amorist-wysiwyg-table")) {
+        } else if (descriptor.unitType === "table") {
           this.renderTableRow(row, raw);
         } else if (typeof projection.checked === "boolean") {
           row.classList.add("amorist-wysiwyg-task");
@@ -321,18 +377,48 @@
           caret.className = "amorist-empty-caret";
           caret.textContent = CARET_SENTINEL;
           row.append(caret);
-          if (!line.ending) row.append(document.createElement("br"));
-        } else if (!line.ending) {
+          if (!descriptor.ending) row.append(document.createElement("br"));
+        } else if (!descriptor.ending) {
           row.append(document.createElement("br"));
         }
         // Keep the editable text stream aligned with physical source lines.
         // Block layout alone is invisible to TreeWalker-based selection APIs.
-        if (line.ending) row.append(document.createTextNode("\n"));
-        this.surface.append(row);
-      });
-      this.layoutTables();
-      this.isRendering = false;
-      if (rawSelection) this.setSurfaceSelection(rawSelection.start, rawSelection.end);
+        if (descriptor.ending) row.append(document.createTextNode("\n"));
+        return row;
+    }
+
+    updateRowMetadata(row, descriptor) {
+      row.dataset.sourceStart = String(descriptor.start);
+      row.dataset.sourceEnd = String(descriptor.end);
+      row.dataset.prefix = String(descriptor.projection.prefix);
+      row.dataset.line = String(descriptor.index);
+      row.dataset.endingLength = String(descriptor.ending.length);
+    }
+
+    renderTableBlock(start, end) {
+      const block = document.createElement("div");
+      block.className = "amorist-wysiwyg-block amorist-wysiwyg-table-block";
+      block.dataset.unitStart = String(start);
+      block.dataset.unitEnd = String(end);
+      for (let index = start; index <= end; index += 1) {
+        const row = this.renderSourceLine(this.lineDescriptors[index]);
+        this.rowNodes[index] = row;
+        block.append(row);
+      }
+      return block;
+    }
+
+    renderCodeBlock(start, end) {
+      const block = document.createElement("div");
+      block.className = "amorist-wysiwyg-block amorist-wysiwyg-code-block";
+      block.dataset.unitStart = String(start);
+      block.dataset.unitEnd = String(end);
+      for (let index = start; index <= end; index += 1) {
+        const row = this.renderSourceLine(this.lineDescriptors[index]);
+        this.rowNodes[index] = row;
+        block.append(row);
+      }
+      return block;
     }
 
     renderTableRow(row, raw) {
@@ -363,28 +449,90 @@
       appendCell(raw.slice(cellStart));
     }
 
-    layoutTables() {
-      let rows = [];
-      const align = () => {
-        if (!rows.length) return;
+    layoutTableBlocks(blocks) {
+      const measurements = blocks.map((block) => {
+        const rows = Array.from(block.querySelectorAll(".amorist-wysiwyg-table"));
         const widths = [];
-        rows.forEach((row) => {
-          row.querySelectorAll(".amorist-wysiwyg-table-cell").forEach((cell, index) => {
-            widths[index] = Math.max(widths[index] || 0, cell.getBoundingClientRect().width);
-          });
-        });
-        rows.forEach((row) => {
-          row.querySelectorAll(".amorist-wysiwyg-table-cell").forEach((cell, index) => {
-            cell.style.paddingInlineEnd = `${Math.max(0, widths[index] - cell.getBoundingClientRect().width)}px`;
-          });
-        });
-        rows = [];
-      };
-      Array.from(this.surface.querySelectorAll(".amorist-source-line")).forEach((row) => {
-        if (row.classList.contains("amorist-wysiwyg-table")) rows.push(row);
-        else align();
+        const rowWidths = rows.map((row) => Array.from(row.querySelectorAll(".amorist-wysiwyg-table-cell")).map((cell, index) => {
+          const width = cell.getBoundingClientRect().width;
+          widths[index] = Math.max(widths[index] || 0, width);
+          return width;
+        }));
+        return { rows, widths, rowWidths };
       });
-      align();
+      measurements.forEach(({ rows, widths, rowWidths }) => {
+        rows.forEach((row, rowIndex) => {
+          row.querySelectorAll(".amorist-wysiwyg-table-cell").forEach((cell, index) => {
+            cell.style.paddingInlineEnd = `${Math.max(0, widths[index] - rowWidths[rowIndex][index])}px`;
+          });
+        });
+      });
+    }
+
+    descriptorAtRaw(rawOffset, descriptors) {
+      const lines = descriptors || this.lineDescriptors || [];
+      if (!lines.length) return null;
+      const offset = Math.max(0, Math.min(Number(rawOffset) || 0, this.model.source.length));
+      let low = 0;
+      let high = lines.length - 1;
+      while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        if (lines[middle].start <= offset) low = middle;
+        else high = middle - 1;
+      }
+      return lines[low];
+    }
+
+    patchProjection(beforeSource, beforeDescriptors, transaction, selection) {
+      if (this.mode !== "wysiwyg") return;
+      const nextDescriptors = this.buildProjection();
+      const before = this.descriptorAtRaw(transaction.start, beforeDescriptors);
+      const after = before && nextDescriptors[before.index];
+      const removed = beforeSource.slice(transaction.start, transaction.end);
+      const stableLine = before && after
+        && beforeDescriptors.length === nextDescriptors.length
+        && transaction.end <= before.end
+        && !/[\r\n]/.test(removed)
+        && !/[\r\n]/.test(transaction.replacement)
+        && before.unitType === after.unitType
+        && before.unitStart === after.unitStart
+        && before.unitEnd === after.unitEnd;
+
+      if (!stableLine) {
+        this.render(selection);
+        return;
+      }
+
+      this.lineDescriptors = nextDescriptors;
+      this.rowNodes.forEach((row, index) => {
+        if (row && nextDescriptors[index]) this.updateRowMetadata(row, nextDescriptors[index]);
+      });
+
+      let tableScroll = null;
+      if (after.unitType === "table") {
+        const oldBlock = this.rowNodes[after.index].closest(".amorist-wysiwyg-table-block");
+        const oldMaximum = Math.max(0, oldBlock.scrollWidth - oldBlock.clientWidth);
+        tableScroll = {
+          left: oldBlock.scrollLeft,
+          pinnedToEnd: oldMaximum - oldBlock.scrollLeft <= 1,
+        };
+        const block = this.renderTableBlock(after.unitStart, after.unitEnd);
+        oldBlock.replaceWith(block);
+        this.layoutTableBlocks([block]);
+        tableScroll.block = block;
+      } else {
+        const oldRow = this.rowNodes[after.index];
+        const row = this.renderSourceLine(after);
+        this.rowNodes[after.index] = row;
+        oldRow.replaceWith(row);
+      }
+      this.setSurfaceSelection(selection.start, selection.end);
+      if (tableScroll) {
+        const maximum = Math.max(0, tableScroll.block.scrollWidth - tableScroll.block.clientWidth);
+        tableScroll.block.scrollLeft = tableScroll.pinnedToEnd
+          ? maximum
+          : Math.min(tableScroll.left, maximum);
+      }
     }
 
     selectionRaw() {
@@ -402,10 +550,12 @@
       let element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
       while (element && !element.classList.contains("amorist-source-line")) element = element.parentElement;
       if (!element) return this.model.source.length;
-      const start = Number(element.dataset.sourceStart);
+      const descriptor = this.lineDescriptors[Number(element.dataset.line)];
+      if (!descriptor) return this.model.source.length;
+      const start = descriptor.start;
       const visible = (element.textContent || "").replaceAll(CARET_SENTINEL, "");
-      if (!visible.replace(/\n$/, "") && Number(element.dataset.prefix)) {
-        return start + Number(element.dataset.prefix);
+      if (!visible.replace(/\n$/, "") && descriptor.projection.prefix) {
+        return start + descriptor.projection.prefix;
       }
       const prefix = document.createRange();
       prefix.setStart(element, 0);
@@ -415,9 +565,9 @@
       // maps to the real line terminator, not to the preceding character.
       const prefixLength = prefix.toString().replaceAll(CARET_SENTINEL, "").length;
       if (visible.endsWith("\n") && prefixLength >= visible.length) {
-        return Number(element.dataset.sourceEnd) + Number(element.dataset.endingLength);
+        return descriptor.end + descriptor.ending.length;
       }
-      let rawOffset = start + sourceOffsetForVisibleText(this.model.source.slice(start, Number(element.dataset.sourceEnd)), visible, prefixLength);
+      let rawOffset = start + sourceOffsetForVisibleText(descriptor.raw, visible, prefixLength);
       if (offset === 0) {
         const closing = inlineClosingDelimiterBefore(node, element);
         if (closing && this.model.source.slice(rawOffset, rawOffset + closing.length) === closing) rawOffset += closing.length;
@@ -427,12 +577,13 @@
 
     setSurfaceSelection(start, end) {
       const point = (rawOffset) => {
-        const blocks = Array.from(this.surface.querySelectorAll(".amorist-source-line"));
-        const block = blocks.find((candidate) => rawOffset >= Number(candidate.dataset.sourceStart) && rawOffset <= Number(candidate.dataset.sourceEnd)) || blocks[blocks.length - 1];
+        const descriptor = this.descriptorAtRaw(rawOffset);
+        const block = descriptor ? this.rowNodes[descriptor.index] : null;
+        if (!block) return { node: this.surface, offset: 0 };
         const visible = block.textContent || "";
-        const rawPrefix = this.model.source.slice(Number(block.dataset.sourceStart), rawOffset);
+        const rawPrefix = this.model.source.slice(descriptor.start, rawOffset);
         const emptyCaret = block.querySelector(".amorist-empty-caret");
-        if (emptyCaret && rawOffset >= Number(block.dataset.sourceStart) + Number(block.dataset.prefix)) {
+        if (emptyCaret && rawOffset >= descriptor.start + descriptor.projection.prefix) {
           const sentinel = emptyCaret.firstChild;
           return sentinel
             ? { node: sentinel, offset: sentinel.textContent.length }
@@ -456,10 +607,12 @@
     }
 
     apply(start, end, replacement, gesture) {
+      const beforeSource = this.model.source;
+      const beforeDescriptors = this.lineDescriptors;
       const entry = this.model.transaction(start, end, replacement, gesture);
       this.history.push(entry);
       const caret = start + replacement.length;
-      this.render({ start: caret, end: caret });
+      this.patchProjection(beforeSource, beforeDescriptors, entry.forward, { start: caret, end: caret });
       this.emitChange();
     }
 
@@ -628,8 +781,10 @@
       const checkbox = event.target.closest(".amorist-task-checkbox");
       if (!checkbox) return;
       const block = checkbox.closest(".amorist-source-line"); if (!block) return;
-      const start = Number(block.dataset.sourceStart);
-      const match = this.model.source.slice(start, Number(block.dataset.sourceEnd)).match(/\[([ xX])\]/);
+      const descriptor = this.lineDescriptors[Number(block.dataset.line)];
+      if (!descriptor) return;
+      const start = descriptor.start;
+      const match = descriptor.raw.match(/\[([ xX])\]/);
       if (match) this.apply(start + match.index + 1, start + match.index + 2, /x/i.test(match[1]) ? " " : "x", "task-checkbox");
     }
 
@@ -753,8 +908,32 @@
       });
     }
     updateSourceButton() { const button = this.toolbar.querySelector('[data-action="source"]'); if (button) button.setAttribute("aria-pressed", String(this.mode === "source")); }
-    undo() { const entry = this.history.undo(this.model); if (entry) { this.render({ start: entry.forward.start, end: entry.forward.start }); this.emitChange(); } }
-    redo() { const entry = this.history.redo(this.model); if (entry) { const at = entry.forward.start + entry.forward.replacement.length; this.render({ start: at, end: at }); this.emitChange(); } }
+    undo() {
+      const beforeSource = this.model.source;
+      const beforeDescriptors = this.lineDescriptors;
+      const entry = this.history.undo(this.model);
+      if (!entry) return;
+      const at = entry.forward.start;
+      if (this.mode === "source") {
+        this.source.value = this.model.display;
+        const displayAt = this.model.displayOffset(at);
+        this.source.setSelectionRange(displayAt, displayAt);
+      } else this.patchProjection(beforeSource, beforeDescriptors, entry.inverse, { start: at, end: at });
+      this.emitChange();
+    }
+    redo() {
+      const beforeSource = this.model.source;
+      const beforeDescriptors = this.lineDescriptors;
+      const entry = this.history.redo(this.model);
+      if (!entry) return;
+      const at = entry.forward.start + entry.forward.replacement.length;
+      if (this.mode === "source") {
+        this.source.value = this.model.display;
+        const displayAt = this.model.displayOffset(at);
+        this.source.setSelectionRange(displayAt, displayAt);
+      } else this.patchProjection(beforeSource, beforeDescriptors, entry.forward, { start: at, end: at });
+      this.emitChange();
+    }
     emitChange() { if (typeof this.options.onChange === "function") this.options.onChange(this.model.source); }
     openFindBar() { this.findBar.hidden = false; this.findInput.focus(); this.findInput.select(); this.performFind(); }
     closeFindBar() { this.findBar.hidden = true; this.findMatches = []; this.findIndex = -1; this.findCount.textContent = ""; this.focus(); }

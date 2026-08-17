@@ -26,6 +26,8 @@ generated; the contract is the source of truth.
 | `REQ-B6` | WYSIWYG list editing follows conventional editor behavior while retaining exact Markdown… | R-011, R-013 | deterministic | blocking | full | medium | low | green today |
 | `REQ-B7` | Hidden heading and quote prefixes participate in conventional WYSIWYG editing. Enter cont… | R-011 | deterministic | blocking | full | low | low | green today |
 | `REQ-B5` | Pipe-table columns are visually aligned in WYSIWYG without changing the source spacing. A… | R-012 | deterministic | blocking | full | low | medium | RED today |
+| `REQ-B8` | Every recognized pipe table and fenced code region is projected as one visually framed WY… | R-019 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-B9` | Ordinary within-line typing updates only the affected projection unit and appears at the… | R-020 | deterministic | blocking | full | high | medium | RED today |
 | `REQ-C1` | Switching between WYSIWYG and source leaves the caret on the same character of the text,… | R-007, R-011 | deterministic | blocking | full | medium | medium | RED today |
 | `REQ-C2` | After switching views, the physical source line displayed at the vertical midpoint of the… | R-011 | deterministic | blocking | full | medium | low | green today |
 | `REQ-C3` | A failure while producing WYSIWYG never leaves the editor empty. Source remains visible w… | R-011 | deterministic | blocking | full | low | low | RED today |
@@ -41,15 +43,15 @@ generated; the contract is the source of truth.
 ## Reading this table
 
 **State** is measured against the repository at commit a9d7e73, not assumed:
-8 requirements hold today, 1 holds partially, 19 fail. The suite is
+8 requirements hold today, 1 holds partially, 21 fail. The suite is
 expected to be red on first run — the contract specifies the editor that must
 exist, not the one that does.
 
-**Gate**: 27 blocking, 1 advisory. A blocking failure stops
+**Gate**: 29 blocking, 1 advisory. A blocking failure stops
 publication of a release; it does not stop a commit, a merge or a push
 (`G-PUSH` in the contract).
 
-**Verification**: 27 deterministic, 1 manual. No requirement is verified by
+**Verification**: 29 deterministic, 1 manual. No requirement is verified by
 a model. The runner never calls one, so a red result always means the code is
 wrong — never that a service was unavailable or a model was inconsistent.
 

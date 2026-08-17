@@ -108,6 +108,14 @@
         var host = document.getElementById("host");
         var editor = null;
         var lastWarning = "";
+        var latencySamples = [];
+        var nodeIds = new WeakMap();
+        var nextNodeId = 1;
+
+        function nodeId(node) {
+          if (!nodeIds.has(node)) nodeIds.set(node, nextNodeId++);
+          return nodeIds.get(node);
+        }
 
         function surface() {
           return document.querySelector(".amorist-editor-surface");
@@ -284,8 +292,14 @@
             if (!selection.rangeCount) return false;
             var node = selection.getRangeAt(0).startContainer;
             var element = node.nodeType === 1 ? node : node.parentElement;
-            if (element && element.scrollIntoView) {
-              element.scrollIntoView({ block: "center" });
+            if (element) {
+              var scroller = wysiwygScroller();
+              if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
+                element.scrollIntoView({ block: "center" });
+              } else {
+                var rect = element.getBoundingClientRect();
+                scroller.scrollTop += (rect.top + rect.bottom) / 2 - viewportMiddle(scroller);
+              }
             }
             return true;
           },
@@ -309,6 +323,13 @@
               value: text,
               onWarning: function (message) { lastWarning = message; },
             });
+            latencySamples = [];
+            surface().addEventListener("beforeinput", function () {
+              var started = performance.now();
+              requestAnimationFrame(function () {
+                latencySamples.push(Math.round((performance.now() - started) * 100) / 100);
+              });
+            }, true);
             return true;
           },
 
@@ -354,6 +375,69 @@
                     return Math.round(marker.getBoundingClientRect().left * 100) / 100;
                   });
               });
+          },
+
+          blockPresentation: function () {
+            return Array.prototype.slice.call(surface().querySelectorAll(".amorist-wysiwyg-block"))
+              .map(function (block) {
+                var style = window.getComputedStyle(block);
+                return {
+                  type: block.classList.contains("amorist-wysiwyg-table-block") ? "table" : "code",
+                  rows: Array.prototype.slice.call(block.querySelectorAll(".amorist-source-line"))
+                    .map(function (row) { return Number(row.dataset.line); }),
+                  borderTopWidth: style.borderTopWidth,
+                  borderRadius: style.borderRadius,
+                  paddingTop: style.paddingTop,
+                  paddingRight: style.paddingRight,
+                  overflowX: style.overflowX,
+                  overflowY: style.overflowY,
+                  scrollLeft: Math.round(block.scrollLeft),
+                  scrollWidth: Math.round(block.scrollWidth),
+                  clientWidth: Math.round(block.clientWidth),
+                };
+              });
+          },
+
+          scrollProjectionBlock: function (type, index) {
+            var blocks = Array.prototype.slice.call(surface().querySelectorAll(
+              type === "table" ? ".amorist-wysiwyg-table-block" : ".amorist-wysiwyg-code-block",
+            ));
+            var target = blocks[index];
+            if (!target) return null;
+            target.scrollLeft = target.scrollWidth;
+            return {
+              blocks: this.blockPresentation().map(function (block) { return block.scrollLeft; }),
+              surface: Math.round(surface().scrollLeft),
+              document: Math.round((document.scrollingElement || document.documentElement).scrollLeft),
+            };
+          },
+
+          projectionIdentity: function () {
+            return {
+              rows: Array.prototype.slice.call(surface().querySelectorAll(".amorist-source-line"))
+                .map(function (row) { return nodeId(row); }),
+              blocks: Array.prototype.slice.call(surface().querySelectorAll(".amorist-wysiwyg-block"))
+                .map(function (block) { return nodeId(block); }),
+            };
+          },
+
+          resetLatencies: function () {
+            latencySamples = [];
+            return true;
+          },
+
+          latencies: function () {
+            return latencySamples.slice();
+          },
+
+          compositionInput: function (text) {
+            surface().dispatchEvent(new InputEvent("beforeinput", {
+              bubbles: true,
+              cancelable: true,
+              inputType: "insertCompositionText",
+              data: text,
+            }));
+            return true;
           },
 
           forceWysiwygFailure: function () {
@@ -428,7 +512,9 @@
           },
 
           surfaceText: function () {
-            return surface().innerText;
+            // Keep the offset space identical to setCaretAtTextOffset's text
+            // node walk. Block wrappers may add layout-only innerText breaks.
+            return surface().textContent;
           },
 
           sourceValue: function () {

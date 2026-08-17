@@ -17,6 +17,25 @@ approved_by: repository owner
 approved_on: 2026-07-28
 
 amendments:
+  - date: 2026-08-17
+    authorised_by: repository owner, after hands-on testing of version 0.10.6
+    what: >
+      Source fidelity and view continuity remain mandatory but are not sufficient
+      when the live projection loses established visual containment or ordinary
+      typing exceeds an interactive budget. REQ-B8 requires one framed,
+      independently horizontally scrollable projection block per pipe table and
+      fenced-code region. REQ-B9 requires stable same-line typing to replace only
+      its affected projection unit, retain unrelated DOM identity, and meet the
+      declared 500-line and 1,500-line event-to-frame budgets in every applicable
+      browser engine.
+    why: >
+      Version 0.10.6 restored exact source authority and view-position continuity,
+      but it rebuilds the complete projection on every key, performs interleaved
+      table geometry reads and writes, and no longer contains wide tables or code
+      blocks in their own visual frame. Those regressions make the safe editor
+      visibly and measurably less usable without invalidating its source model.
+    source: repository owner statements and implementation approval, 2026-08-17
+
   - date: 2026-08-14
     authorised_by: repository owner, after hands-on testing of version 0.10.5
     what: >
@@ -770,6 +789,91 @@ requirements:
     false_positive_risk: medium
     automation: full
     estimated_cost: low
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-B8
+    statement: >
+      Every recognized pipe table and fenced code region is projected as one
+      visually framed WYSIWYG block with its own horizontal scroll owner. A wide
+      block scrolls locally; the editor surface, document viewport and every other
+      block retain their horizontal position. Table alignment is display-only and
+      rendering or scrolling never changes source bytes.
+    category: invariant
+    origin: user-statement, 2026-08-17
+    motivation: >
+      The 0.10.6 line-faithful projection removed the established containment of
+      tables and code blocks. Wide source then becomes clipped by the editor
+      surface and cannot be inspected without weakening the safe source model.
+    risk_id: R-019
+    verification:
+      type: deterministic
+      evidence_required:
+        - one narrow table, two wide tables and one wide fenced-code block in
+          every applicable browser engine
+        - backtick and tilde fences, including an info string
+        - computed 1 px border, 8 px radius, 16 px padding and horizontal-only
+          local overflow on each live wrapper
+        - independent scrollLeft observations for both wide tables and the code
+          block, plus the editor surface and document viewport
+        - exact Markdown bytes before and after rendering, local scrolling and
+          view switches; REQ-B5 supplies the independent pipe-alignment verdict
+      success_condition: >
+        Each table and fenced region has exactly one framed wrapper and retains a
+        source-line descendant for every physical line. Every wide wrapper can
+        scroll horizontally without moving another wrapper, the surface or the
+        document viewport; vertical overflow remains owned by the editor view;
+        REQ-B5 is green; and source bytes remain identical.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+
+  - id: REQ-B9
+    statement: >
+      Ordinary within-line typing updates only the affected projection unit and
+      appears at the visible caret by the next animation frame. On deterministic
+      500-line and 1,500-line mixed documents, plain-text and table-cell targets
+      each receive 3 warm-up keys and 20 measured keys in every applicable
+      browser engine. The nearest-rank p95 is sample 19 after sorting: at most
+      50 ms for 500 lines and at most 100 ms for 1,500 lines.
+    category: invariant
+    origin: user-statement and measured regression, 2026-08-17
+    motivation: >
+      Rebuilding the whole live projection and laying out every table for each
+      character causes visible stalls. A timing threshold alone can pass on a
+      fast host, so unchanged DOM identity outside the projection unit is an
+      independent structural requirement.
+    risk_id: R-020
+    verification:
+      type: deterministic
+      evidence_required:
+        - exactly 500- and 1,500-physical-line deterministic documents containing
+          prose/list filler and one ragged three-row table every 40 lines
+        - a unique plain-text target and a unique cell target in an existing table
+        - 3 unrecorded warm-up keys followed by all 20 event-to-next-frame samples
+          for every engine, size and target combination
+        - eight nearest-rank p95 values, calculated by sorting each 20-sample set
+          and taking sample 19
+        - untouched-row DOM identity during prose, list, table-cell and fenced-code
+          same-line edits, plus exact typed source ordering and byte preservation
+      success_condition: >
+        All 160 measured samples and eight p95 values are present in the report;
+        every 500-line p95 is at most 50 ms and every 1,500-line p95 is at most
+        100 ms; no stable same-line gesture performs a full projection render;
+        nodes outside the affected prose/list/code row or table wrapper retain
+        identity; and no typed or untouched source byte is lost or reordered.
+    severity: blocking
+    false_positive_risk: medium
+    false_positive_note: >
+      Host load affects latency, so the deterministic DOM-identity assertion is
+      an independent gate. The fixed viewport, document family, warm-up count,
+      sample count and page-internal event-to-animation-frame clock keep the
+      numeric comparison reproducible without weakening either threshold.
+    automation: full
+    estimated_cost: high
     currently_holds: false
     status: confirmed
 

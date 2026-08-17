@@ -319,6 +319,32 @@
       ]
     },
     {
+      "id": "REQ-B8",
+      "statement": "Every recognized pipe table and fenced code region is projected as one visually framed WYSIWYG block with its own horizontal scroll owner. A wide block scrolls locally; the editor surface, document viewport and every other block retain their horizontal position. Table alignment is display-only and rendering or scrolling never changes source bytes.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-019"
+      ]
+    },
+    {
+      "id": "REQ-B9",
+      "statement": "Ordinary within-line typing updates only the affected projection unit and appears at the visible caret by the next animation frame. On deterministic 500-line and 1,500-line mixed documents, plain-text and table-cell targets each receive 3 warm-up keys and 20 measured keys in every applicable browser engine. The nearest-rank p95 is sample 19 after sorting: at most 50 ms for 500 lines and at most 100 ms for 1,500 lines.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "B",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-020"
+      ]
+    },
+    {
       "id": "REQ-C1",
       "statement": "Switching between WYSIWYG and source leaves the caret on the same character of the text, in both directions. Column numbers may differ where the file contains markers the WYSIWYG does not display.",
       "severity": "blocking",

@@ -10,7 +10,12 @@
 const { changedLines, splitLines, visible } = require("../lib/diff");
 const { select } = require("../lib/fixtures");
 const { findHandWrappedParagraph } = require("../lib/markdown-shape");
+const { performanceFixture } = require("../lib/performance-fixture");
 const { runTauriAppChecks } = require("../lib/tauri-app-e2e");
+
+function nearestRankP95(samples) {
+  return samples.slice().sort((a, b) => a - b)[18];
+}
 
 module.exports = [
   {
@@ -404,6 +409,214 @@ module.exports = [
       }
 
       return { failures, fixturesExercised: ["ragged pipe table"] };
+    },
+  },
+  {
+    id: "REQ-B8",
+    title: "Tables and fenced code are framed blocks with independent horizontal scrolling",
+    note: "The live projection wrappers are observed through computed style and native scroll state; alignment remains owned by REQ-B5.",
+    async run(ctx) {
+      const wideA = "A".repeat(180);
+      const wideB = "B".repeat(200);
+      const wideCode = "const payload = \"" + "C".repeat(220) + "\";";
+      const markdown = [
+        "| a | b |", "|---|---|", "| c | d |", "",
+        `| ${wideA} | one |`, "|---|---|", "| x | two |", "",
+        `| ${wideB} | red |`, "|---|---|", "| y | blue |", "",
+        "```javascript", wideCode, "```", "",
+        "~~~text", "tilde fence", "~~~",
+      ].join("\n");
+      await ctx.page.setHostWidth(640);
+      await ctx.page.open(markdown);
+      await ctx.page.settle(80);
+      const blocks = await ctx.page.blockPresentation();
+      const failures = [];
+      const types = blocks.map((block) => block.type);
+      if (JSON.stringify(types) !== JSON.stringify(["table", "table", "table", "code", "code"])) {
+        failures.push({
+          fixture: "table and fence containment",
+          detail: "The projection did not create exactly one wrapper per table/fenced region.",
+          expected: "table, table, table, code, code",
+          actual: types.join(", "),
+        });
+      }
+      blocks.forEach((block, index) => {
+        const style = [block.borderTopWidth, block.borderRadius, block.paddingTop, block.paddingRight, block.overflowX, block.overflowY];
+        const expected = ["1px", "8px", "16px", "16px", "auto", "hidden"];
+        if (JSON.stringify(style) !== JSON.stringify(expected)) {
+          failures.push({
+            fixture: `projection block ${index + 1}`,
+            detail: "The live wrapper does not use the approved frame and horizontal-only overflow.",
+            expected: expected.join(", "),
+            actual: style.join(", "),
+          });
+        }
+        if (block.rows.length !== 3) {
+          failures.push({
+            fixture: `projection block ${index + 1}`,
+            detail: "The wrapper lost a line-addressable descendant.",
+            expected: "3 source rows",
+            actual: String(block.rows.length),
+          });
+        }
+      });
+      [blocks[1], blocks[2], blocks[3]].forEach((block, index) => {
+        if (!block || block.scrollWidth <= block.clientWidth) {
+          failures.push({
+            fixture: `wide projection block ${index + 1}`,
+            detail: "The deliberately wide block has no local horizontal scroll extent.",
+          });
+        }
+      });
+
+      const first = await ctx.page.scrollProjectionBlock("table", 1);
+      const second = await ctx.page.scrollProjectionBlock("table", 2);
+      const code = await ctx.page.scrollProjectionBlock("code", 0);
+      if (!first || first.blocks[1] <= 0 || first.blocks.some((value, index) => index !== 1 && value !== 0)) {
+        failures.push({ fixture: "first wide table", detail: "Scrolling one table moved another projection block or did not move locally.", actual: JSON.stringify(first) });
+      }
+      if (!second || second.blocks[1] <= 0 || second.blocks[2] <= 0 || second.blocks.some((value, index) => index !== 1 && index !== 2 && value !== 0)) {
+        failures.push({ fixture: "second wide table", detail: "The two table scroll owners are not independent.", actual: JSON.stringify(second) });
+      }
+      if (!code || code.blocks[1] <= 0 || code.blocks[2] <= 0 || code.blocks[3] <= 0) {
+        failures.push({ fixture: "wide fenced code", detail: "The fenced block did not scroll independently of both tables.", actual: JSON.stringify(code) });
+      }
+      for (const state of [first, second, code]) {
+        if (state && (state.surface !== 0 || state.document !== 0)) {
+          failures.push({ fixture: "document containment", detail: "Local block scrolling moved the surface or document viewport.", actual: JSON.stringify(state) });
+        }
+      }
+      const after = await ctx.page.markdown();
+      if (after !== markdown) {
+        failures.push({ fixture: "table and fence containment", detail: "Rendering or scrolling changed source bytes.", expected: markdown, actual: after });
+      }
+      return { failures, fixturesExercised: ["narrow table", "two wide tables", "backtick fence", "tilde fence"] };
+    },
+  },
+  {
+    id: "REQ-B9",
+    title: "Stable same-line typing is DOM-local and meets the event-to-frame budgets",
+    note: "Each engine records 80 samples: 500/1500 lines times prose/table targets times 20 real keys; raw reports compose to the required 160.",
+    async run(ctx) {
+      const failures = [];
+      const localityCases = [
+        { name: "prose", source: "alpha TARGET omega\nuntouched sentinel", target: "TARGET", mutable: [0] },
+        { name: "list", source: "- TARGET item\nuntouched sentinel", target: "TARGET", mutable: [0] },
+        { name: "table", source: "| TARGET | b |\n|---|---|\n| c | d |\nuntouched sentinel", target: "TARGET", mutable: [0, 1, 2] },
+        { name: "fenced code", source: "```js\nTARGET\n```\nuntouched sentinel", target: "TARGET", mutable: [1] },
+      ];
+      for (const sample of localityCases) {
+        await ctx.page.open(sample.source);
+        const at = sample.source.indexOf(sample.target) + sample.target.length;
+        await ctx.page.setRawSelection(at);
+        const before = await ctx.page.projectionIdentity();
+        await ctx.page.sendKeys(["x"]);
+        await ctx.page.settle(30);
+        const after = await ctx.page.projectionIdentity();
+        before.rows.forEach((id, line) => {
+          if (!sample.mutable.includes(line) && after.rows[line] !== id) {
+            failures.push({ fixture: sample.name, line: line + 1, detail: "A same-line key replaced a DOM row outside its projection unit." });
+          }
+        });
+        const expected = sample.source.slice(0, at) + "x" + sample.source.slice(at);
+        const actual = await ctx.page.markdown();
+        if (actual !== expected) failures.push({ fixture: sample.name, detail: "The local key was lost or reordered.", expected, actual });
+      }
+
+      const compositionSource = "prima COMPOSITION dopo\nuntouched composition row";
+      const compositionAt = compositionSource.indexOf("COMPOSITION") + "COMPOSITION".length;
+      await ctx.page.open(compositionSource);
+      await ctx.page.setRawSelection(compositionAt);
+      const compositionIdentity = await ctx.page.projectionIdentity();
+      await ctx.page.compositionInput("è");
+      await ctx.page.settle(30);
+      const compositionAfter = await ctx.page.projectionIdentity();
+      const compositionMarkdown = await ctx.page.markdown();
+      const compositionExpected = compositionSource.slice(0, compositionAt) + "è" + compositionSource.slice(compositionAt);
+      if (compositionMarkdown !== compositionExpected || compositionIdentity.rows[1] !== compositionAfter.rows[1]) {
+        failures.push({
+          fixture: "IME composition",
+          detail: "A composition transaction was doubled/lost or replaced an untouched row.",
+          expected: compositionExpected,
+          actual: compositionMarkdown,
+        });
+      }
+
+      const scrolledTarget = "SCROLLED_TABLE_TARGET";
+      const scrolledTableSource = [
+        `| ${"wide ".repeat(40)} | ${scrolledTarget} |`,
+        "|---|---|",
+        "| short | value |",
+      ].join("\n");
+      await ctx.page.setHostWidth(640);
+      await ctx.page.open(scrolledTableSource);
+      const scrolledAt = scrolledTableSource.indexOf(scrolledTarget) + scrolledTarget.length;
+      await ctx.page.setRawSelection(scrolledAt);
+      await ctx.page.scrollProjectionBlock("table", 0);
+      const scrolledBefore = (await ctx.page.blockPresentation())[0];
+      await ctx.page.sendKeys(["x"]);
+      await ctx.page.settle(30);
+      const scrolledAfter = (await ctx.page.blockPresentation())[0];
+      const expectedScroll = scrolledAfter.scrollWidth - scrolledAfter.clientWidth;
+      if (scrolledBefore.scrollLeft <= 0
+        || scrolledAfter.scrollLeft <= 0
+        || Math.abs(scrolledAfter.scrollLeft - expectedScroll) > 1) {
+        failures.push({
+          fixture: "typing at the end of a horizontally scrolled table",
+          detail: "Rebuilding the local table projection lost its right-edge horizontal anchor.",
+          expected: `scrollLeft ${expectedScroll} (right edge)`,
+          actual: `before ${scrolledBefore.scrollLeft}, after ${scrolledAfter.scrollLeft}`,
+        });
+      }
+      const scrolledMarkdown = await ctx.page.markdown();
+      const scrolledExpected = scrolledTableSource.slice(0, scrolledAt) + "x" + scrolledTableSource.slice(scrolledAt);
+      if (scrolledMarkdown !== scrolledExpected) {
+        failures.push({
+          fixture: "typing at the end of a horizontally scrolled table",
+          detail: "The scroll-preservation gesture changed or reordered source text.",
+          expected: scrolledExpected,
+          actual: scrolledMarkdown,
+        });
+      }
+
+      const timing = [];
+      for (const size of [500, 1500]) {
+        const fixture = performanceFixture(size);
+        if (fixture.lineCount !== size) throw new Error(`Generated ${fixture.lineCount} lines for the ${size}-line fixture.`);
+        for (const target of ["plain", "table"]) {
+          await ctx.page.open(fixture.markdown);
+          const offset = target === "plain" ? fixture.plainOffset : fixture.tableOffset;
+          await ctx.page.setRawSelection(offset);
+          await ctx.page.sendKeys(["w", "w", "w"]);
+          await ctx.page.settle(40);
+          const identity = await ctx.page.projectionIdentity();
+          await ctx.page.resetLatencies();
+          for (let sample = 0; sample < 20; sample += 1) {
+            await ctx.page.sendKeys(["x"]);
+            await ctx.page.settle(20);
+          }
+          const samples = await ctx.page.latencies();
+          const afterIdentity = await ctx.page.projectionIdentity();
+          const p95 = samples.length === 20 ? nearestRankP95(samples) : null;
+          const limit = size === 500 ? 50 : 100;
+          timing.push({ engine: ctx.engine, lines: size, target, warmups: 3, samples, p95, limit });
+          if (samples.length !== 20) {
+            failures.push({ fixture: `${size} lines / ${target}`, detail: "The harness did not record exactly 20 event-to-frame samples.", expected: "20", actual: String(samples.length) });
+          } else if (p95 > limit) {
+            failures.push({ fixture: `${size} lines / ${target}`, detail: "Nearest-rank p95 exceeds the blocking latency budget.", expected: `<= ${limit} ms`, actual: `${p95} ms` });
+          }
+          const untouched = size - 1;
+          if (identity.rows[untouched] !== afterIdentity.rows[untouched]) {
+            failures.push({ fixture: `${size} lines / ${target}`, line: size, detail: "An untouched row lost DOM identity during ordinary typing." });
+          }
+          const expectedLength = fixture.markdown.length + 23;
+          const actual = await ctx.page.markdown();
+          if (actual.length !== expectedLength) {
+            failures.push({ fixture: `${size} lines / ${target}`, detail: "Measured typing lost or duplicated source characters.", expected: String(expectedLength), actual: String(actual.length) });
+          }
+        }
+      }
+      return { failures, fixturesExercised: localityCases.map((sample) => sample.name).concat(["IME composition", "scrolled table typing", "500-line mixed document", "1500-line mixed document"]), metrics: { timing } };
     },
   },
   {

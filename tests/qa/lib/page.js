@@ -43,6 +43,12 @@ function makePage(engine) {
     scrollState: () => call(engine, "scrollState"),
     visibleViews: () => call(engine, "visibleViews"),
     tableColumnPositions: () => call(engine, "tableColumnPositions"),
+    blockPresentation: () => call(engine, "blockPresentation"),
+    scrollProjectionBlock: (type, index) => call(engine, "scrollProjectionBlock", [type, index]),
+    projectionIdentity: () => call(engine, "projectionIdentity"),
+    resetLatencies: () => call(engine, "resetLatencies"),
+    latencies: () => call(engine, "latencies"),
+    compositionInput: (text) => call(engine, "compositionInput", [text]),
     forceWysiwygFailure: () => call(engine, "forceWysiwygFailure"),
 
     sendKeys: (sequence) => engine.sendKeys(sequence),

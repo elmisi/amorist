@@ -87,6 +87,14 @@ async function runOnce() {
   longLines[45] = "ApplicationLongMiddleUnique";
   longLines[89] = "ApplicationLongEndUnique";
   const longDocument = longLines.join("\n");
+  const wrapperLines = Array.from({ length: 120 }, (_, index) => `application wrapper filler ${String(index).padStart(3, "0")}`);
+  wrapperLines.splice(44, 3,
+    "| ApplicationTableMidpointUnique | compact |",
+    "|---|---|",
+    "| wider cell | value |",
+  );
+  wrapperLines.splice(76, 3, "```javascript", "ApplicationCodeMidpointUnique const value = 1;", "```");
+  const wrapperDocument = wrapperLines.join("\n");
   fs.mkdirSync(dataHome, { recursive: true });
   fs.writeFileSync(documentPath, saved, "utf8");
   const environment = { ...process.env, XDG_DATA_HOME: dataHome };
@@ -105,7 +113,13 @@ async function runOnce() {
     results.C2.push(...await verifyApplicationPositionMatrix(engine, "long", [
       longLines[0], longLines[45], longLines[89],
     ]));
-    results.fixtures.push("built app: six position/content combinations in both view-switch directions");
+    fs.writeFileSync(documentPath, wrapperDocument, "utf8");
+    await reloadCleanDocument(engine, wrapperDocument);
+    results.C2.push(...await verifyApplicationWrapperPositions(engine, [
+      { name: "table midpoint", token: "ApplicationTableMidpointUnique" },
+      { name: "fenced-code midpoint", token: "ApplicationCodeMidpointUnique" },
+    ]));
+    results.fixtures.push("built app: eight view-position scenarios in both view-switch directions");
 
     const editing = await verifyApplicationEditing(engine, documentPath);
     results.B4.push(...editing.B4);
@@ -381,11 +395,38 @@ async function verifyApplicationPositionMatrix(engine, size, tokens) {
   return failures;
 }
 
+async function verifyApplicationWrapperPositions(engine, samples) {
+  const failures = [];
+  for (const sample of samples) {
+    await setApplicationPosition(engine, "middle", sample.token);
+    let before = await applicationPositionSnapshot(engine);
+    for (const direction of ["WYSIWYG to Source", "Source to WYSIWYG"]) {
+      await engine.evaluate(`document.querySelector('[data-action="source"]').click()`);
+      await delay(100);
+      const after = await applicationPositionSnapshot(engine);
+      if (after.views.source === after.views.wysiwyg || after.line !== before.line) {
+        failures.push({
+          fixture: `long mixed geometry, ${sample.name}`,
+          direction,
+          detail: "The built app changed the physical line at a projection-wrapper midpoint.",
+          expected: `source line ${before.line}, exactly one visible view`,
+          actual: JSON.stringify(after),
+        });
+      }
+      before = after;
+    }
+  }
+  return failures;
+}
+
 async function setApplicationPosition(engine, position, token) {
-  await engine.evaluate(`(function () {
+  await engine.evaluate(`(async function () {
     var source = document.querySelector(".amorist-editor-source");
     var button = document.querySelector('[data-action="source"]');
     if (!source.hidden) button.click();
+    await new Promise(function (resolve) {
+      requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+    });
     var surface = document.querySelector(".amorist-editor-surface");
     var rows = Array.prototype.slice.call(surface.querySelectorAll(".amorist-source-line"));
     var row = rows.find(function (candidate) { return candidate.textContent.indexOf(${JSON.stringify(token)}) >= 0; });
@@ -401,8 +442,12 @@ async function setApplicationPosition(engine, position, token) {
       selection.addRange(range);
       surface.focus();
     }
-    if (${JSON.stringify(position)} === "middle") row.scrollIntoView({ block: "center" });
-    else surface.scrollTop = ${JSON.stringify(position)} === "end" ? surface.scrollHeight : 0;
+    if (${JSON.stringify(position)} === "middle") {
+      var rowRect = row.getBoundingClientRect();
+      var surfaceRect = surface.getBoundingClientRect();
+      surface.scrollTop += (rowRect.top + rowRect.bottom) / 2
+        - (surfaceRect.top + surface.clientHeight / 2);
+    } else surface.scrollTop = ${JSON.stringify(position)} === "end" ? surface.scrollHeight : 0;
   })()`);
   await delay(60);
 }

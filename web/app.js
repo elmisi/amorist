@@ -435,9 +435,10 @@
   }
 
   function setDirty(dirty) {
+    var changed = state.dirty !== dirty;
     state.dirty = dirty;
     document.body.classList.toggle("is-dirty", dirty);
-    backend.syncDirty(dirty);
+    if (changed) backend.syncDirty(dirty);
     setStatus(dirty ? "Modified" : "Saved");
   }
 

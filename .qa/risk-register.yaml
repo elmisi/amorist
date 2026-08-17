@@ -209,6 +209,43 @@ risks:
     verification_ids: [REQ-B3, REQ-B1]
     status: open
 
+  # .qa/risks.yaml is the frozen Discovery log. Product risks found after
+  # Discovery are registered here directly so the traceability chain can grow
+  # without rewriting that historical evidence.
+
+  - id: R-019
+    title: Wide table and fenced-code projections lose local containment
+    source: repo-evidence, version 0.10.6
+    consequence: >
+      A line-faithful projection made of independent spans has no block frame or
+      horizontal scroll owner. Wide tables and code are clipped by the editor
+      surface, and a user cannot inspect them without changing view or position.
+    likelihood: high
+    impact: medium
+    unacceptable: true
+    mitigation: >
+      Group every recognized table and fenced region into one editor-only framed
+      wrapper with horizontal-only local overflow and one addressable source row
+      for each physical line.
+    verification_ids: [REQ-B8]
+    status: open
+
+  - id: R-020
+    title: A local key rebuilds and lays out the complete projection
+    source: repo-evidence and measured regression, version 0.10.6
+    consequence: >
+      Ordinary typing becomes increasingly delayed as documents and table counts
+      grow, even though the authoritative source transaction changes one line.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Patch only the affected projection unit, retain unrelated DOM identity,
+      batch table reads before writes, and enforce fixed event-to-frame budgets
+      in every applicable engine.
+    verification_ids: [REQ-B9]
+    status: open
+
   # Risks introduced by the QA system itself, not by the product.
 
   - id: R-016
