@@ -528,7 +528,7 @@ module.exports = [
       return {
         failures: app.C2,
         fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("eight view-position")),
-        notCovered: app.unsupported ? [app.unsupported] : [],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },

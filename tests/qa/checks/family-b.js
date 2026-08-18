@@ -628,7 +628,7 @@ module.exports = [
       return {
         failures: app.B4,
         fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("structural editing")),
-        notCovered: app.unsupported ? [app.unsupported] : [],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },
@@ -641,7 +641,7 @@ module.exports = [
       return {
         failures: app.B6,
         fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("structural editing")),
-        notCovered: app.unsupported ? [app.unsupported] : [],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },
@@ -654,7 +654,7 @@ module.exports = [
       return {
         failures: app.B7,
         fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("structural editing")),
-        notCovered: app.unsupported ? [app.unsupported] : [],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },

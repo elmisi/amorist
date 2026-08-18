@@ -57,22 +57,30 @@ class Report {
           severity: result.severity,
           engines: {},
           failures: [],
+          delegated: [],
         });
       }
       const entry = map.get(result.requirement);
       entry.engines[result.engine] = result.verdict;
       entry.failures.push(...result.failures.map((f) => ({ ...f, engine: result.engine })));
+      entry.delegated.push(...(result.delegated || []));
     }
     return [...map.values()];
   }
 
   // Exit non-zero if and only if a blocking requirement failed, or a check
-  // could not run. There is no third state.
+  // could not run. "Delegated" is the one verdict besides "pass" that does
+  // not turn the run red: it means the contract assigns this verdict to
+  // another platform's run, and the release gate — which composes a green run
+  // per published platform — is where that other run is held to it. It is
+  // never silent: the summary and the report both name what was delegated.
   exitCode() {
     if (this.blockedEngines.length) return 1;
     if (this.harnessErrors.length) return 1;
     const blockingFailure = this.results.some(
-      (result) => result.severity === "blocking" && result.verdict !== "pass",
+      (result) => result.severity === "blocking"
+        && result.verdict !== "pass"
+        && result.verdict !== "delegated",
     );
     return blockingFailure ? 1 : 0;
   }

@@ -128,7 +128,7 @@ module.exports = [
           "discarding a recovery copy twice",
           ...app.fixtures.filter((fixture) => fixture.includes("SIGKILL")),
         ],
-        notCovered: app.unsupported ? [app.unsupported] : [],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },
@@ -146,7 +146,7 @@ module.exports = [
           "working-copy persistence beside an unchanged user document",
           ...app.fixtures.filter((fixture) => fixture.includes("sampled")),
         ],
-        notCovered: app.unsupported ? [app.unsupported] : [],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },

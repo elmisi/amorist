@@ -4,6 +4,17 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.8] - 2026-08-18
+
+### Fixed
+- The QA suite no longer turns a platform red for verdicts the contract assigns
+  to another platform's run. The checks only tauri-driver on Linux can exercise
+  (REQ-B4, B6, B7, C2, E1, E2) are now recorded on macOS as "delegated" — named
+  in the summary and in the report, but green — instead of "incomplete" and red.
+  This unblocks the macOS QA leg, which had never passed, and with it the Build
+  workflow's release gate. Genuine coverage gaps (missing driver or display on
+  Linux) still fail the run.
+
 ## [0.10.7] - 2026-08-17
 
 ### Changed

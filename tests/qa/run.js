@@ -172,6 +172,7 @@ async function main() {
     try {
       const outcome = await check.run({ report, corpus, contract, options });
       const notCovered = outcome.notCovered || [];
+      const delegated = outcome.delegated || [];
       report.recordResult({
         requirement: check.id,
         title: check.title,
@@ -181,11 +182,19 @@ async function main() {
         // exercised is not a pass. The two paths had drifted, and the drift
         // showed up as two requirements reporting green having measured
         // nothing at all.
-        verdict: outcome.failures.length ? "fail" : (notCovered.length ? "incomplete" : "pass"),
+        //
+        // A verdict assigned to another platform's run is different from both:
+        // it is neither exercised here nor missing. It stays on the record as
+        // "delegated" — printed, reported, and composed by the release gate,
+        // which requires the platform that owns it to actually go green.
+        verdict: outcome.failures.length
+          ? "fail"
+          : (notCovered.length ? "incomplete" : (delegated.length ? "delegated" : "pass")),
         durationMs: Date.now() - started,
         failures: outcome.failures,
         fixturesExercised: outcome.fixturesExercised || [],
         notCovered,
+        delegated,
       });
     } catch (error) {
       report.recordHarnessError(check.id, `The check could not execute: ${error.message}`);
@@ -262,8 +271,15 @@ function printSummary(report, corpus, file) {
       const verdicts = Object.entries(requirement.engines)
         .map(([id, verdict]) => `${id}:${verdict}`)
         .join("  ");
-      const mark = Object.values(requirement.engines).every((v) => v === "pass") ? "PASS" : "FAIL";
+      // A delegated verdict keeps the requirement green here: it is owned by
+      // another platform's run and enforced by the release gate. It is still
+      // printed by name below, so nothing leaves the record.
+      const mark = Object.values(requirement.engines)
+        .every((v) => v === "pass" || v === "delegated") ? "PASS" : "FAIL";
       line(`${mark}  ${requirement.requirement.padEnd(width)}  ${verdicts}`);
+      for (const delegation of [...new Set(requirement.delegated)]) {
+        line(`      DELEGATED: ${delegation}`);
+      }
       if (mark === "PASS") continue;
       const shown = requirement.failures.slice(0, 2);
       for (const failure of shown) {
