@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 src-tauri/target/
 src-tauri/gen/
+.qa/reports/last-run.json

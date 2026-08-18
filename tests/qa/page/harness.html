@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>amorist QA harness</title>
+
+    <!--
+      The editor component alone. No app shell, no backend, no Tauri bridge:
+      web/editor/ is a self-contained component and the contract's families A to
+      D are properties of that component, not of the application around it.
+    -->
+    <link rel="stylesheet" href="/web/editor/amorist-editor.css" />
+
+    <style>
+      /*
+        Geometry is measured here (REQ-B1), so size and width are pinned rather
+        than inherited. Read the note above the surface rules before assuming
+        the font is pinned too — it is a stack, and on one platform it falls
+        through. The runner measures and reports what actually won.
+      */
+      html {
+        font-size: 16px;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+      }
+      :root {
+        /* Set by the runner. REQ-B1 must measure against a viewport wide enough
+           that nothing wraps visually, otherwise a paragraph collapsed into one
+           long line would soft-wrap and imitate the line breaks it destroyed. */
+        --qa-width: 1200px;
+      }
+      #host {
+        width: var(--qa-width);
+      }
+      body.qa-contained-viewport {
+        overflow: hidden;
+      }
+      body.qa-contained-viewport #host,
+      body.qa-contained-viewport .amorist-editor {
+        height: 720px;
+        min-height: 0;
+      }
+      body.qa-contained-viewport .amorist-editor {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      body.qa-contained-viewport .amorist-editor-toolbar,
+      body.qa-contained-viewport .amorist-editor-findbar {
+        flex: none;
+        position: static;
+      }
+      body.qa-contained-viewport .amorist-editor-surface,
+      body.qa-contained-viewport .amorist-editor-source {
+        flex: 1;
+        height: 0;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      /*
+        Size and width are pinned here. The FONT is a stack, and a stack is a
+        preference, not a guarantee: neither of the named faces exists on macOS,
+        where this falls through to whatever the system calls monospace. Saying
+        "the font is fixed" would be claiming a precision that is not there.
+
+        What the geometry check actually needs is weaker than an identical face:
+        a font that is stable within one run, and a container wide enough that
+        nothing wraps. Both hold.
+
+        Measured, the metrics turn out to agree across platforms anyway — the
+        two faces that win share the advance ratio conventional to monospaced
+        faces. That is a coincidence and not a guarantee, which is why the
+        runner prints the number instead of relying on it.
+
+        How the editor renders text is what is under test, so nothing in this
+        page may set white-space, wrapping or line breaking — overriding those
+        would let the harness supply the very behaviour a check is meant to find
+        missing.
+      */
+      .amorist-editor-surface,
+      .amorist-editor-source {
+        font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+        font-size: 14px;
+        line-height: 21px;
+        width: var(--qa-width);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="host"></div>
+
+    <script src="/web/editor/amorist-text-utils.js"></script>
+    <script src="/web/editor/amorist-document-model.js"></script>
+    <script src="/web/editor/amorist-table-codec.js"></script>
+    <script src="/web/editor/amorist-markdown-codec.js"></script>
+    <script src="/web/editor/amorist-html-to-markdown.js"></script>
+    <script src="/web/editor/amorist-editing-policy.js"></script>
+    <script src="/web/editor/amorist-editor.js"></script>
+
+    <script>
+      // The page side of the driver interface. It mounts and inspects; it never
+      // decides anything. Every verdict is reached in the runner, so that both
+      // engines are judged by the same code.
+      window.__qa = (function () {
+        var host = document.getElementById("host");
+        var editor = null;
+        var lastWarning = "";
+        var latencySamples = [];
+        var nodeIds = new WeakMap();
+        var nextNodeId = 1;
+
+        function nodeId(node) {
+          if (!nodeIds.has(node)) nodeIds.set(node, nextNodeId++);
+          return nodeIds.get(node);
+        }
+
+        function surface() {
+          return document.querySelector(".amorist-editor-surface");
+        }
+
+        function source() {
+          return document.querySelector(".amorist-editor-source");
+        }
+
+        function wysiwygScroller() {
+          var target = surface();
+          var overflow = window.getComputedStyle(target).overflowY;
+          return (overflow === "auto" || overflow === "scroll")
+            && target.scrollHeight > target.clientHeight + 1
+            ? target
+            : (document.scrollingElement || document.documentElement);
+        }
+
+        function activeScroller() {
+          return source() && !source().hidden ? source() : wysiwygScroller();
+        }
+
+        function viewportMiddle(element) {
+          if (element === document.scrollingElement || element === document.documentElement || element === document.body) {
+            return window.innerHeight / 2;
+          }
+          var box = element.getBoundingClientRect();
+          return box.top + element.clientHeight / 2;
+        }
+
+        return {
+          version: 1,
+
+          // The font that actually won, measured rather than declared. Two
+          // platforms reporting different widths here are measuring with
+          // different faces — which is fine for what the geometry check
+          // asserts, and would not be fine for a check about wrap points. Print
+          // what was really exercised, not what was meant to be.
+          fontFingerprint: function () {
+            var probe = document.createElement("span");
+            probe.textContent = "MMMMMMMMMMiiiiiiiiii";
+            // The class carries the font AND the layout, and the layout wins:
+            // taking the class wholesale measured the container's fixed width
+            // instead of the text, and produced the same number on every
+            // platform — a figure that looked like agreement and was a
+            // constant. Take the font properties and nothing else.
+            probe.className = "amorist-editor-surface";
+            probe.style.cssText = [
+              "position:absolute",
+              "visibility:hidden",
+              "white-space:pre",
+              "display:inline-block",
+              "width:auto",
+              "min-width:0",
+              "max-width:none",
+              "padding:0",
+              "border:0",
+              "margin:0",
+              "left:-9999px",
+              "top:0",
+            ].join(";");
+            document.body.appendChild(probe);
+            var style = window.getComputedStyle(probe);
+            var width = probe.getBoundingClientRect().width;
+            var fingerprint = {
+              stack: style.fontFamily,
+              sizePx: style.fontSize,
+              // Twenty characters. In a monospaced face every glyph has the
+              // same advance, so this is twenty advances — a number that
+              // differs when the face differs, which is the whole point.
+              referenceWidthPx: Math.round(width * 100) / 100,
+            };
+            document.body.removeChild(probe);
+            return fingerprint;
+          },
+
+          // Toolbar commands are dispatched by clicking the real control, not
+          // by calling whatever it calls. A check that reaches past the button
+          // stops testing the path the user takes.
+          toolbarAction: function (name) {
+            var button = document.querySelector('[data-action="' + name + '"]');
+            if (!button) return false;
+            button.click();
+            return true;
+          },
+
+          // Where the caret is drawn ON SCREEN, whichever view is showing.
+          //
+          // The two views scroll by different mechanisms — the rendered view
+          // grows and scrolls the page, the source is a fixed box that scrolls
+          // inside itself — so a measurement written against either mechanism
+          // would be measuring the mechanism. Viewport coordinates are the
+          // common ground, and they are also what the eye actually sees.
+          caretScreenY: function () {
+            var viewport = window.innerHeight;
+            if (this.mode() === "source") {
+              var t = source();
+              var cs = window.getComputedStyle(t);
+              var lineHeight = parseFloat(cs.lineHeight);
+              var before = t.value.slice(0, t.selectionStart);
+              var lineIndex = before.split("\n").length - 1;
+              var box = t.getBoundingClientRect();
+              var y = box.top + parseFloat(cs.paddingTop)
+                + lineIndex * lineHeight - t.scrollTop;
+              return {
+                mode: "source",
+                y: Math.round(y * 100) / 100,
+                lineHeight: lineHeight,
+                viewportHeight: viewport,
+                visible: y >= box.top && y <= Math.min(box.bottom, viewport),
+              };
+            }
+            var selection = window.getSelection();
+            if (!selection.rangeCount) return { mode: "wysiwyg", y: null };
+            var range = selection.getRangeAt(0).cloneRange();
+            var rect = range.getBoundingClientRect();
+            if (!rect.height) {
+              // A collapsed range can measure as nothing. Widening it by one
+              // character gives a real box without moving the caret.
+              try {
+                var probe = range.cloneRange();
+                probe.setEnd(probe.startContainer, Math.min(
+                  probe.startOffset + 1,
+                  probe.startContainer.length || probe.startOffset,
+                ));
+                rect = probe.getBoundingClientRect();
+              } catch (e) { /* keep the empty rect */ }
+            }
+            var surfaceBox = surface().getBoundingClientRect();
+            var lh = parseFloat(window.getComputedStyle(surface()).lineHeight);
+            return {
+              mode: "wysiwyg",
+              y: Math.round(rect.top * 100) / 100,
+              lineHeight: isNaN(lh) ? 21 : lh,
+              viewportHeight: viewport,
+              visible: rect.top >= 0 && rect.top <= viewport,
+              surfaceTop: Math.round(surfaceBox.top),
+            };
+          },
+
+          // The source line under the vertical midpoint is the visual anchor
+          // a person uses when comparing the two views.
+          viewportSourceLine: function () {
+            if (this.mode() === "source") {
+              var t = source();
+              var cs = window.getComputedStyle(t);
+              var lineHeight = parseFloat(cs.lineHeight) || 21;
+              var contentY = t.scrollTop + t.clientHeight / 2 - (parseFloat(cs.paddingTop) || 0);
+              var count = t.value.split("\n").length;
+              return Math.max(0, Math.min(count - 1, Math.floor(contentY / lineHeight)));
+            }
+            var middle = viewportMiddle(wysiwygScroller());
+            var rows = Array.prototype.slice.call(surface().querySelectorAll(".amorist-source-line"));
+            var row = rows.find(function (candidate) {
+              var rect = candidate.getBoundingClientRect();
+              return rect.top <= middle && rect.bottom >= middle;
+            });
+            if (!row) {
+              row = rows.reduce(function (nearest, candidate) {
+                if (!nearest) return candidate;
+                var distance = function (element) {
+                  var rect = element.getBoundingClientRect();
+                  return Math.abs((rect.top + rect.bottom) / 2 - middle);
+                };
+                return distance(candidate) < distance(nearest) ? candidate : nearest;
+              }, null);
+            }
+            return row ? Number(row.dataset.line) : null;
+          },
+
+          // Put the caret where a person editing would have it: on screen.
+          scrollCaretIntoView: function () {
+            var selection = window.getSelection();
+            if (!selection.rangeCount) return false;
+            var node = selection.getRangeAt(0).startContainer;
+            var element = node.nodeType === 1 ? node : node.parentElement;
+            if (element) {
+              var scroller = wysiwygScroller();
+              if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
+                element.scrollIntoView({ block: "center" });
+              } else {
+                var rect = element.getBoundingClientRect();
+                scroller.scrollTop += (rect.top + rect.bottom) / 2 - viewportMiddle(scroller);
+              }
+            }
+            return true;
+          },
+
+          setHostWidth: function (pixels) {
+            document.documentElement.style.setProperty("--qa-width", pixels + "px");
+            // Force layout so a measurement taken immediately after is real.
+            return document.getElementById("host").getBoundingClientRect().width;
+          },
+
+          setContainedViewport: function (enabled) {
+            document.body.classList.toggle("qa-contained-viewport", Boolean(enabled));
+            return Boolean(enabled);
+          },
+
+          open: function (text) {
+            if (editor) editor.destroy();
+            host.replaceChildren();
+            lastWarning = "";
+            editor = window.AmoristEditor.create(host, {
+              value: text,
+              onWarning: function (message) { lastWarning = message; },
+            });
+            latencySamples = [];
+            surface().addEventListener("beforeinput", function () {
+              var started = performance.now();
+              requestAnimationFrame(function () {
+                latencySamples.push(Math.round((performance.now() - started) * 100) / 100);
+              });
+            }, true);
+            return true;
+          },
+
+          markdown: function () {
+            return editor.getMarkdown();
+          },
+
+          mode: function () {
+            return source() && !source().hidden ? "source" : "wysiwyg";
+          },
+
+          toggleMode: function () {
+            document.querySelector('[data-action="source"]').click();
+            return this.mode();
+          },
+
+          scrollToEdge: function (edge) {
+            var element = activeScroller();
+            // WebKitGTK converts Number.MAX_SAFE_INTEGER assigned to scrollTop
+            // back to zero. Use the actual content extent as the end target.
+            element.scrollTop = edge === "end" ? element.scrollHeight : 0;
+            return this.scrollState();
+          },
+
+          scrollState: function () {
+            var element = activeScroller();
+            var maximum = Math.max(0, element.scrollHeight - element.clientHeight);
+            return { top: Math.round(element.scrollTop), maximum: Math.round(maximum) };
+          },
+
+          visibleViews: function () {
+            return {
+              source: Boolean(source() && !source().hidden),
+              wysiwyg: Boolean(surface() && !surface().hidden),
+            };
+          },
+
+          tableColumnPositions: function () {
+            return Array.prototype.slice.call(document.querySelectorAll(".amorist-wysiwyg-table"))
+              .map(function (row) {
+                return Array.prototype.slice.call(row.querySelectorAll(".amorist-wysiwyg-table-marker"))
+                  .map(function (marker) {
+                    return Math.round(marker.getBoundingClientRect().left * 100) / 100;
+                  });
+              });
+          },
+
+          blockPresentation: function () {
+            return Array.prototype.slice.call(surface().querySelectorAll(".amorist-wysiwyg-block"))
+              .map(function (block) {
+                var style = window.getComputedStyle(block);
+                return {
+                  type: block.classList.contains("amorist-wysiwyg-table-block") ? "table" : "code",
+                  rows: Array.prototype.slice.call(block.querySelectorAll(".amorist-source-line"))
+                    .map(function (row) { return Number(row.dataset.line); }),
+                  borderTopWidth: style.borderTopWidth,
+                  borderRadius: style.borderRadius,
+                  paddingTop: style.paddingTop,
+                  paddingRight: style.paddingRight,
+                  overflowX: style.overflowX,
+                  overflowY: style.overflowY,
+                  scrollLeft: Math.round(block.scrollLeft),
+                  scrollWidth: Math.round(block.scrollWidth),
+                  clientWidth: Math.round(block.clientWidth),
+                };
+              });
+          },
+
+          scrollProjectionBlock: function (type, index) {
+            var blocks = Array.prototype.slice.call(surface().querySelectorAll(
+              type === "table" ? ".amorist-wysiwyg-table-block" : ".amorist-wysiwyg-code-block",
+            ));
+            var target = blocks[index];
+            if (!target) return null;
+            target.scrollLeft = target.scrollWidth;
+            return {
+              blocks: this.blockPresentation().map(function (block) { return block.scrollLeft; }),
+              surface: Math.round(surface().scrollLeft),
+              document: Math.round((document.scrollingElement || document.documentElement).scrollLeft),
+            };
+          },
+
+          projectionIdentity: function () {
+            return {
+              rows: Array.prototype.slice.call(surface().querySelectorAll(".amorist-source-line"))
+                .map(function (row) { return nodeId(row); }),
+              blocks: Array.prototype.slice.call(surface().querySelectorAll(".amorist-wysiwyg-block"))
+                .map(function (block) { return nodeId(block); }),
+            };
+          },
+
+          resetLatencies: function () {
+            latencySamples = [];
+            return true;
+          },
+
+          latencies: function () {
+            return latencySamples.slice();
+          },
+
+          compositionInput: function (text) {
+            surface().dispatchEvent(new InputEvent("beforeinput", {
+              bubbles: true,
+              cancelable: true,
+              inputType: "insertCompositionText",
+              data: text,
+            }));
+            return true;
+          },
+
+          forceWysiwygFailure: function () {
+            if (editor.mode !== "source") editor.showSourceMode();
+            var original = editor.render;
+            editor.render = function () { throw new Error("injected WYSIWYG render failure"); };
+            try {
+              editor.showWysiwygMode();
+            } finally {
+              editor.render = original;
+            }
+            return {
+              mode: editor.mode,
+              views: this.visibleViews(),
+              warning: lastWarning,
+              markdown: editor.getMarkdown(),
+            };
+          },
+
+          focusSurface: function () {
+            surface().focus();
+            return document.activeElement === surface();
+          },
+
+          focusSource: function () {
+            source().focus();
+            return document.activeElement === source();
+          },
+
+          // Put the caret at a character offset counted over the surface's
+          // visible text, so a check can say "line 3, column 5" without knowing
+          // how the editor happens to have built its nodes.
+          setCaretAtTextOffset: function (offset) {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var seen = 0;
+            var node = walker.nextNode();
+            while (node) {
+              var length = node.textContent.length;
+              if (seen + length >= offset) {
+                var range = document.createRange();
+                range.setStart(node, offset - seen);
+                range.collapse(true);
+                var selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                target.focus();
+                return true;
+              }
+              seen += length;
+              node = walker.nextNode();
+            }
+            // Past the end: land on the last position available.
+            var fallback = document.createRange();
+            fallback.selectNodeContents(target);
+            fallback.collapse(false);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(fallback);
+            target.focus();
+            return false;
+          },
+
+          caretTextOffset: function () {
+            var selection = window.getSelection();
+            if (!selection.rangeCount) return -1;
+            var range = selection.getRangeAt(0);
+            var measure = range.cloneRange();
+            measure.selectNodeContents(surface());
+            measure.setEnd(range.startContainer, range.startOffset);
+            return measure.toString().length;
+          },
+
+          surfaceText: function () {
+            // Keep the offset space identical to setCaretAtTextOffset's text
+            // node walk. Block wrappers may add layout-only innerText breaks.
+            return surface().textContent;
+          },
+
+          sourceValue: function () {
+            return source().value;
+          },
+
+          sourceSelection: function () {
+            var element = source();
+            return { start: element.selectionStart, end: element.selectionEnd };
+          },
+
+          setSourceSelection: function (start, end) {
+            var element = source();
+            element.focus();
+            element.setSelectionRange(start, end === undefined ? start : end);
+            return true;
+          },
+
+          setRawSelection: function (start, end) {
+            editor.setSurfaceSelection(start, end === undefined ? start : end);
+            return true;
+          },
+
+          projectedCaretGeometry: function () {
+            var selection = window.getSelection();
+            if (!selection || !selection.rangeCount) return null;
+            var range = selection.getRangeAt(0);
+            var row = range.startContainer.nodeType === 1
+              ? range.startContainer
+              : range.startContainer.parentElement;
+            while (row && !row.classList.contains("amorist-source-line")) row = row.parentElement;
+            if (!row) return null;
+            var caretX = null;
+            if (range.startContainer.nodeType === Node.TEXT_NODE && range.startOffset > 0) {
+              var probe = document.createRange();
+              probe.setStart(range.startContainer, range.startOffset - 1);
+              probe.setEnd(range.startContainer, range.startOffset);
+              var probeRect = probe.getBoundingClientRect();
+              caretX = probeRect.right;
+            } else {
+              var rect = range.getBoundingClientRect();
+              if (rect) caretX = rect.left;
+            }
+            var rowRect = row.getBoundingClientRect();
+            var rowStyle = window.getComputedStyle(row);
+            var markerStyle = window.getComputedStyle(row, "::before");
+            var markerRight = rowRect.left
+              + (parseFloat(rowStyle.paddingLeft) || 0)
+              + (parseFloat(markerStyle.marginLeft) || 0)
+              + (parseFloat(markerStyle.width) || 0);
+            return {
+              caretX: Math.round(caretX * 100) / 100,
+              markerRight: Math.round(markerRight * 100) / 100,
+              afterMarker: caretX >= markerRight - 1,
+            };
+          },
+
+          // The rendered position of the first character of a given piece of
+          // text. REQ-B1 turns on whether two source lines occupy two rendered
+          // lines, which is a question about pixels, not about the document
+          // tree — a tree can be perfectly nested and still render as one line.
+          firstCharacterTop: function (needle) {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var node = walker.nextNode();
+            while (node) {
+              var at = node.textContent.indexOf(needle);
+              if (at !== -1) {
+                var range = document.createRange();
+                range.setStart(node, at);
+                range.setEnd(node, at + 1);
+                var rect = range.getBoundingClientRect();
+                return { found: true, top: rect.top, left: rect.left, height: rect.height };
+              }
+              node = walker.nextNode();
+            }
+            return { found: false };
+          },
+
+          selectTextRange: function (start, end) {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var seen = 0;
+            var range = document.createRange();
+            var haveStart = false;
+            var node = walker.nextNode();
+            while (node) {
+              var length = node.textContent.length;
+              if (!haveStart && seen + length >= start) {
+                range.setStart(node, start - seen);
+                haveStart = true;
+              }
+              if (haveStart && seen + length >= end) {
+                range.setEnd(node, end - seen);
+                var selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                target.focus();
+                return true;
+              }
+              seen += length;
+              node = walker.nextNode();
+            }
+            return false;
+          },
+
+          // Paste, driven through the editor's own handler. The clipboard cannot
+          // be filled from outside the page in a way both engines accept, so the
+          // event is built here — but the code path under test is the real one:
+          // whatever the editor does with clipboardData is what runs.
+          paste: function (html, text) {
+            var transfer = new DataTransfer();
+            if (html) transfer.setData("text/html", html);
+            if (text) transfer.setData("text/plain", text);
+            var event = new ClipboardEvent("paste", { bubbles: true, cancelable: true });
+            Object.defineProperty(event, "clipboardData", { value: transfer });
+            surface().focus();
+            surface().dispatchEvent(event);
+            return true;
+          },
+
+          // Rendered geometry: the top edge and left edge of the first character
+          // of every text run, with the text it belongs to. REQ-B1 compares
+          // vertical positions to prove that separate source lines occupy
+          // separate rendered lines.
+          lineBoxes: function () {
+            var target = surface();
+            var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var boxes = [];
+            var node = walker.nextNode();
+            while (node) {
+              if (node.textContent.length) {
+                var range = document.createRange();
+                range.setStart(node, 0);
+                range.setEnd(node, node.textContent.length);
+                var rects = Array.prototype.map.call(range.getClientRects(), function (rect) {
+                  return { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
+                });
+                boxes.push({ text: node.textContent, rects: rects });
+              }
+              node = walker.nextNode();
+            }
+            return boxes;
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>

@@ -98,8 +98,14 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_glob }}
 
+  # The release gate. G-RELEASE in the QA contract: publication is blocked while
+  # any blocking requirement fails. Commits, merges and pushes are not blocked —
+  # only what reaches a user is.
+  qa:
+    uses: ./.github/workflows/qa.yml
+
   release:
-    needs: build
+    needs: [build, qa]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:

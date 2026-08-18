@@ -1,0 +1,13 @@
+{
+  "name": "an image with an address and alternative text",
+  "why": "A pasted image currently vanishes entirely: no address, no alternative text, no warning. Measured on the repository as it stands.",
+  "html": "<p>Prima dell'immagine.</p><p><img src=\"https://example.invalid/schema-2025.png\" alt=\"schema della migrazione\"></p><p>Dopo l'immagine.</p>",
+  "text": "Prima dell'immagine.\n\nDopo l'immagine.",
+  "mustSurvive": [
+    "https://example.invalid/schema-2025.png",
+    "schema della migrazione",
+    "Prima dell'immagine.",
+    "Dopo l'immagine."
+  ],
+  "mustBeOnSeparateLines": []
+}

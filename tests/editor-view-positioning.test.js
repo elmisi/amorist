@@ -33,3 +33,18 @@ assert.equal(h.centerScroll(1950, 400, 2000), 1600);  // clamp high (scrollHeigh
 assert.equal(h.centerScroll(500, 400, 300), 0);       // content shorter than viewport -> 0
 
 console.log("centerScroll OK");
+
+// A view switch must preserve the caret's screen coordinate. The target view
+// moves by precisely the measured delta, rather than centering the caret.
+assert.equal(h.alignedScrollTop(300, 620, 500), 420);
+assert.equal(h.alignedScrollTop(100, 80, 160), 20);
+assert.equal(h.alignedScrollTop(0, 50, 100), 0);
+
+console.log("alignedScrollTop OK");
+
+assert.equal(h.clampedLine(-1, 4), 0);
+assert.equal(h.clampedLine(2, 4), 2);
+assert.equal(h.clampedLine(8, 4), 3);
+assert.equal(h.clampedLine(0, 0), 0);
+
+console.log("clampedLine OK");

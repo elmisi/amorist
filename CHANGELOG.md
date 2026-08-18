@@ -4,6 +4,115 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.8] - 2026-08-18
+
+### Fixed
+- The QA suite no longer turns a platform red for verdicts the contract assigns
+  to another platform's run. The checks only tauri-driver on Linux can exercise
+  (REQ-B4, B6, B7, C2, E1, E2) are now recorded on macOS as "delegated" — named
+  in the summary and in the report, but green — instead of "incomplete" and red.
+  This unblocks the macOS QA leg, which had never passed, and with it the Build
+  workflow's release gate. Genuine coverage gaps (missing driver or display on
+  Linux) still fail the run.
+
+## [0.10.7] - 2026-08-17
+
+### Changed
+- Ordinary WYSIWYG typing now patches only its affected source row, fenced-code
+  row or pipe-table block instead of rebuilding the complete projection.
+- Pipe tables and fenced code are again framed, independently horizontally
+  scrollable blocks. Typing in a scrolled table preserves its horizontal anchor.
+- Pipe-table alignment batches all geometry reads before applying display-only
+  padding, and edits outside tables perform no table layout work.
+- Native dirty-state IPC is sent only when the Boolean state changes.
+
+### Quality
+- The approved QA contract now contains 30 requirements, including blocking
+  visual-containment, DOM-locality and event-to-frame latency checks. The Linux
+  run is green on WebKitGTK and Chromium, with eight view-position scenarios
+  repeated through the compiled Tauri application. This evidence does not claim
+  coverage of the macOS application embedding.
+
+## [0.10.6] - 2026-08-14
+
+### Changed
+- Raw Markdown is now the edit authority in both Source and WYSIWYG views.
+  Editing uses bounded source transactions instead of serialising the rendered
+  DOM, so opening, switching views, recovery and saving do not normalise
+  untouched bytes.
+- Switching between Source and WYSIWYG preserves the same document location at
+  the start, middle and end of both short and scrollable documents.
+- Pipe tables regain display-only column alignment without rewriting their
+  source spacing.
+- WYSIWYG list editing follows conventional workflows: marker shortcuts leave
+  the caret after the projected marker; Enter continues or splits bullet,
+  ordered and task lists; empty items exit; and Backspace removes the hidden
+  prefix. Heading and quote boundaries follow the corresponding structural
+  behaviour.
+- Discarding recovered changes through Reload now removes the recovery state,
+  and a failed WYSIWYG projection keeps Source visible with a warning instead
+  of leaving a blank editor.
+
+### Quality
+- The contract-driven suite now exercises 27 deterministic requirements on
+  WebKitGTK and Chromium. Critical view-switch, editing and recovery paths also
+  run through the compiled Tauri application on Linux. This evidence does not
+  claim coverage of the macOS application embedding.
+
+## [0.10.0] - 2026-07-28
+
+### Added
+- A contract-driven QA suite, run with `node tests/qa/run.js`. `.qa/qa-contract.yaml`
+  states what "correct" means for this editor — 22 requirements, approved — and
+  `tests/qa/` compiles it into checks. The suite reports 4 requirements green,
+  15 failing and 2 unmeasured: it describes the editor amorist should be, not the
+  one it is, and the failures are the work list.
+- Every check on the editor runs once per engine that belongs on the platform it
+  is running on, and must pass on all of them: WebKitGTK on Linux and Safari on
+  macOS — each the engine the application there actually runs inside, each driven
+  through its own WebDriver server — plus a Chromium-family browser as a faster
+  stand-in. No check may name an engine. An engine that does not belong on the
+  current platform is recorded as inapplicable rather than missing, which is the
+  only skip the suite permits anywhere and is safe only because the
+  platform-to-engine map is declared in the contract rather than detected.
+  Linux needs `webkit2gtk-driver` installed; macOS needs
+  `sudo safaridriver --enable` once.
+- The suite runs on both published platforms in continuous integration. A run on
+  one platform is evidence about one platform, and the report says which platforms
+  it did not cover.
+- A corpus of 17 synthetic Markdown fixtures, invented rather than borrowed,
+  imitating notes with front matter and wiki links, technical documentation with
+  fenced code and tables, hand-wrapped prose, and files that have been through
+  several tools. Checks select fixtures by content, so adding a newly discovered
+  breaking case is a copy, not a code change.
+- Rust checks over real temporary files for the two properties of the write path
+  that already hold: the write is atomic, and a file changed outside amorist is
+  never overwritten without being asked. They exist so that neither can quietly
+  regress while the save path is rewritten.
+- Checks on the checking system itself. The suite starts itself in a deliberately
+  broken configuration on every run — no fixtures, no browser, no engine driver —
+  and requires a non-zero exit with a named cause. A run that cannot look must
+  never report success.
+- A QA workflow on every push. Its result is visible everywhere and blocks nothing;
+  publication of a release is what it blocks, and only while a blocking requirement
+  fails.
+
+### Changed
+- What the checks do NOT cover is stated symmetrically rather than as a macOS
+  problem: on every platform the engine is driven inside a test host, never inside
+  the webview the application embeds. The engine is covered everywhere and the
+  embedding nowhere. The earlier wording would have claimed a completeness on
+  Linux that never existed.
+- The write path in the Tauri backend is now a standalone `write_document`
+  function, with `save_document` a thin wrapper around it. Behaviour is unchanged;
+  the extraction is what makes the write path verifiable without standing up a
+  window.
+- Line-ending preservation becomes a per-line rule rather than a per-file one:
+  every existing line is to keep its own terminator, and a line created by pressing
+  Enter takes the terminator of the line the caret was on. No majority convention
+  is computed and mixed files are not normalised. The current whole-file behaviour
+  is what this replaces; the requirement is recorded and currently fails.
+
 ## [0.9.0] - 2026-07-17
 
 ### Added

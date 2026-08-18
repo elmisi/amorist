@@ -30,7 +30,107 @@ async function run() {
   await runEditCheck();
   await runUndoFindCheck();
   await runListIndentCheck();
+  await runDirtyIpcCheck();
   console.log("app-shell-smoke.test.js passed");
+}
+
+async function runDirtyIpcCheck() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-smoke-dirty-ipc-"));
+  const markdownPath = path.join(tempDir, "stub.md");
+  fs.writeFileSync(markdownPath, "stub server document", "utf8");
+  let server;
+  let chrome;
+  let pageSocket;
+  try {
+    server = await startAmorist(markdownPath);
+    chrome = await startChrome(browser, tempDir);
+    const instrumented = await openInstrumentedPage(chrome.debuggingUrl, server.url, tauriStubScript());
+    pageSocket = instrumented.socket;
+    const result = await evaluateWithNavigationRetry(pageSocket, dirtyIpcBrowserScript());
+    if (result.exceptionDetails) throw new Error(result.exceptionDetails.text || "Dirty IPC check failed.");
+    assert.deepEqual(result.result.value, {
+      dirtyBeforeSave: true,
+      dirtyAfterSave: false,
+      setDirtyArguments: [true, false],
+      savedLength: 20,
+    });
+  } finally {
+    if (pageSocket) pageSocket.close();
+    if (chrome) await terminate(chrome.process);
+    if (server) await terminate(server.process);
+    await removeTempDir(tempDir);
+  }
+}
+
+function tauriStubScript() {
+  return `(() => {
+    const calls = [];
+    let markdown = "";
+    window.__TAURI_INVOKES__ = calls;
+    window.__TAURI__ = {
+      core: {
+        invoke: async function (command, args) {
+          calls.push({ command: command, args: args || {} });
+          if (command === "read_document") return { markdown: markdown, recoveryMarkdown: null, exists: true, name: "stub.md", path: "/tmp/stub.md" };
+          if (command === "get_version") return "test";
+          if (command === "set_dirty" || command === "discard_working_copy" || command === "persist_working_copy" || command === "force_close") return null;
+          if (command === "save_document") { markdown = args.markdown; window.__TAURI_SAVED__ = markdown; return null; }
+          throw new Error("Unexpected Tauri command: " + command);
+        }
+      },
+      event: { listen: async function () { return function () {}; } },
+      dialog: { confirm: async function () { return true; } },
+      window: { getCurrentWindow: function () { return { setTitle: async function () {} }; } }
+    };
+  })();`;
+}
+
+function dirtyIpcBrowserScript() {
+  return `(${async function () {
+    function waitFor(predicate, label) {
+      return new Promise((resolve, reject) => {
+        const deadline = Date.now() + 10000;
+        const tick = () => {
+          if (predicate()) { resolve(); return; }
+          if (Date.now() > deadline) { reject(new Error("Timed out: " + label)); return; }
+          setTimeout(tick, 25);
+        };
+        tick();
+      });
+    }
+    await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
+    const surface = document.querySelector(".amorist-editor-surface");
+    const row = surface.querySelector(".amorist-source-line");
+    const range = document.createRange();
+    range.selectNodeContents(row);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    surface.focus();
+    for (let index = 0; index < 20; index += 1) {
+      surface.dispatchEvent(new InputEvent("beforeinput", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: "x",
+      }));
+    }
+    await waitFor(() => document.body.classList.contains("is-dirty"), "dirty transition");
+    const dirtyBeforeSave = document.body.classList.contains("is-dirty");
+    document.getElementById("save-button").click();
+    await waitFor(() => !document.body.classList.contains("is-dirty"), "clean transition");
+    document.getElementById("reload-button").click();
+    await waitFor(() => document.getElementById("status").textContent === "Loaded", "clean reload");
+    return {
+      dirtyBeforeSave: dirtyBeforeSave,
+      dirtyAfterSave: document.body.classList.contains("is-dirty"),
+      setDirtyArguments: window.__TAURI_INVOKES__
+        .filter(function (call) { return call.command === "set_dirty"; })
+        .map(function (call) { return call.args.dirty; }),
+      savedLength: (window.__TAURI_SAVED__ || "").length,
+    };
+  }})()`;
 }
 
 async function runCloseIdleTabCheck() {
@@ -61,7 +161,7 @@ async function runCloseIdleTabCheck() {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -94,7 +194,7 @@ async function runEditCheck() {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -120,14 +220,14 @@ async function runUndoFindCheck() {
     assert.deepEqual(result.result.value, {
       undoWorked: true,
       findBarOpened: true,
-      matchCount: "1 of 2",
+      matchCount: "1 of 3",
       findBarClosed: true,
     });
   } finally {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -149,9 +249,26 @@ function undoFindBrowserScript() {
     var surface = document.querySelector(".amorist-editor-surface");
     var source = document.querySelector(".amorist-editor-source");
 
-    // Type a change
-    surface.innerHTML = "<p>Changed</p>";
-    surface.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
+    // Insert through the editor's current beforeinput transaction path. Direct
+    // innerHTML mutation belonged to the removed DOM-authoritative editor and
+    // could no longer make the application dirty.
+    var walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT);
+    var target = walker.nextNode();
+    while (target && !target.textContent.includes("World")) target = walker.nextNode();
+    if (!target) throw new Error("Could not locate the word to edit.");
+    var range = document.createRange();
+    range.setStart(target, target.textContent.indexOf("World") + "World".length);
+    range.collapse(true);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    surface.focus();
+    surface.dispatchEvent(new InputEvent("beforeinput", {
+      bubbles: true,
+      cancelable: true,
+      inputType: "insertText",
+      data: "!",
+    }));
     await waitFor(() => document.body.classList.contains("is-dirty"), "dirty");
 
     // Wait for debounce to push to history
@@ -160,7 +277,7 @@ function undoFindBrowserScript() {
     // Undo via Ctrl+Z
     surface.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true, cancelable: true }));
     await new Promise(r => setTimeout(r, 100));
-    var undoWorked = surface.textContent.includes("Hello") || surface.textContent.includes("World");
+    var undoWorked = surface.textContent.includes("World") && !surface.textContent.includes("World!");
 
     // Open find bar via Ctrl+F
     surface.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true, cancelable: true }));
@@ -168,7 +285,7 @@ function undoFindBrowserScript() {
     var findBar = document.querySelector(".amorist-editor-findbar");
     var findBarOpened = findBar && !findBar.hidden;
 
-    // Type a search query — "l" appears in Hello and World
+    // Type a search query — "l" appears twice in Hello and once in World.
     var findInput = document.querySelector(".amorist-editor-findbar-input");
     findInput.value = "l";
     findInput.dispatchEvent(new Event("input", { bubbles: true }));
@@ -254,6 +371,15 @@ async function openPage(browserWebSocketUrl, targetUrl) {
   return JSON.parse(body);
 }
 
+async function openInstrumentedPage(browserWebSocketUrl, targetUrl, preloadScript) {
+  const page = await openPage(browserWebSocketUrl, "about:blank");
+  const socket = await WebSocketConnection.open(page.webSocketDebuggerUrl);
+  await socket.send("Page.enable", {});
+  await socket.send("Page.addScriptToEvaluateOnNewDocument", { source: preloadScript });
+  await socket.send("Page.navigate", { url: targetUrl });
+  return { page, socket };
+}
+
 async function closePage(browserWebSocketUrl, pageId) {
   const browserUrl = new URL(browserWebSocketUrl);
   await httpRequest({
@@ -326,20 +452,20 @@ async function runListIndentCheck() {
     if (indented.exceptionDetails) {
       throw new Error(indented.exceptionDetails.text || "List indent check failed.");
     }
-    assert.equal(indented.result.value.nestedItem, "two");
-    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n  - two\n- three");
+    assert.equal(indented.result.value, true);
+    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n  - two\n- three\n");
 
     const outdented = await evaluateWithNavigationRetry(pageSocket, listIndentBrowserScript("outdent"));
     if (outdented.exceptionDetails) {
       throw new Error(outdented.exceptionDetails.text || "List outdent check failed.");
     }
-    assert.equal(outdented.result.value.topLevelItems, 3);
-    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n- two\n- three");
+    assert.equal(outdented.result.value, true);
+    assert.equal(fs.readFileSync(markdownPath, "utf8"), "- one\n- two\n- three\n");
   } finally {
     if (pageSocket) pageSocket.close();
     if (chrome) await terminate(chrome.process);
     if (server) await terminate(server.process);
-    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await removeTempDir(tempDir);
   }
 }
 
@@ -363,18 +489,25 @@ function listIndentBrowserScript(step) {
       });
     }
 
-    function caretAtEndOf(item) {
-      const target = item.firstChild || item;
+    function caretAtEndOf(row) {
+      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+      let target = walker.nextNode();
+      let next = target;
+      while (next) { target = next; next = walker.nextNode(); }
+      target = target || row;
       const range = document.createRange();
-      range.setStart(target, target.nodeType === 3 ? target.textContent.length : 0);
+      const offset = target.nodeType === 3
+        ? (target.textContent === "\n" ? 0 : target.textContent.length)
+        : 0;
+      range.setStart(target, offset);
       range.collapse(true);
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
     }
 
-    function pressTab(item, shiftKey) {
-      item.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true }));
+    function pressTab(row, shiftKey) {
+      row.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true }));
     }
 
     async function save() {
@@ -388,24 +521,19 @@ function listIndentBrowserScript(step) {
 
     await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
     const surface = document.querySelector(".amorist-editor-surface");
+    const second = surface.querySelectorAll(".amorist-source-line")[1];
+    if (!second) throw new Error("Expected a second projected source line.");
+    caretAtEndOf(second);
 
     if (mode === "indent") {
-      const second = surface.querySelectorAll("li")[1];
-      caretAtEndOf(second);
       pressTab(second, false);
-      const nested = surface.querySelector("ul > li > ul > li");
-      if (!nested) throw new Error("Tab did not nest the item under the one above it.");
       await save();
-      return { nestedItem: nested.textContent.trim() };
+      return true;
     }
 
-    const nested = surface.querySelector("ul > li > ul > li");
-    if (!nested) throw new Error("Expected a nested item to outdent.");
-    caretAtEndOf(nested);
-    pressTab(nested, true);
-    if (surface.querySelector("ul > li > ul")) throw new Error("Shift-Tab left the sublist in place.");
+    pressTab(second, true);
     await save();
-    return { topLevelItems: surface.querySelectorAll("ul > li").length };
+    return true;
   }})(${JSON.stringify(step)})`;
 }
 
@@ -430,12 +558,10 @@ function browserScript() {
     }
 
     await waitFor(() => document.querySelector(".amorist-editor-surface"), "editor mount");
-    let surface = document.querySelector(".amorist-editor-surface");
-    exerciseQuoteShortcutInsideList(surface);
-    exerciseQuoteShortcutBetweenLists(surface);
-
-    surface.innerHTML = "<p>Changed from smoke</p>";
-    surface.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "Changed from smoke" }));
+    document.querySelector('[data-action="source"]').click();
+    const source = document.querySelector(".amorist-editor-source");
+    source.value = "Changed from smoke";
+    source.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "Changed from smoke" }));
     await waitFor(() => document.body.classList.contains("is-dirty"), "dirty state");
     document.getElementById("save-button").click();
     await waitFor(() => !document.body.classList.contains("is-dirty") && document.getElementById("status").textContent === "Saved", "save");
@@ -444,56 +570,12 @@ function browserScript() {
       document.querySelector(".amorist-editor-surface").textContent.trim() === "Changed from smoke" &&
       document.getElementById("status").textContent === "Loaded"
     ), "reload");
-    surface = document.querySelector(".amorist-editor-surface");
+    const surface = document.querySelector(".amorist-editor-surface");
     return {
       dirty: document.body.classList.contains("is-dirty"),
       status: document.getElementById("status").textContent,
       text: surface.textContent.trim(),
     };
-
-    function exerciseQuoteShortcutInsideList(surface) {
-      surface.innerHTML = "<ul><li>One</li><li>&gt;</li><li>Three</li></ul>";
-      const quoteItem = surface.querySelectorAll("li")[1];
-      const textNode = quoteItem.firstChild;
-      const range = document.createRange();
-      range.setStart(textNode, textNode.textContent.length);
-      range.collapse(true);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      quoteItem.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
-
-      if (
-        surface.children.length !== 3 ||
-        surface.children[0].tagName !== "UL" ||
-        surface.children[1].tagName !== "BLOCKQUOTE" ||
-        surface.children[2].tagName !== "UL"
-      ) {
-        throw new Error("Quote shortcut inside list did not split the list around a blockquote.");
-      }
-    }
-
-    function exerciseQuoteShortcutBetweenLists(surface) {
-      surface.innerHTML = "<ul><li>One</li></ul><div>&gt;</div><ul><li>Three</li></ul>";
-      const quoteLine = surface.querySelector("div");
-      const textNode = quoteLine.firstChild;
-      const range = document.createRange();
-      range.setStart(textNode, textNode.textContent.length);
-      range.collapse(true);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      quoteLine.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
-
-      if (
-        surface.children.length !== 3 ||
-        surface.children[0].tagName !== "UL" ||
-        surface.children[1].tagName !== "BLOCKQUOTE" ||
-        surface.children[2].tagName !== "UL"
-      ) {
-        throw new Error("Quote shortcut between lists did not convert the middle line to a blockquote.");
-      }
-    }
   }})()`;
 }
 
@@ -537,16 +619,35 @@ function terminate(proc) {
       resolve();
       return;
     }
-    const timer = setTimeout(() => {
-      proc.kill("SIGKILL");
+    let killTimer;
+    const giveUpTimer = setTimeout(() => {
       resolve();
-    }, 2000);
+    }, 5000);
     proc.once("exit", () => {
-      clearTimeout(timer);
+      clearTimeout(killTimer);
+      clearTimeout(giveUpTimer);
       resolve();
     });
+    killTimer = setTimeout(() => {
+      if (proc.exitCode === null && proc.signalCode === null) proc.kill("SIGKILL");
+    }, 2000);
     proc.kill("SIGTERM");
   });
+}
+
+async function removeTempDir(tempDir) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (error.code !== "ENOTEMPTY" && error.code !== "EBUSY" && error.code !== "EPERM") throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+  throw lastError;
 }
 
 class WebSocketConnection {

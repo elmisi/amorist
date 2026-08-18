@@ -77,6 +77,121 @@
   padding: 28px 34px;
 }
 
+/* The projection keeps physical source lines visible without adding a DOM
+   separator that browser selection APIs cannot count. */
+.amorist-source-line {
+  white-space: pre-wrap;
+}
+
+.amorist-source-line {
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.amorist-empty-caret {
+  display: inline-block;
+  min-width: 1px;
+}
+
+.amorist-wysiwyg-task .amorist-task-content.amorist-empty-caret {
+  display: inline-block;
+  min-width: 1px;
+}
+
+.amorist-wysiwyg-h1,
+.amorist-wysiwyg-h2,
+.amorist-wysiwyg-h3,
+.amorist-wysiwyg-h4,
+.amorist-wysiwyg-h5,
+.amorist-wysiwyg-h6 {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.amorist-wysiwyg-h1 { font-size: 32px; }
+.amorist-wysiwyg-h2 { font-size: 24px; }
+.amorist-wysiwyg-h3 { font-size: 19px; }
+.amorist-wysiwyg-h4 { font-size: 16px; }
+.amorist-wysiwyg-h5 { font-size: 14px; }
+.amorist-wysiwyg-h6 { color: var(--muted, #68717d); font-size: 13px; }
+
+.amorist-wysiwyg-quote {
+  border-left: 3px solid var(--accent, #246b54);
+  color: #40566b;
+  padding-left: 8px;
+}
+
+.amorist-wysiwyg-list-item::before {
+  color: var(--muted, #68717d);
+  content: attr(data-marker);
+  display: inline-block;
+  margin-left: -1.35em;
+  width: 1.15em;
+}
+
+.amorist-wysiwyg-list-item.amorist-wysiwyg-ordered::before {
+  content: attr(data-marker);
+}
+
+.amorist-wysiwyg-task {
+  display: inline;
+}
+
+.amorist-wysiwyg-task .amorist-task-checkbox {
+  margin-right: 9px;
+}
+
+.amorist-wysiwyg-task .amorist-task-content {
+  display: inline;
+}
+
+.amorist-wysiwyg-task[data-checked="true"] .amorist-task-checkbox {
+  background: var(--accent, #246b54);
+  border-color: var(--accent, #246b54);
+}
+
+.amorist-wysiwyg-task[data-checked="true"] .amorist-task-checkbox::before {
+  align-items: center;
+  content: "✓";
+  display: flex;
+  font-size: 12px;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+}
+
+.amorist-wysiwyg-fence,
+.amorist-wysiwyg-rule {
+  color: var(--muted, #68717d);
+}
+
+.amorist-wysiwyg-code,
+.amorist-wysiwyg-table {
+  color: #2b3a47;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.amorist-wysiwyg-code {
+  white-space: pre;
+}
+
+.amorist-wysiwyg-table {
+  color: #10202c;
+  font-size: 14px;
+  white-space: pre;
+}
+
+.amorist-wysiwyg-table-cell {
+  box-sizing: content-box;
+}
+
+.amorist-wysiwyg-rule {
+  border-top: 1px solid #ccc;
+  display: inline-block;
+  margin: 0.65em 0;
+  min-width: 100%;
+}
+
 .amorist-editor-source {
   background: var(--panel, #fff);
   border: 0;
@@ -149,7 +264,9 @@
   padding: 2px 4px;
 }
 
-.amorist-editor-surface pre {
+.amorist-editor-surface pre,
+.amorist-editor-surface .amorist-wysiwyg-block,
+.amorist-editor-surface .amorist-markdown-table {
   background: #f3f6f7;
   border: 1px solid var(--border, #d8dee6);
   border-radius: 8px;
@@ -163,15 +280,21 @@
   width: 100%;
 }
 
+.amorist-editor-surface .amorist-wysiwyg-block {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .amorist-editor-surface pre code {
   background: transparent;
   color: inherit;
   padding: 0;
 }
 
+/* Compatibility extension for codec-rendered preview/round-trip content. The
+   live editor projection uses .amorist-wysiwyg-table-block instead. */
 .amorist-editor-surface .amorist-markdown-table {
-  background: #f3f6f7;
-  border: 1px solid var(--border, #d8dee6);
   color: #10202c;
   font-size: 14px;
   line-height: 1.55;

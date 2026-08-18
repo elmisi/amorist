@@ -1,0 +1,279 @@
+# Discovery risk log — amorist
+# Every entry below marked source: repo-evidence was reproduced against
+# web/editor/amorist-markdown-codec.js at commit a9d7e73 via parseBlocks/renderMarkdown.
+# "unacceptable" is resolved against the quality model P1/P2/P3 in decisions.yaml.
+
+risks:
+  - id: R-001
+    title: Code fence info string (language) is discarded at parse time
+    source: repo-evidence
+    evidence: |
+      input : ```js\nconst a = 1;\n```
+      blocks: [{"type":"code","text":"const a = 1;","sourceLine":0}]
+      The fence regex captures the marker but never the info string; the block
+      carries no language field, so serialization can only emit a bare ```.
+    consequence: >
+      Every WYSIWYG round trip strips syntax-highlighting language tags from every
+      fenced block in the document. Irreversible and silent.
+    likelihood: high
+    impact: medium
+    unacceptable: true   # violates P1: the language tag is content the user wrote
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-002
+    title: YAML front matter is destroyed and unrecoverable
+    source: repo-evidence
+    evidence: |
+      input : ---\ntitle: Nota\ntags: [a, b]\n---\n\n# Titolo
+      blocks: hr, paragraph("title: Nota tags: [a, b]"), hr, heading
+      The two front-matter lines are merged into a single paragraph line, so the
+      key/value structure is gone before serialization even runs.
+    consequence: >
+      Obsidian / Jekyll / Hugo notes lose their metadata block on the first mode
+      switch. The original line structure cannot be reconstructed from the buffer.
+    likelihood: high
+    impact: high
+    unacceptable: true   # violates P1
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-003
+    title: Indented (4-space) code blocks collapse into a paragraph
+    source: repo-evidence
+    evidence: |
+      input : "Testo:\n\n    riga uno\n    riga due\n\nfine"
+      blocks: paragraph("    riga uno     riga due")
+    consequence: >
+      Line structure of indented code is lost; the block stops being code and the
+      lines are joined with a space.
+    likelihood: medium
+    impact: high
+    unacceptable: true   # violates P1
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-004
+    title: Nested blockquotes are flattened and the marker leaks into prose
+    source: repo-evidence
+    evidence: |
+      input : "> livello 1\n> > livello 2\n> ritorno"
+      blocks: quote("livello 1 > livello 2 ritorno")
+    consequence: >
+      Quote nesting is lost and the inner ">" becomes literal text, so the damage
+      is visible to the reader, not only structural.
+    likelihood: medium
+    impact: medium
+    unacceptable: true   # violates P1
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-005
+    title: Source line wrapping inside a paragraph is not preserved
+    source: repo-evidence
+    evidence: |
+      input : "Una frase lunga\nspezzata su tre\nrighe sorgente."
+      blocks: paragraph("Una frase lunga spezzata su tre righe sorgente.")
+      joinTextLines() documents this as intentional (soft break == space).
+    consequence: >
+      Diffs against a hard-wrapped file become whole-paragraph diffs. No prose is
+      lost, but the file's byte-level shape changes without a user edit.
+    likelihood: high
+    impact: low
+    unacceptable: true   # violates P1 and D-017: line breaks are user content
+    mitigation: ""
+    verification_ids: []
+    status: open
+    note: >
+      This is the clearest case where "byte fidelity" and "content preservation"
+      disagree. It is a design decision, not a defect — but a byte-level contract
+      would gate on it.
+
+  - id: R-006
+    title: Extended syntax survives only as literal text (footnotes, definitions)
+    source: repo-evidence
+    evidence: |
+      input : "Testo[^1]\n\n[^1]: nota a piè di pagina"
+      blocks: paragraph("Testo[^1]"), paragraph("[^1]: nota a piè di pagina")
+    consequence: >
+      Text is preserved but the construct is inert in WYSIWYG; risk is that later
+      editing near it silently rewrites it. Lower severity than R-001..R-004.
+    likelihood: medium
+    impact: low
+    unacceptable: true   # violates P1 once such a file is edited
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-007
+    title: Loss compounds on mode switch, with no save and no user signal
+    source: repo-evidence
+    evidence: CLAUDE.md data flow; web/app.js has no per-toggle diff or warning
+    consequence: >
+      A user can lose content by merely toggling views, and the dirty flag will
+      report the document as modified without saying what was rewritten.
+    likelihood: high
+    impact: high
+    unacceptable: true   # violates P1: loss happens on toggle, before any save
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-008
+    title: Paste from a rich-text source is serialized by a lossy fallback
+    source: repo-evidence
+    evidence: >
+      amorist-markdown-codec.js inlineMarkdown default branch recurses into
+      unknown elements and emits their text only; no handling for TABLE, IMG,
+      DEL, SPAN styling. CONFIRMED by probe: a pasted table serialises to
+      "ProgettoStatoamoristpronto" (cells concatenated, no separators) and an
+      image inside a paragraph yields "prima  dopo" — it vanishes entirely.
+    consequence: >
+      Pasted HTML tables and images degrade to plain text. Not yet reproduced
+      end to end — needs a browser-level probe before it is treated as confirmed.
+    likelihood: medium
+    impact: medium
+    unacceptable: true   # D-023: nothing may disappear silently
+    mitigation: ""
+    verification_ids: []
+    status: open
+    epistemic_status: confirmed-by-probe
+
+  - id: R-010
+    title: An edit anywhere re-serializes the whole document
+    source: repo-evidence
+    evidence: >
+      amorist-editor.js:210 — getMarkdown() calls serializeBlocks(this.surface)
+      over the entire surface whenever the buffer is dirty. There is no per-block
+      or per-region write path.
+    consequence: >
+      The blast radius of a one-character edit is the whole file: every
+      normalisation in R-001..R-005 is applied to every block, including blocks
+      the user never touched. This is what turns codec normalisation into large
+      git diffs, and it is the direct mechanism by which P1 fails.
+    likelihood: high
+    impact: high
+    unacceptable: true   # violates P1 by construction
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-011
+    title: Caret is not preserved across the WYSIWYG/source toggle
+    source: repo-evidence
+    evidence: >
+      amorist-editor.js:231-255 — showSourceMode/showWysiwygMode capture and
+      restore scroll position only (captureScrollPosition). No selection or range
+      is saved or restored in either direction.
+      tests/editor-view-positioning.test.js covers only midViewportLine and
+      centerScroll, i.e. scroll arithmetic — not caret position.
+    consequence: >
+      P3 is unimplemented, not merely buggy. The user loses their place on every
+      mode switch, which also discourages using source mode to verify what was
+      written — the very check that would reveal R-001..R-005.
+    likelihood: high
+    impact: medium
+    unacceptable: true   # violates P3 by construction
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-009
+    title: Frontend fault leaves the file intact but the buffer at risk
+    source: repo-evidence
+    evidence: >
+      web/app.js keeps state.savedMarkdown in memory only; no autosave, no crash
+      recovery, no local draft. The Rust side writes atomically (lib.rs), so disk
+      corruption on a failed save is already mitigated.
+    consequence: >
+      A webview crash or accidental close-with-override loses unsaved work with no
+      recovery path. Distinct failure mode from codec loss and needs its own decision.
+    likelihood: low
+    impact: high
+    unacceptable: true   # D-024: a working copy plus recovery is now in contract
+    mitigation: ""
+    verification_ids: []
+    status: open
+
+  - id: R-012
+    title: Tables are re-aligned while the file is being read
+    source: repo-evidence
+    evidence: >
+      amorist-markdown-codec.js:77 — parseBlocks calls
+      TableCodec.formatMarkdownTable on the table lines during parsing, so the
+      re-aligned form is what the editor holds from the moment the file opens.
+      Measured: changing one cell to a wider value rewrites all 5 lines of a
+      5-line table; changing it to a same-width value rewrites only its own line.
+    consequence: >
+      Open + save with no edit already rewrites any hand-spaced table. This is a
+      P1 violation that needs no user action at all, and it is the reason D-012
+      gives up automatic re-alignment.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Preserve source spacing; expose re-alignment as an explicit command.
+    verification_ids: []
+    status: open
+
+  - id: R-013
+    title: List markers and numbering are normalised on serialisation
+    source: repo-evidence
+    evidence: >
+      amorist-markdown-codec.js:361 — serializeList uses a hardcoded "- " for
+      bullets and a progressive counter for ordered lists.
+    consequence: >
+      A list written with "*" comes back with "-"; a list numbered "1. 1. 1."
+      comes back renumbered. Every line of the list changes, violating D-012.
+    likelihood: high
+    impact: medium
+    unacceptable: true
+    mitigation: >
+      Preserve the author's marker and numbering for untouched items.
+    verification_ids: []
+    status: open
+
+  - id: R-014
+    title: The trailing newline is stripped from every saved file
+    source: repo-evidence
+    evidence: >
+      amorist-markdown-codec.js:295 — serializeBlocks ends with .trimEnd().
+      src-tauri/src/lib.rs encode_line_endings only re-encodes LF/CRLF and adds
+      nothing. Measured in this repo: 29 of 31 .md files end with a newline.
+    consequence: >
+      Saving any of those files removes the final newline, which git reports as
+      "\ No newline at end of file" — a diff on the last line of every file, with
+      no user edit. Zed's ensure_final_newline_on_save defaults to true, so the
+      two tools would ping-pong the last line on every save.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Preserve the file's original trailing-newline state.
+    verification_ids: []
+    status: open
+
+  - id: R-015
+    title: A soft break cannot be typed at all
+    source: repo-evidence
+    evidence: >
+      amorist-editing-policy.js applyEnterMarkdownShortcut handles only fence and
+      hr cases and returns false otherwise, so Enter falls through to the browser
+      default and splits the paragraph (a blank line in Markdown). Shift+Enter is
+      not intercepted on the surface, so the browser inserts a <br>, which
+      inlineMarkdown maps to "\n" and withHardBreaks writes as two trailing
+      spaces — a hard break.
+    consequence: >
+      The bare newline inside a paragraph — the construct P2/D-017 is about — has
+      no keyboard gesture. Under the new model it must be both visible and
+      typable, otherwise the user can see hand-wrapped lines but never create one.
+    likelihood: high
+    impact: medium
+    unacceptable: true   # D-017/D-018 require the soft break to be both visible and typable
+    mitigation: ""
+    verification_ids: []
+    status: open

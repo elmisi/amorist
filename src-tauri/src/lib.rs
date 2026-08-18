@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{App, Emitter, Manager, State};
 use tauri_plugin_cli::CliExt;
 
@@ -16,14 +16,23 @@ struct AppState {
     force_close: Mutex<bool>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkingCopy {
+    path: String,
+    saved_source: String,
+    unsaved_source: String,
+    revision: u64,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DocumentResponse {
     path: String,
     name: String,
     exists: bool,
-    line_ending: String,
     markdown: String,
+    recovery_markdown: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -33,7 +42,10 @@ struct SaveResponse {
 }
 
 #[tauri::command]
-fn read_document(state: State<AppState>) -> Result<DocumentResponse, String> {
+fn read_document(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+) -> Result<DocumentResponse, String> {
     let guard = state.file_path.lock().unwrap();
     let path = guard.as_ref().ok_or("No file open.")?;
 
@@ -46,8 +58,7 @@ fn read_document(state: State<AppState>) -> Result<DocumentResponse, String> {
         let raw = fs::read(path).map_err(|e| e.to_string())?;
         let text = String::from_utf8(raw.clone())
             .map_err(|_| "Markdown files must be UTF-8 encoded.".to_string())?;
-        let line_ending = detect_line_ending(&raw);
-        let markdown = normalize_line_endings(&text);
+        let markdown = text.clone();
 
         if let Ok(mtime) = metadata.modified() {
             *state.last_modified.lock().unwrap() = Some(mtime);
@@ -55,69 +66,40 @@ fn read_document(state: State<AppState>) -> Result<DocumentResponse, String> {
 
         Ok(DocumentResponse {
             path: path.display().to_string(),
-            name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+            name: path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default(),
             exists: true,
-            line_ending,
             markdown,
+            recovery_markdown: load_recovery(&app, path, &text),
         })
     } else {
         Ok(DocumentResponse {
             path: path.display().to_string(),
-            name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+            name: path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default(),
             exists: false,
-            line_ending: "lf".into(),
             markdown: String::new(),
+            recovery_markdown: load_recovery(&app, path, ""),
         })
     }
 }
 
 #[tauri::command]
 fn save_document(
+    app: tauri::AppHandle,
     state: State<AppState>,
     markdown: String,
-    line_ending: String,
     force: Option<bool>,
 ) -> Result<SaveResponse, String> {
     let guard = state.file_path.lock().unwrap();
     let path = guard.as_ref().ok_or("No file open.")?;
 
-    if markdown.len() as u64 > MAX_MARKDOWN_BYTES {
-        return Err("File is too large (max 10 MB).".into());
-    }
-
-    if !force.unwrap_or(false) {
-        let saved_mtime = state.last_modified.lock().unwrap();
-        if let Some(expected) = *saved_mtime {
-            if let Ok(meta) = fs::metadata(path) {
-                if let Ok(current) = meta.modified() {
-                    if current != expected {
-                        return Err("CONFLICT".into());
-                    }
-                }
-            }
-        }
-    }
-
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let tmp_path = path.with_file_name(format!(".{}.amorist-tmp", name));
-
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-
-    let contents = encode_line_endings(&markdown, &line_ending);
-    if let Err(e) = fs::write(&tmp_path, contents.as_bytes()) {
-        let _ = fs::remove_file(&tmp_path);
-        return Err(e.to_string());
-    }
-
-    if let Err(e) = fs::rename(&tmp_path, path) {
-        let _ = fs::remove_file(&tmp_path);
-        return Err(e.to_string());
-    }
+    let expected_mtime = *state.last_modified.lock().unwrap();
+    write_document(path, &markdown, expected_mtime, force.unwrap_or(false))?;
 
     // Update last_modified after successful save
     if let Ok(meta) = fs::metadata(path) {
@@ -125,6 +107,7 @@ fn save_document(
             *state.last_modified.lock().unwrap() = Some(mtime);
         }
     }
+    let _ = fs::remove_file(working_copy_path(&app)?);
 
     Ok(SaveResponse {
         saved: true,
@@ -160,24 +143,143 @@ fn force_close(app_handle: tauri::AppHandle) {
     app_handle.exit(0);
 }
 
-fn detect_line_ending(raw: &[u8]) -> String {
-    if raw.windows(2).any(|w| w == b"\r\n") {
-        "crlf".into()
+/// The write path, with no application state attached.
+///
+/// Extracted from `save_document` so that the two properties the QA contract
+/// puts on it can be verified directly, over real temporary files, without
+/// standing up a window: the write is atomic, and a file changed underneath us
+/// is never overwritten without being asked. `save_document` is now a thin
+/// wrapper that supplies the state and records the new modification time.
+///
+/// Behaviour is unchanged from the inline version.
+fn write_document(
+    path: &std::path::Path,
+    markdown: &str,
+    expected_mtime: Option<std::time::SystemTime>,
+    force: bool,
+) -> Result<(), String> {
+    if markdown.len() as u64 > MAX_MARKDOWN_BYTES {
+        return Err("File is too large (max 10 MB).".into());
+    }
+
+    if !force {
+        if let Some(expected) = expected_mtime {
+            if let Ok(meta) = fs::metadata(path) {
+                if let Ok(current) = meta.modified() {
+                    if current != expected {
+                        return Err("CONFLICT".into());
+                    }
+                }
+            }
+        }
+    }
+
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let tmp_path = path.with_file_name(format!(".{}.amorist-tmp", name));
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    if let Err(e) = fs::write(&tmp_path, markdown.as_bytes()) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(e.to_string());
+    }
+
+    if let Err(e) = fs::rename(&tmp_path, path) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(e.to_string());
+    }
+
+    Ok(())
+}
+
+fn app_data_home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    #[cfg(target_os = "linux")]
+    let _ = app;
+    #[cfg(target_os = "linux")]
+    let base = data_home()?;
+    #[cfg(not(target_os = "linux"))]
+    let base = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let dir = base.join("amorist");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn working_copy_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(app_data_home(app)?.join("working-copy.json"))
+}
+
+fn load_recovery(
+    app: &tauri::AppHandle,
+    path: &std::path::Path,
+    saved_source: &str,
+) -> Option<String> {
+    let file = working_copy_path(app).ok()?;
+    load_recovery_file(&file, path, saved_source)
+}
+
+fn load_recovery_file(
+    file: &std::path::Path,
+    path: &std::path::Path,
+    saved_source: &str,
+) -> Option<String> {
+    let record: WorkingCopy = serde_json::from_slice(&fs::read(file).ok()?).ok()?;
+    if record.path == path.display().to_string()
+        && record.saved_source == saved_source
+        && record.unsaved_source != saved_source
+    {
+        Some(record.unsaved_source)
     } else {
-        "lf".into()
+        None
     }
 }
 
-fn normalize_line_endings(text: &str) -> String {
-    text.replace("\r\n", "\n").replace('\r', "\n")
+#[tauri::command]
+fn persist_working_copy(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+    saved_source: String,
+    unsaved_source: String,
+    revision: u64,
+) -> Result<(), String> {
+    if unsaved_source.len() as u64 > MAX_MARKDOWN_BYTES
+        || saved_source.len() as u64 > MAX_MARKDOWN_BYTES
+    {
+        return Err("File is too large (max 10 MB).".into());
+    }
+    let guard = state.file_path.lock().unwrap();
+    let path = guard.as_ref().ok_or("No file open.")?;
+    let record = WorkingCopy {
+        path: path.display().to_string(),
+        saved_source,
+        unsaved_source,
+        revision,
+    };
+    persist_working_copy_file(&working_copy_path(&app)?, &record)
 }
 
-fn encode_line_endings(markdown: &str, line_ending: &str) -> String {
-    let normalized = normalize_line_endings(markdown);
-    if line_ending == "crlf" {
-        normalized.replace('\n', "\r\n")
-    } else {
-        normalized
+fn persist_working_copy_file(file: &std::path::Path, record: &WorkingCopy) -> Result<(), String> {
+    let encoded = serde_json::to_string(record).map_err(|e| e.to_string())?;
+    // Recovery must survive a crash during the recovery write itself. Reuse
+    // the same adjacent-temp-and-rename path as an explicit document save, but
+    // target only Amorist's private app-data file.
+    write_document(file, &encoded, None, false)
+}
+
+#[tauri::command]
+fn discard_working_copy(app: tauri::AppHandle) -> Result<(), String> {
+    discard_working_copy_file(&working_copy_path(&app)?)
+}
+
+fn discard_working_copy_file(file: &std::path::Path) -> Result<(), String> {
+    match fs::remove_file(file) {
+        Ok(()) => Ok(()),
+        Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
     }
 }
 
@@ -187,10 +289,8 @@ fn percent_decode(input: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(val) = u8::from_str_radix(
-                &String::from_utf8_lossy(&bytes[i + 1..i + 3]),
-                16,
-            ) {
+            if let Ok(val) = u8::from_str_radix(&String::from_utf8_lossy(&bytes[i + 1..i + 3]), 16)
+            {
                 out.push(val);
                 i += 3;
                 continue;
@@ -228,8 +328,7 @@ fn run_install_cli() -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
     let home = std::env::var("HOME").map_err(|e| format!("HOME unset: {e}"))?;
     let bin_dir = PathBuf::from(&home).join(".local").join("bin");
-    fs::create_dir_all(&bin_dir)
-        .map_err(|e| format!("create {}: {e}", bin_dir.display()))?;
+    fs::create_dir_all(&bin_dir).map_err(|e| format!("create {}: {e}", bin_dir.display()))?;
     let link = bin_dir.join("amorist");
 
     if let Ok(meta) = link.symlink_metadata() {
@@ -299,11 +398,7 @@ fn exec_path() -> Result<String, String> {
 
 #[cfg(target_os = "linux")]
 fn install_icon(data: &std::path::Path, size: &str, bytes: &[u8]) -> Result<PathBuf, String> {
-    let dir = data
-        .join("icons")
-        .join("hicolor")
-        .join(size)
-        .join("apps");
+    let dir = data.join("icons").join("hicolor").join(size).join("apps");
     fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
     let path = dir.join("amorist.png");
     fs::write(&path, bytes).map_err(|e| format!("write {}: {e}", path.display()))?;
@@ -590,6 +685,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_document,
             save_document,
+            persist_working_copy,
+            discard_working_copy,
             get_version,
             set_dirty,
             force_close,
@@ -601,6 +698,193 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---------------------------------------------------------------- family F
+    //
+    // The write path, verified over real temporary files. Both requirements
+    // here describe behaviour that is CORRECT TODAY: they exist so that it
+    // cannot quietly regress while the save path is rewritten to preserve the
+    // source. A regression check earns its keep before the change, not after.
+
+    fn scratch_dir(label: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "amorist-qa-{}-{}-{:?}",
+            label,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn temporary_files_in(dir: &std::path::Path) -> Vec<String> {
+        fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.file_name().to_string_lossy().to_string())
+            .filter(|name| name.contains("amorist-tmp"))
+            .collect()
+    }
+
+    #[test]
+    fn qa_req_f1_a_successful_save_leaves_no_temporary_file_behind() {
+        let dir = scratch_dir("f1-ok");
+        let file = dir.join("nota.md");
+        fs::write(&file, b"# prima\n").unwrap();
+
+        write_document(&file, "# dopo\n", None, false).unwrap();
+
+        assert_eq!(fs::read(&file).unwrap(), b"# dopo\n");
+        assert!(
+            temporary_files_in(&dir).is_empty(),
+            "a temporary file survived a successful save: {:?}",
+            temporary_files_in(&dir)
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_f1_a_failed_write_leaves_the_original_intact_and_no_debris() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = scratch_dir("f1-fail");
+        let file = dir.join("nota.md");
+        let original: &[u8] = b"# non deve cambiare\n\ncontenuto originale\n";
+        fs::write(&file, original).unwrap();
+
+        // Make the directory unwritable so the temporary file cannot be created.
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+        let outcome = write_document(&file, "# sovrascritto\n", None, false);
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
+
+        // Running as root would defeat the read-only directory. Say so rather
+        // than reporting a pass that measured nothing.
+        assert!(
+            outcome.is_err(),
+            "the write succeeded into a read-only directory; this test measures \
+             nothing when run with privileges that ignore permissions"
+        );
+        assert_eq!(
+            fs::read(&file).unwrap(),
+            original,
+            "a failed save modified the original file"
+        );
+        assert!(
+            temporary_files_in(&dir).is_empty(),
+            "a failed save left debris behind: {:?}",
+            temporary_files_in(&dir)
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_f2_a_file_changed_outside_is_not_overwritten() {
+        let dir = scratch_dir("f2-conflict");
+        let file = dir.join("nota.md");
+        fs::write(&file, b"# aperta qui\n").unwrap();
+        let opened_at = fs::metadata(&file).unwrap().modified().unwrap();
+
+        // Another program edits the file while it is open here. The sleep is
+        // not decoration: on a filesystem with coarse timestamps two writes
+        // inside the same tick carry the same modification time, and the
+        // conflict would go unnoticed. That limitation is recorded against
+        // REQ-F2 in the contract.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        fs::write(&file, b"# cambiata da un altro programma\n").unwrap();
+
+        let outcome = write_document(&file, "# sovrascritta\n", Some(opened_at), false);
+
+        assert_eq!(outcome, Err("CONFLICT".to_string()));
+        assert_eq!(
+            fs::read(&file).unwrap(),
+            b"# cambiata da un altro programma\n",
+            "the other program's work was overwritten"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_f2_a_forced_save_overwrites_only_when_asked() {
+        let dir = scratch_dir("f2-force");
+        let file = dir.join("nota.md");
+        fs::write(&file, b"# aperta qui\n").unwrap();
+        let opened_at = fs::metadata(&file).unwrap().modified().unwrap();
+
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        fs::write(&file, b"# cambiata altrove\n").unwrap();
+
+        write_document(&file, "# forzata\n", Some(opened_at), true).unwrap();
+
+        assert_eq!(fs::read(&file).unwrap(), b"# forzata\n");
+        assert!(temporary_files_in(&dir).is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_e1_working_copy_survives_a_restart_with_exact_source() {
+        let dir = scratch_dir("e1-restart");
+        let document = dir.join("nota.md");
+        let copy = dir.join("working-copy.json");
+        let saved = "# Titolo\r\n\r\nprima  \r\n";
+        let unsaved = "# Titolo\r\n\r\nprima  \r\naggiunta 👨‍👩‍👧\r\n";
+        fs::write(&document, saved.as_bytes()).unwrap();
+        let record = WorkingCopy {
+            path: document.display().to_string(),
+            saved_source: saved.to_string(),
+            unsaved_source: unsaved.to_string(),
+            revision: 7,
+        };
+
+        persist_working_copy_file(&copy, &record).unwrap();
+        // Loading from disk through a new call is the storage boundary that a
+        // terminated and restarted process crosses.
+        assert_eq!(
+            load_recovery_file(&copy, &document, saved),
+            Some(unsaved.to_string())
+        );
+        assert_eq!(fs::read(&document).unwrap(), saved.as_bytes());
+        assert!(temporary_files_in(&dir).is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_e1_discard_recovery_removes_the_copy_and_is_idempotent() {
+        let dir = scratch_dir("recovery-discard");
+        let copy = dir.join("working-copy.json");
+        fs::write(&copy, br#"{\"unsavedSource\":\"da scartare\"}"#).unwrap();
+
+        discard_working_copy_file(&copy).unwrap();
+        assert!(!copy.exists(), "discard left the recovery copy in place");
+        discard_working_copy_file(&copy).unwrap();
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn qa_req_e2_persisting_recovery_never_writes_the_user_document() {
+        let dir = scratch_dir("e2-no-user-write");
+        let document = dir.join("nota.md");
+        let copy = dir.join("working-copy.json");
+        let saved = "# Originale\n";
+        fs::write(&document, saved.as_bytes()).unwrap();
+        let before = fs::metadata(&document).unwrap().modified().unwrap();
+        let record = WorkingCopy {
+            path: document.display().to_string(),
+            saved_source: saved.to_string(),
+            unsaved_source: "# Modifica non salvata\n".to_string(),
+            revision: 1,
+        };
+
+        persist_working_copy_file(&copy, &record).unwrap();
+
+        assert_eq!(fs::read(&document).unwrap(), saved.as_bytes());
+        assert_eq!(fs::metadata(&document).unwrap().modified().unwrap(), before);
+        assert!(copy.exists(), "the separate recovery file was not written");
+        fs::remove_dir_all(&dir).ok();
+    }
 
     #[test]
     fn desktop_entry_includes_exec_with_file_placeholder() {
