@@ -299,15 +299,14 @@ module.exports = [
       }
 
       // ---- the gesture the contract names explicitly ----------------------
-      // Indenting one list item changes that item's line alone, not the rest
-      // of the list. This is the case a progressive counter breaks.
+      // A list item moves with its descendants, never with neighbouring items.
 
       for (const fixture of select(ctx.corpus, "hasList")) {
         const item = indentableListItem(fixture);
         if (!item) continue;
         exercised.add(fixture.name);
         const outcome = await gesture(ctx, fixture, "indent one list item with Tab", {
-          allowed: [item.number],
+          allowed: indentSubtreeLines(fixture, item),
           delta: 0,
           act: async (page) => {
             if (!(await placeCaretInside(page, item.visible)).ok) return CARET_NOT_PLACEABLE;
@@ -494,6 +493,21 @@ function indentableListItem(fixture) {
     return { number: current.number, text: current.text, visible };
   }
   return null;
+}
+
+function indentSubtreeLines(fixture, item) {
+  const lines = fixture.text.split(/\r\n|\r|\n/);
+  const prefix = lines[item.number - 1].match(/^[ \t]*(?:[*+-]|\d+[.)])[ \t]+/)[0];
+  const columns = (text) => Array.from(text).reduce((value, char) => value + (char === "\t" ? 4 - value % 4 : 1), 0);
+  const contentColumn = columns(prefix);
+  let end = item.number;
+  for (let index = item.number; index < lines.length; index += 1) {
+    if (!lines[index].trim()) continue;
+    const leading = lines[index].match(/^[ \t]*/)[0];
+    if (columns(leading) < contentColumn) break;
+    end = index + 1;
+  }
+  return range(item.number, end);
 }
 
 async function placeCaretInside(page, lineText) {

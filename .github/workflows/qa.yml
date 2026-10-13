@@ -107,18 +107,18 @@ jobs:
 
       - name: Run codec, toolbar and code-context regressions
         run: |
-          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js"
+          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js"
           if [ "${{ matrix.platform }}" = "linux" ]; then
-            xvfb-run -a node --test $checks
+            GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
           else
-            node --test $checks
+            node --test --test-concurrency=1 $checks
           fi
 
       - name: Run the QA suite on every engine applicable to this platform
         id: suite
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
-            xvfb-run -a node tests/qa/run.js
+            GDK_BACKEND=x11 xvfb-run -a node tests/qa/run.js
           else
             # No virtual display here: the shipping engine on this platform
             # needs a real graphical session, which the runner already has.

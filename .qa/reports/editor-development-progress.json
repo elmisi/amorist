@@ -40,8 +40,8 @@
     {
       "id": 6,
       "name": "enter-tab-and-local-cleanup",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "Tab/Shift+Tab in both modes now covers caret insertion, mixed terminators, selected rows, list descendants and continuations, oriented selection, undo/redo and Escape focus. Native Linux probes and full regression passed under explicit X11. Prose Enter hard-break provenance, local boundary cleanup, recovery persistence and remaining structural/container semantics still pending."
     },
     {
       "id": 7,
@@ -352,6 +352,49 @@
         "pass": 8,
         "fail": 0
       }
+    },
+    "keyboardIndentationDevelopment": {
+      "status": "directed probes, full Linux suite and ten classic regression checks passed",
+      "check": "tests/editor-indentation.test.js",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "modes": [
+        "wysiwyg",
+        "source"
+      ],
+      "scope": [
+        "collapsed Tab at cursor",
+        "mixed LF/CRLF/CR selected rows",
+        "list descendants and continuations without neighbouring sibling",
+        "two-space indentation and leading-level outdent",
+        "selection orientation and undo/redo selection restore",
+        "code stays literal",
+        "Escape focuses toolbar"
+      ],
+      "environment": "GDK_BACKEND=x11 and WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "indentation-qa-linux.json",
+        "corpusFiles": 21,
+        "engines": [
+          "webkitgtk",
+          "chromium"
+        ],
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "classicRegressionChecks": {
+        "pass": 10,
+        "fail": 0,
+        "log": "indentation-classic-linux.log"
+      }
+    },
+    "linuxBackendDiagnostic": {
+      "inheritedEnvironment": "WAYLAND_DISPLAY=wayland-0; XDG_SESSION_TYPE=wayland",
+      "finding": "Launching Xvfb alone did not force GTK to use it; native selection probes passed when GDK_BACKEND=x11 was explicit. Earlier report backend labels were not independently verified.",
+      "shiftTabEvent": "WebKit delivered key=Unidentified, code=Tab, keyCode=9; handler uses the physical Tab code as fallback.",
+      "scope": "automated display only; native packaged acceptance remains required"
     }
   }
 }

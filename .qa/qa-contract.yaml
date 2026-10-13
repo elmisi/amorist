@@ -20,6 +20,22 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Tab and Shift+Tab operate in both modes with a two-space default. A collapsed
+      prose/code caret inserts indentation at its position; selected physical
+      rows are indented together, preserving their original terminators. A list
+      item moves with its indented descendants and continuations, so REQ-A2's
+      permitted indent envelope includes that subtree. Shift+Tab removes up to
+      two leading spaces or one leading tab. Cursor and selection direction are
+      retained, and undo/redo restore the selection belonging to the gesture.
+      Escape closes an open find panel, otherwise it focuses the toolbar.
+    why: >
+      These are the approved keyboard semantics; the old line-only list envelope
+      and visual-only Tab handler cannot express them.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Top-level code indented by at least four columns is literal, can contain
       genuine blank physical rows and cannot interrupt an existing prose paragraph.
       Code context precedes heading/list/inline interpretation and Enter retains
@@ -434,7 +450,7 @@ requirements:
           affected_lines: selected-lines-plus-fence-lines
           line_delta: 2
         - id: indent
-          affected_lines: affected-list-item
+          affected_lines: affected-list-item-subtree
           line_delta: 0
         - id: undo-redo
           affected_lines: reverted-transaction
@@ -456,7 +472,7 @@ requirements:
             into one, plus whatever lines the typed text itself introduces
           - a toolbar action or keyboard shortcut (bold, heading, list marker,
             Tab / Shift-Tab indent) -> only the lines the affected construct
-            occupies; indenting one list item changes that item's line alone,
+            occupies; indenting one list item changes that item and its descendants,
             not the rest of the list
           - code-block toolbar action -> the selected lines plus the two fence
             lines the command adds

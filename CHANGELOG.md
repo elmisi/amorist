@@ -31,8 +31,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   line endings. Setext titles render without extra delimiter height; changing
   the underline level updates the dependent title. Closed initial front matter
   stays visible literal source.
+- Tab and Shift+Tab work in both modes, preserving source terminators and
+  selection direction. List indentation moves descendants with their item;
+  prose and code insert two spaces at the caret. Undo/redo restores the gesture's
+  selection, and Escape returns focus to the toolbar.
 
 ### Quality
+- Linux automated graphical checks explicitly use X11 under Xvfb, avoiding an
+  inherited Wayland session. Graphical regression scripts run sequentially.
 - This version is the editor development candidate. Delivery remains blocked
   until the complete approved plan and all native platform gates pass.
 - Windows denied-write save tests now use a real directory ACL, retaining the

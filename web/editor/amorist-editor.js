@@ -732,6 +732,7 @@
     }
 
     setSurfaceSelection(start, end) {
+      this.surface.focus();
       if (start === 0 && end === this.model.source.length && end > 0) {
         this.selectSurfaceContents();
         return;
@@ -776,7 +777,6 @@
       const range = document.createRange();
       range.setStart(from.node, from.offset); range.setEnd(to.node, to.offset);
       const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-      this.surface.focus();
     }
 
     selectSurfaceContents() {
@@ -796,6 +796,7 @@
       const caret = start + replacement.length;
       this.patchProjection(beforeSource, beforeDescriptors, entry.forward, { start: caret, end: caret });
       this.emitChange();
+      return entry;
     }
 
     handleBeforeInput(event) {
@@ -882,13 +883,99 @@
           return;
         }
       }
-      if (this.mode === "wysiwyg" && event.key === "Tab") {
-        event.preventDefault(); const sel = this.selectionRaw(); const line = this.model.source.lastIndexOf("\n", sel.start - 1) + 1;
-        const indent = this.model.source.slice(line).match(/^ {1,2}/);
-        if (event.shiftKey) {
-          if (indent) this.apply(line, line + indent[0].length, "", "outdent");
-        } else this.apply(line, line, "  ", "indent");
+      if (event.key === "Tab" || event.code === "Tab") {
+        event.preventDefault(); this.indentSelection(event.shiftKey); return;
       }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!this.findBar.hidden) this.closeFindBar();
+        else this.toolbar.querySelector("button")?.focus();
+      }
+    }
+
+    selectionDirection() {
+      if (this.mode === "source") return this.source.selectionDirection;
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount || selection.isCollapsed) return "forward";
+      const range = selection.getRangeAt(0);
+      return selection.anchorNode === range.endContainer && selection.anchorOffset === range.endOffset ? "backward" : "forward";
+    }
+
+    restoreRawSelection(selection) {
+      if (this.mode === "source") {
+        this.source.value = this.model.display;
+        this.source.focus();
+        this.source.setSelectionRange(this.model.displayOffset(selection.start), this.model.displayOffset(selection.end), selection.direction);
+      } else {
+        this.setSurfaceSelection(selection.start, selection.end);
+        if (selection.direction === "backward") {
+          const current = window.getSelection();
+          const range = current.getRangeAt(0);
+          const startNode = range.startContainer, startOffset = range.startOffset;
+          const endNode = range.endContainer, endOffset = range.endOffset;
+          current.collapse(endNode, endOffset);
+          current.extend(startNode, startOffset);
+        }
+      }
+    }
+
+    indentSelection(outdent) {
+      const beforeSelection = { ...this.selectionRaw(), direction: this.selectionDirection() };
+      const source = this.model.source;
+      const descriptors = this.mode === "source" ? this.buildProjection() : this.lineDescriptors;
+      const first = this.descriptorAtRaw(beforeSelection.start, descriptors);
+      const last = this.descriptorAtRaw(beforeSelection.end > beforeSelection.start ? beforeSelection.end - 1 : beforeSelection.end, descriptors);
+      const ownerAt = (row) => row.unitType === "line" ? (row.projection.list ? row.index : row.listOwner?.index) : undefined;
+      const firstOwner = ownerAt(first);
+      if (!outdent && beforeSelection.start === beforeSelection.end && firstOwner === undefined) {
+        const entry = this.apply(beforeSelection.start, beforeSelection.end, "  ", "indent");
+        entry.selectionBefore = beforeSelection;
+        entry.selectionAfter = { start: beforeSelection.start + 2, end: beforeSelection.end + 2, direction: beforeSelection.direction };
+        this.restoreRawSelection(entry.selectionAfter); return;
+      }
+      let firstIndex = first.index, lastIndex = last.index;
+      for (let index = first.index; index <= last.index; index += 1) {
+        const ownerIndex = ownerAt(descriptors[index]);
+        if (ownerIndex === undefined) continue;
+        firstIndex = Math.min(firstIndex, ownerIndex);
+        const owner = descriptors[ownerIndex];
+        let end = ownerIndex;
+        for (let next = ownerIndex + 1; next < descriptors.length; next += 1) {
+          const row = descriptors[next];
+          if (!row.raw.trim()) continue;
+          const columns = indentationColumns((row.raw.match(/^[ \t]*/) || [""])[0]);
+          if (columns < owner.projection.contentIndent) break;
+          end = next;
+        }
+        lastIndex = Math.max(lastIndex, end);
+      }
+      const edits = [];
+      for (let index = firstIndex; index <= lastIndex; index += 1) {
+        const row = descriptors[index];
+        const removed = outdent ? (row.raw.match(/^(?:\t| {1,2})/) || [""])[0].length : 0;
+        const inserted = outdent ? "" : "  ";
+        if (removed || inserted) edits.push({ start: row.start, removed, inserted });
+      }
+      if (!edits.length) return;
+      const start = descriptors[firstIndex].start, end = descriptors[lastIndex].end;
+      let replacement = source.slice(start, end);
+      for (const edit of edits.slice().reverse()) {
+        const at = edit.start - start;
+        replacement = replacement.slice(0, at) + edit.inserted + replacement.slice(at + edit.removed);
+      }
+      const map = (position) => {
+        let shift = 0;
+        for (const edit of edits) {
+          if (position < edit.start) break;
+          if (position <= edit.start + edit.removed) return edit.start + shift + edit.inserted.length;
+          shift += edit.inserted.length - edit.removed;
+        }
+        return position + shift;
+      };
+      const afterSelection = { start: map(beforeSelection.start), end: map(beforeSelection.end), direction: beforeSelection.direction };
+      const entry = this.apply(start, end, replacement, outdent ? "outdent" : "indent");
+      entry.selectionBefore = beforeSelection; entry.selectionAfter = afterSelection;
+      this.restoreRawSelection(afterSelection);
     }
 
     handleSourceInput() {
@@ -1113,6 +1200,7 @@
         const displayAt = this.model.displayOffset(at);
         this.source.setSelectionRange(displayAt, displayAt);
       } else this.patchProjection(beforeSource, beforeDescriptors, entry.inverse, { start: at, end: at });
+      if (entry.selectionBefore) this.restoreRawSelection(entry.selectionBefore);
       this.emitChange();
     }
     redo() {
@@ -1126,6 +1214,7 @@
         const displayAt = this.model.displayOffset(at);
         this.source.setSelectionRange(displayAt, displayAt);
       } else this.patchProjection(beforeSource, beforeDescriptors, entry.forward, { start: at, end: at });
+      if (entry.selectionAfter) this.restoreRawSelection(entry.selectionAfter);
       this.emitChange();
     }
     emitChange() { if (typeof this.options.onChange === "function") this.options.onChange(this.model.source); }

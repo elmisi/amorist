@@ -99,7 +99,7 @@
           },
           {
             "id": "indent",
-            "affected_lines": "affected-list-item",
+            "affected_lines": "affected-list-item-subtree",
             "line_delta": 0
           },
           {
