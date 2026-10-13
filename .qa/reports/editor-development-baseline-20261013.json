@@ -1704,9 +1704,9 @@
       "fail": 0
     },
     "missing": [
-      "macOS native packaged application and Finder baseline",
-      "Windows guest architecture, tools, WebView2 and access verification",
-      "Windows native packaged application baseline"
+      "Windows engine baseline: original runner does not declare Windows; result recorded red",
+      "Windows Rust baseline: original test suite does not compile on Windows; exact errors recorded",
+      "Native package and GUI acceptance on all three platforms"
     ],
     "macos": {
       "startedAt": "2026-10-13T20:54:25.408Z",
@@ -3417,6 +3417,428 @@
     "macosRust": {
       "pass": 9,
       "fail": 0
+    },
+    "windowsInitial": {
+      "startedAt": "2026-10-13T21:21:08.443Z",
+      "finishedAt": "2026-10-13T21:22:39.273Z",
+      "enginesExercised": [],
+      "enginesUnavailable": [],
+      "enginesNotApplicableHere": [
+        {
+          "id": "webkitgtk",
+          "role": "shipping",
+          "reason": "not applicable on win32; declared for linux"
+        },
+        {
+          "id": "safari",
+          "role": "shipping",
+          "reason": "not applicable on win32; declared for darwin"
+        },
+        {
+          "id": "chromium",
+          "role": "stand-in",
+          "reason": "not applicable on win32; declared for linux, darwin"
+        }
+      ],
+      "platform": "win32",
+      "publishedPlatformsThisRunDidNotCover": [
+        "linux",
+        "macos"
+      ],
+      "notAutomatedAnywhere": [
+        {
+          "what": "the application's own embedding of the engine, on every platform",
+          "why": "Every run drives the engine inside a TEST host \u2014 a reference browser on Linux, the system browser on macOS \u2014 not inside the webview the application embeds. Same engine, different host. The engine is covered everywhere and the embedding nowhere: window chrome, focus handling, and whatever the embedding changes about editing.",
+          "manualPass": "once per release, repository owner, six-case list in REQ-G3"
+        }
+      ],
+      "harnessErrors": [
+        {
+          "where": "engines",
+          "message": "No engine could be started, so nothing was verified."
+        }
+      ],
+      "requirements": [
+        {
+          "requirement": "REQ-B4",
+          "title": "The built application places the caret after projected markers",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "The built application supports conventional list workflows",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "The built application supports heading and quote workflows",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The built application preserves the eight view-position scenarios",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the stand-in browser cannot be found",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"does not exist\"",
+              "actual": "t applicable here: chromium (stand-in) \u2014 not applicable on win32; declared for linux, darwin\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n",
+              "engine": "the run itself"
+            },
+            {
+              "fixture": "the shipping engine's driver cannot be found (webkitgtk)",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"not found\"",
+              "actual": "rpus\nnot applicable here: webkitgtk (shipping) \u2014 not applicable on win32; declared for linux\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "engine coverage",
+              "detail": "No shipping engine is declared for this platform (win32). Either the platform is not one the product ships on, or the declaration is incomplete \u2014 and the second would let a whole platform run green having tested only a stand-in.",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        }
+      ],
+      "raw": [
+        {
+          "requirement": "REQ-B4",
+          "title": "The built application places the caret after projected markers",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 1,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "The built application supports conventional list workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "The built application supports heading and quote workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The built application preserves the eight view-position scenarios",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 86809,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "a successful save",
+            "a save into a directory that cannot be written"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 1,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "a file changed between opening and saving",
+            "a forced save after the conflict"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 0,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "exact CRLF, trailing-space and Unicode recovery after a disk reload",
+            "discarding a recovery copy twice"
+          ],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 0,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "working-copy persistence beside an unchanged user document"
+          ],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 3591,
+          "failures": [
+            {
+              "fixture": "the stand-in browser cannot be found",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"does not exist\"",
+              "actual": "t applicable here: chromium (stand-in) \u2014 not applicable on win32; declared for linux, darwin\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n"
+            },
+            {
+              "fixture": "the shipping engine's driver cannot be found (webkitgtk)",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"not found\"",
+              "actual": "rpus\nnot applicable here: webkitgtk (shipping) \u2014 not applicable on win32; declared for linux\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n"
+            }
+          ],
+          "fixturesExercised": [
+            "the fixture directory is empty",
+            "the stand-in browser cannot be found",
+            "the shipping engine's driver cannot be found (webkitgtk)"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 1,
+          "failures": [
+            {
+              "fixture": "engine coverage",
+              "detail": "No shipping engine is declared for this platform (win32). Either the platform is not one the product ships on, or the declaration is incomplete \u2014 and the second would let a whole platform run green having tested only a stand-in."
+            }
+          ],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": []
+        }
+      ],
+      "exitCode": 1
+    },
+    "windowsNode": {
+      "pass": 7,
+      "fail": 0,
+      "note": "Six checks passed initially; toolbar passed after explicitly selecting installed Edge."
+    },
+    "windowsRust": {
+      "verdict": "could-not-build",
+      "errors": [
+        {
+          "code": "E0433",
+          "source": "src-tauri/src/lib.rs:809",
+          "detail": "The failed-save test imports std::os::unix::fs::PermissionsExt unconditionally."
+        },
+        {
+          "code": "E0599",
+          "source": "src-tauri/src/lib.rs:817",
+          "detail": "Permissions::from_mode is unavailable on Windows."
+        },
+        {
+          "code": "E0599",
+          "source": "src-tauri/src/lib.rs:819",
+          "detail": "Permissions::from_mode is unavailable on Windows."
+        }
+      ],
+      "environment": "SDK kernel32.lib now exists; this run reaches compilation of Amorist tests."
     }
   },
   "reportCountAtStart": 7,
@@ -3427,9 +3849,36 @@
       "vmLocated": true,
       "configuredArchitecture": "64-bit",
       "configuredMemoryMiB": 8192,
-      "guestInspected": false,
+      "guestInspected": true,
       "startAuthorized": false,
-      "running": true
+      "running": true,
+      "osVersion": "Windows 10 Pro 22H2 19045.6466",
+      "architecture": "x86_64",
+      "memoryMiBConfigured": 8192,
+      "sshAccess": "verified",
+      "sshService": {
+        "status": "Running",
+        "startupType": "Automatic",
+        "account": "LocalSystem",
+        "repair": "Host key owner set to SYSTEM and explicit user write permission removed; original keys preserved; diagnostic ImagePath restored; verified new connection."
+      },
+      "nodeVersion": "22.23.2",
+      "rustVersion": "1.94.1",
+      "msvcBuildToolsVersion": "17.14.27",
+      "windowsSdk": "10.0.19041.0",
+      "webviewVersion": "155.0.4283.45",
+      "edgeDriverVersion": "155.0.4283.45",
+      "edgeDriverSignature": "Valid Microsoft Corporation",
+      "guestUser": "elmis",
+      "hostOnlyAddress": "192.168.189.128",
+      "toolsLocation": "%LOCALAPPDATA%/AmoristQA/tools",
+      "tauriCliVersion": "2.11.2",
+      "tauriDriver": "2.0.6 installed",
+      "nativeGuiAcceptance": "not-run",
+      "msvcInstallationExitCode": 0,
+      "rustInstallationExitCode": 0,
+      "tauriCliInstallationExitCode": 0,
+      "qaEnvironmentScript": "%LOCALAPPDATA%/AmoristQA/qa-env.ps1"
     },
     "macos": {
       "candidateHost": "lestrade.local",
@@ -3461,7 +3910,5 @@
       "windows10VM": "not-run"
     }
   },
-  "pendingInput": [
-    "Complete supplied PowerShell setup and provide Windows guest user and IP"
-  ]
+  "pendingInput": []
 }
