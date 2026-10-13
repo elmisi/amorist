@@ -32,6 +32,17 @@ The standalone app uses a system webview (Tauri 2) with a Rust backend — singl
 
 ## Keyboard Shortcuts
 
+For local problem reporting, launch `amorist --debug file.md`. The **Segnala
+problema** button opens a note dialog and appends a report to
+`problem-reports.jsonl` in the application's local data directory (the saved
+path is shown in the status bar). Each report captures the original editor
+state before the dialog opens: current and last-saved Markdown, rendered HTML,
+visible blocks, selection, viewport, scroll position, app version and platform.
+Reports stay on your computer and do not save or modify the document.
+
+To review the collected file list with reporting enabled, run
+`python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/release/amorist`.
+
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+S` | Save |

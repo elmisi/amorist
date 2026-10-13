@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -14,6 +15,39 @@ struct AppState {
     last_modified: Mutex<Option<std::time::SystemTime>>,
     dirty: Mutex<bool>,
     force_close: Mutex<bool>,
+    debug: Mutex<bool>,
+    debug_log: Mutex<()>,
+}
+
+#[tauri::command]
+fn debug_enabled(state: State<AppState>) -> bool {
+    *state.debug.lock().unwrap()
+}
+
+fn append_debug_record(path: &std::path::Path, report: &serde_json::Value) -> Result<(), String> {
+    let mut bytes = serde_json::to_vec(report).map_err(|e| e.to_string())?;
+    bytes.push(b'\n');
+    let mut file = fs::OpenOptions::new().create(true).append(true).open(path)
+        .map_err(|e| e.to_string())?;
+    file.write_all(&bytes).map_err(|e| e.to_string())?;
+    file.sync_all().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn report_problem(app: tauri::AppHandle, state: State<AppState>, mut report: serde_json::Value) -> Result<String, String> {
+    if !*state.debug.lock().unwrap() { return Err("Problem reporting requires --debug.".into()); }
+    if !report.is_object() || report.get("note").and_then(|v| v.as_str()).unwrap_or("").trim().is_empty() {
+        return Err("Describe the problem before saving.".into());
+    }
+    report["filePath"] = serde_json::json!(state.file_path.lock().unwrap().as_ref().map(|p| p.display().to_string()));
+    report["appVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
+    report["platform"] = serde_json::json!(std::env::consts::OS);
+    let directory = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+    let path = directory.join("problem-reports.jsonl");
+    let _guard = state.debug_log.lock().unwrap();
+    append_debug_record(&path, &report)?;
+    Ok(path.display().to_string())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -615,6 +649,8 @@ pub fn run() {
             last_modified: Mutex::new(None),
             dirty: Mutex::new(false),
             force_close: Mutex::new(false),
+            debug: Mutex::new(false),
+            debug_log: Mutex::new(()),
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -635,6 +671,9 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            let matches = app.cli().matches()?;
+            *app.state::<AppState>().debug.lock().unwrap() = matches.args.get("debug")
+                .map(|arg| arg.value.as_bool().unwrap_or(false)).unwrap_or(false);
             match check_install_cli(app) {
                 Ok(true) => std::process::exit(0),
                 Ok(false) => {}
@@ -688,6 +727,8 @@ pub fn run() {
             persist_working_copy,
             discard_working_copy,
             get_version,
+            debug_enabled,
+            report_problem,
             set_dirty,
             force_close,
         ])
@@ -698,6 +739,23 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn debug_reports_append_complete_json_records_without_overwriting() {
+        let dir = scratch_dir("debug-reports");
+        let path = dir.join("reports.jsonl");
+        let first = serde_json::json!({"note": "first\nproblem", "markdown": "# Original"});
+        let second = serde_json::json!({"note": "second", "markdown": "# Unsaved"});
+        append_debug_record(&path, &first).unwrap();
+        let original = fs::read(&path).unwrap();
+        append_debug_record(&path, &second).unwrap();
+        let bytes = fs::read(&path).unwrap();
+        assert!(bytes.starts_with(&original));
+        let records: Vec<serde_json::Value> = std::str::from_utf8(&bytes).unwrap().lines()
+            .map(|line| serde_json::from_str(line).unwrap()).collect();
+        assert_eq!(records, vec![first, second]);
+        fs::remove_dir_all(dir).unwrap();
+    }
 
     // ---------------------------------------------------------------- family F
     //

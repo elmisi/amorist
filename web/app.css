@@ -13,6 +13,20 @@
   --danger: #9f2d20;
 }
 
+[hidden] { display: none !important; }
+
+#report-dialog {
+  max-width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 24px;
+}
+#report-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+#report-note { display: block; width: 100%; margin-top: 12px; font: inherit; }
+#report-dialog p { font-size: 14px; }
+#report-error { color: var(--danger); }
+
 * {
   box-sizing: border-box;
 }

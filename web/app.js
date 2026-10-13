@@ -240,6 +240,9 @@
     window.addEventListener("keydown", handleKeyDown);
 
     backend.registerCloseGuard(function () { return state.dirty; });
+    if (window.__TAURI__) {
+      window.AmoristDebugReport.init(function () { return state; });
+    }
 
     if (!backend.isHttpMode) {
       window.addEventListener("pagehide", function () { backend.notifyClose(); });

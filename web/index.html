@@ -17,6 +17,7 @@
           <span id="file-name">Loading...</span>
         </div>
         <div class="actions">
+          <button id="report-button" type="button" hidden>Segnala problema</button>
           <button id="reload-button" type="button">Reload</button>
           <button id="save-button" type="button">Save</button>
         </div>
@@ -31,6 +32,20 @@
       </footer>
     </main>
 
+    <dialog id="report-dialog" aria-labelledby="report-title">
+      <form id="report-form">
+        <h2 id="report-title">Segnala problema</h2>
+        <label for="report-note">Qual è il problema? Descrivi anche cosa ti aspettavi.</label>
+        <textarea id="report-note" rows="5" required></textarea>
+        <p>La segnalazione include il documento e lo stato dell’editor al momento del clic. Viene salvata solo sul tuo computer.</p>
+        <p id="report-error" role="alert"></p>
+        <div class="actions">
+          <button id="report-cancel" type="button">Annulla</button>
+          <button id="report-submit" type="submit">Salva segnalazione</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="editor/amorist-text-utils.js"></script>
     <script src="editor/amorist-document-model.js"></script>
     <script src="editor/amorist-table-codec.js"></script>
@@ -38,6 +53,7 @@
     <script src="editor/amorist-html-to-markdown.js"></script>
     <script src="editor/amorist-editing-policy.js"></script>
     <script src="editor/amorist-editor.js"></script>
+    <script src="debug-report.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

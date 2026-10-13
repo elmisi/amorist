@@ -4,6 +4,19 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.9] - 2026-10-13
+
+### Added
+- Preserve the existing local `--debug` problem-report dialog and append-only
+  report writer, including the resumable Markdown review script.
+- Keep personal review paths and state outside version control.
+
+### Quality
+- This is a local diagnostic baseline, not the completed editor delivery.
+  Reports previously captured as 0.10.8 keep their original bytes and do not
+  identify a published build. Cross-platform delivery remains blocked pending
+  the approved plan's baseline and native package checks.
+
 ## [0.10.8] - 2026-08-18
 
 ### Fixed

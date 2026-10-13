@@ -1,4 +1,5 @@
 fn main() {
+    println!("cargo:rerun-if-changed=../VERSION");
     let version = std::fs::read_to_string("../VERSION")
         .unwrap_or_else(|_| "0.0.0".to_string())
         .trim()

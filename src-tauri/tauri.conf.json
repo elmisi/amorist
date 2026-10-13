@@ -1,6 +1,6 @@
 {
   "productName": "amorist",
-  "version": "0.10.8",
+  "version": "0.10.9",
   "identifier": "dev.elmisi.amorist",
   "build": {
     "frontendDist": "../web"
@@ -43,6 +43,11 @@
     "cli": {
       "description": "Local Markdown editor",
       "args": [
+        {
+          "name": "debug",
+          "takesValue": false,
+          "description": "Enable local problem reporting."
+        },
         {
           "name": "file",
           "index": 1,
