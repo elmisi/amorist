@@ -17,12 +17,28 @@
     // Trailing whitespace is noise except in one case: two spaces after text are
     // a hard line break. Stripping indiscriminately would erase every <br> that
     // serializeBlocks just wrote, which is the whole point of the paste path.
-    return md
-      .split("\n")
-      .map((line) => (/\S {2,}$/.test(line) ? line.replace(/[ \t]*$/, "  ") : line.replace(/[ \t]+$/, "")))
-      .join("\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    const output = [];
+    let closing = null;
+    let blanks = 0;
+    for (const line of md.split("\n")) {
+      if (closing) {
+        output.push(line);
+        if (closing.test(line)) closing = null;
+        continue;
+      }
+      const fence = line.match(/^ {0,3}(`{3,}|~{3,})/);
+      if (fence) {
+        closing = new RegExp(`^ {0,3}${fence[1][0]}{${fence[1].length},}[ \\t]*$`);
+        output.push(line);
+        blanks = 0;
+        continue;
+      }
+      const cleaned = /\S {2,}$/.test(line)
+        ? line.replace(/[ \t]*$/, "  ") : line.replace(/[ \t]+$/, "");
+      blanks = cleaned ? 0 : blanks + 1;
+      if (blanks <= 1) output.push(cleaned);
+    }
+    return output.join("\n").trim();
   }
 
   const INLINE_TAGS = new Set(["A", "B", "STRONG", "I", "EM", "CODE", "BR", "SUB", "SUP"]);
@@ -67,6 +83,11 @@
     if (node.nodeType === 3) return node.textContent || "";
     if (node.nodeType !== 1) return "";
     const tag = node.tagName;
+    if (tag === "PRE") {
+      const text = Internals.TextUtils.normalize(node.textContent || "");
+      const fence = Internals.TextUtils.codeFenceFor(text);
+      return `${fence}\n${text}${text.endsWith("\n") ? "" : "\n"}${fence}\n\n`;
+    }
     const children = () => Array.from(node.childNodes).map(nodeToSource).join("");
     if (tag === "BR") return "\n";
     if (tag === "STRONG" || tag === "B") return `**${children()}**`;

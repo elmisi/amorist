@@ -50,6 +50,39 @@ async function main() {
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), original.slice(0, end) + "\r\n" + original.slice(end));
         await engine.evaluate("(() => { window.__codeRegression.undo(); window.__codeRegression.showSourceMode(); window.__codeRegression.showWysiwygMode(); return true; })()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), original);
+        for (const [body, fence] of [
+          ["alpha```middle``````omega", "```````"],
+          ["alpha~~~~~omega", "``````"],
+          ["```\n# original literal\n```", "````"],
+        ]) {
+          const source = "before\r\n" + body.replace(/\n/g, "\r\n") + "\r\nafter";
+          const wrapped = await engine.evaluate(`(() => {
+            const editor = window.__codeRegression;
+            editor.setMarkdown(${JSON.stringify(source)});
+            editor.showSourceMode();
+            editor.source.setSelectionRange(7, 7 + ${JSON.stringify(body)}.length);
+            editor.toolbar.querySelector('[data-action="codeblock"]').click();
+            return editor.getMarkdown();
+          })()`);
+          assert.equal(wrapped, "before\r\n" + fence + "\r\n" + body.replace(/\n/g, "\r\n") + "\r\n" + fence + "\r\nafter",
+            `${entry.id}: safe generated fence preserves selected content and external bytes`);
+          await engine.evaluate("(() => { window.__codeRegression.undo(); return true; })()");
+          assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), source);
+        }
+        const converted = await engine.evaluate(`window.AmoristInternals.HtmlToMarkdown.convert(
+          "<pre><code>first  \\n\\n\\n&#96;&#96;&#96;nested&#96;&#96;&#96;\\nlast\\t\\n</code></pre>")`);
+        assert.equal(converted, "````\nfirst  \n\n\n```nested```\nlast\t\n````",
+          `${entry.id}: HTML PRE keeps whitespace and uses safe fences`);
+        const identical = "```\nfirst\n```\n# outside\n```\nlast\n```";
+        const interpretation = await engine.evaluate(`(() => {
+          const editor = window.__codeRegression;
+          editor.setMarkdown(${JSON.stringify(identical)});
+          return { source: editor.getMarkdown(),
+            blocks: editor.surface.querySelectorAll(".amorist-wysiwyg-code-block").length,
+            heading: editor.surface.querySelector(".amorist-wysiwyg-h1").textContent.trim() };
+        })()`);
+        assert.deepEqual(interpretation, { source: identical, blocks: 2, heading: "outside" },
+          `${entry.id}: an identical delimiter closes existing code; opening never rewrites it`);
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

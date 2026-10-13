@@ -29,7 +29,7 @@
       "id": 4,
       "name": "code-context-and-delimiters",
       "status": "partial",
-      "evidence": "Fenced-code projection and input fixed; safe delimiter generation still pending"
+      "evidence": "Fenced-code precedence, zero-height delimiters, safe toolbar fences and whitespace-preserving HTML PRE conversion tested. Indented and nested code context still pending."
     },
     {
       "id": 5,
@@ -46,8 +46,8 @@
     {
       "id": 7,
       "name": "clipboard",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "HTML PRE preserves literal text, whitespace and safe fences; internal clipboard and the remaining HTML structures are pending."
     },
     {
       "id": 8,
@@ -103,7 +103,8 @@
     "linuxFullSuite": {
       "exitCode": 0,
       "corpusFiles": 19,
-      "report": "code-context-qa-linux-candidate.json"
+      "report": "safe-fences-qa-linux.json",
+      "sourceScope": "Safe fence implementation before the final tilde-run extension; final extension checked by HTML PRE and both Linux engine probes."
     },
     "codeContextRegression": {
       "webkitgtk": "pass",
@@ -115,7 +116,20 @@
       "pass": 7,
       "fail": 0
     },
-    "macosFullSuite": "running",
-    "windowsFullEngineSuite": "not yet implemented"
+    "macosFullSuite": {
+      "exitCode": 1,
+      "failures": [
+        "REQ-B9: zero rAF samples on Safari",
+        "REQ-C2: viewport restoration on Safari",
+        "REQ-G2: engine verdict disagreement"
+      ],
+      "environment": "CGSSessionScreenIsLocked=Yes; unlock requested; no native GUI pass claimed"
+    },
+    "windowsFullEngineSuite": "not yet implemented",
+    "safeFenceGeneration": {
+      "webkitgtk": "pass",
+      "chromiumLinux": "pass",
+      "macos": "pending unlocked session"
+    }
   }
 }

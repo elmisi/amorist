@@ -10,10 +10,14 @@
       "reportedVersion": "0.10.8",
       "buildIdentity": "not measured by original schema 1",
       "case": "Existing nested identical fences and safe fence generation",
-      "status": "unresolved",
+      "status": "explained-and-safe-generation-tested",
       "fixture": null,
-      "check": null,
-      "verifiedEngines": []
+      "check": "tests/editor-code-context.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux"
+      ],
+      "explanation": "An existing identical matching delimiter closes the current block; opening does not rewrite that source. Creating a block chooses a delimiter longer than all content backtick or tilde runs."
     },
     {
       "id": "BUG-002",

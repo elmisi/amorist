@@ -5,6 +5,7 @@ const vm = require("node:vm");
 function loadModule() {
   const window = { AmoristInternals: { MarkdownCodec: { serializeBlocks: () => "" } } };
   const context = vm.createContext({ window, console });
+  vm.runInContext(fs.readFileSync("web/editor/amorist-text-utils.js", "utf8"), context);
   vm.runInContext(fs.readFileSync("web/editor/amorist-html-to-markdown.js", "utf8"), context, {
     filename: "amorist-html-to-markdown.js",
   });
@@ -33,5 +34,15 @@ assert.equal(H._cleanupMarkdown("a \nb"), "a\nb");
 assert.equal(H._cleanupMarkdown("a\t\nb"), "a\nb");
 // Whitespace-only lines are blank lines, not breaks.
 assert.equal(H._cleanupMarkdown("a\n  \nb"), "a\n\nb");
+
+const code = "first  \n\n\n```nested```\nlast\t\n";
+const pre = { nodeType: 1, tagName: "PRE", textContent: code };
+const source = H._nodeToSource(pre);
+assert.equal(source, "````\n" + code + "````\n\n");
+assert.equal(H._cleanupMarkdown(source), "````\n" + code + "````");
+assert.equal(H._nodeToSource({ nodeType: 1, tagName: "PRE", textContent: "``````" }),
+  "```````\n``````\n```````\n\n");
+assert.equal(H._nodeToSource({ nodeType: 1, tagName: "PRE", textContent: "~~~~~" }),
+  "``````\n~~~~~\n``````\n\n");
 
 console.log("html-to-markdown pure helpers OK");

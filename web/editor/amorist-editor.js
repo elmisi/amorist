@@ -805,7 +805,8 @@
         const { start, end } = selectedLineRange(this.model.source, sel.start, sel.end);
         const body = this.model.source.slice(start, end);
         const ending = this.model.lineEndingAt(start);
-        this.apply(start, end, "```" + ending + body + ending + "```", action);
+        const fence = Internals.TextUtils.codeFenceFor(body);
+        this.apply(start, end, fence + ending + body + ending + fence, action);
       }
     }
 

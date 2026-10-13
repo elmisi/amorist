@@ -17,6 +17,19 @@ approved_by: repository owner
 approved_on: 2026-07-28
 
 amendments:
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Creating a code block uses backtick delimiters longer than every backtick
+      or tilde run in its content, with a minimum of three. Pasted HTML PRE uses the
+      same rule and preserves literal code whitespace and blank lines; fragment
+      cleanup applies only outside code. Existing files are not repaired on open.
+    why: >
+      Identical nested fence runs cannot represent nested Markdown code blocks.
+      Safe generation keeps the selected or pasted content in one literal block
+      without inventing an alternative interpretation of existing source.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
   - date: 2026-10-13
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >

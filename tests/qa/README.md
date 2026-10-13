@@ -12,12 +12,19 @@ whatever the suite reports.
 node tests/qa/run.js                    # everything, on both engines
 node tests/qa/run.js --only A           # one family
 node tests/qa/run.js --engine chromium  # one engine, for debugging only
+node tests/editor-code-context.test.js # code projection/input and safe fence creation
 ```
 
 The result lands in `.qa/reports/last-run.json`: a verdict per requirement per
 engine, and for every failure the fixture, the byte offset or line number, and
 the two values that differ. A failure that cannot name where it happened is not
 a usable failure.
+
+The standalone code-context regression runs on every applicable engine. It
+checks literal Markdown-looking code, zero-height fence markers, original blank
+lines, keyboard input and undo, safe generated fences and HTML PRE whitespace.
+The reusable QA workflow also runs the codec, toolbar and source-position tests
+before the contract suite. A missing applicable engine fails these probes.
 
 Exit status is non-zero if and only if a blocking requirement failed **or a
 check could not run**. There is no third state.

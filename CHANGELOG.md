@@ -12,6 +12,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the same code context as the projection.
 - Hidden fence delimiters add no text height; original blank code lines remain
   visible. Regression probes run on WebKitGTK, Safari and Chromium.
+- Newly created code blocks use delimiters longer than all backtick runs in
+  their content, including tilde runs. Pasted HTML PRE keeps literal whitespace and blank lines.
 
 ### Quality
 - This version is the editor development candidate. Delivery remains blocked
