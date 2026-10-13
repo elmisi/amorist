@@ -4,6 +4,21 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.10] - Unreleased
+
+### Fixed
+- Fenced code keeps heading, list, task and quote syntax literal in rendering
+  and editing. Enter retains its source line ending; Backspace and paste use
+  the same code context as the projection.
+- Hidden fence delimiters add no text height; original blank code lines remain
+  visible. Regression probes run on WebKitGTK, Safari and Chromium.
+
+### Quality
+- This version is the editor development candidate. Delivery remains blocked
+  until the complete approved plan and all native platform gates pass.
+- Windows denied-write save tests now use a real directory ACL, retaining the
+  original Unix permission test. Nine Rust tests pass on all three platforms.
+
 ## [0.10.9] - 2026-10-13
 
 ### Added

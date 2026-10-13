@@ -280,6 +280,12 @@
               unitEnd: end,
               codeContent: at > index && (!hasClosingFence || at < end),
             });
+            // Classify the containing block before interpreting its contents.
+            // Markdown-looking text inside code is literal, including fences
+            // shorter than the opening delimiter.
+            descriptors[at].projection = descriptors[at].codeContent
+              ? { prefix: 0, text: descriptors[at].raw, tag: "pre" }
+              : { prefix: descriptors[at].raw.length, text: "", tag: "pre", fence: true };
           }
           index = end + 1;
           continue;
@@ -298,6 +304,24 @@
         index += 1;
       }
       return descriptors;
+    }
+
+    editingContextAt(offset) {
+      const descriptors = this.lineDescriptors;
+      let low = 0;
+      let high = descriptors.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (descriptors[mid].start <= offset) low = mid + 1;
+        else high = mid;
+      }
+      const descriptor = descriptors[Math.max(0, low - 1)];
+      if (descriptor && descriptor.unitType === "code") {
+        return { kind: "code", start: descriptor.start, end: descriptor.end,
+          contentStart: descriptor.start, fence: descriptor.projection.fence,
+          indent: (descriptor.raw.match(/^[ \t]*/) || [""])[0] };
+      }
+      return structuralContextAt(this.model.source, offset);
     }
 
     render(rawSelection) {
@@ -637,8 +661,14 @@
       }
       if (type === "insertParagraph" || type === "insertLineBreak") {
         const context = selection.start === selection.end
-          ? structuralContextAt(this.model.source, selection.start)
+          ? this.editingContextAt(selection.start)
           : null;
+        if (context && context.kind === "code") {
+          event.preventDefault();
+          this.apply(selection.start, selection.end,
+            this.model.lineEndingAt(selection.start) + (context.fence ? "" : context.indent), "code-enter");
+          return;
+        }
         if (context && selection.start >= context.contentStart && selection.start <= context.end) {
           event.preventDefault();
           if (context.contentStart === context.end) {
@@ -656,9 +686,9 @@
       }
       if (type === "deleteContentBackward") {
         const context = selection.start === selection.end
-          ? structuralContextAt(this.model.source, selection.start)
+          ? this.editingContextAt(selection.start)
           : null;
-        if (context && selection.start === context.contentStart) {
+        if (context && context.kind !== "code" && selection.start === context.contentStart) {
           event.preventDefault();
           this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-backspace" : "block-backspace");
           return;
@@ -680,12 +710,12 @@
       if (this.mode === "wysiwyg" && event.key === "Backspace") {
         const selection = this.selectionRaw();
         const context = selection.start === selection.end
-          ? structuralContextAt(this.model.source, selection.start)
+          ? this.editingContextAt(selection.start)
           : null;
         // WebKitGTK does not consistently follow this boundary keydown with a
         // deleteContentBackward beforeinput. Own the structural shortcut here;
         // ordinary Backspace is still handled by beforeinput on every engine.
-        if (context && selection.start === context.contentStart) {
+        if (context && context.kind !== "code" && selection.start === context.contentStart) {
           event.preventDefault();
           this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-backspace" : "block-backspace");
           return;
@@ -719,7 +749,9 @@
       event.preventDefault();
       const selection = this.selectionRaw();
       const raw = this.model.source;
-      const inCode = raw.lastIndexOf("`", selection.start) > raw.lastIndexOf("\n", selection.start);
+      const context = this.editingContextAt(selection.start);
+      const inCode = (context && context.kind === "code")
+        || raw.lastIndexOf("`", selection.start) > raw.lastIndexOf("\n", selection.start);
       const html = clipboard.getData("text/html");
       let replacement = inCode ? clipboard.getData("text/plain") : (html ? HtmlToMarkdown.convert(html) : clipboard.getData("text/plain"));
       replacement = String(replacement || "").replace(/\r\n|\r|\n/g, this.model.lineEndingAt(selection.start));

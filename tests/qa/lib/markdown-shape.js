@@ -23,7 +23,7 @@ const BLOCK_MARKER = /^\s*([#>*+\-|=]|\d+[.)]|\[|---)/;
 //   prose  — ordinary text, the only kind whose line breaks are the author's
 //            own choice and therefore the only kind these requirements are about
 function classifyLines(text) {
-  const raw = text.split(/\r?\n/);
+  const raw = text.split(/\r\n|\r|\n/);
   const lines = [];
   let openFence = "";
 

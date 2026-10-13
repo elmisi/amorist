@@ -22,6 +22,7 @@
 // place in the file where that token is.
 
 const { splitLines } = require("../lib/diff");
+const { classifyLines } = require("../lib/markdown-shape");
 const { runTauriAppChecks } = require("../lib/tauri-app-e2e");
 
 // Words long enough to be distinctive. Shorter ones repeat too often to be
@@ -176,7 +177,8 @@ module.exports = [
           await ctx.page.toggleMode();
           await ctx.page.settle(40);
           const sourceValue = await ctx.page.sourceValue();
-          const at = sourceValue.indexOf(marked.line);
+          const at = sourceValue.split("\n").slice(0, marked.lineNumber - 1)
+            .reduce((offset, line) => offset + line.length + 1, 0);
           if (at < 0) break;
           await ctx.page.setSourceSelection(at + marked.markerOffset);
           await ctx.page.toggleMode();
@@ -542,11 +544,13 @@ function lineOf(text, offset) {
 // a list item's bullet. Returns where the marker sits and the first character
 // the view actually shows for that construct.
 function markerLine(text) {
-  for (const raw of text.split(/\r?\n/)) {
+  for (const candidate of classifyLines(text)) {
+    if (candidate.kind !== "block") continue;
+    const raw = candidate.text;
     const heading = raw.match(/^(#{1,6})\s+(\S)/);
-    if (heading) return { line: raw, markerOffset: 0, firstVisible: heading[2] };
+    if (heading) return { line: raw, lineNumber: candidate.number, markerOffset: 0, firstVisible: heading[2] };
     const item = raw.match(/^([*+-]|\d+[.)])\s+(\S)/);
-    if (item) return { line: raw, markerOffset: 0, firstVisible: item[2] };
+    if (item) return { line: raw, lineNumber: candidate.number, markerOffset: 0, firstVisible: item[2] };
   }
   return null;
 }

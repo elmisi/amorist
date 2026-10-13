@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "originalRecordsPreserved": true,
+  "candidateVersion": "0.10.10",
+  "records": [
+    {
+      "id": "BUG-001",
+      "capturedAt": "2026-10-13T14:20:18.497Z",
+      "recordSha256": "f2fb19d139dc2a4a806fdc480aa3e4b58726f6990736c3d97d83f6114321f342",
+      "reportedVersion": "0.10.8",
+      "buildIdentity": "not measured by original schema 1",
+      "case": "Existing nested identical fences and safe fence generation",
+      "status": "unresolved",
+      "fixture": null,
+      "check": null,
+      "verifiedEngines": []
+    },
+    {
+      "id": "BUG-002",
+      "capturedAt": "2026-10-13T14:21:39.179Z",
+      "recordSha256": "3d9a006fe6af3e640f99db6654a4080c4c4ee8a0988e7fe1faa129816982b5b3",
+      "reportedVersion": "0.10.8",
+      "buildIdentity": "not measured by original schema 1",
+      "case": "Heading-like text inside code",
+      "status": "fixed-with-synthetic-regression",
+      "fixture": "tests/qa/corpus/regression-code-context.md",
+      "check": "tests/editor-code-context.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux",
+        "safari",
+        "chromium-macos"
+      ]
+    },
+    {
+      "id": "BUG-003",
+      "capturedAt": "2026-10-13T14:23:12.467Z",
+      "recordSha256": "748e543cdefada3d6fa293bcd07d0b2caf467035aae4a269a82de4c474ee1839",
+      "reportedVersion": "0.10.8",
+      "buildIdentity": "not measured by original schema 1",
+      "case": "Extra visual rows at code delimiters",
+      "status": "fixed-with-synthetic-regression",
+      "fixture": "tests/qa/corpus/regression-code-context.md",
+      "check": "tests/editor-code-context.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux",
+        "safari",
+        "chromium-macos"
+      ]
+    },
+    {
+      "id": "BUG-004",
+      "capturedAt": "2026-10-13T14:25:02.279Z",
+      "recordSha256": "37758a039065ea118fb1aef8ac17518d041ffb0e475dd670eca83e228567fd71",
+      "reportedVersion": "0.10.8",
+      "buildIdentity": "not measured by original schema 1",
+      "case": "List continuation alignment",
+      "status": "unresolved",
+      "fixture": null,
+      "check": null,
+      "verifiedEngines": []
+    },
+    {
+      "id": "BUG-005",
+      "capturedAt": "2026-10-13T14:30:58.512Z",
+      "recordSha256": "b19b75cb61f990ebd46b00082be2e98e8ccd6787181deef9ff5135b81bbdbf48",
+      "reportedVersion": "0.10.8",
+      "buildIdentity": "not measured by original schema 1",
+      "case": "Duplicate ordered numbering inside code",
+      "status": "fixed-with-synthetic-regression",
+      "fixture": "tests/qa/corpus/regression-code-context.md",
+      "check": "tests/editor-code-context.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux",
+        "safari",
+        "chromium-macos"
+      ]
+    },
+    {
+      "id": "BUG-006",
+      "capturedAt": "2026-10-13T14:42:17.400Z",
+      "recordSha256": "e7c506e567b1091a13ff1054752e86dca42abaf8a59caa07d26d85afe3b7f50d",
+      "reportedVersion": "0.10.8",
+      "buildIdentity": "not measured by original schema 1",
+      "case": "Wrapped list alignment",
+      "status": "unresolved",
+      "fixture": null,
+      "check": null,
+      "verifiedEngines": []
+    },
+    {
+      "id": "BUG-007",
+      "capturedAt": "2026-10-13T14:43:29.012Z",
+      "recordSha256": "4960abaa68aac2ab0bca1254cab04ea835c0187799713c307eff720fad1cdd89",
+      "reportedVersion": "0.10.8",
+      "buildIdentity": "not measured by original schema 1",
+      "case": "Multiline quote continuity",
+      "status": "unresolved",
+      "fixture": null,
+      "check": null,
+      "verifiedEngines": []
+    }
+  ]
+}

@@ -20,6 +20,21 @@ amendments:
   - date: 2026-10-13
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Code block context precedes structural and inline Markdown interpretation
+      in the projection and in input handling. Headings, list markers, tasks,
+      quotes and shorter fence runs inside a fenced block remain literal. Hidden
+      fence delimiters add zero text height, while original blank content lines
+      remain visible. Enter inside code inherits the source line terminator and
+      indentation. Opening, undo and mode changes preserve the original source.
+    why: >
+      The collected reports show code comments receiving heading styles,
+      ordered text receiving duplicate numbering and hidden fence rows adding
+      visual lines. Code context must also protect editing, not just rendering.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-13
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Windows 10 x64 joins the candidate delivery and must use its actual
       WebView2 engine through tauri-driver and a matching Edge driver, plus
       the Chromium stand-in. Linux and macOS checks retain their existing

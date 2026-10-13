@@ -165,6 +165,14 @@
   color: var(--muted, #68717d);
 }
 
+.amorist-wysiwyg-code-block > .amorist-wysiwyg-fence {
+  display: block;
+  height: 0;
+  line-height: 0;
+  font-size: 0;
+  overflow: hidden;
+}
+
 .amorist-wysiwyg-code,
 .amorist-wysiwyg-table {
   color: #2b3a47;

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "plan": "docs/plan-amorist-editor-development-20261013-1932.md",
+  "candidateVersion": "0.10.10",
+  "goalStatus": "active",
+  "deliveryBlocked": true,
+  "pushAuthorized": false,
+  "publicationAuthorized": false,
+  "tasks": [
+    {
+      "id": 1,
+      "name": "diagnostic-baseline",
+      "status": "complete",
+      "evidence": "385f953"
+    },
+    {
+      "id": 2,
+      "name": "baseline-and-reports",
+      "status": "partial",
+      "evidence": "14321a5; seven reports inventoried; three reduced regression cases fixed"
+    },
+    {
+      "id": 3,
+      "name": "contract-amendments",
+      "status": "partial",
+      "evidence": "Windows and fenced code amendments; remaining feature amendments pending"
+    },
+    {
+      "id": 4,
+      "name": "code-context-and-delimiters",
+      "status": "partial",
+      "evidence": "Fenced-code projection and input fixed; safe delimiter generation still pending"
+    },
+    {
+      "id": 5,
+      "name": "common-markdown-and-mapping",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": 6,
+      "name": "enter-tab-and-local-cleanup",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": 7,
+      "name": "clipboard",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": 8,
+      "name": "settings-and-active-line",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": 9,
+      "name": "file-actions-recovery-and-windows",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": 10,
+      "name": "images-and-links",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": 11,
+      "name": "bug-build-identity-and-review-runner",
+      "status": "pending",
+      "evidence": ""
+    },
+    {
+      "id": 12,
+      "name": "native-windows-preparation-and-packaging",
+      "status": "partial",
+      "evidence": "Windows and macOS reachable; Windows tools installed; Rust suite green across platforms"
+    },
+    {
+      "id": 13,
+      "name": "final-regression-performance-package-and-loop-validation",
+      "status": "pending",
+      "evidence": ""
+    }
+  ],
+  "codeContextRegressionEngines": [
+    "WebKitGTK",
+    "Chromium on Linux",
+    "Safari",
+    "Chromium on macOS"
+  ],
+  "remainingPlatformGates": [
+    "Windows WebView2 runner integration",
+    "Windows 10 installer install/upgrade/uninstall acceptance",
+    "macOS Finder, dialogs, clipboard and new instances",
+    "Linux packaged acceptance",
+    "final candidate identity and review-loop end-to-end validation"
+  ],
+  "verification": {
+    "linuxFullSuite": {
+      "exitCode": 0,
+      "corpusFiles": 19,
+      "report": "code-context-qa-linux-candidate.json"
+    },
+    "codeContextRegression": {
+      "webkitgtk": "pass",
+      "chromiumLinux": "pass",
+      "safari": "pass",
+      "chromiumMacos": "pass"
+    },
+    "nodeRegressionChecks": {
+      "pass": 7,
+      "fail": 0
+    },
+    "macosFullSuite": "running",
+    "windowsFullEngineSuite": "not yet implemented"
+  }
+}
