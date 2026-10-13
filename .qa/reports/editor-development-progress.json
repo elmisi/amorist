@@ -29,13 +29,13 @@
       "id": 4,
       "name": "code-context-and-delimiters",
       "status": "partial",
-      "evidence": "Fenced-code precedence, zero-height delimiters, safe toolbar fences and whitespace-preserving HTML PRE conversion tested. Indented and nested code context still pending."
+      "evidence": "Fenced code precedence, zero-height delimiters, safe generated fences and literal HTML PRE are tested. Top-level indented code with internal blank rows and CRLF Enter now passes both Linux engines. Nested/container code contexts and remaining keyboard semantics are still pending."
     },
     {
       "id": 5,
       "name": "common-markdown-and-mapping",
       "status": "partial",
-      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Reference links, autolinks, images, setext headings, indented/nested code and remaining block contexts still pending."
+      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Setext titles and closed initial front matter now pass native Linux opening/edit/undo/mode probes. Reference links, autolinks, images, nested/container code and remaining block/unsupported-literal contexts still pending."
     },
     {
       "id": 6,
@@ -308,6 +308,49 @@
         "pass": 8,
         "fail": 0,
         "scope": "five existing pure checks plus toolbar, viewport helpers and both-engine block layout"
+      }
+    },
+    "indentedSetextDevelopment": {
+      "status": "directed probes, full Linux suite and classic regression checks passed",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "check": "tests/editor-code-context.test.js",
+      "scope": [
+        "top-level indented code precedence",
+        "internal blank code rows",
+        "paragraph and list-continuation boundaries",
+        "setext heading styling and zero-height delimiter",
+        "native title edit with undo and mode round-trip",
+        "indented-code Enter with CRLF and indentation",
+        "literal closed front matter with native Enter, undo and mode round-trip",
+        "setext level changes update dependent title rows"
+      ],
+      "remaining": [
+        "nested code inside list/quote containers",
+        "other common Markdown families",
+        "Tab/ShiftTab across physical terminators and selected structural units"
+      ],
+      "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
+      "firstFullSuite": {
+        "exitCode": 0,
+        "report": "indented-setext-first-qa-linux.json",
+        "scope": "before final setext level dependency correction"
+      },
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "indented-setext-final-qa-linux.json",
+        "corpusFiles": 21,
+        "engines": [
+          "webkitgtk",
+          "chromium"
+        ],
+        "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "classicRegressionChecks": {
+        "pass": 8,
+        "fail": 0
       }
     }
   }

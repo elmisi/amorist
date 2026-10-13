@@ -118,6 +118,7 @@
       && a.indent === b.indent && a.quoteDepth === b.quoteDepth
       && a.listContinuation === b.listContinuation && a.layoutPadding === b.layoutPadding
       && a.markerWidth === b.markerWidth && a.marker === b.marker
+      && a.setextLevel === b.setextLevel
       && (typeof a.checked === "boolean") === (typeof b.checked === "boolean");
   }
 
@@ -233,7 +234,17 @@
       }));
 
       let index = 0;
+      if (rawLines[0] === "---") {
+        const closing = rawLines.findIndex((line, at) => at > 0 && /^(?:---|\.\.\.)[ \t]*$/.test(line));
+        if (closing > 0) {
+          for (let at = 0; at <= closing; at += 1) {
+            descriptors[at].unitType = "literal";
+            descriptors[at].projection = { prefix: 0, text: descriptors[at].raw, tag: "div", literal: true };
+          }
+        }
+      }
       while (index < descriptors.length) {
+        if (descriptors[index].unitType === "literal") { index += 1; continue; }
         const opening = descriptors[index].raw.match(/^ {0,3}(`{3,}|~{3,}).*$/);
         if (opening) {
           const marker = opening[1][0];
@@ -260,7 +271,8 @@
           index = end + 1;
           continue;
         }
-        if (TableCodec && TableCodec.isTableStart(rawLines, index)) {
+        if (TableCodec && indentationColumns((rawLines[index].match(/^[ \t]*/) || [""])[0]) < 4
+            && TableCodec.isTableStart(rawLines, index)) {
           const columns = TableCodec.splitTableRow(rawLines[index]).length;
           let end = index + 2;
           while (end < rawLines.length && TableCodec.looksLikeTableRow(rawLines[end], columns)) end += 1;
@@ -274,13 +286,34 @@
         index += 1;
       }
       const items = [];
-      for (const descriptor of descriptors) {
+      for (let at = 0; at < descriptors.length; at += 1) {
+        const descriptor = descriptors[at];
         const projection = descriptor.projection;
         const leading = (descriptor.raw.match(/^[ \t]*/) || [""])[0];
         const columns = indentationColumns(leading);
         if (descriptor.unitType !== "line") {
           if (descriptor.index === descriptor.unitStart && items.length
               && columns < items[items.length - 1].contentIndent) items.length = 0;
+          continue;
+        }
+        const parent = items.findLast((owner) => columns >= owner.contentIndent);
+        const previous = descriptors[at - 1];
+        if (columns >= 4 && !parent && (!previous || !previous.raw.trim() || previous.unitType === "code")) {
+          let end = at;
+          let next = at + 1;
+          while (next < descriptors.length && descriptors[next].unitType === "line") {
+            const raw = descriptors[next].raw;
+            if (!raw.trim()) { next += 1; continue; }
+            if (indentationColumns((raw.match(/^[ \t]*/) || [""])[0]) < 4) break;
+            end = next; next += 1;
+          }
+          for (let line = at; line <= end; line += 1) {
+            Object.assign(descriptors[line], { unitType: "code", unitStart: at, unitEnd: end,
+              codeContent: true, indentedCode: true,
+              projection: { prefix: 0, text: descriptors[line].raw, tag: "pre" } });
+          }
+          items.length = 0;
+          at = end;
           continue;
         }
         if (projection.list) {
@@ -304,6 +337,18 @@
             tag: "div", listContinuation: true, layoutPadding: owner.layoutPadding };
         } else if (descriptor.raw.trim()) items.length = 0;
       }
+      for (let at = 1; at < descriptors.length; at += 1) {
+        const delimiter = descriptors[at];
+        if (delimiter.unitType !== "line" || !/^ {0,3}(?:=+|-+)[ \t]*$/.test(delimiter.raw)) continue;
+        let first = at - 1;
+        const eligible = (line) => line && line.unitType === "line" && line.raw.trim()
+          && line.projection.tag === "div" && !line.projection.list && !line.projection.listContinuation;
+        if (!eligible(descriptors[first])) continue;
+        while (eligible(descriptors[first - 1])) first -= 1;
+        const tag = delimiter.raw.trim()[0] === "=" ? "h1" : "h2";
+        for (let line = first; line < at; line += 1) descriptors[line].projection.tag = tag;
+        delimiter.projection = { prefix: delimiter.raw.length, text: "", tag: "div", setextDelimiter: true, setextLevel: tag };
+      }
       return descriptors;
     }
 
@@ -317,10 +362,15 @@
         else high = mid;
       }
       const descriptor = descriptors[Math.max(0, low - 1)];
-      if (descriptor && descriptor.unitType === "code") {
+      if (descriptor && (descriptor.unitType === "code" || descriptor.unitType === "literal")) {
         return { kind: "code", start: descriptor.start, end: descriptor.end,
           contentStart: descriptor.start, fence: descriptor.projection.fence,
           indent: (descriptor.raw.match(/^[ \t]*/) || [""])[0] };
+      }
+      if (descriptor && /^h[1-6]$/.test(descriptor.projection.tag)
+          && !/^ {0,3}#{1,6}[ \t]+/.test(descriptor.raw)) {
+        return { kind: "heading", start: descriptor.start, end: descriptor.end,
+          contentStart: descriptor.start, markerStart: descriptor.start, indent: "", marker: "", spacing: "" };
       }
       if (descriptor && descriptor.projection.listContinuation) {
         return { kind: "continuation", start: descriptor.start, end: descriptor.end,
@@ -385,7 +435,9 @@
           row.classList.add("amorist-wysiwyg-rule");
         }
         if (descriptor.unitType === "table") row.classList.add("amorist-wysiwyg-table");
-        if (descriptor.codeContent) {
+        if (descriptor.projection.literal) {
+          this.appendSourceText(row, raw, 0, raw.length);
+        } else if (descriptor.codeContent) {
           row.classList.add("amorist-wysiwyg-code");
           this.appendSourceText(row, raw || CARET_SENTINEL, 0, raw.length);
         } else if (descriptor.unitType === "table") {
@@ -400,6 +452,8 @@
             content.classList.add("amorist-empty-caret");
             this.appendSourceText(content, CARET_SENTINEL, projection.prefix, projection.prefix);
           }
+        } else if (projection.setextDelimiter) {
+          row.classList.add("amorist-wysiwyg-setext-delimiter");
         } else if (projection.rule || projection.fence) {
           row.setAttribute("aria-label", projection.rule ? "Horizontal rule" : "Code fence");
         } else if (projection.text) {
@@ -792,7 +846,7 @@
         const context = selection.start === selection.end
           ? this.editingContextAt(selection.start)
           : null;
-        if (context && context.kind !== "code" && selection.start === context.contentStart) {
+        if (context && context.kind !== "code" && context.markerStart < context.contentStart && selection.start === context.contentStart) {
           event.preventDefault();
           this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-backspace" : "block-backspace");
           return;
@@ -822,7 +876,7 @@
         // WebKitGTK does not consistently follow this boundary keydown with a
         // deleteContentBackward beforeinput. Own the structural shortcut here;
         // ordinary Backspace is still handled by beforeinput on every engine.
-        if (context && context.kind !== "code" && selection.start === context.contentStart) {
+        if (context && context.kind !== "code" && context.markerStart < context.contentStart && selection.start === context.contentStart) {
           event.preventDefault();
           this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-backspace" : "block-backspace");
           return;

@@ -20,6 +20,21 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Top-level code indented by at least four columns is literal, can contain
+      genuine blank physical rows and cannot interrupt an existing prose paragraph.
+      Code context precedes heading/list/inline interpretation and Enter retains
+      indentation and the local source terminator. Setext headings style their
+      physical content rows while their underline adds no text height. A closed
+      initial front-matter region remains fully visible literal source.
+    why: >
+      Implements the approved indented-code and underlined-heading families while
+      preserving the explicit non-promise of visual interpretation for metadata.
+      Nested code and containers remain separate required work before delivery.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       All projected editable text, including code, table delimiters, physical
       line endings and empty-line sentinels, has an explicit source interval.
       Element boundaries around inline wrappers map outside their delimiters.

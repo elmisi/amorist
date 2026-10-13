@@ -165,6 +165,49 @@ async function main() {
         await engine.sendKeys([{key:"a",ctrl:process.platform!=="darwin",meta:process.platform==="darwin"},"Z"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),"Z",
           `${entry.id}: native Select All includes the first hidden structural prefix`);
+        const blocks = "First title\r\n===\r\n\r\nSecond title\r\n---\r\n\r\n    # literal\r\n    1. literal\r\n\r\n    **literal**\r\n\r\nparagraph\r\n    continuation\r\n\r\n- list\r\n  continuation";
+        const classification = await engine.evaluate(`(() => {
+          const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(blocks)});
+          return {source:editor.getMarkdown(),headings:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-h1,.amorist-wysiwyg-h2')).map(row=>row.textContent.trim()),
+            delimiterHeights:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-setext-delimiter')).map(row=>row.getBoundingClientRect().height),
+            codeRows:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>({prefix:row.dataset.prefix,text:row.textContent,classes:row.className,bold:!!row.querySelector('strong')})),
+            blocks:editor.surface.querySelectorAll('.amorist-wysiwyg-code-block').length};
+        })()`);
+        assert.equal(classification.source,blocks);
+        assert.deepEqual(classification.headings,["First title","Second title"]);
+        assert.deepEqual(classification.delimiterHeights,[0,0]);
+        const changedLevel=await engine.evaluate(`(() => {
+          const editor=window.__codeRegression;editor.apply(${blocks.indexOf("===")},${blocks.indexOf("===")+3},'---','replace-underlining');
+          return Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-h2')).map(row=>row.textContent.trim());
+        })()`);
+        assert.deepEqual(changedLevel,["First title","Second title"],`${entry.id}: changing underline level updates its dependent title row`);
+        await engine.evaluate("(() => {window.__codeRegression.undo();return true;})()");
+        assert.equal(classification.blocks,1,`${entry.id}: indented code does not interrupt prose or swallow list continuation`);
+        assert.equal(classification.codeRows.length,4,`${entry.id}: genuine blank row remains inside indented code`);
+        for (const row of classification.codeRows) {
+          assert.equal(row.prefix,"0"); assert.equal(row.bold,false);
+          assert.doesNotMatch(row.classes,/wysiwyg-(h[1-6]|list|quote|task|fence)/);
+        }
+        await engine.evaluate("(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(5,5);return true;})()");
+        await engine.sendKeys(["X"]);
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks.slice(0,5)+"X"+blocks.slice(5),`${entry.id}: editing setext title preserves its underline and other blocks`);
+        await engine.evaluate("(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()");
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks);
+        const indentedEnd=blocks.indexOf("# literal")+"# literal".length;
+        await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${indentedEnd},${indentedEnd});return true;})()`);
+        await engine.sendKeys([{key:"Enter"}]);
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks.slice(0,indentedEnd)+"\r\n    "+blocks.slice(indentedEnd),`${entry.id}: indented code Enter keeps indentation and CRLF`);
+        await engine.evaluate("(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()");
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks);
+        const metadata="---\r\n# literal heading\r\n- literal list\r\n**literal emphasis**\r\n---\r\nafter";
+        const metadataView=await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(metadata)});return {source:editor.getMarkdown(),text:editor.surface.textContent,heading:!!editor.surface.querySelector('.amorist-wysiwyg-h1'),list:!!editor.surface.querySelector('.amorist-wysiwyg-list-item'),bold:!!editor.surface.querySelector('strong')};})()`);
+        assert.deepEqual(metadataView,{source:metadata,text:metadata.replace(/\r\n/g,"\n"),heading:false,list:false,bold:false},`${entry.id}: metadata stays visible literal source`);
+        const metadataEnd=metadata.indexOf("- literal list")+"- literal list".length;
+        await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${metadataEnd},${metadataEnd});return true;})()`);
+        await engine.sendKeys([{key:"Enter"}]);
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),metadata.slice(0,metadataEnd)+"\r\n"+metadata.slice(metadataEnd),`${entry.id}: metadata Enter never continues a Markdown list marker`);
+        await engine.evaluate("(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()");
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),metadata);
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

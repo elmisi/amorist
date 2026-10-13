@@ -192,7 +192,8 @@
   color: var(--muted, #68717d);
 }
 
-.amorist-wysiwyg-code-block > .amorist-wysiwyg-fence {
+.amorist-wysiwyg-code-block > .amorist-wysiwyg-fence,
+.amorist-wysiwyg-setext-delimiter {
   display: block;
   height: 0;
   line-height: 0;

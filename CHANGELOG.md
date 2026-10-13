@@ -27,6 +27,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Selection uses explicit source intervals for code, table markers, line
   endings and empty rows, including boundaries outside inline wrappers.
   Select All includes hidden Markdown prefixes and delimiters.
+- Top-level indented code keeps literal markers, internal blank rows and local
+  line endings. Setext titles render without extra delimiter height; changing
+  the underline level updates the dependent title. Closed initial front matter
+  stays visible literal source.
 
 ### Quality
 - This version is the editor development candidate. Delivery remains blocked
