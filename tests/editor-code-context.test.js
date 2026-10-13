@@ -138,6 +138,33 @@ async function main() {
         await engine.sendKeys(["Y"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), "firXst\r\nsame **saYme** same",
           `${entry.id}: preserved later row uses updated source base`);
+        const boundaries = "prefix\r\n| Left | Right |\r\n| --- | --- |\r\n| same | `same|same` |\r\n\r\n```\r\nsame **same**\r\n```\r\n# \r\n- [ ] \r\nlast **same**";
+        const offsets = [0, 6, 8, boundaries.indexOf("| same"), boundaries.indexOf("| same")+2,
+          boundaries.indexOf("same|same")+4, boundaries.indexOf("\r\n\r\n")+2,
+          boundaries.indexOf("same **same**"), boundaries.indexOf("same **same**")+6,
+          boundaries.indexOf("# ")+2, boundaries.indexOf("- [ ] ")+6, boundaries.length];
+        const roundTrip = await engine.evaluate(`(() => {
+          const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(boundaries)});
+          return ${JSON.stringify(offsets)}.map(offset => {editor.setSurfaceSelection(offset,offset);return editor.selectionRaw();});
+        })()`);
+        assert.deepEqual(roundTrip, offsets.map(offset=>({start:offset,end:offset})),
+          `${entry.id}: explicit mappings cover pipes, literal code, empty rows and CRLF boundaries`);
+        for (const [side, at] of [["before",5],["after",13]]) {
+          const source="same **same** same";
+          await engine.evaluate(`(() => {
+            const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(source)});editor.focus();
+            const strong=editor.surface.querySelector('strong');const range=document.createRange();
+            range.${side === "before" ? "setStartBefore" : "setStartAfter"}(strong);range.collapse(true);
+            const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);return true;
+          })()`);
+          await engine.sendKeys(["X"]);
+          assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source.slice(0,at)+"X"+source.slice(at),
+            `${entry.id}: element boundary ${side} emphasis is outside its delimiters`);
+        }
+        await engine.evaluate("(() => {const editor=window.__codeRegression;editor.setMarkdown('# title\\n- item');editor.focus();return true;})()");
+        await engine.sendKeys([{key:"a",ctrl:process.platform!=="darwin",meta:process.platform==="darwin"},"Z"]);
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),"Z",
+          `${entry.id}: native Select All includes the first hidden structural prefix`);
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

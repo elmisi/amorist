@@ -35,7 +35,7 @@
       "id": 5,
       "name": "common-markdown-and-mapping",
       "status": "partial",
-      "evidence": "List hanging indent, physical continuations, task gutters and quote depth/continuity verified on both Linux engines; remaining common Markdown syntax and mapping pending. Table separator offsets now shared between classification and projection; escaped pipes and inline code cases verified. Full common inline rendering/mapping remains pending. Inline tokens and row-relative DOM source ranges now cover escapes, variable-width code, underscore/nested emphasis, strikeout and inline links; native Linux edits and full regression passed. Reference/autolinks/images and all fallback mapping still pending."
+      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Reference links, autolinks, images, setext headings, indented/nested code and remaining block contexts still pending."
     },
     {
       "id": 6,
@@ -208,7 +208,7 @@
         "native keyboard edit inside single-backtick table code",
         "undo and mode round-trip"
       ],
-      "remaining": "common inline tokenizer and variable-width code rendering still pending",
+      "remaining": "Reference links, autolinks, images and remaining common block contexts still pending.",
       "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
       "fullSuite": {
         "exitCode": 0,
@@ -252,7 +252,6 @@
         "reference links",
         "autolinks",
         "images",
-        "complete replacement of fallback selection heuristics",
         "remaining common block contexts"
       ],
       "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
@@ -272,6 +271,44 @@
         "macos": "pass"
       },
       "blockLayoutRegression": "pass on both Linux engines after mapped inline rendering"
+    },
+    "explicitMappingDevelopment": {
+      "status": "directed probes, full Linux suite and classic regression checks passed",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "check": "tests/editor-code-context.test.js",
+      "scope": [
+        "all projected editable text has source intervals",
+        "code and pipe text nodes",
+        "empty structural sentinels",
+        "CRLF physical boundaries",
+        "DOM wrapper boundaries outside inline delimiters",
+        "no visible-text search helpers remain",
+        "native Select All includes initial hidden prefixes"
+      ],
+      "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
+      "firstFullSuite": {
+        "exitCode": 0,
+        "report": "explicit-mapping-qa-linux.json",
+        "scope": "before Select All correction"
+      },
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "explicit-mapping-final-qa-linux.json",
+        "corpusFiles": 21,
+        "engines": [
+          "webkitgtk",
+          "chromium"
+        ],
+        "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "classicRegressionChecks": {
+        "pass": 8,
+        "fail": 0,
+        "scope": "five existing pure checks plus toolbar, viewport helpers and both-engine block layout"
+      }
     }
   }
 }

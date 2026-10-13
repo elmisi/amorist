@@ -20,6 +20,24 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      All projected editable text, including code, table delimiters, physical
+      line endings and empty-line sentinels, has an explicit source interval.
+      Element boundaries around inline wrappers map outside their delimiters.
+      Hidden syntax snaps to a declared interval boundary; selection mapping
+      never guesses by searching visible text in raw Markdown. CRLF is one
+      display boundary covering both original source characters.
+      Native Select All and whole-document programmatic selection include hidden
+      structural prefixes and delimiters; replacing the selection replaces the
+      complete source document.
+    why: >
+      Completes the approved source-span mapping. The four unit assertions of
+      obsolete search helpers are replaced by real-engine selection round trips
+      and native keyboard edits over the explicit DOM boundaries.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Inline rendering uses tokens carrying original source intervals, including
       their content boundaries. Escaped punctuation stays literal; underscore
       emphasis, nested emphasis, strikethrough and exact-width inline code

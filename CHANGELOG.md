@@ -24,6 +24,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   underscore emphasis, nested emphasis, strikethrough and variable-width inline
   code render without placeholder substitution. Mapped text nodes keep editing
   attached to the correct occurrence when content repeats or earlier rows change.
+- Selection uses explicit source intervals for code, table markers, line
+  endings and empty rows, including boundaries outside inline wrappers.
+  Select All includes hidden Markdown prefixes and delimiters.
 
 ### Quality
 - This version is the editor development candidate. Delivery remains blocked

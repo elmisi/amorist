@@ -24,55 +24,6 @@
     return lines;
   }
 
-  // The Markdown renderer owns only the view.  The source model remains the
-  // edit authority, so selection offsets are aligned back to its raw bytes.
-  function sourceOffsetForVisibleText(raw, visible, offset) {
-    const target = String(visible || "").slice(0, Math.max(0, Number(offset) || 0));
-    if (!target) {
-      const first = String(visible || "")[0];
-      if (!first) return 0;
-      const found = raw.search(new RegExp(first.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-      return found < 0 ? 0 : found;
-    }
-    let rawIndex = 0;
-    let visibleIndex = 0;
-    while (rawIndex < raw.length && visibleIndex < target.length) {
-      const rawChar = raw[rawIndex];
-      const visibleChar = target[visibleIndex];
-      const same = rawChar === visibleChar || ((rawChar === "\n" || rawChar === "\r") && visibleChar === " ");
-      rawIndex += 1;
-      if (same) visibleIndex += 1;
-    }
-    return rawIndex;
-  }
-
-  function visibleOffsetForSourcePrefix(raw, visible) {
-    let rawIndex = 0;
-    let visibleIndex = 0;
-    while (rawIndex < raw.length && visibleIndex < visible.length) {
-      const rawChar = raw[rawIndex];
-      const visibleChar = visible[visibleIndex];
-      const same = rawChar === visibleChar || ((rawChar === "\n" || rawChar === "\r") && visibleChar === " ");
-      rawIndex += 1;
-      if (same) visibleIndex += 1;
-    }
-    return visibleIndex;
-  }
-
-  function inlineClosingDelimiterBefore(node, boundary) {
-    let current = node;
-    while (current && current !== boundary) {
-      const previous = current.previousSibling;
-      if (previous && previous.nodeType === Node.ELEMENT_NODE) {
-        if (previous.tagName === "STRONG") return "**";
-        if (previous.tagName === "EM") return "*";
-        if (previous.tagName === "CODE") return "`";
-      }
-      current = current.parentElement;
-    }
-    return "";
-  }
-
   function alignedScrollTop(currentScrollTop, caretTop, targetCaretTop) {
     return Math.max(0, currentScrollTop + caretTop - targetCaretTop);
   }
@@ -185,6 +136,7 @@
       this.options = options;
       this.model = new DocumentModel(options.value || "");
       this.history = new TransactionJournal(100);
+      this.sourceNodeRanges = new WeakMap();
       this.mode = "wysiwyg";
       this.inlineMode = null;
       this.isRendering = false;
@@ -260,6 +212,7 @@
     setMarkdown(markdown, options) {
       this.model = new DocumentModel(markdown || "");
       this.history = new TransactionJournal(100);
+      this.sourceNodeRanges = new WeakMap();
       this.inlineMode = null;
       this.render();
       if (!options || !options.silent) this.emitChange();
@@ -434,7 +387,7 @@
         if (descriptor.unitType === "table") row.classList.add("amorist-wysiwyg-table");
         if (descriptor.codeContent) {
           row.classList.add("amorist-wysiwyg-code");
-          row.textContent = raw || "\u200b";
+          this.appendSourceText(row, raw || CARET_SENTINEL, 0, raw.length);
         } else if (descriptor.unitType === "table") {
           this.renderTableRow(row, raw);
         } else if (typeof projection.checked === "boolean") {
@@ -445,7 +398,7 @@
           if (!projection.text) {
             const content = row.querySelector(".amorist-task-content");
             content.classList.add("amorist-empty-caret");
-            content.textContent = CARET_SENTINEL;
+            this.appendSourceText(content, CARET_SENTINEL, projection.prefix, projection.prefix);
           }
         } else if (projection.rule || projection.fence) {
           row.setAttribute("aria-label", projection.rule ? "Horizontal rule" : "Code fence");
@@ -458,7 +411,7 @@
           // before "- ", "# ", "> ", and similar prefixes.
           const caret = document.createElement("span");
           caret.className = "amorist-empty-caret";
-          caret.textContent = CARET_SENTINEL;
+          this.appendSourceText(caret, CARET_SENTINEL, projection.prefix, projection.prefix);
           row.append(caret);
           if (!descriptor.ending) row.append(document.createElement("br"));
         } else if (!descriptor.ending) {
@@ -466,7 +419,7 @@
         }
         // Keep the editable text stream aligned with physical source lines.
         // Block layout alone is invisible to TreeWalker-based selection APIs.
-        if (descriptor.ending) row.append(document.createTextNode("\n"));
+        if (descriptor.ending) this.appendSourceText(row, "\n", raw.length, raw.length + descriptor.ending.length);
         return row;
     }
 
@@ -518,7 +471,8 @@
             leaf.classList.add("amorist-inline-text");
             leaf.dataset.inlineStart = String(rawStart + (token.type === "code" ? token.contentStart : token.start + (token.escaped ? 1 : 0)));
             leaf.dataset.inlineEnd = String(rawStart + (token.type === "code" ? token.contentEnd : token.end));
-            leaf.textContent = token.text;
+            this.sourceNodeRanges.set(leaf, { start: rawStart + token.start, end: rawStart + token.end });
+            this.appendSourceText(leaf, token.text, Number(leaf.dataset.inlineStart), Number(leaf.dataset.inlineEnd));
             parent.append(leaf);
             continue;
           }
@@ -526,6 +480,7 @@
           const wrapper = document.createElement(tag);
           wrapper.dataset.rawStart = String(rawStart + token.start);
           wrapper.dataset.rawEnd = String(rawStart + token.end);
+          this.sourceNodeRanges.set(wrapper, { start: rawStart + token.start, end: rawStart + token.end });
           if (token.type === "link") {
             wrapper.setAttribute("href", token.href);
             wrapper.setAttribute("target", "_blank");
@@ -556,7 +511,8 @@
         appendCell(raw.slice(cellStart, index), cellStart);
         const marker = document.createElement("span");
         marker.className = "amorist-wysiwyg-table-marker";
-        marker.textContent = "|";
+        this.sourceNodeRanges.set(marker, { start: index, end: index + 1 });
+        this.appendSourceText(marker, "|", index, index + 1);
         row.append(marker);
         cellStart = index + 1;
       }
@@ -671,86 +627,111 @@
       return { start: this.rawPoint(range.startContainer, range.startOffset), end: this.rawPoint(range.endContainer, range.endOffset) };
     }
 
+    appendSourceText(parent, text, start, end) {
+      const node = document.createTextNode(text);
+      this.sourceNodeRanges.set(node, { start, end });
+      parent.append(node);
+      return node;
+    }
+
+    nodeSourceRange(node) {
+      const direct = this.sourceNodeRanges.get(node);
+      if (direct) return direct;
+      let first = null, last = null;
+      for (const child of node.childNodes) {
+        const range = this.nodeSourceRange(child);
+        if (range) { if (!first) first = range; last = range; }
+      }
+      return first ? { start: first.start, end: last.end } : null;
+    }
+
     rawPoint(node, offset) {
-      const leaf = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-      if (leaf && leaf.classList.contains("amorist-inline-text")) {
-        const row = leaf.closest(".amorist-source-line");
-        const base = Number(row.dataset.sourceStart);
-        const start = base + Number(leaf.dataset.inlineStart);
-        const end = base + Number(leaf.dataset.inlineEnd);
-        return Math.min(end, start + (node.nodeType === Node.TEXT_NODE ? offset : offset ? leaf.textContent.length : 0));
+      const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+      const row = element.closest(".amorist-source-line");
+      if (!row) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const right = node.childNodes[offset];
+          const next = right && (right.matches?.(".amorist-source-line") ? right : right.querySelector?.(".amorist-source-line"));
+          if (next) return Number(next.dataset.sourceStart);
+        }
+        return this.model.source.length;
       }
-      let element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-      while (element && !element.classList.contains("amorist-source-line")) element = element.parentElement;
-      if (!element) return this.model.source.length;
-      const descriptor = this.lineDescriptors[Number(element.dataset.line)];
-      if (!descriptor) return this.model.source.length;
-      if (node === element && offset >= element.childNodes.length - (descriptor.ending ? 1 : 0)) {
-        return descriptor.end + (offset === element.childNodes.length ? descriptor.ending.length : 0);
+      const descriptor = this.lineDescriptors[Number(row.dataset.line)];
+      const base = descriptor.start;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const range = this.sourceNodeRanges.get(node);
+        if (!range) throw new Error("Editable text has no source range");
+        // A display newline represents the entire original CR/LF/CRLF boundary;
+        // an empty-line sentinel represents a zero-width source boundary.
+        const position = offset === node.length ? range.end : range.start + Math.min(offset, range.end - range.start);
+        return base + position;
       }
-      const start = descriptor.start;
-      const visible = (element.textContent || "").replaceAll(CARET_SENTINEL, "");
-      if (!visible.replace(/\n$/, "") && descriptor.projection.prefix) {
-        return start + descriptor.projection.prefix;
+      for (let index = offset; index < node.childNodes.length; index += 1) {
+        const range = this.nodeSourceRange(node.childNodes[index]);
+        if (range) return base + range.start;
       }
-      const prefix = document.createRange();
-      prefix.setStart(element, 0);
-      prefix.setEnd(node, offset);
-      // Harnesses and browsers may represent a caret at a source-line boundary
-      // as the end of the preceding text node.  Its terminal display newline
-      // maps to the real line terminator, not to the preceding character.
-      const prefixLength = prefix.toString().replaceAll(CARET_SENTINEL, "").length;
-      if (visible.endsWith("\n") && prefixLength >= visible.length) {
-        return descriptor.end + descriptor.ending.length;
+      for (let index = offset - 1; index >= 0; index -= 1) {
+        const range = this.nodeSourceRange(node.childNodes[index]);
+        if (range) return base + range.end;
       }
-      let rawOffset = start + sourceOffsetForVisibleText(descriptor.raw, visible, prefixLength);
-      if (offset === 0) {
-        const closing = inlineClosingDelimiterBefore(node, element);
-        if (closing && this.model.source.slice(rawOffset, rawOffset + closing.length) === closing) rawOffset += closing.length;
-      }
-      return rawOffset;
+      return base + descriptor.projection.prefix;
     }
 
     setSurfaceSelection(start, end) {
+      if (start === 0 && end === this.model.source.length && end > 0) {
+        this.selectSurfaceContents();
+        return;
+      }
       const point = (rawOffset) => {
         const descriptor = this.descriptorAtRaw(rawOffset);
-        const block = descriptor ? this.rowNodes[descriptor.index] : null;
-        if (!block) return { node: this.surface, offset: 0 };
-        const mapped = Array.from(block.querySelectorAll(".amorist-inline-text"));
-        if (rawOffset === descriptor.end && mapped.length
-            && descriptor.start + Number(mapped[mapped.length - 1].dataset.inlineEnd) < rawOffset) {
-          return { node: block, offset: block.childNodes.length - (descriptor.ending ? 1 : 0) };
+        const row = descriptor ? this.rowNodes[descriptor.index] : null;
+        if (!row) return { node: this.surface, offset: 0 };
+        const relative = rawOffset - descriptor.start;
+        const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+        const candidates = [];
+        let node;
+        while ((node = walker.nextNode())) {
+          const range = this.sourceNodeRanges.get(node);
+          if (!range) throw new Error("Editable text has no source range");
+          if (relative >= range.start && relative <= range.end) {
+            const offset = relative === range.end ? node.length : Math.min(node.length, relative - range.start);
+            return { node, offset };
+          }
+          candidates.push({ position: range.start, node, offset: 0 }, { position: range.end, node, offset: node.length });
         }
-        for (const leaf of mapped) {
-          const from = descriptor.start + Number(leaf.dataset.inlineStart), to = descriptor.start + Number(leaf.dataset.inlineEnd);
-          if (rawOffset >= from && rawOffset <= to && leaf.firstChild) {
-            return { node: leaf.firstChild, offset: Math.min(leaf.textContent.length, rawOffset - from) };
+        const elements = row.querySelectorAll("*");
+        for (const element of elements) {
+          const range = this.sourceNodeRanges.get(element);
+          if (!range || element.nodeType !== Node.ELEMENT_NODE) continue;
+          const index = Array.prototype.indexOf.call(element.parentNode.childNodes, element);
+          for (const [position, offset] of [[range.start, index], [range.end, index + 1]]) {
+            const candidate = { position, node: element.parentNode, offset };
+            if (relative === position) return candidate;
+            candidates.push(candidate);
           }
         }
-        const visible = block.textContent || "";
-        const rawPrefix = this.model.source.slice(descriptor.start, rawOffset);
-        const emptyCaret = block.querySelector(".amorist-empty-caret");
-        if (emptyCaret && rawOffset >= descriptor.start + descriptor.projection.prefix) {
-          const sentinel = emptyCaret.firstChild;
-          return sentinel
-            ? { node: sentinel, offset: sentinel.textContent.length }
-            : { node: emptyCaret, offset: 0 };
+        // Hidden syntax cannot contain a visual caret. Snap to the closest
+        // declared source boundary rather than guessing from rendered text.
+        if (candidates.length) {
+          return candidates.reduce((closest, candidate) =>
+            Math.abs(candidate.position - relative) < Math.abs(closest.position - relative) ? candidate : closest);
         }
-        const visibleOffset = visibleOffsetForSourcePrefix(rawPrefix, visible);
-        const afterInlineDelimiter = /(?:\*\*|\*|`)$/.test(rawPrefix);
-        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-        let textNode = walker.nextNode() || block;
-        let remaining = visibleOffset;
-        while (textNode && (remaining > textNode.textContent.length || (afterInlineDelimiter && remaining === textNode.textContent.length))) {
-          remaining -= textNode.textContent.length; textNode = walker.nextNode();
-        }
-        return { node: textNode || block, offset: Math.max(0, Math.min(remaining, (textNode || block).textContent.length)) };
+        return { node: row, offset: 0 };
       };
       const from = point(start); const to = point(end);
       const range = document.createRange();
       range.setStart(from.node, from.offset); range.setEnd(to.node, to.offset);
       const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
       this.surface.focus();
+    }
+
+    selectSurfaceContents() {
+      this.surface.focus();
+      const range = document.createRange();
+      range.selectNodeContents(this.surface);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
 
     apply(start, end, replacement, gesture) {
@@ -827,6 +808,9 @@
 
     handleKeyDown(event) {
       const mod = event.ctrlKey || event.metaKey;
+      if (mod && !event.shiftKey && this.mode === "wysiwyg" && event.key.toLowerCase() === "a") {
+        event.preventDefault(); this.selectSurfaceContents(); return;
+      }
       if (mod && !event.shiftKey && event.key.toLowerCase() === "z") { event.preventDefault(); this.undo(); return; }
       if (mod && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"))) { event.preventDefault(); this.redo(); return; }
       if (mod && event.key.toLowerCase() === "f") { event.preventDefault(); this.openFindBar(); return; }
@@ -1162,6 +1146,6 @@
     return box.top + scroller.clientHeight / 2;
   }
   Internals.MarkdownHistory = TransactionJournal;
-  window.__editorTestHelpers = { midViewportLine, centerScroll, sourceOffsetForVisibleText, visibleOffsetForSourcePrefix, alignedScrollTop, clampedLine, projectionLine, selectedLineRange, transformPhysicalLines };
+  window.__editorTestHelpers = { midViewportLine, centerScroll, alignedScrollTop, clampedLine, projectionLine, selectedLineRange, transformPhysicalLines };
   window.AmoristEditor = { create };
 })();
