@@ -84,8 +84,9 @@
   function projectionLine(raw) {
     const heading = raw.match(/^ {0,3}(#{1,6})\s+/);
     if (heading) return { prefix: heading[0].length, text: raw.slice(heading[0].length), tag: `h${heading[1].length}` };
-    const quote = raw.match(/^>\s?/);
-    if (quote) return { prefix: quote[0].length, text: raw.slice(quote[0].length), tag: "blockquote" };
+    const quote = raw.match(/^ {0,3}(?:>[ \t]?)+/);
+    if (quote) return { prefix: quote[0].length, text: raw.slice(quote[0].length), tag: "blockquote",
+      quoteDepth: (quote[0].match(/>/g) || []).length };
     const list = raw.match(/^(\s*)([-*+]|\d+[.)])\s+/);
     if (list) {
       const task = raw.slice(list[0].length).match(/^\[([ xX])\]\s+/);
@@ -95,7 +96,8 @@
         tag: "div",
         list: /\d/.test(list[2]) ? "ordered" : "bullet",
         marker: list[2],
-        indent: list[1].length,
+        indent: indentationColumns(list[1]),
+        contentIndent: indentationColumns(list[0]),
         checked: task ? /x/i.test(task[1]) : null,
       };
     }
@@ -131,7 +133,7 @@
     const end = lineEnd(source, offset);
     const text = source.slice(start, end);
     const heading = text.match(/^( {0,3})(#{1,6})([ \t]+)/);
-    const quote = text.match(/^(\s*)(>)([ \t]?)/);
+    const quote = text.match(/^( {0,3})((?:>[ \t]?)+)/);
     const match = heading || quote;
     if (!match) return null;
     return {
@@ -140,7 +142,7 @@
       end,
       indent: match[1],
       marker: match[2],
-      spacing: match[3],
+      spacing: match[3] || "",
       markerStart: start + match[1].length,
       contentStart: start + match[0].length,
     };
@@ -156,7 +158,22 @@
 
   function continuedStructuralPrefix(context) {
     if (context.kind === "quote") return context.indent + context.marker + context.spacing;
+    if (context.kind === "continuation") return context.indent;
     return continuedListPrefix(context);
+  }
+
+  function sameLineLayout(a, b) {
+    return a.tag === b.tag && a.prefix === b.prefix && a.list === b.list
+      && a.indent === b.indent && a.quoteDepth === b.quoteDepth
+      && a.listContinuation === b.listContinuation && a.layoutPadding === b.layoutPadding
+      && a.markerWidth === b.markerWidth && a.marker === b.marker
+      && (typeof a.checked === "boolean") === (typeof b.checked === "boolean");
+  }
+
+  function indentationColumns(text) {
+    let columns = 0;
+    for (const char of text) columns += char === "\t" ? 4 - columns % 4 : 1;
+    return columns;
   }
 
   class AmoristEditor {
@@ -303,6 +320,37 @@
         }
         index += 1;
       }
+      const items = [];
+      for (const descriptor of descriptors) {
+        const projection = descriptor.projection;
+        const leading = (descriptor.raw.match(/^[ \t]*/) || [""])[0];
+        const columns = indentationColumns(leading);
+        if (descriptor.unitType !== "line") {
+          if (descriptor.index === descriptor.unitStart && items.length
+              && columns < items[items.length - 1].contentIndent) items.length = 0;
+          continue;
+        }
+        if (projection.list) {
+          while (items.length && items[items.length - 1].indent >= projection.indent) items.pop();
+          const markerWidth = typeof projection.checked === "boolean"
+            ? "max(1.4em, 24px)" : `max(1.4em, ${projection.marker.length + 1}ch)`;
+          projection.markerWidth = markerWidth;
+          projection.layoutPadding = `calc(${projection.indent}ch + ${markerWidth})`;
+          const owner = { index: descriptor.index, indent: projection.indent,
+            contentIndent: projection.contentIndent, markerWidth, layoutPadding: projection.layoutPadding };
+          descriptor.listOwner = owner;
+          items.push(owner);
+          continue;
+        }
+        const ownerIndex = items.findLastIndex((owner) => columns >= owner.contentIndent);
+        if (ownerIndex >= 0 && projection.tag === "div" && !projection.rule && !projection.fence) {
+          items.length = ownerIndex + 1;
+          const owner = items[ownerIndex];
+          descriptor.listOwner = owner;
+          descriptor.projection = { prefix: leading.length, text: descriptor.raw.slice(leading.length),
+            tag: "div", listContinuation: true, layoutPadding: owner.layoutPadding };
+        } else if (descriptor.raw.trim()) items.length = 0;
+      }
       return descriptors;
     }
 
@@ -320,6 +368,11 @@
         return { kind: "code", start: descriptor.start, end: descriptor.end,
           contentStart: descriptor.start, fence: descriptor.projection.fence,
           indent: (descriptor.raw.match(/^[ \t]*/) || [""])[0] };
+      }
+      if (descriptor && descriptor.projection.listContinuation) {
+        return { kind: "continuation", start: descriptor.start, end: descriptor.end,
+          markerStart: descriptor.start, contentStart: descriptor.start + descriptor.projection.prefix,
+          indent: descriptor.raw.slice(0, descriptor.projection.prefix), marker: "", spacing: "" };
       }
       return structuralContextAt(this.model.source, offset);
     }
@@ -363,11 +416,16 @@
         if (projection.list) {
           row.classList.add("amorist-wysiwyg-list-item", `amorist-wysiwyg-${projection.list}`);
           row.dataset.marker = projection.list === "ordered" ? projection.marker : "•";
-          row.style.paddingInlineStart = `${projection.indent * 0.6 + 1.4}em`;
+          row.style.setProperty("--list-content-indent", projection.layoutPadding);
+          row.style.setProperty("--list-marker-width", projection.markerWidth);
+        } else if (projection.listContinuation) {
+          row.classList.add("amorist-wysiwyg-list-continuation");
+          row.style.setProperty("--list-content-indent", projection.layoutPadding);
         } else if (/^h[1-6]$/.test(projection.tag)) {
           row.classList.add(`amorist-wysiwyg-${projection.tag}`);
         } else if (projection.tag === "blockquote") {
           row.classList.add("amorist-wysiwyg-quote");
+          row.style.setProperty("--quote-depth", String(projection.quoteDepth || 1));
         } else if (projection.fence) {
           row.classList.add("amorist-wysiwyg-fence");
         } else if (projection.rule) {
@@ -550,6 +608,17 @@
         this.rowNodes[after.index] = row;
         oldRow.replaceWith(row);
       }
+      if (!sameLineLayout(before.projection, after.projection)) {
+        nextDescriptors.forEach((descriptor, index) => {
+          if (index === after.index || descriptor.unitType !== "line"
+              || !beforeDescriptors[index] || sameLineLayout(beforeDescriptors[index].projection, descriptor.projection)) return;
+          const oldRow = this.rowNodes[index];
+          if (!oldRow) return;
+          const row = this.renderSourceLine(descriptor);
+          oldRow.replaceWith(row);
+          this.rowNodes[index] = row;
+        });
+      }
       this.setSurfaceSelection(selection.start, selection.end);
       if (tableScroll) {
         const maximum = Math.max(0, tableScroll.block.scrollWidth - tableScroll.block.clientWidth);
@@ -674,9 +743,9 @@
           if (context.contentStart === context.end) {
             this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-exit" : "block-exit");
           } else if (context.kind === "heading") {
-            this.apply(selection.start, selection.end, "\n", "block-enter");
+            this.apply(selection.start, selection.end, this.model.lineEndingAt(selection.start), "block-enter");
           } else {
-            this.apply(selection.start, selection.end, "\n" + continuedStructuralPrefix(context), context.kind === "list" ? "list-enter" : "block-enter");
+            this.apply(selection.start, selection.end, this.model.lineEndingAt(selection.start) + continuedStructuralPrefix(context), context.kind === "list" ? "list-enter" : "block-enter");
           }
           return;
         }

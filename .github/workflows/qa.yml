@@ -107,7 +107,7 @@ jobs:
 
       - name: Run codec, toolbar and code-context regressions
         run: |
-          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js"
+          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js"
           if [ "${{ matrix.platform }}" = "linux" ]; then
             xvfb-run -a node --test $checks
           else

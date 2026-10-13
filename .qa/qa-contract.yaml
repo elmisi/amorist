@@ -20,6 +20,21 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Wrapped list content has a hanging indent; physical indented continuation
+      rows align with their owning item. Adjacent quoted physical rows have
+      continuous quote bars, and nested quotes retain their depth on Enter.
+      Projection and mode switches preserve original source bytes, including
+      indentation and line endings. Continuation Enter retains its indentation.
+      Caret-after-marker probes measure the actual positioned marker or checkbox
+      gutter, retaining the existing requirement that the caret clears it.
+    why: >
+      The approved plan includes the reported list alignment and multiline quote
+      defects. Geometry must be verified on the actual applicable engines.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Creating a code block uses backtick delimiters longer than every backtick
       or tilde run in its content, with a minimum of three. Pasted HTML PRE uses the
       same rule and preserves literal code whitespace and blank lines; fragment

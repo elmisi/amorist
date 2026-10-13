@@ -116,17 +116,36 @@
 .amorist-wysiwyg-h6 { color: var(--muted, #68717d); font-size: 13px; }
 
 .amorist-wysiwyg-quote {
-  border-left: 3px solid var(--accent, #246b54);
+  display: block;
+  position: relative;
   color: #40566b;
-  padding-left: 8px;
+  padding-inline-start: calc(var(--quote-depth, 1) * 11px);
+}
+
+.amorist-wysiwyg-quote::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: calc(var(--quote-depth, 1) * 11px);
+  background: repeating-linear-gradient(to right, var(--accent, #246b54) 0 3px, transparent 3px 11px);
+  pointer-events: none;
+}
+
+.amorist-wysiwyg-list-item,
+.amorist-wysiwyg-list-continuation {
+  display: block;
+  position: relative;
+  padding-inline-start: var(--list-content-indent, 1.4em);
 }
 
 .amorist-wysiwyg-list-item::before {
   color: var(--muted, #68717d);
   content: attr(data-marker);
-  display: inline-block;
-  margin-left: -1.35em;
-  width: 1.15em;
+  position: absolute;
+  inset-inline-start: calc(var(--list-content-indent) - var(--list-marker-width));
+  width: calc(var(--list-marker-width) - 0.25em);
+  text-align: right;
 }
 
 .amorist-wysiwyg-list-item.amorist-wysiwyg-ordered::before {
@@ -134,11 +153,19 @@
 }
 
 .amorist-wysiwyg-task {
-  display: inline;
+  display: block;
+}
+
+.amorist-wysiwyg-task::before {
+  content: none;
 }
 
 .amorist-wysiwyg-task .amorist-task-checkbox {
-  margin-right: 9px;
+  position: absolute;
+  inset-inline-start: calc(var(--list-content-indent) - 22px);
+  top: 0.2em;
+  margin-right: 0;
+  transform: none;
 }
 
 .amorist-wysiwyg-task .amorist-task-content {

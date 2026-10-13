@@ -342,8 +342,12 @@ async function applicationCaretGeometry(engine) {
     var rowRect = row.getBoundingClientRect();
     var rowStyle = window.getComputedStyle(row);
     var markerStyle = window.getComputedStyle(row, "::before");
-    var markerRight = rowRect.left + (parseFloat(rowStyle.paddingLeft) || 0)
-      + (parseFloat(markerStyle.marginLeft) || 0) + (parseFloat(markerStyle.width) || 0);
+    var markerRight = markerStyle.position === "absolute"
+      ? rowRect.left + (parseFloat(markerStyle.left) || 0) + (parseFloat(markerStyle.width) || 0)
+      : rowRect.left + (parseFloat(rowStyle.paddingLeft) || 0)
+        + (parseFloat(markerStyle.marginLeft) || 0) + (parseFloat(markerStyle.width) || 0);
+    var checkbox = row.querySelector(".amorist-task-checkbox");
+    if (checkbox) markerRight = checkbox.getBoundingClientRect().right;
     return { caretX: caretX, markerRight: markerRight, afterMarker: caretX >= markerRight - 1 };
   })()`);
 }

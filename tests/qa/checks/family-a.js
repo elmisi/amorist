@@ -488,7 +488,8 @@ function indentableListItem(fixture) {
     // Searching the view for the source line finds nothing, and the check then
     // reports a caret it could not place instead of measuring the product —
     // a check that always fails for its own reasons measures nothing at all.
-    const visible = current.text.replace(marker, "$1").trim();
+    const visible = current.text.replace(/^\s*(?:[*+-]|\d+[.)])[ \t]+/, "")
+      .replace(/^\[[ xX]\][ \t]+/, "").trim();
     if (visible.length < 3) continue;
     return { number: current.number, text: current.text, visible };
   }

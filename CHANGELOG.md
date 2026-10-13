@@ -14,6 +14,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   visible. Regression probes run on WebKitGTK, Safari and Chromium.
 - Newly created code blocks use delimiters longer than all backtick runs in
   their content, including tilde runs. Pasted HTML PRE keeps literal whitespace and blank lines.
+- Wrapped list text and indented physical continuations align with the item
+  content. Task checkboxes occupy the marker gutter. Adjacent quote bars join,
+  and nested quote Enter retains its depth. Structural Enter inherits the local
+  line ending.
 
 ### Quality
 - This version is the editor development candidate. Delivery remains blocked

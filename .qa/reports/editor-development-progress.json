@@ -34,8 +34,8 @@
     {
       "id": 5,
       "name": "common-markdown-and-mapping",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "List hanging indent, physical continuations, task gutters and quote depth/continuity verified on both Linux engines; remaining common Markdown syntax and mapping pending."
     },
     {
       "id": 6,
@@ -130,6 +130,66 @@
       "webkitgtk": "pass",
       "chromiumLinux": "pass",
       "macos": "pending unlocked session"
+    },
+    "blockLayoutDevelopment": {
+      "status": "directed probes and composite Linux regression passed",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "check": "tests/editor-block-layout.test.js",
+      "scope": [
+        "soft wrap geometry",
+        "physical continuation alignment",
+        "quote continuity",
+        "nested quote Enter",
+        "CRLF inheritance",
+        "undo and mode round-trip",
+        "structural owner update and untouched DOM identity"
+      ],
+      "macos": "pending unlocked session",
+      "fullSuiteSession": 6485,
+      "fullSuite": {
+        "exitCode": 1,
+        "report": "block-layout-software-renderer-first-qa-linux.json",
+        "corpusFiles": 20,
+        "failures": [
+          "REQ-A2: task fixture caret lookup included hidden checkbox syntax"
+        ],
+        "passing": [
+          "all other 28 automated requirements, both Linux engines and compiled app checks"
+        ],
+        "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "followup": {
+        "familyA": {
+          "exitCode": 0,
+          "report": "block-layout-family-a-linux.json",
+          "engines": [
+            "webkitgtk",
+            "chromium"
+          ],
+          "corpusFiles": 20
+        },
+        "remainingFamilies": "passed in block-layout-software-renderer-first-qa-linux.json",
+        "scope": "composite evidence; no single final all-green full run claimed; native platform gates remain open"
+      },
+      "renderingDiagnostic": {
+        "default": {
+          "events": 2,
+          "frames": 0,
+          "samples": []
+        },
+        "WEBKIT_DISABLE_DMABUF_RENDERER=1": {
+          "events": 2,
+          "frames": 1,
+          "samples": [
+            5,
+            4
+          ]
+        },
+        "scope": "isolated MiniBrowser under Xvfb; not native packaged acceptance"
+      }
     }
   }
 }

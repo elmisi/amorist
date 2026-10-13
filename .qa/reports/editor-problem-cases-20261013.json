@@ -60,10 +60,13 @@
       "reportedVersion": "0.10.8",
       "buildIdentity": "not measured by original schema 1",
       "case": "List continuation alignment",
-      "status": "unresolved",
-      "fixture": null,
-      "check": null,
-      "verifiedEngines": []
+      "status": "fixed-with-synthetic-regression-pending-platform-gates",
+      "fixture": "tests/qa/corpus/regression-block-layout.md",
+      "check": "tests/editor-block-layout.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux"
+      ]
     },
     {
       "id": "BUG-005",
@@ -89,10 +92,13 @@
       "reportedVersion": "0.10.8",
       "buildIdentity": "not measured by original schema 1",
       "case": "Wrapped list alignment",
-      "status": "unresolved",
-      "fixture": null,
-      "check": null,
-      "verifiedEngines": []
+      "status": "fixed-with-synthetic-regression-pending-platform-gates",
+      "fixture": "tests/qa/corpus/regression-block-layout.md",
+      "check": "tests/editor-block-layout.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux"
+      ]
     },
     {
       "id": "BUG-007",
@@ -101,10 +107,13 @@
       "reportedVersion": "0.10.8",
       "buildIdentity": "not measured by original schema 1",
       "case": "Multiline quote continuity",
-      "status": "unresolved",
-      "fixture": null,
-      "check": null,
-      "verifiedEngines": []
+      "status": "fixed-with-synthetic-regression-pending-platform-gates",
+      "fixture": "tests/qa/corpus/regression-block-layout.md",
+      "check": "tests/editor-block-layout.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux"
+      ]
     }
   ]
 }
