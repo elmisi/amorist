@@ -440,7 +440,8 @@
         } else if (typeof projection.checked === "boolean") {
           row.classList.add("amorist-wysiwyg-task");
           row.dataset.checked = String(projection.checked);
-          row.innerHTML = `<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${MarkdownCodec.renderInline(projection.text)}</span>`;
+          row.innerHTML = '<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content"></span>';
+          this.renderInlineProjection(row.querySelector(".amorist-task-content"), projection.text, projection.prefix);
           if (!projection.text) {
             const content = row.querySelector(".amorist-task-content");
             content.classList.add("amorist-empty-caret");
@@ -449,7 +450,7 @@
         } else if (projection.rule || projection.fence) {
           row.setAttribute("aria-label", projection.rule ? "Horizontal rule" : "Code fence");
         } else if (projection.text) {
-          row.innerHTML = MarkdownCodec.renderInline(projection.text);
+          this.renderInlineProjection(row, projection.text, projection.prefix);
         } else if (projection.prefix) {
           // An empty rendered construct still needs a real DOM position after
           // its hidden Markdown marker.  Without it WebKit/Chromium place the
@@ -503,26 +504,63 @@
       return block;
     }
 
+    renderInlineProjection(container, text, rawStart) {
+      // Ranges are relative to the physical row. Its sourceStart is refreshed
+      // after an earlier edit, so untouched DOM nodes keep valid mappings.
+      const append = (parent, tokens) => {
+        for (const token of tokens) {
+          if (token.type === "break") {
+            parent.append(document.createElement("br"));
+            continue;
+          }
+          if (token.type === "text" || token.type === "code") {
+            const leaf = document.createElement(token.type === "code" ? "code" : "span");
+            leaf.classList.add("amorist-inline-text");
+            leaf.dataset.inlineStart = String(rawStart + (token.type === "code" ? token.contentStart : token.start + (token.escaped ? 1 : 0)));
+            leaf.dataset.inlineEnd = String(rawStart + (token.type === "code" ? token.contentEnd : token.end));
+            leaf.textContent = token.text;
+            parent.append(leaf);
+            continue;
+          }
+          const tag = { em: "em", strong: "strong", delete: "del", link: "a", "strong-em": "em" }[token.type];
+          const wrapper = document.createElement(tag);
+          wrapper.dataset.rawStart = String(rawStart + token.start);
+          wrapper.dataset.rawEnd = String(rawStart + token.end);
+          if (token.type === "link") {
+            wrapper.setAttribute("href", token.href);
+            wrapper.setAttribute("target", "_blank");
+            wrapper.setAttribute("rel", "noopener noreferrer");
+          }
+          if (token.type === "strong-em") {
+            const strong = document.createElement("strong");
+            append(strong, token.children); wrapper.append(strong);
+          } else append(wrapper, token.children);
+          parent.append(wrapper);
+        }
+      };
+      append(container, MarkdownCodec.tokenizeInline(text));
+    }
+
     renderTableRow(row, raw) {
       // Keep every source character in the editable text stream.  The visual
       // columns below are CSS layout only: unlike the former table formatter,
       // they never manufacture padding in the Markdown model.
       let cellStart = 0;
-      const appendCell = (text) => {
+      const appendCell = (text, start) => {
         const cell = document.createElement("span");
         cell.className = "amorist-wysiwyg-table-cell";
-        if (text) cell.innerHTML = MarkdownCodec.renderInline(text);
+        if (text) this.renderInlineProjection(cell, text, start);
         row.append(cell);
       };
       for (const index of TableCodec.tableDelimiters(raw)) {
-        appendCell(raw.slice(cellStart, index));
+        appendCell(raw.slice(cellStart, index), cellStart);
         const marker = document.createElement("span");
         marker.className = "amorist-wysiwyg-table-marker";
         marker.textContent = "|";
         row.append(marker);
         cellStart = index + 1;
       }
-      appendCell(raw.slice(cellStart));
+      appendCell(raw.slice(cellStart), cellStart);
     }
 
     layoutTableBlocks(blocks) {
@@ -634,11 +672,22 @@
     }
 
     rawPoint(node, offset) {
+      const leaf = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+      if (leaf && leaf.classList.contains("amorist-inline-text")) {
+        const row = leaf.closest(".amorist-source-line");
+        const base = Number(row.dataset.sourceStart);
+        const start = base + Number(leaf.dataset.inlineStart);
+        const end = base + Number(leaf.dataset.inlineEnd);
+        return Math.min(end, start + (node.nodeType === Node.TEXT_NODE ? offset : offset ? leaf.textContent.length : 0));
+      }
       let element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
       while (element && !element.classList.contains("amorist-source-line")) element = element.parentElement;
       if (!element) return this.model.source.length;
       const descriptor = this.lineDescriptors[Number(element.dataset.line)];
       if (!descriptor) return this.model.source.length;
+      if (node === element && offset >= element.childNodes.length - (descriptor.ending ? 1 : 0)) {
+        return descriptor.end + (offset === element.childNodes.length ? descriptor.ending.length : 0);
+      }
       const start = descriptor.start;
       const visible = (element.textContent || "").replaceAll(CARET_SENTINEL, "");
       if (!visible.replace(/\n$/, "") && descriptor.projection.prefix) {
@@ -667,6 +716,17 @@
         const descriptor = this.descriptorAtRaw(rawOffset);
         const block = descriptor ? this.rowNodes[descriptor.index] : null;
         if (!block) return { node: this.surface, offset: 0 };
+        const mapped = Array.from(block.querySelectorAll(".amorist-inline-text"));
+        if (rawOffset === descriptor.end && mapped.length
+            && descriptor.start + Number(mapped[mapped.length - 1].dataset.inlineEnd) < rawOffset) {
+          return { node: block, offset: block.childNodes.length - (descriptor.ending ? 1 : 0) };
+        }
+        for (const leaf of mapped) {
+          const from = descriptor.start + Number(leaf.dataset.inlineStart), to = descriptor.start + Number(leaf.dataset.inlineEnd);
+          if (rawOffset >= from && rawOffset <= to && leaf.firstChild) {
+            return { node: leaf.firstChild, offset: Math.min(leaf.textContent.length, rawOffset - from) };
+          }
+        }
         const visible = block.textContent || "";
         const rawPrefix = this.model.source.slice(descriptor.start, rawOffset);
         const emptyCaret = block.querySelector(".amorist-empty-caret");

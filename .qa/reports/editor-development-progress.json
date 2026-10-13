@@ -35,7 +35,7 @@
       "id": 5,
       "name": "common-markdown-and-mapping",
       "status": "partial",
-      "evidence": "List hanging indent, physical continuations, task gutters and quote depth/continuity verified on both Linux engines; remaining common Markdown syntax and mapping pending. Table separator offsets now shared between classification and projection; escaped pipes and inline code cases verified. Full common inline rendering/mapping remains pending."
+      "evidence": "List hanging indent, physical continuations, task gutters and quote depth/continuity verified on both Linux engines; remaining common Markdown syntax and mapping pending. Table separator offsets now shared between classification and projection; escaped pipes and inline code cases verified. Full common inline rendering/mapping remains pending. Inline tokens and row-relative DOM source ranges now cover escapes, variable-width code, underscore/nested emphasis, strikeout and inline links; native Linux edits and full regression passed. Reference/autolinks/images and all fallback mapping still pending."
     },
     {
       "id": 6,
@@ -225,6 +225,53 @@
         "macos": "pass in isolated table-pipe-checks directory",
         "windows": "pass in isolated table-pipe-checks directory"
       }
+    },
+    "inlineSpanDevelopment": {
+      "status": "directed probes and full Linux suite passed",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "checks": [
+        "tests/editor-markdown-codec.test.js",
+        "tests/editor-code-context.test.js"
+      ],
+      "scope": [
+        "variable-width code spans",
+        "escaped punctuation",
+        "underscore emphasis",
+        "nested and combined emphasis",
+        "strikethrough",
+        "balanced inline link destinations",
+        "literal private-use characters and escaped HTML",
+        "native DOM caret in repeated styled text",
+        "end-of-row outside closing delimiters",
+        "retained DOM row after earlier source edits"
+      ],
+      "remaining": [
+        "reference links",
+        "autolinks",
+        "images",
+        "complete replacement of fallback selection heuristics",
+        "remaining common block contexts"
+      ],
+      "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "inline-spans-qa-linux.json",
+        "corpusFiles": 21,
+        "engines": [
+          "webkitgtk",
+          "chromium"
+        ],
+        "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "codecPlatforms": {
+        "linux": "pass",
+        "windows": "pass",
+        "macos": "pass"
+      },
+      "blockLayoutRegression": "pass on both Linux engines after mapped inline rendering"
     }
   }
 }

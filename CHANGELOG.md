@@ -20,6 +20,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   line ending.
 - Table classification and visual columns share separator offsets, keeping
   escaped pipes and pipes in closed inline code spans inside their cells.
+- Inline tokens retain original source and content ranges. Escaped punctuation,
+  underscore emphasis, nested emphasis, strikethrough and variable-width inline
+  code render without placeholder substitution. Mapped text nodes keep editing
+  attached to the correct occurrence when content repeats or earlier rows change.
 
 ### Quality
 - This version is the editor development candidate. Delivery remains blocked

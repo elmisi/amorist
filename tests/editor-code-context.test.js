@@ -99,6 +99,45 @@ async function main() {
           `${entry.id}: editing code in a table preserves surrounding delimiters and bytes`);
         await engine.evaluate("(() => {window.__codeRegression.undo();window.__codeRegression.showSourceMode();window.__codeRegression.showWysiwygMode();return true;})()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),table);
+        for (const [source, selector, caret, rawCaret] of [
+          ["same **same** same", "strong .amorist-inline-text", 2, 9],
+          ["same \\*same\\* same", '.amorist-inline-text[data-inline-start="6"]', 1, 7],
+          ["same ``same`same`` same", "code", 5, 12],
+          ["same __same__ same", "strong .amorist-inline-text", 2, 9],
+          ["same ~~same~~ same", "del .amorist-inline-text", 2, 9],
+        ]) {
+          await engine.evaluate(`(() => {
+            const editor=window.__codeRegression; editor.setMarkdown(${JSON.stringify(source)});
+            const node=editor.surface.querySelector(${JSON.stringify(selector)}).firstChild;
+            const range=document.createRange();range.setStart(node,${caret});range.collapse(true);
+            editor.focus();const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+            return true;
+          })()`);
+          await engine.sendKeys(["X"]);
+          assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source.slice(0,rawCaret)+"X"+source.slice(rawCaret),
+            `${entry.id}: DOM caret uses exact source span for ${source}`);
+          await engine.evaluate("(() => {window.__codeRegression.undo();return true;})()");
+          assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source);
+        }
+        const terminal = "same ``same`same``";
+        await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(terminal)});editor.focus();editor.setSurfaceSelection(${terminal.length},${terminal.length});return true;})()`);
+        await engine.sendKeys(["X"]);
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),terminal+"X", `${entry.id}: end-of-row caret stays outside closing code delimiter`);
+        const shifted = "first\r\nsame **same** same";
+        await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(shifted)});window.__mappedRow=editor.surface.querySelectorAll('.amorist-source-line')[1];editor.focus();editor.setSurfaceSelection(3,3);return true;})()`);
+        await engine.sendKeys(["X"]);
+        const shiftedCaret = await engine.evaluate(`(() => {
+          const editor=window.__codeRegression;
+          const row=editor.surface.querySelectorAll('.amorist-source-line')[1];
+          const node=row.querySelector('strong .amorist-inline-text').firstChild;
+          const range=document.createRange();range.setStart(node,2);range.collapse(true);
+          const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+          return row===window.__mappedRow;
+        })()`);
+        assert.equal(shiftedCaret,true,`${entry.id}: earlier typing preserves later row DOM`);
+        await engine.sendKeys(["Y"]);
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), "firXst\r\nsame **saYme** same",
+          `${entry.id}: preserved later row uses updated source base`);
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

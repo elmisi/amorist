@@ -98,6 +98,23 @@ assert.equal(
 
 assert.equal(codec.renderInline(""), "<br>");
 assert.equal(codec.renderInline("x < y & z"), "x &lt; y &amp; z");
+assert.equal(codec.renderInline("``a`b`` and ` c `"), "<code>a`b</code> and <code>c</code>");
+assert.equal(codec.renderInline("\\*literal\\* and _em_ and __bold__ and ~~gone~~"),
+  "*literal* and <em>em</em> and <strong>bold</strong> and <del>gone</del>");
+assert.equal(codec.renderInline("word_under_score and ***both***"),
+  "word_under_score and <em><strong>both</strong></em>");
+assert.equal(codec.renderInline("**outer *inner* end**"), "<strong>outer <em>inner</em> end</strong>");
+assert.equal(codec.renderInline("[label](https://example.com/a(b))"),
+  '<a href="https://example.com/a(b)" target="_blank" rel="noopener noreferrer">label</a>');
+assert.equal(codec.renderInline("\ue0000\ue000 <script>x</script>"), "\ue0000\ue000 &lt;script&gt;x&lt;/script&gt;");
+const rawInline = "same **same** \\*same\\* ``same`same``";
+const spans = codec.tokenizeInline(rawInline);
+assert.equal(spans.map(token => rawInline.slice(token.start, token.end)).join(""), rawInline,
+  "tokens partition original source even when visible content repeats");
+const strongSpan = spans.find(token => token.type === "strong");
+assert.equal(rawInline.slice(strongSpan.contentStart, strongSpan.contentEnd), "same");
+const codeSpan = spans.find(token => token.type === "code");
+assert.equal(rawInline.slice(codeSpan.contentStart, codeSpan.contentEnd), "same`same");
 
 assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("#### Sub-heading"))), [
   { type: "heading", level: 4, text: "Sub-heading", sourceLine: 0 },

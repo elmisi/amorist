@@ -1,13 +1,6 @@
 (function () {
   const BLOCK_TAGS = new Set(["P", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "LI", "PRE", "HR"]);
   const HR_PATTERN = /^(-{3,}|\*{3,}|_{3,})\s*$/;
-  // Sentinel framing inline-render placeholders (see createInlineTokenizer).
-  // A Private Use Area code point: it never occurs in real prose, survives the
-  // HTML parser intact (unlike NUL, which the parser silently strips — the root
-  // of the bold-wrapping-inline-code corruption bug), and stays readable in
-  // editors and grep. Defined once here and derived into the matching pattern.
-  const PLACEHOLDER_MARK = String.fromCodePoint(0xe000);
-  const PLACEHOLDER_PATTERN = new RegExp(`${PLACEHOLDER_MARK}(\\d+)${PLACEHOLDER_MARK}`, "g");
   const Internals = window.AmoristInternals || (window.AmoristInternals = {});
   const TextUtils = Internals.TextUtils;
   const TableCodec = Internals.TableCodec;
@@ -248,43 +241,112 @@
     return ` data-source-line="${Number(block.sourceLine || 0)}"`;
   }
 
-  function createInlineTokenizer() {
+  function tokenizeInline(value, start = 0, end = String(value).length, depth = 0) {
+    const source = String(value);
     const tokens = [];
-    return {
-      // Stash rendered HTML, returning an opaque placeholder to leave in the source.
-      hold(html) {
-        const index = tokens.push(html) - 1;
-        return `${PLACEHOLDER_MARK}${index}${PLACEHOLDER_MARK}`;
-      },
-      // Restore placeholders, repeating until none remain so that nested ones
-      // (e.g. a code span inside bold) are fully resolved rather than left dangling.
-      restore(source) {
-        let previous;
-        do {
-          previous = source;
-          source = source.replace(PLACEHOLDER_PATTERN, (match, index) => {
-            const value = tokens[Number(index)];
-            return value === undefined ? match : value;
-          });
-        } while (source !== previous);
-        return source;
-      },
+    const plain = (from, to, text = source.slice(from, to)) => {
+      const previous = tokens[tokens.length - 1];
+      if (previous && previous.type === "text" && !previous.escaped && from === previous.end && text === source.slice(from, to)) {
+        previous.end = to; previous.text += text;
+      } else tokens.push({ type: "text", start: from, end: to, text, escaped: text !== source.slice(from, to) });
     };
+    if (depth > 64) return [{ type: "text", start, end, text: source.slice(start, end) }];
+    for (let cursor = start; cursor < end;) {
+      const char = source[cursor];
+      if (char === "\\" && cursor + 1 < end && /[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/.test(source[cursor + 1])) {
+        plain(cursor, cursor + 2, source[cursor + 1]); cursor += 2; continue;
+      }
+      if (char === "`") {
+        const code = TextUtils.codeSpanAt(source, cursor);
+        if (code && code.end <= end) {
+          let text = source.slice(code.contentStart, code.contentEnd).replace(/\r\n|\r|\n/g, " ");
+          let contentStart = code.contentStart, contentEnd = code.contentEnd;
+          if (text.startsWith(" ") && text.endsWith(" ") && /[^ ]/.test(text)) {
+            text = text.slice(1, -1); contentStart += 1; contentEnd -= 1;
+          }
+          tokens.push({ type: "code", ...code, contentStart, contentEnd, text }); cursor = code.end; continue;
+        }
+        let runEnd = cursor + 1;
+        while (runEnd < end && source[runEnd] === "`") runEnd += 1;
+        plain(cursor, runEnd); cursor = runEnd; continue;
+      }
+      if (char === "\n") { tokens.push({ type: "break", start: cursor, end: cursor + 1 }); cursor += 1; continue; }
+      if (char === "[") {
+        let closing = cursor + 1, level = 1;
+        for (; closing < end; closing += 1) {
+          if (source[closing] === "\\") { closing += 1; continue; }
+          const code = TextUtils.codeSpanAt(source, closing);
+          if (code && code.end <= end) { closing = code.end - 1; continue; }
+          if (source[closing] === "[") level += 1;
+          if (source[closing] === "]" && --level === 0) break;
+        }
+        if (closing < end && source[closing + 1] === "(") {
+          let destinationEnd = closing + 2, parentheses = 1;
+          for (; destinationEnd < end; destinationEnd += 1) {
+            if (source[destinationEnd] === "\\") { destinationEnd += 1; continue; }
+            if (source[destinationEnd] === "(") parentheses += 1;
+            if (source[destinationEnd] === ")" && --parentheses === 0) break;
+          }
+          if (destinationEnd < end) {
+            const href = source.slice(closing + 2, destinationEnd);
+            tokens.push({ type: "link", start: cursor, end: destinationEnd + 1,
+              contentStart: cursor + 1, contentEnd: closing, href,
+              children: tokenizeInline(source, cursor + 1, closing, depth + 1) });
+            cursor = destinationEnd + 1; continue;
+          }
+        }
+      }
+      if (char === "*" || char === "_" || char === "~") {
+        let runEnd = cursor + 1;
+        while (runEnd < end && source[runEnd] === char) runEnd += 1;
+        const width = runEnd - cursor;
+        const word = /[\p{L}\p{N}]/u;
+        const allowed = (char !== "~" || width === 2) && width <= 3
+          && runEnd < end && !/\s/.test(source[runEnd])
+          && !(char === "_" && word.test(source[cursor - 1] || "") && word.test(source[runEnd]));
+        if (allowed) {
+          let closing = runEnd;
+          while (closing < end) {
+            if (source[closing] === "\\") { closing += 2; continue; }
+            const code = TextUtils.codeSpanAt(source, closing);
+            if (code && code.end <= end) { closing = code.end; continue; }
+            if (source[closing] === char) {
+              let after = closing + 1;
+              while (after < end && source[after] === char) after += 1;
+              if (after - closing === width && !/\s/.test(source[closing - 1])
+                  && !(char === "_" && word.test(source[closing - 1]) && word.test(source[after] || ""))) {
+                tokens.push({ type: char === "~" ? "delete" : width === 1 ? "em" : width === 2 ? "strong" : "strong-em",
+                  start: cursor, end: after, contentStart: runEnd, contentEnd: closing,
+                  children: tokenizeInline(source, runEnd, closing, depth + 1) });
+                cursor = after; break;
+              }
+              closing = after;
+            } else closing += 1;
+          }
+          if (cursor >= runEnd) continue;
+        }
+        plain(cursor, runEnd); cursor = runEnd; continue;
+      }
+      plain(cursor, cursor + 1); cursor += 1;
+    }
+    return tokens;
+  }
+
+  function renderInlineTokens(tokens) {
+    return tokens.map(token => {
+      if (token.type === "text") return TextUtils.escapeHtml(token.text);
+      if (token.type === "break") return "<br>";
+      if (token.type === "code") return `<code>${TextUtils.escapeHtml(token.text)}</code>`;
+      const content = renderInlineTokens(token.children);
+      if (token.type === "link") return `<a href="${TextUtils.escapeAttr(token.href)}" target="_blank" rel="noopener noreferrer">${content}</a>`;
+      if (token.type === "strong-em") return `<em><strong>${content}</strong></em>`;
+      const tag = { em: "em", strong: "strong", delete: "del" }[token.type];
+      return `<${tag}>${content}</${tag}>`;
+    }).join("");
   }
 
   function renderInline(text) {
-    const tokenizer = createInlineTokenizer();
-    let source = TextUtils.escapeHtml(text);
-    // Held before the inline passes so the constructs around a break match across
-    // it, and so the tag itself never reaches those regexes as raw text.
-    source = source.replace(/\n/g, () => tokenizer.hold("<br>"));
-    source = source.replace(/`([^`]+)`/g, (_, code) => tokenizer.hold(`<code>${code}</code>`));
-    source = source.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) =>
-      tokenizer.hold(`<a href="${TextUtils.escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`),
-    );
-    source = source.replace(/\*\*([^*]+)\*\*/g, (_, value) => tokenizer.hold(`<strong>${value}</strong>`));
-    source = source.replace(/\*([^*]+)\*/g, (_, value) => tokenizer.hold(`<em>${value}</em>`));
-    return tokenizer.restore(source) || "<br>";
+    return renderInlineTokens(tokenizeInline(text)) || "<br>";
   }
 
   function serializeBlocks(surface) {
@@ -421,6 +483,7 @@
     renderMarkdown,
     serializeBlocks,
     renderInline,
+    tokenizeInline,
     inlineMarkdown,
   };
 })();

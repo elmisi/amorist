@@ -20,6 +20,21 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Inline rendering uses tokens carrying original source intervals, including
+      their content boundaries. Escaped punctuation stays literal; underscore
+      emphasis, nested emphasis, strikethrough and exact-width inline code
+      delimiters are supported. Rendered text nodes carry their source ranges so
+      editing repeated text uses its own occurrence, without scanning for a match.
+      An end-of-row caret outside a closing delimiter remains outside it.
+    why: >
+      The approved common Markdown base and explicit span mapping replace the
+      placeholder renderer and heuristic selection mapping. Raw HTML remains
+      escaped and original source is unchanged by rendering or mode switches.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Table classification and projection share separator offsets. Pipe characters
       inside escaped source or a closed inline code span are cell content, including
       code spans with exact matching delimiters longer than one backtick. An
