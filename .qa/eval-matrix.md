@@ -34,11 +34,11 @@ generated; the contract is the source of truth.
 | `REQ-D1` | Content pasted from another application never disappears silently. What amorist cannot co… | R-008 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-E1` | Work not yet saved survives an abrupt termination. A working copy is written periodically… | R-009 | deterministic | blocking | full | medium | low | green today |
 | `REQ-E2` | amorist never writes to the user's .md file except on an explicit save. The working copy… | R-010 | deterministic | blocking | full | low | low | green today |
-| `REQ-F1` | The file is written atomically. A failure during the write leaves the original file intac… | R-009 | deterministic | blocking | full | low | low | green today |
+| `REQ-F1` | The file is written atomically. A failure during the write leaves the original file intac… | R-009, R-021 | deterministic | blocking | full | low | low | green today |
 | `REQ-F2` | A file modified outside amorist since it was opened is detected on save, and is never ove… | R-009 | deterministic | blocking | full | low | medium | green today |
-| `REQ-G1` | A check that cannot execute is a failure, never a pass. Missing browser, missing corpus,… | R-016 | deterministic | blocking | full | low | low | RED today |
-| `REQ-G2` | The editor checks run on the engines the product actually ships with, not only on a stand… | R-017 | deterministic | blocking | full | medium | medium | RED today |
-| `REQ-G3` | Every report names the engines actually exercised, and names any published platform that… | R-017 | manual | advisory | manual | low | low | RED today |
+| `REQ-G1` | A check that cannot execute is a failure, never a pass. Missing browser, missing corpus,… | R-016, R-021 | deterministic | blocking | full | low | low | RED today |
+| `REQ-G2` | The editor checks run on the engines the product actually ships with, not only on a stand… | R-017, R-021 | deterministic | blocking | full | medium | medium | RED today |
+| `REQ-G3` | Every report names the engines actually exercised, and names any published platform that… | R-017, R-021 | manual | advisory | manual | low | low | RED today |
 
 ## Reading this table
 

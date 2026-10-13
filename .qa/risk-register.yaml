@@ -9,6 +9,22 @@
 # whatever the suite reports.
 
 risks:
+  - id: R-021
+    title: Windows is claimed through a browser proxy or a non-compiling suite
+    source: repo-evidence, Windows baseline 2026-10-13
+    consequence: >
+      A missing engine declaration or Unix-only test prevents verification of
+      the new platform while a stand-in or successful build appears sufficient.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Preserve baseline failures, use actual denied-write ACLs for failed-save
+      coverage, require WebView2 through tauri-driver, and keep the complete
+      delivery blocked until native Windows 10 VM installer acceptance passes.
+    verification_ids: [REQ-F1, REQ-G1, REQ-G2, REQ-G3]
+    status: open
+
   - id: R-001
     title: Code fence language tag discarded at parse time
     source: repo-evidence

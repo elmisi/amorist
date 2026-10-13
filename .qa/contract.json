@@ -433,7 +433,8 @@
       "currentlyHolds": true,
       "allowedChange": null,
       "risks": [
-        "R-009"
+        "R-009",
+        "R-021"
       ]
     },
     {
@@ -459,12 +460,13 @@
       "currentlyHolds": false,
       "allowedChange": null,
       "risks": [
-        "R-016"
+        "R-016",
+        "R-021"
       ]
     },
     {
       "id": "REQ-G2",
-      "statement": "The editor checks run on the engines the product actually ships with, not only on a stand-in. Which engines those are is declared per platform: on Linux, WebKitGTK through its own WebDriver server; on macOS, Safari through the system's WebDriver server. Every check in families A, B, C and D runs unchanged on every engine applicable to the platform the suite is running on, and must pass on all of them.",
+      "statement": "The editor checks run on the engines the product actually ships with, not only on a stand-in. Which engines those are is declared per platform: on Linux, WebKitGTK through its own WebDriver server; on macOS, Safari through the system's WebDriver server; on Windows, WebView2 through tauri-driver and a matching Microsoft Edge driver. Every check in families A, B, C and D runs unchanged on every engine applicable to the platform the suite is running on, and must pass on all of them.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
@@ -472,7 +474,8 @@
       "currentlyHolds": false,
       "allowedChange": null,
       "risks": [
-        "R-017"
+        "R-017",
+        "R-021"
       ]
     },
     {
@@ -485,7 +488,8 @@
       "currentlyHolds": false,
       "allowedChange": null,
       "risks": [
-        "R-017"
+        "R-017",
+        "R-021"
       ]
     }
   ]

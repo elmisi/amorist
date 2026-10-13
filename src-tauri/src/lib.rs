@@ -804,6 +804,7 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
+    #[cfg(unix)]
     #[test]
     fn qa_req_f1_a_failed_write_leaves_the_original_intact_and_no_debris() {
         use std::os::unix::fs::PermissionsExt;
@@ -836,6 +837,39 @@ mod tests {
             temporary_files_in(&dir)
         );
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn qa_req_f1_a_failed_write_leaves_the_original_intact_and_no_debris() {
+        use std::process::Command;
+
+        let dir = scratch_dir("f1-fail");
+        let file = dir.join("nota.md");
+        let original = b"# non deve cambiare\n\ncontenuto originale\n";
+        fs::write(&file, original).unwrap();
+        let identity = Command::new("powershell.exe")
+            .args(["-NoProfile", "-Command",
+                "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"])
+            .output().expect("query the current Windows identity");
+        assert!(identity.status.success(), "identity lookup failed: {identity:?}");
+        let sid = String::from_utf8(identity.stdout).unwrap();
+        let sid = sid.trim();
+        assert!(sid.starts_with("S-1-"), "unexpected identity: {sid}");
+        let denied = Command::new("icacls.exe").arg(&dir)
+            .args(["/deny", &format!("*{sid}:(WD)")]).output().unwrap();
+        assert!(denied.status.success(), "cannot deny directory writes: {denied:?}");
+
+        let outcome = write_document(&file, "# sovrascritto\n", None, false);
+        let restored = Command::new("icacls.exe").arg(&dir)
+            .args(["/remove:d", &format!("*{sid}")]).output().unwrap();
+        assert!(restored.status.success(), "cannot restore test directory: {restored:?}");
+        assert!(outcome.is_err(), "save bypassed the directory write denial");
+        assert_eq!(fs::read(&file).unwrap(), original,
+            "a failed save modified the original file");
+        assert!(temporary_files_in(&dir).is_empty(),
+            "a failed save left temporary debris");
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

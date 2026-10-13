@@ -635,6 +635,21 @@ decisions:
       Tauri application on Linux, including measured caret geometry before
       subsequent text is typed.
 
+  - id: D-035
+    statement: >
+      Windows joins the same editor delivery as Linux and macOS. Pre-change
+      failures remain recorded, and environment preparation does not certify
+      native packaging, clipboard, dialogs or installer behavior.
+    source: user-statement
+    date: 2026-10-13
+    status: confirmed
+    evidence: docs/plan-amorist-editor-development-20261013-1932.md, explicitly approved
+    affects: [REQ-F1, REQ-G1, REQ-G2, REQ-G3, R-021]
+    verification_consequence: >
+      Keep Unix failed-save coverage and add actual denied-write ACL coverage
+      on Windows. Require WebView2 and Chromium verdicts, a matching native
+      driver, and real Windows 10 VM installer acceptance before delivery.
+
 open_recommendations:
   - id: REC-002
     statement: >

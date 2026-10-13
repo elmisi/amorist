@@ -17,6 +17,23 @@ approved_by: repository owner
 approved_on: 2026-07-28
 
 amendments:
+  - date: 2026-10-13
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Windows 10 x64 joins the candidate delivery and must use its actual
+      WebView2 engine through tauri-driver and a matching Edge driver, plus
+      the Chromium stand-in. Linux and macOS checks retain their existing
+      requirements. REQ-F1 includes a real denied-write directory on Windows,
+      established with a temporary ACL on a synthetic test directory rather
+      than Unix permission bits. No test may skip this failure path.
+    why: >
+      The pre-change Windows baseline cannot compile its failed-save test
+      because it imports Unix-only APIs. The original runner also declares no
+      Windows engine. These are recorded baseline failures, not green results.
+      Delivery remains blocked until Windows engine coverage, native installer
+      acceptance in the specified VM, and all three platform gates pass.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
   - date: 2026-08-17
     authorised_by: repository owner, after hands-on testing of version 0.10.6
     what: >
@@ -206,8 +223,12 @@ environments:
     description: >
       macOS, Tauri 2 with WKWebView. The publishing workflow builds a dmg on
       macos-latest, universal target.
-    note: >
-      Windows is not built by .github/workflows/build.yml and is out of scope.
+  - id: ENV-windows
+    description: >
+      Windows 10 x64, Tauri 2 with WebView2. The candidate requires a per-user
+      installer and actual installation, upgrade and uninstall verification in
+      the specified VMware guest. Until the build workflow and engine adapter
+      implement this scope, the delivery gate is blocked, never skipped green.
   - id: ENV-checks
     description: >
       The editor checks run once per applicable engine, from one set of check
@@ -1165,12 +1186,14 @@ requirements:
       The editor checks run on the engines the product actually ships with, not
       only on a stand-in. Which engines those are is declared per platform: on
       Linux, WebKitGTK through its own WebDriver server; on macOS, Safari
-      through the system's WebDriver server. Every check in families A, B, C and
+      through the system's WebDriver server; on Windows, WebView2 through
+      tauri-driver and a matching Microsoft Edge driver. Every check in families A, B, C and
       D runs unchanged on every engine applicable to the platform the suite is
       running on, and must pass on all of them.
     platform_engines:
       linux: [webkitgtk, chromium]
       macos: [safari, chromium]
+      windows: [webview2, chromium]
     not_applicable_is_not_missing: >
       An engine that does not exist on the current platform is NOT a failure —
       Safari on Linux is not a missing engine, it is an inapplicable one. An
