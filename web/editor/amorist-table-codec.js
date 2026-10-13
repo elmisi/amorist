@@ -33,33 +33,41 @@
     return cells.length >= 2 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
   }
 
-  function splitTableRow(line, expectedColumnCount) {
-    let value = String(line || "").trim();
-    if (value.startsWith("|")) value = value.slice(1);
-    if (value.endsWith("|")) value = value.slice(0, -1);
-
-    const cells = [];
-    let cell = "";
-    for (let index = 0; index < value.length; index += 1) {
-      const char = value[index];
-      if (char === "\\") {
-        const next = value[index + 1];
-        if (next === "|") {
-          cell += "|";
-          index += 1;
-        } else {
-          cell += char;
-        }
-        continue;
-      }
-      if (char === "|") {
-        cells.push(cell.trim());
-        cell = "";
-        continue;
-      }
-      cell += char;
+  function tableDelimiters(line) {
+    const delimiters = [];
+    for (let index = 0; index < line.length; index += 1) {
+      if (line[index] === "\\") { index += 1; continue; }
+      if (line[index] === "`") {
+        const code = TextUtils.codeSpanAt(line, index);
+        if (code) { index = code.end - 1; continue; }
+        while (line[index + 1] === "`") index += 1;
+      } else if (line[index] === "|") delimiters.push(index);
     }
-    cells.push(cell.trim());
+    return delimiters;
+  }
+
+  function decodeCell(value) {
+    let result = "";
+    for (let index = 0; index < value.length; index += 1) {
+      if (value[index] === "\\" && value[index + 1] === "|") {
+        result += "|"; index += 1;
+      } else if (value[index] === "\\" && value[index + 1] === "\\") {
+        result += "\\\\"; index += 1;
+      } else result += value[index];
+    }
+    return result.trim();
+  }
+
+  function splitTableRow(line, expectedColumnCount) {
+    const value = String(line || "").trim();
+    const delimiters = tableDelimiters(value);
+    const cells = [];
+    let start = 0;
+    for (const index of delimiters) {
+      if (index !== 0) cells.push(decodeCell(value.slice(start, index)));
+      start = index + 1;
+    }
+    if (start < value.length || !delimiters.length) cells.push(decodeCell(value.slice(start)));
 
     if (expectedColumnCount && cells.length > expectedColumnCount) {
       return [
@@ -208,6 +216,7 @@
   }
 
   Internals.TableCodec = {
+    tableDelimiters,
     splitTableRow,
     formatMarkdownTable,
     isTableStart,

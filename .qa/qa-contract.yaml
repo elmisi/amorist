@@ -20,6 +20,19 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Table classification and projection share separator offsets. Pipe characters
+      inside escaped source or a closed inline code span are cell content, including
+      code spans with exact matching delimiters longer than one backtick. An
+      unmatched opening code delimiter remains literal and does not hide separators.
+      Editing a code cell preserves surrounding source, spacing and line endings.
+    why: >
+      The approved common Markdown base requires pipes counted only outside
+      escapes and inline code; separate scans currently disagree about columns.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Wrapped list content has a hanging indent; physical indented continuation
       rows align with their owning item. Adjacent quoted physical rows have
       continuous quote bars, and nested quotes retain their depth on Enter.

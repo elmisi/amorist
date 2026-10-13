@@ -18,6 +18,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   content. Task checkboxes occupy the marker gutter. Adjacent quote bars join,
   and nested quote Enter retains its depth. Structural Enter inherits the local
   line ending.
+- Table classification and visual columns share separator offsets, keeping
+  escaped pipes and pipes in closed inline code spans inside their cells.
 
 ### Quality
 - This version is the editor development candidate. Delivery remains blocked

@@ -35,7 +35,7 @@
       "id": 5,
       "name": "common-markdown-and-mapping",
       "status": "partial",
-      "evidence": "List hanging indent, physical continuations, task gutters and quote depth/continuity verified on both Linux engines; remaining common Markdown syntax and mapping pending."
+      "evidence": "List hanging indent, physical continuations, task gutters and quote depth/continuity verified on both Linux engines; remaining common Markdown syntax and mapping pending. Table separator offsets now shared between classification and projection; escaped pipes and inline code cases verified. Full common inline rendering/mapping remains pending."
     },
     {
       "id": 6,
@@ -189,6 +189,41 @@
           ]
         },
         "scope": "isolated MiniBrowser under Xvfb; not native packaged acceptance"
+      }
+    },
+    "tablePipeDevelopment": {
+      "status": "directed probes and full Linux suite passed",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "checks": [
+        "tests/editor-table-codec.test.js",
+        "tests/editor-code-context.test.js"
+      ],
+      "scope": [
+        "escaped pipes with odd/even backslash counts",
+        "closed exact-width code spans excluded from separators",
+        "unclosed code spans remain literal",
+        "native keyboard edit inside single-backtick table code",
+        "undo and mode round-trip"
+      ],
+      "remaining": "common inline tokenizer and variable-width code rendering still pending",
+      "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "table-pipes-qa-linux.json",
+        "corpusFiles": 21,
+        "engines": [
+          "webkitgtk",
+          "chromium"
+        ],
+        "environment": "WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "codecPlatforms": {
+        "linux": "pass",
+        "macos": "pass in isolated table-pipe-checks directory",
+        "windows": "pass in isolated table-pipe-checks directory"
       }
     }
   }

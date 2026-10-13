@@ -83,6 +83,22 @@ async function main() {
         })()`);
         assert.deepEqual(interpretation, { source: identical, blocks: 2, heading: "outside" },
           `${entry.id}: an identical delimiter closes existing code; opening never rewrites it`);
+        const table = "before\r\n| Left | Right |\r\n| --- | --- |\r\n| `a|b` | c\\|d |\r\nafter";
+        const cells = await engine.evaluate(`(() => {
+          const editor = window.__codeRegression; editor.setMarkdown(${JSON.stringify(table)});
+          const row = editor.surface.querySelectorAll('.amorist-wysiwyg-table')[2];
+          return {source:editor.getMarkdown(),cells:row.querySelectorAll('.amorist-wysiwyg-table-cell').length,
+            code:row.querySelector('code').textContent};
+        })()`);
+        assert.deepEqual(cells, {source:table,cells:4,code:"a|b"},
+          `${entry.id}: code and escaped pipes stay inside their cells`);
+        const codeAt = table.indexOf("a|b") + 2;
+        await engine.evaluate(`(() => {window.__codeRegression.focus();window.__codeRegression.setSurfaceSelection(${codeAt},${codeAt});return true;})()`);
+        await engine.sendKeys(["x"]);
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), table.slice(0,codeAt)+"x"+table.slice(codeAt),
+          `${entry.id}: editing code in a table preserves surrounding delimiters and bytes`);
+        await engine.evaluate("(() => {window.__codeRegression.undo();window.__codeRegression.showSourceMode();window.__codeRegression.showWysiwygMode();return true;})()");
+        assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),table);
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

@@ -508,25 +508,19 @@
       // columns below are CSS layout only: unlike the former table formatter,
       // they never manufacture padding in the Markdown model.
       let cellStart = 0;
-      let escaped = false;
       const appendCell = (text) => {
         const cell = document.createElement("span");
         cell.className = "amorist-wysiwyg-table-cell";
         if (text) cell.innerHTML = MarkdownCodec.renderInline(text);
         row.append(cell);
       };
-      for (let index = 0; index < raw.length; index += 1) {
-        const char = raw[index];
-        if (char === "|" && !escaped) {
-          appendCell(raw.slice(cellStart, index));
-          const marker = document.createElement("span");
-          marker.className = "amorist-wysiwyg-table-marker";
-          marker.textContent = "|";
-          row.append(marker);
-          cellStart = index + 1;
-        }
-        escaped = char === "\\" && !escaped;
-        if (char !== "\\") escaped = false;
+      for (const index of TableCodec.tableDelimiters(raw)) {
+        appendCell(raw.slice(cellStart, index));
+        const marker = document.createElement("span");
+        marker.className = "amorist-wysiwyg-table-marker";
+        marker.textContent = "|";
+        row.append(marker);
+        cellStart = index + 1;
       }
       appendCell(raw.slice(cellStart));
     }
