@@ -1,8 +1,9 @@
 # Takeaway Evidence: qa-architect
 
-**Date:** 2026-07-27
-**Based on:** A full Discovery + QA Design run against a real product (a local-first Markdown editor, ~5000 LOC across a Rust backend and a vanilla-JS frontend). One session, ~18 exchanges, 16 decision questions asked, 25 Discovery decisions and 18 risks recorded, 4 Design artifacts produced (21 requirements). No test code written, per the user's opening instruction "Non scrivere test: avvia solo la Discovery e fammi una domanda alla volta."
+**Date:** 2026-07-27, extended 2026-07-29
+**Based on:** (first pass) A full Discovery + QA Design run against a real product (a local-first Markdown editor, ~5000 LOC across a Rust backend and a vanilla-JS frontend). One session, ~18 exchanges, 16 decision questions asked, 25 Discovery decisions and 18 risks recorded, 4 Design artifacts produced (21 requirements). No test code written, per the user's opening instruction "Non scrivere test: avvia solo la Discovery e fammi una domanda alla volta."
 **Target file(s):** `~/.claude/plugins/cache/elmisi/qa-architect/0.1.0-beta.1/skills/qa-architect/SKILL.md`, `references/qa-contract-template.yaml`, `references/mutation-catalog.md`, `assets/synthetic-markdown-editor-pilot.md`; missing templates for `decisions.yaml`, `risks.yaml`, `open-questions.md`
+**Also based on (second pass, 2026-07-29):** the QA Build and QA Audit modes that followed — the contract approved, a two-engine suite built from it, a second platform added by amendment, and roughly twenty further exchanges. Patterns 9 to 13 come from that stretch. The first pass observed the method's interview; the second observed the method's *construction and reporting*, which turns out to fail in different ways.
 **Target scope:** universal (installed as a plugin, used across projects)
 
 ---
@@ -136,6 +137,112 @@
 
 - **Root cause:** `SKILL.md` scopes inspection to *"the target repository"*. The artifacts under contract usually pass through other tools, and those tools' defaults are part of the environment the contract lives in.
 
+### Pattern 9: Making a requirement measurable narrowed it, and the narrowing looked like precision
+
+- **Candidate principle:** When a person's stated intent is turned into something measurable, check what the operationalisation dropped — narrowing is invisible precisely because it arrives dressed as rigour.
+
+- **Observation:** In Discovery the user stated, in his own words, one of the three headline properties:
+
+  > "nell'editor quando passo da WYSIWYG a source e viceversa l'editor mi deve visualizzare il cursore nella stessa identica posizione sulla stessa identica riga"
+
+  Recorded as `P3`: *"Toggling WYSIWYG <-> source must leave the caret at the identical position on the identical line."* **Position**, twice.
+
+  The requirement written from it, `REQ-C1`, says: *"leaves the caret on the same character of the text, in both directions. Column numbers may differ where the file contains markers the WYSIWYG does not display."*
+
+  Character identity, with the positional half explicitly given away — and the giveaway written into the contract as a considered allowance, which is what made it invisible. It survived the approval step, and the approval step was the one that presented consequences and produced a revision on a different point the same day.
+
+  Two days later, watching the suite run, the user wrote:
+
+  > "a parte l'ancoraggio alla parola, io voglio che il cursore sia circa nella stessa posizione nella visualizzazione source e WYSIWYG"
+
+  Asked whether this was scope creep or the process working, he was precise about which:
+
+  > "avevo già espresso la richiesta ma non l'avevo formulata bene"
+
+  Neither. The intent was present from the first statement; the operationalisation lost half of it; and the loss was documented in a way that read as deliberate.
+
+- **Frequency:** Once, and structural — every requirement in the contract passed through the same operationalisation step, so this is a property of the step rather than of this requirement. Not detected on any other requirement, but not looked for either.
+
+- **Impact:** A requirement absent from the approved contract for two days, through Design, approval, and most of Build. Recovered at a cost of one amendment and one new check — cheap here only because the amendment discipline existed. Had it surfaced after the product rewrite it would have invalidated the design of the caret mapping, which is one of the three structural changes the whole plan turns on.
+
+- **Root cause:** The method requires a success condition that is verifiable, and offers no step that compares the finished requirement back against the words it came from. Making something checkable pulls it toward what is easy to check; nothing pulls back. The contract format made it worse rather than better: it has a field for stating exceptions, so the narrowing was recorded as an exception and thereby legitimised.
+
+### Pattern 10: The fixtures, not the contract, are what the person reads for scope
+
+- **Candidate principle:** Show the person the material a check runs on, not only the requirement it verifies — the material is a legible statement of what the method thinks the requirement covers, and it is where a narrowed requirement becomes visible.
+
+- **Observation:** What triggered the recovery in Pattern 9 was not a re-reading of the contract. In the user's own account:
+
+  > "quando poi vedevo i test in esecuzione vedevo sempre dei file con contenuti troppo piccoli e mi è venuto il dubbio che quella richiesta non fosse stata compresa appieno"
+
+  He was looking at the corpus — the longest fixture was 874 characters over 50 lines — and read it as a statement about the requirement's scope. Small files said *we think this is about small documents*, and that is what he objected to. The doubt about the requirement came from the material, one step removed from the requirement itself.
+
+  He then asked the question directly rather than asserting: *"il test del passaggio ... è fatto su un file sufficientemente lungo per valutare il corretto posizionamento?"* Measuring rather than defending produced two answers: the length was inadequate, and — unasked — 64 of 75 probe positions in the caret check sat on a character occurring many times in the same file, so a wrong landing would have reported "same character" almost always.
+
+- **Frequency:** Once, decisive.
+
+- **Impact:** Positive, and obtained from the person rather than from the method. It recovered a lost requirement and, in passing, exposed the weakest check in the suite — one that would have gone green with the caret still wrong, as soon as the product improved enough to stop failing for other reasons.
+
+- **Root cause:** The method presents requirements to the person for approval and never presents the fixtures. Yet the fixtures encode the requirement's operational scope — how long, how messy, how many — and none of that is in the requirement's text.
+
+### Pattern 11: Checks that ran, produced a verdict, and were not measuring the subject
+
+- **Candidate principle:** A check that runs is not yet a check. Ask what would make it pass while the subject is broken, and what would make it fail for reasons of its own — and measure the answer rather than reasoning about it.
+
+- **Observation:** Three distinct instances during Build, each a different failure mode of the same property:
+
+  | Instance | What it did | How it was caught |
+  | --- | --- | --- |
+  | Paragraph finder selected the lines of a fenced code block, where line breaks are preserved by definition | reported PASS for a view requirement the product does not meet | asking why one fixture passed |
+  | List-indent check searched the rendered view for the item's source line, marker included, which the view does not render | always reported "caret not placeable" — never a line that should not have moved | reading the failure text rather than the failure count |
+  | Caret check compared a single character across the switch | 64 of 75 probe positions were on ambiguous characters; a wrong landing would report a match | the person's question about fixture length |
+
+  The middle case is the sharpest: a check that always fails for its own reasons is indistinguishable from a working check for as long as the subject is also broken.
+
+- **Frequency:** Three in one build phase.
+
+- **Impact:** One false PASS live in the suite; one check contributing nothing while appearing to; one latent false-pass that would have activated exactly when the product started improving. None was caught by the suite itself — the suite has no way to notice these.
+
+- **Root cause:** `references/mutation-catalog.md` and the audit mode both aim at *the subject*: break the product, expect a check to fail. The first takeaway extended that to the harness's prerequisites (Pattern 7). Neither covers the middle ground: a harness that runs, is fully available, and produces a verdict about something other than the subject.
+
+### Pattern 12: A limit stated more precisely than it is reads as a guarantee
+
+- **Candidate principle:** Report what was exercised, not what was meant to be exercised; the two diverge quietly, and every narrative claim about coverage should be traceable to something a machine printed.
+
+- **Observation:** Five instances in one build phase, all the same shape:
+
+  1. The gap between the engine under test and the engine in the product was written as a problem of one platform. It was present on the other platform too, unnamed.
+  2. The document assumed which host was being driven; the runner printed a different name.
+  3. The harness declared a font stack and claimed the font was "pinned rather than inherited". One platform has neither named face and falls through to a default.
+  4. The correction to (3) then asserted that metrics diverge across platforms. Measured, they agree.
+  5. A probe added specifically to prevent (3) and (4) measured the container instead of the glyphs, and returned an identical figure everywhere — a constant that read as agreement.
+
+  Every one was caught by looking at what a machine printed; none by reasoning. Instance (5) is the most instructive: twenty glyphs of a fourteen-pixel monospaced face cannot be over a thousand pixels wide. The figure was checkable at a glance and went unchecked for a commit, because it agreed with what was hoped for.
+
+  Asked how the repeated self-correction read to him, the user answered — and scoped his answer:
+
+  > "in questa specifica sessione direi fiducia e attenzione"
+
+- **Frequency:** Five in one build phase.
+
+- **Impact:** Each correction was cheap because it arrived with the measurement that produced it. The cost was carried by the artifacts rather than the code: three of the five lived in the contract, the architecture note or the audit report, where a reader would have taken them as established.
+
+- **Root cause:** No instruction anywhere requires a claim about coverage to be traceable to output. The reporting habits that made the corrections possible — the runner naming the engine, the version, the font metric — were added in this session by choice, not by the method.
+
+### Pattern 13: A verdict with no sense of how much was looked at
+
+- **Candidate principle:** A verdict must carry the scale of what produced it; without it, nobody can judge whether a passing check looked at enough, and the question cannot be answered later without re-deriving it.
+
+- **Observation:** Asked whether the caret check ran on a document long enough to mean anything, the answer required going and measuring the corpus — the information was nowhere in the report. The check reported pass or fail and which fixtures it touched, but not how many positions it probed, how long they were, or how discriminating they were.
+
+  The report now carries a scale figure next to the verdict (anchors probed, per engine). The same absence remains for most other checks.
+
+- **Frequency:** Once, but the absence is general across the suite.
+
+- **Impact:** A question that should have been answerable from the report cost a measurement pass. More importantly it is the question one asks about a *green* check, and green checks are the ones nobody re-derives.
+
+- **Root cause:** Neither the method nor the contract template asks a verification to report its own coverage in any form other than pass/fail plus evidence-on-failure. Evidence is required for failures and not for passes, which is backwards for this particular question.
+
 ---
 
 ## User-Stated Remediation Priority
@@ -185,6 +292,12 @@ Do not break these during improvement.
 
 - **Maintaining artifacts continuously during Discovery** rather than writing them up at the end. When the user reset the whole model mid-session, the existing decision log made it cheap to mark two decisions superseded and keep everything else.
 
+- **The amendment discipline: amend the contract, have it approved, then change the check.** Exercised twice during Build — once to add a second platform's engine, once to add the requirement recovered in Pattern 9 — and both times it worked exactly as designed. It is also what made Pattern 9 cheap to repair: a lost requirement recovered mid-build is a routine amendment rather than an argument about whether it was ever agreed. Do not soften the ordering; the value is entirely in the fact that the contract moves first.
+
+- **"A check that cannot execute is a failure, never a pass", once it existed, paid for itself repeatedly.** It caught an invocation flag that suppressed the output a parser needed, a build that never completed, and a selector that matched no sample input. In each case the rule turned an empty pass into a named failure. It is the single most productive rule added to this project.
+
+- **The runner naming what it actually exercised** — the engine, its version, the measured font metric, the number of positions probed. Four of the five corrections in Pattern 12 were caught by reading those lines. This was added by choice rather than by instruction, which is precisely why it belongs in the method.
+
 ---
 
 ## Open Observations
@@ -194,5 +307,9 @@ Do not break these during improvement.
 - **Did the bundled pilot scenario prime the questioning?** The pilot shipped with the skill describes a Markdown editor whose primary value is preserving user content — nearly identical to this session's real subject. Its suggested opening question is the one that was rejected. It is unclear whether reading it biased the framing toward an axis the user did not care about, or whether the coincidence is incidental. Worth testing against a subject in a different domain.
 
 - **The right number of questions is unknown.** 16 were asked. The user never complained about the count, only about clarity and accumulation. Several were downstream of a single architectural choice and might have been derivable rather than asked — but this was not tested, and fewer questions with less consequence-replay might be worse, not better.
+
+- **Did the narrowing in Pattern 9 happen to other requirements too?** It was found on one requirement because the person noticed. No systematic comparison of each requirement against the words it came from was ever run, so the base rate is unknown. This is the most under-investigated observation in either pass.
+
+- **Does the person's tolerance for visible self-correction generalise?** Asked how five self-corrections in one build phase read to him, the answer was *"in questa specifica sessione direi fiducia e attenzione"* — and the scoping to this session was his, not a prompt. Plausible mechanism: each correction arrived with the measurement that produced it and a fix, which reads as diligence, where correction arriving as vacillation would not. Untested, and the distinction matters before anything is built on it.
 
 - **How should a superseded decision be presented back to the person?** The `supersedes:` chains are legible in the artifact, but the user was only told in passing that his later answer had tightened an earlier one. Whether an explicit "you changed this, here is what it now means" step would help or would feel like second-guessing was not tested.
