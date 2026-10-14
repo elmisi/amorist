@@ -45,4 +45,12 @@ assert.equal(H._nodeToSource({ nodeType: 1, tagName: "PRE", textContent: "``````
 assert.equal(H._nodeToSource({ nodeType: 1, tagName: "PRE", textContent: "~~~~~" }),
   "``````\n~~~~~\n``````\n\n");
 
+const text=value=>({nodeType:3,textContent:value});
+const el=(tag,children,attrs={})=>({nodeType:1,tagName:tag,childNodes:children,children:children.filter(child=>child.nodeType===1),getAttribute:name=>attrs[name]??null});
+const nested=el("OL",[
+ el("LI",[text("parent"),el("UL",[el("LI",[text("nested")])])]),
+ el("LI",[text("explicit")],{value:"12"}),
+ el("LI",[text("next")]),
+],{start:"5"});
+assert.equal(H._cleanupMarkdown(H._nodeToSource(nested)),"5. parent\n   - nested\n12. explicit\n13. next");
 console.log("html-to-markdown pure helpers OK");

@@ -95,6 +95,19 @@
     if (tag === "CODE") return `\`${children()}\``;
     if (tag === "A") return `[${children()}](${node.getAttribute("href") || ""})`;
     if (tag === "IMG") return `![${node.getAttribute("alt") || ""}](${node.getAttribute("src") || ""})`;
+    if (tag === "UL" || tag === "OL") {
+      let number=Number.parseInt(node.getAttribute("start") || "1",10);
+      if(!Number.isFinite(number)) number=1;
+      const items=Array.from(node.children).filter(child=>child.tagName==="LI");
+      const lines=items.map(item=> {
+        const explicit=Number.parseInt(item.getAttribute("value") || "",10);
+        if(Number.isFinite(explicit)) number=explicit;
+        const marker=tag==="OL" ? `${number++}. ` : "- ";
+        const content=Array.from(item.childNodes).map(nodeToSource).join("").trim();
+        return content.split("\n").map((line,index)=>index===0 ? marker+line : line ? " ".repeat(marker.length)+line : "").join("\n");
+      });
+      return "\n"+lines.join("\n")+"\n\n";
+    }
     if (tag === "LI") return `- ${children().trim()}\n`;
     if (tag === "TD" || tag === "TH") return children().trim();
     if (tag === "TR") return Array.from(node.children).map(nodeToSource).join(" | ") + "\n";
