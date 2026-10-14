@@ -17,6 +17,14 @@ async function main(){
     return {calls,warnings,prevented,source:editor.getMarkdown(),history:editor.history.undoStack?.length};
    })()`);
    assert.deepEqual(result.calls,Array(3).fill('../other.md#Heading'));assert.deepEqual(result.warnings,['Missing file']);assert.deepEqual(result.prevented,[true,true,true,true]);assert.equal(result.source,'[Label](../other.md#Heading)');
+   const headings=await engine.evaluate(`(() => {
+    const editor=window.AmoristEditor.create(document.getElementById('host'),{value:'# **Hello** λ\\r\\n\\r\\nHello λ\\r\\n---\\r\\n'});
+    const before=editor.getMarkdown();const first=editor.navigateHeading('hello-λ'),one=editor.selectionRaw();
+    const second=editor.navigateHeading('hello-λ-1'),two=editor.selectionRaw();
+    const missing=editor.navigateHeading('absent');editor.showSourceMode();const source=editor.navigateHeading('hello-λ-1');
+    return {first,second,missing,source,one:one.start,two:two.start,unchanged:editor.getMarkdown()===before};
+   })()`);
+   assert.deepEqual(headings,{first:true,second:true,missing:false,source:true,one:2,two:17,unchanged:true});
    console.log(`link activation: ${entry.id} passed`);
   }finally{await engine.close();}
  }}finally{await server.stop();}

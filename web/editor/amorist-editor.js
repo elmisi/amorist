@@ -1688,6 +1688,35 @@
       }
     }
 
+    navigateHeading(anchor) {
+      const descriptors = this.mode === "source" ? this.buildProjection() : this.lineDescriptors;
+      const used = new Set();
+      const textOf = tokens => tokens.map(token => token.type === "image" ? token.alt
+        : token.children ? textOf(token.children) : token.text || "").join("");
+      for (let index = 0; index < descriptors.length; index++) {
+        const descriptor = descriptors[index], projection = descriptor.projection;
+        if (!/^h[1-6]$/.test(projection.tag)) continue;
+        const text = textOf(MarkdownCodec.tokenizeInline(projection.text, 0, projection.text.length, 0, false, false, descriptors.references));
+        const base = text.toLowerCase().replace(/[^\p{L}\p{N}\p{M}_\-\s]/gu, "").replace(/\s/g, "-");
+        let slug = base, duplicate = 0;
+        while (used.has(slug)) slug = base + "-" + (++duplicate);
+        used.add(slug);
+        if (slug !== anchor) continue;
+        const at = descriptor.start + projection.prefix;
+        if (this.mode === "source") {
+          this.source.focus();const displayAt = this.model.displayOffset(at);
+          this.source.setSelectionRange(displayAt, displayAt);
+          const style = getComputedStyle(this.source), height = parseFloat(style.lineHeight);
+          this.source.scrollTop = Math.max(0, index * height - this.source.clientHeight / 2);
+        } else {
+          this.surface.focus();this.setSurfaceSelection(at, at);
+          this.rowNodes[index]?.scrollIntoView({block:"center",inline:"nearest"});
+        }
+        this.scheduleCurrentLine?.();return true;
+      }
+      return false;
+    }
+
     handleClick(event) {
       const link = event.target.closest("a[data-link-destination]");
       if (link && this.surface.contains(link)) {
