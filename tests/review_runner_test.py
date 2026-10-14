@@ -24,14 +24,14 @@ class ReviewRunnerTests(unittest.TestCase):
                            'if sys.argv[1]=="--build-info":\n'
                            ' (pathlib.Path(sys.argv[2])).write_bytes((root/"identity.json").read_bytes());sys.exit(0)\n'
                            'with (root/"opens.jsonl").open("a") as stream:stream.write(json.dumps(sys.argv[1:])+"\\n")\n'
-                           'time.sleep(float((root/"delay").read_text()) if (root/"delay").exists() else 0)\n'
+                           'time.sleep(float((root/"delay").read_text(encoding="utf-8")) if (root/"delay").exists() else 0)\n'
                            'if (root/"change-build").exists():\n'
-                           ' info=json.loads((root/"identity.json").read_text());info["fingerprint"]="f"*40;(root/"identity.json").write_text(json.dumps(info))\n', encoding='utf-8')
+                           ' info=json.loads((root/"identity.json").read_text(encoding="utf-8"));info["fingerprint"]="f"*40;(root/"identity.json").write_text(json.dumps(info))\n', encoding='utf-8')
         self.executable = self.root / ('fake editor.cmd' if os.name == 'nt' else 'fake editor')
         if os.name == 'nt':
             self.executable.write_text(f'@"{sys.executable}" "{fixture}" %*\n', encoding='utf-8')
         else:
-            self.executable.write_text(f'#!{sys.executable}\n'+fixture.read_text(), encoding='utf-8')
+            self.executable.write_text(f'#!{sys.executable}\n'+fixture.read_text(encoding='utf-8'), encoding='utf-8')
             self.executable.chmod(0o700)
         self.reference = self.root / 'release.json'
         self.files = [self.root / 'first note.md', self.root / 'second λ.md']
@@ -56,10 +56,10 @@ class ReviewRunnerTests(unittest.TestCase):
         return subprocess.run(self.command(), capture_output=True, text=True, timeout=10)
 
     def opened(self):
-        return [json.loads(line) for line in self.opens.read_text().splitlines()] if self.opens.exists() else []
+        return [json.loads(line) for line in self.opens.read_text(encoding='utf-8').splitlines()] if self.opens.exists() else []
 
     def test_resume_new_build_and_removed_file_keep_history(self):
-        self.listing.write_text(self.listing.read_text()+str(self.root/'removed.md')+'\n')
+        self.listing.write_text(self.listing.read_text(encoding='utf-8')+str(self.root/'removed.md')+'\n',encoding='utf-8')
         first = self.run_loop();self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(self.opened(), [['--', str(file)] for file in self.files])
         second = self.run_loop();self.assertEqual(second.returncode, 0, second.stderr)
@@ -67,26 +67,26 @@ class ReviewRunnerTests(unittest.TestCase):
         self.info.update(version='2.0.0', buildId='two', fingerprint='2'*40);self.publish_fixture()
         third = self.run_loop();self.assertEqual(third.returncode, 0, third.stderr)
         self.assertEqual(len(self.opened()), 4)
-        state = json.loads(self.state.read_text());self.assertEqual(state['runs']['one']['completed'], list(map(str,self.files)))
+        state = json.loads(self.state.read_text(encoding='utf-8'));self.assertEqual(state['runs']['one']['completed'], list(map(str,self.files)))
         self.assertEqual(state['runs']['two']['completed'], list(map(str,self.files)))
         self.assertTrue(any(event['event']=='skipped' for event in state['events']))
         self.assertEqual({event['version'] for event in state['events']}, {'1.0.0','2.0.0'})
-        for file in self.files:self.assertEqual(file.read_text(), '# Test')
+        for file in self.files:self.assertEqual(file.read_text(encoding='utf-8'), '# Test')
 
     def test_updated_list_opens_only_new_paths_on_same_build(self):
         first=self.run_loop();self.assertEqual(first.returncode,0,first.stderr)
         additional=self.root/'new note.md';additional.write_text('# New')
-        self.listing.write_text(self.listing.read_text()+str(additional)+'\n'+str(self.files[0])+'\n')
+        self.listing.write_text(self.listing.read_text(encoding='utf-8')+str(additional)+'\n'+str(self.files[0])+'\n',encoding='utf-8')
         second=self.run_loop();self.assertEqual(second.returncode,0,second.stderr)
         self.assertEqual(self.opened(),[['--',str(file)] for file in [*self.files,additional]])
-        self.assertEqual(additional.read_text(),'# New')
+        self.assertEqual(additional.read_text(encoding='utf-8'),'# New')
 
     def test_changed_binary_is_rejected_before_next_file(self):
         (self.root/'change-build').write_text('change after first file')
         result=self.run_loop();self.assertEqual(result.returncode,1,result.stderr)
         self.assertIn('differs',result.stderr)
         self.assertEqual(self.opened(),[['--',str(self.files[0])]])
-        events=json.loads(self.state.read_text())['events']
+        events=json.loads(self.state.read_text(encoding='utf-8'))['events']
         self.assertEqual(events[-1]['event'],'failed')
         self.assertEqual(events[-1]['path'],str(self.files[1]))
 
