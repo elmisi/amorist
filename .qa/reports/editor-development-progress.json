@@ -1416,9 +1416,7 @@
           "only HTTP/HTTPS accepted by this loader; local paths remain unresolved",
           "QA CSP confines image requests to its own origin; no external image fetches in browser checks"
         ],
-        "implementedButUnverified": [
-          "affected-table remeasurement and horizontal-scroll preservation"
-        ]
+        "implementedButUnverified": []
       },
       "keyboardNavigation": {
         "exitCode": 0,
@@ -1441,6 +1439,26 @@
           "Chromium"
         ],
         "scope": "500ms fixture response delay above an active caret in a scrollable document; vertical caret movement <=1px, same raw selection and exact source"
+      },
+      "tableLoadGeometry": {
+        "exitCode": 0,
+        "report": "image-table-layout-verified-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": [
+          "500ms image response inside an overflowing table",
+          "all cell column positions aligned within 1px after load",
+          "horizontal scroll retained within 1px",
+          "source bytes unchanged and no uncaught image layout errors"
+        ],
+        "fix": "Ignore transient out-of-bounds WebKit selection when measuring caret, without interrupting image display",
+        "diagnosticReports": [
+          "image-table-layout-linux.log",
+          "image-table-layout-diagnostic-linux.log",
+          "image-table-layout-error-linux.log"
+        ]
       }
     }
   }

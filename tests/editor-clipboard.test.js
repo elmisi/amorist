@@ -195,6 +195,24 @@ async function main(options={}){
    })`);
    assert.equal(lateAfter.state,'loaded');assert.deepEqual(lateAfter.selection,lateBefore.selection);assert.equal(lateAfter.source,lateSource);
    assert.ok(Math.abs(lateAfter.top-lateBefore.top)<=1,`${entry.id}: late image caret moved from ${lateBefore.top} to ${lateAfter.top}`);
+   const tableImageSource=`| Image | Note |\n| --- | --- |\n| ![Picture](${server.origin}/tests/qa/assets/image.svg?qaDelay=500) | ${'wide note '.repeat(35)} |\n| plain | short |`;
+   const tableBefore=await engine.evaluate(`(() => {
+    window.__imageError=null;window.addEventListener("error",event=>{window.__imageError={message:event.message,stack:event.error?.stack};});
+    const editor=window.__clip;editor.setMarkdown(${JSON.stringify(tableImageSource)});editor.root.style.width='400px';
+    const block=editor.surface.querySelector('.amorist-wysiwyg-table-block');block.scrollLeft=40;
+    return {left:block.scrollLeft,state:block.querySelector('.amorist-image-atom').dataset.imageState};
+   })()`);
+   assert.equal(tableBefore.state,'loading');assert.equal(tableBefore.left,40);
+   const tableAfter=await engine.evaluate(`new Promise(resolve=> {
+    const started=Date.now();const poll=()=> {
+      const editor=window.__clip,block=editor.surface.querySelector('.amorist-wysiwyg-table-block'),atom=block.querySelector('.amorist-image-atom');
+      if(atom.dataset.imageState==='loaded' || Date.now()-started>3000) resolve({state:atom.dataset.imageState,error:window.__imageError,image:{complete:atom.querySelector('img').complete,width:atom.querySelector('img').naturalWidth,src:atom.querySelector('img').src,connected:atom.isConnected},left:block.scrollLeft,
+        columns:Array.from(block.querySelectorAll('.amorist-source-line')).map(row=>Array.from(row.querySelectorAll('.amorist-wysiwyg-table-cell')).map(cell=>cell.getBoundingClientRect().left)),source:editor.getMarkdown()});
+      else setTimeout(poll,20);
+    };poll();
+   })`);
+   assert.equal(tableAfter.state,'loaded',JSON.stringify(tableAfter));assert.equal(tableAfter.error,null);assert.ok(Math.abs(tableAfter.left-tableBefore.left)<=1);assert.equal(tableAfter.source,tableImageSource);
+   for(const columns of tableAfter.columns) for(let index=0;index<columns.length;index++) assert.ok(Math.abs(columns[index]-tableAfter.columns[0][index])<=1,`${entry.id}: image-loaded table column ${index} aligned`);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

@@ -739,7 +739,8 @@
         const selection=window.getSelection();
         let caret=null;
         if(this.mode==="wysiwyg" && document.activeElement===this.surface && selection?.focusNode
-            && this.surface.contains(selection.focusNode)) {
+            && this.surface.contains(selection.focusNode)
+            && selection.focusOffset<=(selection.focusNode.nodeType===Node.TEXT_NODE?selection.focusNode.length:selection.focusNode.childNodes.length)) {
           const range=document.createRange();range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
           if(range.getBoundingClientRect().height) caret=range;
         }
