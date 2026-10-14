@@ -58,7 +58,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev heif-gdk-pixbuf
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev heif-gdk-pixbuf \
+            libheif-plugin-aomdec webkit2gtk-driver xvfb bubblewrap
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -111,6 +112,26 @@ jobs:
           else
             cargo tauri build --bundles "${{ matrix.bundle }}" --config "{\"version\": \"$VERSION\"}"
           fi
+
+      - uses: actions/setup-node@v4
+        if: matrix.bundle == 'appimage'
+        with:
+          node-version: '22'
+
+      - name: Install native AppImage QA driver
+        if: matrix.bundle == 'appimage'
+        run: cargo install tauri-driver --version 2.0.6 --locked
+
+      - name: Verify packaged images without the host AV1 decoder
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/tests/qa/lib/no-host-av1.sh" \
+          AMORIST_CODEC_QA_BINARY="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-local-image-native.test.js
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

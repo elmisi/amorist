@@ -2214,7 +2214,7 @@
   "subscriptionStop": {
     "remainingPercentThreshold": 60,
     "usedPercentThreshold": 40,
-    "lastObservedUsedPercent": 25,
+    "lastObservedUsedPercent": 26,
     "source": "current session rate_limits events in local rollout log",
     "actionAtThreshold": "pause at user request and leave documented restart point"
   },
@@ -2269,16 +2269,16 @@
     "remaining": "Clean package installation/upgrade, AppImage self-contained loader, absent decoder simulation and full package acceptance remain pending"
   },
   "linuxAppImageAvif": {
-    "state": "built-native-avif-fails-without-host",
+    "state": "explicit-heif-package-native-pass",
     "handle": 99248,
     "binarySnapshot": "eb9087161729bbed2d9d25d9913af28fff25d08b",
     "initialFailure": "GTK linuxdeploy plugin cannot query librsvg-2.0 libdir because private build environment lacks librsvg-2.0.pc",
     "preparation": "librsvg2-dev 2.61.3+dfsg-3ubuntu0.1 downloaded and extracted into private tools/root, no system installation; pkg-config libdir now resolves /usr/lib/x86_64-linux-gnu",
     "evidence": "avif-appimage-bundle-rsvg-linux.log exit0; completed AppDir inspected; AV1 plugin absent",
-    "remaining": "Diagnose package-local codec loading; actual native AVIF without host decoder must pass before acceptance",
+    "remaining": "Current candidate needs rebuild including 3a41e16 failure guard; clean install/loop and complete platform/package acceptance remain pending",
     "deliveryBlocked": true,
     "exitCode": 0,
-    "sha256": "eb185378795cda3bced2e3d0adef08216f155e0ee2e2c66311bb72f881b0aec0",
+    "sha256": "ad7f1db5e879fae72595b50344a29a83c55ddb514481ad8b3d70dad55d20e84d",
     "included": [
       "libpixbufloader-heif.so",
       "libheif.so.1",
@@ -2314,13 +2314,13 @@
     "identity": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:d163b20edffdc59f8b440842d401fdb3b88718bf",
-      "fingerprint": "d163b20edffdc59f8b440842d401fdb3b88718bf",
-      "commit": "2dc7df0235ad9433fd049b54c9189751b0f8c7bf",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:4a04a6d4911cd76a5fe64249e1f3b512221d6500",
+      "fingerprint": "4a04a6d4911cd76a5fe64249e1f3b512221d6500",
+      "commit": "8f3ab2b0c2037eb86e8a48b9c6d3da24c9760a14",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
-    "nativeEvidence": "appimage-av1-no-host-native-linux.log exit1: all formats except AVIF pass; package codec loading still fails when host AV1 plugin directory is hidden",
+    "nativeEvidence": "appimage-explicit-heif-no-host-native-linux.log exit0: actual AppImage with host AV1 plugin directories hidden passes AVIF/other formats, SaveAs rebase, resource expiry/New and unchanged source",
     "loadingDiagnosis": {
       "cause": "GdkPixbuf automatic AVIF decoding delegates to Glycin subprocess; it does not find package-local AV1 plugin",
       "evidence": "appimage-avif-native-error.log captures Glycin plugin-loading error; appimage-avif-explicit-loader-error.log proves explicit HEIF module loads/decode succeeds with host AV1 directory hidden",
@@ -2335,6 +2335,8 @@
         "negative": "avif-failure-guard-negative-linux.log exit0; actual host codec masked, resource fails promptly and other formats/lifecycle pass",
         "rust": "avif-failure-guard-rust-linux.log exit0"
       }
-    }
+    },
+    "loadedLibraryEvidence": "appimage-codec-observed-process-v2.json and appimage-explicit-codec-observer-status.json exit0: mapped HEIF loader and libheif from extracted package",
+    "ci": "AppImage native no-host AV1 image check declared before artifact upload; required driver/Node22/codec added; YAML parsed locally, remote CI not run"
   }
 }
