@@ -208,6 +208,15 @@ async function main() {
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),metadata.slice(0,metadataEnd)+"\r\n"+metadata.slice(metadataEnd),`${entry.id}: metadata Enter never continues a Markdown list marker`);
         await engine.evaluate("(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),metadata);
+        for (const ending of ["\r\n","\r"]) {
+          const source="```"+ending+"literal";
+          await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(source)});editor.focus();editor.setSurfaceSelection(${source.length},${source.length});return true;})()`);
+          await engine.sendKeys([{key:"Enter"}]);
+          assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source+ending,
+            `${entry.id}: code Enter at unterminated EOF inherits the last physical terminator`);
+          await engine.evaluate("(() => {window.__codeRegression.undo();return true;})()");
+          assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source);
+        }
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

@@ -20,6 +20,23 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      A new boundary uses its physical line's terminator, or the last preceding
+      terminator at an unterminated EOF, and LF when none exists. Automatic
+      hard-break ownership is explicit session metadata, never inferred merely
+      from existing backslashes. Validated metadata records generated markers
+      and escaping positions, rebases over edits and restores with undo/redo.
+      The serialized offset space is explicitly UTF-16, matching DOM selections;
+      a different encoding is rejected instead of guessed.
+      Malformed metadata cannot change source or advance the history position.
+    why: >
+      Establishes the approved provenance mechanism before enabling prose Enter
+      and cleanup. The gesture planner and actual recovery persistence still
+      require integration; the existing prose Enter check remains unchanged here.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Tab and Shift+Tab operate in both modes with a two-space default. A collapsed
       prose/code caret inserts indentation at its position; selected physical
       rows are indented together, preserving their original terminators. A list

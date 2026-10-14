@@ -37,6 +37,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   selection, and Escape returns focus to the toolbar.
 
 ### Quality
+- The source model tracks validated automatic-boundary provenance separately
+  from Markdown, including generated escaping positions and UTF-16 offsets.
+  Transactions and undo/redo preserve it; malformed metadata cannot edit source.
+  Prose gesture generation, cleanup and actual recovery persistence remain pending.
 - Linux automated graphical checks explicitly use X11 under Xvfb, avoiding an
   inherited Wayland session. Graphical regression scripts run sequentially.
 - This version is the editor development candidate. Delivery remains blocked

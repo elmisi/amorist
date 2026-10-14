@@ -41,7 +41,7 @@
       "id": 6,
       "name": "enter-tab-and-local-cleanup",
       "status": "partial",
-      "evidence": "Tab/Shift+Tab in both modes now covers caret insertion, mixed terminators, selected rows, list descendants and continuations, oriented selection, undo/redo and Escape focus. Native Linux probes and full regression passed under explicit X11. Prose Enter hard-break provenance, local boundary cleanup, recovery persistence and remaining structural/container semantics still pending."
+      "evidence": "Tab/Shift+Tab in both modes now covers caret insertion, mixed terminators, selected rows, list descendants and continuations, oriented selection, undo/redo and Escape focus. Native Linux probes and full regression passed under explicit X11. Prose Enter hard-break provenance, local boundary cleanup, recovery persistence and remaining structural/container semantics still pending. The model now validates, rebases and journals explicit automatic-boundary provenance with UTF-16 JSON round trips; EOF inherits the preceding terminator. UI prose generation/cleanup and real recovery persistence remain pending."
     },
     {
       "id": 7,
@@ -395,6 +395,45 @@
       "finding": "Launching Xvfb alone did not force GTK to use it; native selection probes passed when GDK_BACKEND=x11 was explicit. Earlier report backend labels were not independently verified.",
       "shiftTabEvent": "WebKit delivered key=Unidentified, code=Tab, keyCode=9; handler uses the physical Tab code as fallback.",
       "scope": "automated display only; native packaged acceptance remains required"
+    },
+    "boundaryModelDevelopment": {
+      "status": "model tests on three platforms, directed Linux EOF probes and full Linux regression passed",
+      "checks": [
+        "tests/editor-history.test.js",
+        "tests/editor-code-context.test.js"
+      ],
+      "scope": [
+        "EOF inherits last CRLF/CR/LF",
+        "explicit ownership without inference from existing source",
+        "UTF-16 JSON provenance encoding",
+        "marker and generated-escape rebasing",
+        "retyping a marker removes ownership",
+        "undo/redo restore provenance",
+        "invalid metadata keeps source and history index unchanged"
+      ],
+      "platforms": {
+        "linux": "pass",
+        "windows": "model tests pass",
+        "macos": "model tests pass"
+      },
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "boundary-model-qa-linux.json",
+        "corpusFiles": 21,
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb",
+        "sourceScope": "Before the final generated-escape deletion refinement; final refinement covered by model checks on all three platforms and the ten classic Linux regression scripts."
+      },
+      "classicRegressionChecks": {
+        "pass": 10,
+        "fail": 0,
+        "log": "boundary-model-classic-linux.log"
+      },
+      "remaining": [
+        "visual prose Enter generation",
+        "atomic local marker cleanup",
+        "structural-shortcut integration",
+        "actual recovery persistence"
+      ]
     }
   }
 }
