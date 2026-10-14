@@ -112,7 +112,7 @@ jobs:
 
       - name: Run codec, toolbar and code-context regressions
         run: |
-          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js"
+          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js"
           if [ "${{ matrix.platform }}" = "linux" ]; then
             GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
           else

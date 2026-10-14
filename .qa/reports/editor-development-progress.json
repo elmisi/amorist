@@ -1261,7 +1261,7 @@
       }
     },
     "systemClipboardDevelopment": {
-      "status": "partial: WebKitGTK passed, Chromium unresolved; not a delivery pass",
+      "status": "real Linux browser clipboard passed on both engines; compiled and multi-window acceptance pending",
       "scope": "Real trusted copy/paste keyboard events between two editors within one browser window on isolated Linux display",
       "webkitgtk": {
         "status": "pass",
@@ -1273,20 +1273,31 @@
         "sourcePaste": "pass"
       },
       "chromium": {
-        "status": "fail",
-        "detail": "Ctrl+V did not emit a paste event or insert source; visible-window trial also failed"
+        "status": "pass",
+        "formats": [
+          "text/plain",
+          "text/html",
+          "application/x-amorist-markdown+json"
+        ],
+        "sourcePaste": "pass",
+        "driverFix": "Windows native virtual key codes are omitted on non-Windows platforms; windowsVirtualKeyCode remains supplied"
       },
       "reports": [
         "system-clipboard-linux.log",
         "system-clipboard-followup-linux.log",
-        "system-clipboard-headful-linux.log"
+        "system-clipboard-headful-linux.log",
+        "system-clipboard-native-key-linux.log"
       ],
       "remaining": [
-        "diagnose Chromium driver/browser native shortcut routing",
         "separate application windows",
         "compiled Tauri webview acceptance",
         "macOS and Windows native clipboard acceptance"
-      ]
+      ],
+      "classicLinux": {
+        "pass": 14,
+        "fail": 0,
+        "report": "system-clipboard-classic-linux.log"
+      }
     }
   }
 }

@@ -179,7 +179,7 @@ class ChromiumEngine {
             key: item.key,
             code: named.code,
             windowsVirtualKeyCode: named.vk,
-            nativeVirtualKeyCode: named.vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? named.vk : undefined,
             text: modifiers ? undefined : named.text,
             modifiers,
           });
@@ -188,7 +188,7 @@ class ChromiumEngine {
             key: item.key,
             code: named.code,
             windowsVirtualKeyCode: named.vk,
-            nativeVirtualKeyCode: named.vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? named.vk : undefined,
             modifiers,
           });
         } else {
@@ -200,7 +200,7 @@ class ChromiumEngine {
             key: item.key,
             code: `Key${upper}`,
             windowsVirtualKeyCode: vk,
-            nativeVirtualKeyCode: vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? vk : undefined,
             modifiers,
           });
           await this.socket.send("Input.dispatchKeyEvent", {
@@ -208,7 +208,7 @@ class ChromiumEngine {
             key: item.key,
             code: `Key${upper}`,
             windowsVirtualKeyCode: vk,
-            nativeVirtualKeyCode: vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? vk : undefined,
             modifiers,
           });
         }
