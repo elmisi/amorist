@@ -5,37 +5,47 @@ const os = require('node:os');
 const path = require('node:path');
 const cp = require('node:child_process');
 const { TauriEngine, discoverDriver } = require('./qa/lib/engine-tauri');
+const { WindowsAttachEngine } = require('./qa/lib/engine-windows-attach');
 
 async function main() {
-  assert.equal(process.platform, 'linux');
+  assert.ok(['linux', 'win32'].includes(process.platform));
   const root = path.resolve(__dirname, '..');
-  const build = cp.spawnSync('cargo', ['build', '--manifest-path', path.join(root, 'src-tauri/Cargo.toml')], { encoding: 'utf8' });
-  assert.equal(build.status, 0, build.stderr);
+  if (process.platform === 'linux') {
+    const build = cp.spawnSync('cargo', ['build', '--manifest-path', path.join(root, 'src-tauri/Cargo.toml')], { encoding: 'utf8' });
+    assert.equal(build.status, 0, build.stderr);
+  }
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'amorist-changed-base-'));
   const file = path.join(scratch, 'changed λ.md');
   const disk = 'Externally updated document\r\n';
   fs.writeFileSync(file, disk);
-  const sessionId = 's-changed-base-fixture';
-  const directory = path.join(scratch, 'data', 'amorist', 'recovery-sessions', sessionId);
+  const sessionId = 's-changed-base-fixture-' + process.pid + '-' + Date.now();
+  const recoveryRoot = process.platform === 'win32'
+    ? path.join(process.env.APPDATA, 'dev.elmisi.amorist', 'amorist', 'recovery-sessions')
+    : path.join(scratch, 'data', 'amorist', 'recovery-sessions');
+  const directory = path.join(recoveryRoot, sessionId);
   fs.mkdirSync(directory, { recursive: true });
   const recordPath = path.join(directory, 'record.json');
-  const record = JSON.stringify({ schemaVersion: 1, sessionId, path: file,
+  const record = JSON.stringify({ schemaVersion: 1, sessionId, path: process.platform === 'win32' ? '\\\\?\\' + fs.realpathSync(file) : file,
     savedSource: 'Original document\r\n', unsavedSource: 'Original document with unsaved work\r\n',
     revision: 1, boundaryState: null, legacyImport: false });
   fs.writeFileSync(recordPath, record);
-  let engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
-    ['--', file], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+  function createEngine(args) {
+    return process.platform === 'win32'
+      ? new WindowsAttachEngine(process.env.AMORIST_QA_EDGE_DRIVER, process.env.AMORIST_QA_APPLICATION, args)
+      : new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'), args,
+        { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+  }
+  let engine = createEngine(['--', file]);
   async function waitFor(expression) {
     const deadline = Date.now() + 6000;
-    while (!await engine.evaluate(expression)) {
+    while (!await engine.evaluate(`!!document.getElementById('editor') && (${expression})`)) {
       assert.ok(Date.now() < deadline, 'Timed out: ' + expression);
       await new Promise(resolve => setTimeout(resolve, 50));
     }
   }
   async function restartAtFile() {
     await engine.close();
-    engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
-      ['--', file], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+    engine = createEngine(['--', file]);
     await engine.start();
     await waitFor(`!!document.querySelector('#recovery-dialog[open]')`);
   }
@@ -77,8 +87,7 @@ async function main() {
     assert.equal(fs.readFileSync(file, 'utf8'), disk, 'Recovery must not overwrite the external changes');
     console.log('Changed-base startup recovery: explicit choice, warning, exact recovered text and unchanged file passed');
     await engine.close();
-    engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
-      ['--new-document'], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+    engine = createEngine(['--new-document']);
     await engine.start();
     await waitFor(`!document.getElementById('editor').inert && !!document.querySelector('.amorist-editor-surface')`);
     await engine.evaluate(`window.__previousRecoveryEditor=document.querySelector('.amorist-editor-surface')`);
@@ -113,8 +122,7 @@ async function main() {
     }
     await waitFor(`!document.getElementById('reload-button').disabled`);
     await engine.close();
-    engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
-      ['--', file], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+    engine = createEngine(['--', file]);
     await engine.start();
     await waitFor(`!document.getElementById('editor').inert && !!document.querySelector('.amorist-source-line')`);
     assert.match(await engine.evaluate(`document.querySelector('.amorist-editor-surface').textContent`), /Original document with unsaved work/);
@@ -123,6 +131,7 @@ async function main() {
     console.log('Changed-base recovery: explicit Save preserves CRLF and restart opens the saved version without recovery');
   } finally {
     await engine.close();
+    if (process.platform === 'win32') fs.rmSync(directory, { recursive: true, force: true });
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 }

@@ -2186,7 +2186,7 @@
     "test": "tests/editor-recovery-changed-base-native.test.js",
     "evidence": "recovery-changed-base-reproducer-linux.log in private execution evidence",
     "observed": "Compiled app silently ignores an inactive same-document recovery copy when saved base differs; original updated document and recovery record remain byte exact",
-    "required": "Windows/macOS native package coverage remains pending; full current Linux regression rerun required",
+    "required": "macOS native package coverage remains pending; portable test readiness update still needs Linux rerun",
     "startupEvidence": "recovery-changed-base-fixed-linux.log: native explicit selection, changed-base warning, recovered text and unchanged external file pass",
     "rustEvidence": "recovery-open-rust-linux.log: 35 passed, 1 ignored helper, exit 0",
     "openEvidence": "recovery-open-native-linux.log: startup and Open explicit recovery; cancellation and file race preserve previous editor root and original/recovery bytes; exit 0",
@@ -2208,7 +2208,8 @@
       "limitation": "Backend compile/unit evidence only; native GUI recovery acceptance remains Linux only"
     },
     "startupRaceEvidence": "recovery-changed-base-startup-races-linux.log: startup cancel/external race and full Open/Save/restart checks pass; exit 0",
-    "ci": "Explicit Linux native test step added to qa.yml; workflow parsed locally, no CI execution or publication"
+    "ci": "Native recovery step now declared on Linux and Windows; workflow parsed locally, no remote CI run",
+    "windowsNativeEvidence": "recovery-changed-base-native-windows.log: interactive scheduled task exit 0; startup/Open cancel, external race, recovery, Save exact CRLF and restart pass; runtime snapshot17f5926"
   },
   "subscriptionStop": {
     "remainingPercentThreshold": 60,
@@ -2216,5 +2217,11 @@
     "lastObservedUsedPercent": 24,
     "source": "current session rate_limits events in local rollout log",
     "actionAtThreshold": "pause at user request and leave documented restart point"
+  },
+  "postRecoveryFullLinux": {
+    "snapshot": "604a062",
+    "exitCode": 0,
+    "result": "green",
+    "evidence": "post-recovery-full-qa-linux.json/log; delegated Finder/Dock does not prove macOS package"
   }
 }
