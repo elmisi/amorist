@@ -2770,5 +2770,14 @@
       ],
       "remaining": "Arbitrary mixed/nested container block conversion, tab-width continuation semantics, cross-row image/link editing and full final contract/native package/platform acceptance remain pending."
     }
+  },
+  "linuxFullQaAfterMultilineClipboard": {
+    "result": "pass",
+    "sourceCommit": "59ad42c",
+    "evidence": [
+      "multiline-current-full-qa-linux.log exit0",
+      "multiline-current-full-qa-linux.json"
+    ],
+    "scope": "Entire declared Linux contract suite, including native document/recovery flows. REQ-H4 Finder/Dock delegated to native macOS package acceptance. Does not close remaining unimplemented Markdown/clipboard requirements or final package/platform gates."
   }
 }
