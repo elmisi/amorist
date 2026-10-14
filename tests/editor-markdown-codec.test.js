@@ -482,4 +482,11 @@ for (const [source, href, title, end] of [
 for (const source of ['[x]:', '[x]: bad)path', '[x]: path "bad', '    [x]: path', '[x]: path trailing', '[x]: path "a\n\nb"']) {
   assert.equal(codec.referenceDefinitionAt(source), null, source);
 }
+const imageSource='![**Alt** 😀](<images/my (photo).png> "Title")';
+const image=codec.tokenizeInline(imageSource)[0];
+assert.equal(image.type,"image");assert.equal(image.alt,"Alt 😀");assert.equal(image.href,"images/my (photo).png");
+assert.equal(image.title,"Title");assert.equal(image.start,0);assert.equal(image.end,imageSource.length);assert.equal(image.contentStart,2);
+assert.equal(codec.tokenizeInline('`![alt](image.png)`')[0].type,"code");
+const imageRef=codec.tokenizeInline('![Straße][]',0,11,0,false,false,definitions)[0];
+assert.equal(imageRef.type,"image");assert.equal(imageRef.href,"notes.md");
 console.log("editor-markdown-codec.test.js passed");

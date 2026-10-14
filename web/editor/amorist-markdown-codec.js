@@ -433,6 +433,10 @@
     return {key: label.key, href: linkValue(source.slice(from, to)), title, end: cursor};
   }
 
+  function inlineText(tokens) {
+    return tokens.map(token=>token.type==="break"?" ":token.type==="image"?token.alt:token.children?inlineText(token.children):token.text||"").join("");
+  }
+
   function containsLink(tokens) {
     return tokens.some(token => token.type === "link" || token.children && containsLink(token.children));
   }
@@ -505,8 +509,9 @@
           }
         }
       }
-      if (!inLink && char === "[") {
-        let closing = cursor + 1, level = 1;
+      if ((!inLink && char === "[") || (char === "!" && source[cursor+1] === "[")) {
+        const image=char==="!", opening=cursor+(image?1:0);
+        let closing = opening + 1, level = 1;
         for (; closing < end; closing += 1) {
           if (source[closing] === "\\") { closing += 1; continue; }
           const code = TextUtils.codeSpanAt(source, closing);
@@ -517,24 +522,24 @@
         if (closing < end && source[closing + 1] === "(") {
           const destination = linkDestinationAt(source, closing + 1, end);
           if (destination) {
-            const children = tokenizeInline(source, cursor + 1, closing, depth + 1, false, true, references);
-            if (!containsLink(children)) {
-              tokens.push({ type: "link", start: cursor, ...destination,
-                contentStart: cursor + 1, contentEnd: closing, children });
+            const children = tokenizeInline(source, opening + 1, closing, depth + 1, false, true, references);
+            if (image || !containsLink(children)) {
+              tokens.push({ type: image?"image":"link", start: cursor, ...destination,
+                contentStart: opening + 1, contentEnd: closing, ...(image?{alt:inlineText(children),text:source.slice(cursor,destination.end)}:{children}) });
               cursor = destination.end; continue;
             }
           }
         }
         if (closing < end && references) {
           const following = referenceLabelAt(source, closing + 1, end);
-          const key = following && !following.empty ? following.key : referenceKey(source.slice(cursor + 1, closing));
+          const key = following && !following.empty ? following.key : referenceKey(source.slice(opening + 1, closing));
           const definition = key && references.get(key);
           if (definition) {
-            const children = tokenizeInline(source, cursor + 1, closing, depth + 1, false, true, references);
-            if (!containsLink(children)) {
+            const children = tokenizeInline(source, opening + 1, closing, depth + 1, false, true, references);
+            if (image || !containsLink(children)) {
               const finish = following ? following.end : closing + 1;
-              tokens.push({type: "link", start: cursor, end: finish, contentStart: cursor + 1,
-                contentEnd: closing, href: definition.href, title: definition.title, referenceKey: key, children});
+              tokens.push({type: image?"image":"link", start: cursor, end: finish, contentStart: opening + 1,
+                contentEnd: closing, href: definition.href, title: definition.title, referenceKey: key, ...(image?{alt:inlineText(children),text:source.slice(cursor,finish)}:{children})});
               cursor = finish; continue;
             }
           }
@@ -578,7 +583,7 @@
 
   function renderInlineTokens(tokens) {
     return tokens.map(token => {
-      if (token.type === "text") return TextUtils.escapeHtml(token.text);
+      if (token.type === "text" || token.type === "image") return TextUtils.escapeHtml(token.text);
       if (token.type === "break") return "<br>";
       if (token.type === "code") return `<code>${TextUtils.escapeHtml(token.text)}</code>`;
       const content = renderInlineTokens(token.children);

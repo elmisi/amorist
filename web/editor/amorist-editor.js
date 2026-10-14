@@ -734,7 +734,7 @@
             parent.append(document.createElement("br"));
             continue;
           }
-          if (token.type === "text" || token.type === "code") {
+          if (token.type === "text" || token.type === "code" || token.type === "image") {
             const leaf = document.createElement(token.type === "code" ? "code" : "span");
             leaf.classList.add("amorist-inline-text");
             leaf.dataset.inlineStart = String(rawStart + (token.type === "code" ? token.contentStart : token.start));
@@ -1409,7 +1409,7 @@
         const visit=tokens=>tokens.forEach(token=> {
           if(token.referenceKey && aliases.has(token.referenceKey)) {
             edits.push({start:base+token.start,end:base+token.end,
-              text:"["+source.slice(token.contentStart,token.contentEnd)+"]["+aliases.get(token.referenceKey)+"]"});
+              text:(token.type==="image"?"!":"")+"["+source.slice(token.contentStart,token.contentEnd)+"]["+aliases.get(token.referenceKey)+"]"});
           } else if(token.children) visit(token.children);
         });
         visit(MarkdownCodec.tokenizeInline(source,0,source.length,0,false,false,incoming.references));
