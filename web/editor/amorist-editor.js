@@ -1328,6 +1328,18 @@
       if(this.mode==="source") return raw.slice(selection.start,selection.end);
       const first=this.descriptorAtRaw(selection.start), last=this.descriptorAtRaw(Math.max(selection.start,selection.end-1));
       let prefix="", suffix="";
+      const body=raw.slice(selection.start,selection.end);
+      if(first?.unitType==="code" && first.codeContent && last?.codeContent
+          && first.unitStart===last.unitStart && first.unitEnd===last.unitEnd) {
+        const ending=this.model.lineEndingAt(selection.start), fence=Internals.TextUtils.codeFenceFor(body);
+        const opening=this.lineDescriptors[first.unitStart];
+        const info=opening.projection.fence ? (opening.raw.match(/^ {0,3}(?:`{3,}|~{3,})(.*)$/)?.[1] || "") : "";
+        return fence+info+ending+body+(/(?:\r\n|\r|\n)$/.test(body)?"":ending)+fence;
+      }
+      if(first?.unitType==="line" && selection.start>=first.start+first.projection.prefix
+          && first.projection.prefix && (first.projection.list || first.projection.tag==="blockquote" || /^h[1-6]$/.test(first.projection.tag))) {
+        prefix=first.raw.slice(0,first.projection.prefix);
+      }
       const edge=(descriptor,offset,opening)=> {
         if(!descriptor || descriptor.unitType!=="line" || descriptor.projection.referenceDefinition) return;
         const projection=descriptor.projection, base=descriptor.start+projection.prefix;

@@ -54,6 +54,14 @@ async function main(){
     return {empty,htmlOnly:editor.getMarkdown()};
    })()`);
    assert.deepEqual(emptyCases,{empty:'keep selection',htmlOnly:'<strong>HTML only</strong> selection'});
+   const structured=await engine.evaluate(`(() => {
+    const editor=window.__clip;editor.showWysiwygMode();const values=[];
+    for(const [source,start,end] of ${JSON.stringify([['# Heading',4,7],['- [x] Task',7,10],['> Quote',3,6],['~~~js\r\ncode body\r\n~~~',8,12]])}) {
+      editor.setMarkdown(source);values.push({fragment:editor.clipboardFragment({start,end}),source:editor.getMarkdown()});
+    }return values;
+   })()`);
+   assert.equal(structured[0].fragment,'# adi');assert.equal(structured[1].fragment,'- [x] ask');assert.equal(structured[2].fragment,'> uot');
+   assert.match(structured[3].fragment,/^`{3,}js\r\node \r\n`{3,}$/);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}
