@@ -11,10 +11,10 @@
     throw new Error("AmoristTableCodec must be loaded before AmoristMarkdownCodec.");
   }
 
-  function renderMarkdown(markdown, references = null) {
+  function renderMarkdown(markdown, references = null, clipboard = false) {
     const blocks = parseBlocks(markdown);
     if (blocks.length === 0) return "<p><br></p>";
-    return blocks.map(block=>renderBlock(block,references)).join("");
+    return blocks.map(block=>renderBlock(block,references,clipboard)).join("");
   }
 
   function parseBlocks(markdown) {
@@ -203,7 +203,7 @@
       (Array.isArray(lines) && TableCodec.isTableStart(lines, index));
   }
 
-  function renderBlock(block, references = null) {
+  function renderBlock(block, references = null, clipboard = false) {
     const attrs = sourceLineAttr(block);
     switch (block.type) {
       case "heading":
@@ -215,26 +215,38 @@
       case "code":
         return `<pre${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "table":
+        if(clipboard) {
+          const cells=line=> {
+            const raw=line.trim(), delimiters=TableCodec.tableDelimiters(raw), result=[];
+            let start=0;
+            for(const at of delimiters) {if(at!==0) result.push(raw.slice(start,at).trim());start=at+1;}
+            if(start<raw.length || !delimiters.length) result.push(raw.slice(start).trim());
+            return result;
+          };
+          const rows=block.text.split("\n");
+          const html=(row,tag)=>"<tr>"+cells(row).map(text=>`<${tag}>${renderInline(text,references)}</${tag}>`).join("")+"</tr>";
+          return "<table><thead>"+html(rows[0],"th")+"</thead><tbody>"+rows.slice(2).map(row=>html(row,"td")).join("")+"</tbody></table>";
+        }
         return `<pre class="amorist-markdown-table" data-block-type="table"${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "taskList":
         return `<ul class="amorist-task-list"${attrs}>${block.items.map((item) =>
-          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text,references)}</span>${renderSublists(item,references)}</li>`,
+          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text,references)}</span>${renderSublists(item,references,clipboard)}</li>`,
         ).join("")}</ul>`;
       case "bulletList":
-        return `<ul${attrs}>${block.items.map(item=>renderListItem(item,references)).join("")}</ul>`;
+        return `<ul${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ul>`;
       case "orderedList":
-        return `<ol${attrs}>${block.items.map(item=>renderListItem(item,references)).join("")}</ol>`;
+        return `<ol${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ol>`;
       default:
         return `<p${attrs}>${renderInline(block.text,references)}</p>`;
     }
   }
 
-  function renderListItem(item, references = null) {
-    return `<li>${renderInline(item.text,references)}${renderSublists(item,references)}</li>`;
+  function renderListItem(item, references = null, clipboard = false) {
+    return `<li>${renderInline(item.text,references)}${renderSublists(item,references,clipboard)}</li>`;
   }
 
-  function renderSublists(item,references = null) {
-    return (item.children || []).map(block=>renderBlock(block,references)).join("");
+  function renderSublists(item,references = null, clipboard = false) {
+    return (item.children || []).map(block=>renderBlock(block,references,clipboard)).join("");
   }
 
   function sourceLineAttr(block) {

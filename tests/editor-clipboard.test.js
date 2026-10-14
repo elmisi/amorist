@@ -93,6 +93,15 @@ async function main(){
     return {html,links:Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination)};
    })()`);
    assert.match(fallback.html,/href="notes.md"/);assert.doesNotMatch(fallback.html,/name.*notes/);assert.deepEqual(fallback.links,['notes.md']);
+   const semanticTable=await engine.evaluate(`(() => {
+    const editor=window.__clip,source=${JSON.stringify('| A | B |\n| --- | --- |\n| one | two |')},data=new Map();
+    editor.setMarkdown(source);editor.selectSurfaceContents();editor.handleCopy({clipboardData:{setData:(type,value)=>data.set(type,value)},preventDefault(){}},false);
+    const html=data.get('text/html');data.delete('application/x-amorist-markdown+json');editor.setMarkdown('');editor.setSurfaceSelection(0,0);
+    editor.handlePaste({clipboardData:{getData:type=>data.get(type)||''},preventDefault(){}});
+    const table=editor.getMarkdown(),numbered=window.AmoristInternals.HtmlToMarkdown.convert('<ol start="5"><li>first</li><li value="12">second</li></ol>');
+    return {html,table,numbered};
+   })()`);
+   assert.match(semanticTable.html,/<table>/);assert.equal(semanticTable.table,'| A | B |\n| --- | --- |\n| one | two |');assert.equal(semanticTable.numbered,'5. first\n12. second');
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

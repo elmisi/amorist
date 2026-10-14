@@ -68,7 +68,9 @@
       // image without alt/src is a silent paste loss.
       Array.from(node.attributes || []).forEach((attr) => {
         const allowed = (tag === "A" && attr.name === "href")
-          || (tag === "IMG" && (attr.name === "src" || attr.name === "alt"));
+          || (tag === "IMG" && (attr.name === "src" || attr.name === "alt"))
+          || (tag === "OL" && attr.name === "start")
+          || (tag === "LI" && attr.name === "value");
         if (!allowed) {
           node.removeAttribute(attr.name);
         }

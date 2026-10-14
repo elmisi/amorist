@@ -1443,7 +1443,7 @@
       }
       const projected=this.buildProjection(markdown);
       const publicSource=projected.filter(row=>!row.projection.referenceDefinition).map(row=>row.raw+row.ending).join("");
-      try {clipboard.setData("text/html",MarkdownCodec.renderMarkdown(publicSource,projected.references));} catch(error) { /* Plain Markdown remains available. */ }
+      try {clipboard.setData("text/html",MarkdownCodec.renderMarkdown(publicSource,projected.references,true));} catch(error) { /* Plain Markdown remains available. */ }
       try {clipboard.setData(CLIPBOARD_TYPE,JSON.stringify({schemaVersion:1,markdown}));} catch(error) { /* Some native clipboards reject custom types. */ }
       if(cut) this.finishClipboardEdit(selection,"","cut");
     }
