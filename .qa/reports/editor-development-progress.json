@@ -52,8 +52,8 @@
     {
       "id": 8,
       "name": "settings-and-active-line",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending."
     },
     {
       "id": 9,
@@ -952,6 +952,38 @@
         ],
         "scope": "13 directed fixtures including native label/destination edits, dependent table refresh, undo and CRLF"
       }
+    },
+    "settingsStoreDevelopment": {
+      "status": "backend persistence implemented; frontend and native preference acceptance pending",
+      "directedRustLinux": {
+        "pass": 2,
+        "fail": 0,
+        "report": "settings-store-rust-env-linux.log"
+      },
+      "fullRustLinux": {
+        "pass": 27,
+        "fail": 0,
+        "ignored": 1,
+        "report": "settings-store-full-rust-linux.log",
+        "ignoredReason": "internal process-test worker invoked explicitly by parent"
+      },
+      "scope": [
+        "declared five-field settings and approved defaults",
+        "font/scale/palette validation",
+        "missing settings use defaults",
+        "malformed original preserved with warning",
+        "invalid saves preserve previous file",
+        "atomic writes through dedicated shared filesystem lock",
+        "concurrent writers and readers observe complete settings",
+        "load/save commands perform filesystem work outside UI thread"
+      ],
+      "remaining": [
+        "Settings dialog and isolated preview",
+        "font scaling and visual-line overlay",
+        "focus reload across processes",
+        "effective settings in Bug reports",
+        "native package acceptance on Linux/macOS/Windows"
+      ]
     }
   }
 }

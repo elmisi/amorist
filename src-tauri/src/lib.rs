@@ -12,6 +12,7 @@ mod file_io;
 mod document;
 mod instances;
 mod native_open;
+mod settings;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
@@ -327,6 +328,20 @@ async fn save_as_document(app: tauri::AppHandle, token: u64, context_id: u64, ma
         Ok(SaveAsResponse { context_id: Some(id), path: path.display().to_string(),
             name: path.file_name().unwrap_or_default().to_string_lossy().into_owned(), exists: true,
             saved: true, recovery_warning })
+    }).await
+}
+
+#[tauri::command]
+async fn load_settings(app: tauri::AppHandle) -> Result<settings::Loaded, String> {
+    run_io(app, |app, _state| {
+        Ok(settings::load(&app.path().app_local_data_dir().map_err(|e| e.to_string())?))
+    }).await
+}
+
+#[tauri::command]
+async fn save_settings(app: tauri::AppHandle, settings: settings::Settings) -> Result<settings::Settings, String> {
+    run_io(app, move |app, _state| {
+        settings::save(&app.path().app_local_data_dir().map_err(|e| e.to_string())?, settings)
     }).await
 }
 
@@ -1050,6 +1065,8 @@ pub fn run() {
             persist_working_copy,
             discard_working_copy,
             select_recovery,
+            load_settings,
+            save_settings,
             get_version,
             debug_enabled,
             report_problem,
