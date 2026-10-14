@@ -1686,7 +1686,7 @@
     }
   },
   "openerIntegrationDevelopment": {
-    "status": "Linux build passed; backend validation and UI integration pending",
+    "status": "implemented link routing, heading anchors and shared dialog; directed Linux and cross-platform Rust checks passed; full native acceptance pending",
     "version": "2.5.3 exact pin",
     "linuxBuildEvidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/opener-build-linked-linux.log",
     "javascriptLinkInterception": false,
@@ -1863,19 +1863,30 @@
       }
     ],
     "remaining": [
-      "validated backend command",
-      "Ctrl/Cmd click and same-document heading behavior",
-      "local Markdown new instance and heading anchor",
-      "accessible shared link dialog",
-      "Windows/macOS compatibility",
+      "native system browser/file dispatch acceptance",
+      "native local Markdown second-window and parent viewport proof",
+      "native keyboard dialog acceptance on all platforms",
+      "Windows/macOS GUI compatibility",
       "three package byte deltas",
-      "native activation acceptance"
+      "full package activation acceptance"
     ],
     "backendCommands": {
       "resolve_link": "validates current context before and after filesystem resolution; returns typed destination",
       "open_external_link": "resolves reference again and opens only allowed URLs or existing non-Markdown files through backend Opener; other destinations rejected",
       "rustEvidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/external-link-command-rust-linux.log",
       "scope": "full Linux Rust suite; actual OS opener dispatch acceptance still pending"
+    },
+    "linkVerification": {
+      "sourceSnapshot": "27e86ab",
+      "sourceSha256": "34496acbc30e6775dc0d862b89de8bcca489c395391eaaeb23202e26435104c4",
+      "evidenceDirectory": "/home/alessandro/.local/state/amorist/execution-20261013-1932",
+      "linuxBrowser": "link-reference-dialog-browser-linux.log; both engines pass activation, heading navigation, dialog cancel/save/undo, inline and shared reference destination edits",
+      "linuxNative": "link-click-native-linux.log; startup Unicode anchor, one-use consumption, same-document anchor, missing path error, no file creation or original modification",
+      "linuxClassic": "link-classic-linux.log: 14 passed plus stale prompt fixture failure; unchanged expected Markdown passes after dialog drive update in link-toolbar-dialog-linux.log",
+      "linuxRust": "link-context-launch-rust-linux.log: 35 passed, 1 internal worker ignored",
+      "macosRust": "link-candidate-rust-macos.log: 36 passed, 1 internal worker ignored",
+      "windowsRust": "link-candidate-rust-windows.log: 34 passed, 1 internal worker ignored; cargo exit 0",
+      "scopeLimit": "Source-development evidence; not published webview/package acceptance"
     }
   }
 }
