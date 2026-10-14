@@ -2875,6 +2875,20 @@
       ],
       "diagnostics": "Original geometry failures preserved: generic block background shorthand and smaller inherited wrapper font caused absent bars and indentation drift. Separate fixture-precondition failure (settings defaults module not loaded) preserved; final fixture loads actual settings.js.",
       "remaining": "Code beginning directly on a list marker, arbitrary alternating nested containers, literal tab overshoot semantics and final full native/package/platform acceptance remain pending."
+    },
+    "selectedCodeIndentation": {
+      "implemented": "Selections confined to code indent literal content after its raw container prefix. When an ancestor list item is selected, all descendants still move with the containing list rather than being treated as isolated code.",
+      "verified": [
+        "GTK/Chromium visual and source modes: Tab/ShiftTab over two selected CRLF code rows preserves quote/list prefixes and backward selection; two undos restore exact source and selection",
+        "Parent quoted list item Tab moves nested fence/content/closing rows, retains code classification and leaves sibling unchanged",
+        "Code context, journal and prose Enter regressions pass"
+      ],
+      "evidence": [
+        "quoted-selected-code-indent-before-linux.log reproduces quote marker indentation",
+        "quoted-selected-code-indentation-linux.log pass4 fail0 skip0",
+        "quoted-code-parent-subtree-indentation-linux.log exit0 GTK/Chromium"
+      ],
+      "remaining": "Final full regression and native/package/platform acceptance still pending after this runtime change."
     }
   },
   "linuxRegressionAfterQuotedContainersAndLinks": {

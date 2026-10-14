@@ -81,7 +81,20 @@ async function main() {
           assert.deepEqual(await state(),{source:quotedIndented,selection:{start:quotedAt+2,end:quotedEnd+6},direction:"backward"},`${entry.id}/${mode}: quoted subtree preserves oriented selection`);
           await engine.evaluate("(() => {window.__indent.undo();return true;})()");assert.deepEqual(await state(),{source:quoted,selection:{start:quotedAt,end:quotedEnd},direction:"backward"});
           const code="before\r```\r    literal\r```\rafter";
+          for(const [quotedCode,prefix] of [['> ````js\r\n> first literal\r\n> second literal\r\n> ````\r\noutside','> '],['> - parent\r\n>   ````js\r\n>   first literal\r\n>   second literal\r\n>   ````\r\n> - sibling','>   ']]){
+            const start=quotedCode.indexOf('first')+1,end=quotedCode.indexOf('second')+6;
+            await mount(quotedCode,start,end,true);await sendKeys([{key:'Tab'}]);
+            const expected=quotedCode.replace(prefix+'first',prefix+'  first').replace(prefix+'second',prefix+'  second');
+            assert.deepEqual(await state(),{source:expected,selection:{start:start+2,end:end+4},direction:'backward'},`${entry.id}/${mode}: selected code indents literal text within quote/container`);
+            await sendKeys([{key:'Tab',shift:true}]);assert.equal((await state()).source,quotedCode);
+            await engine.evaluate('(()=>{window.__indent.undo();window.__indent.undo();return true;})()');assert.deepEqual(await state(),{source:quotedCode,selection:{start,end},direction:'backward'});
+          }
           const codeAt=code.indexOf('literal')+3;
+          const codeSubtree='> - parent\r\n>   ````js\r\n>   first literal\r\n>   ````\r\n> - sibling';
+          const codeSubtreeExpected='>   - parent\r\n>     ````js\r\n>     first literal\r\n>     ````\r\n> - sibling';
+          await mount(codeSubtree,codeSubtree.indexOf('parent')+1);await sendKeys([{key:'Tab'}]);assert.equal((await state()).source,codeSubtreeExpected,`${entry.id}/${mode}: parent list indentation moves code container and preserves sibling`);
+          assert.equal(await engine.evaluate('window.__indent.lineDescriptors.filter(row=>row.codeContent).length'),1,`${entry.id}/${mode}: nested code remains classified after parent indentation`);
+          await sendKeys([{key:'Tab',shift:true}]);assert.equal((await state()).source,codeSubtree);
           await mount(code,codeAt);await sendKeys([{key:"Tab"}]);
           assert.equal((await state()).source,code.slice(0,codeAt)+"  "+code.slice(codeAt));
           assert.deepEqual((await state()).selection,{start:codeAt+2,end:codeAt+2});

@@ -1719,6 +1719,7 @@
       }
       let firstIndex = first.index, lastIndex = last.index;
       const quoteDepths=new Map();
+      const subtreeRows=new Set();
       for (let index = first.index; index <= last.index; index += 1) {
         const ownerIndex = ownerAt(descriptors[index]);
         if (ownerIndex === undefined) continue;
@@ -1738,13 +1739,16 @@
           end = next;
         }
         lastIndex = Math.max(lastIndex, end);
+        for(let row=ownerIndex;row<=end;row++)subtreeRows.add(row);
         if(depth)for(let row=ownerIndex;row<=end;row++)quoteDepths.set(row,Math.min(quoteDepths.get(row)??Infinity,depth));
       }
       const edits = [];
       for (let index = firstIndex; index <= lastIndex; index += 1) {
         const row = descriptors[index];
         const depth=quoteDepths.get(index);
-        const outer=depth?quotePrefix(row.raw,depth):row.projection.quoteContainerPrefix||"";
+        const outer=depth?quotePrefix(row.raw,depth)
+          :row.unitType==="code"&&!subtreeRows.has(index)?row.containerPrefix||""
+          :row.projection.quoteContainerPrefix||"";
         const prefix=outer?.length||0;
         const removed = outdent ? (row.raw.slice(prefix).match(/^(?:\t| {1,2})/) || [""])[0].length : 0;
         const inserted = outdent ? "" : "  ";
