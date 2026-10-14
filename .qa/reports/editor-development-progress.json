@@ -2267,13 +2267,36 @@
     "remaining": "Clean package installation/upgrade, AppImage self-contained loader, absent decoder simulation and full package acceptance remain pending"
   },
   "linuxAppImageAvif": {
-    "state": "packaging-running",
+    "state": "built-with-codec-gap",
     "handle": 99248,
     "binarySnapshot": "eb9087161729bbed2d9d25d9913af28fff25d08b",
     "initialFailure": "GTK linuxdeploy plugin cannot query librsvg-2.0 libdir because private build environment lacks librsvg-2.0.pc",
     "preparation": "librsvg2-dev 2.61.3+dfsg-3ubuntu0.1 downloaded and extracted into private tools/root, no system installation; pkg-config libdir now resolves /usr/lib/x86_64-linux-gnu",
-    "evidence": "avif-appimage-bundle-verbose-linux.log and avif-appimage-bundle-rsvg-linux.log",
-    "remaining": "Inspect artifact, ensure libheif AV1 plugin and dependencies are bundled and loaded independently of host; native package image proof remains required",
-    "deliveryBlocked": true
+    "evidence": "avif-appimage-bundle-rsvg-linux.log exit0; completed AppDir inspected; AV1 plugin absent",
+    "remaining": "Bundle libheif AV1 plugin/dependencies and set package-local decoder lookup; native acceptance without host decoder still required; no AppImage acceptance claimed",
+    "deliveryBlocked": true,
+    "exitCode": 0,
+    "sha256": "fb79644d9e33793bd589283d448f058e78b76eacbed96d61edb2e3ffe6e60de4",
+    "included": [
+      "libpixbufloader-heif.so",
+      "libheif.so.1"
+    ],
+    "missing": [
+      "libheif AV1 decoder plugin",
+      "AV1 decoder plugin library dependencies"
+    ],
+    "headless": {
+      "exitCode": 0,
+      "identity": {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:0274da05d8e6ace3de06e654ca4949015376a103",
+        "fingerprint": "0274da05d8e6ace3de06e654ca4949015376a103",
+        "commit": "eb9087161729bbed2d9d25d9913af28fff25d08b",
+        "target": "x86_64-unknown-linux-gnu",
+        "dirty": false
+      },
+      "evidence": "appimage-avif-headless.log and appimage-avif-build-info.json; self-extract-and-run path"
+    }
   }
 }
