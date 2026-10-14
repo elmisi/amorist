@@ -10,6 +10,7 @@ use tauri_plugin_cli::CliExt;
 mod recovery;
 mod file_io;
 mod document;
+mod instances;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
@@ -70,6 +71,23 @@ fn install_read_context(state: &AppState, saved: &str, recovered: bool) -> u64 {
 #[tauri::command]
 fn debug_enabled(state: State<AppState>) -> bool {
     *state.debug.lock().unwrap()
+}
+
+#[tauri::command]
+async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>) -> Result<u32, String> {
+    run_io(app, move |_app, state| {
+        let file = path.map(|path| document::Prepared::open(std::path::Path::new(&path)).map(|doc| doc.path))
+            .transpose()?.flatten();
+        #[cfg(not(target_os = "linux"))]
+        let executable = std::env::current_exe().map_err(|e| e.to_string())?;
+        #[cfg(target_os = "macos")]
+        let bundle = instances::macos_bundle(&executable);
+        #[cfg(not(target_os = "macos"))]
+        let bundle = None;
+        #[cfg(target_os = "linux")]
+        let executable = PathBuf::from(exec_path()?);
+        instances::Launch::prepare(executable, bundle, file.as_deref(), *state.debug.lock().unwrap()).spawn()
+    }).await
 }
 
 fn append_debug_record(path: &std::path::Path, report: &serde_json::Value, locks: &std::path::Path) -> Result<(), String> {
@@ -1006,6 +1024,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             read_document,
+            spawn_document_instance,
             create_document,
             open_document,
             inspect_open_document,

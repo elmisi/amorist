@@ -21,7 +21,7 @@ function runTauriAppChecks() {
 }
 
 async function runOnce() {
-  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], F2: [], H1: [], H2: [], fixtures: [] };
+  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], F2: [], H1: [], H2: [], H3: [], fixtures: [] };
   if (process.platform !== "linux") {
     // Not a gap: tauri-driver drives the compiled application on Linux only,
     // so the contract's app-embedding verdict is assigned to the Linux run by
@@ -43,6 +43,7 @@ async function runOnce() {
     results.F2.push(failure);
     results.H1.push(failure);
     results.H2.push(failure);
+    results.H3.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -59,6 +60,7 @@ async function runOnce() {
     results.F2.push(failure);
     results.H1.push(failure);
     results.H2.push(failure);
+    results.H3.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -82,6 +84,7 @@ async function runOnce() {
     results.F2.push(failure);
     results.H1.push(failure);
     results.H2.push(failure);
+    results.H3.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -228,6 +231,8 @@ async function runOnce() {
     results.fixtures.push("built app: edits made while Save waits for its process lock remain dirty and recoverable after the captured snapshot is saved");
     await verifyFileLifecycle(driver, scratch);
     results.fixtures.push("built app: File lifecycle picker/choice cancellation, undo preservation, failed Open/Save, New/Discard, New/Save and successful Open");
+    await verifyIndependentInstances(driver, scratch);
+    results.fixtures.push("built app: independent instances preserve dirty source/recovery, inherit debug and survive parent closure");
     await verifySaveAsLifecycle(driver, scratch);
     results.fixtures.push("built app: Save As lifecycle cancellation, destination races, denied write, retained history, new identity and untitled Save/New");
   } catch (error) {
@@ -251,6 +256,7 @@ async function runOnce() {
     results.F2.push(failure);
     results.H1.push(failure);
     results.H2.push(failure);
+    results.H3.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -281,6 +287,74 @@ async function decision(engine, choice) {
   if (choice === "escape") await engine.sendKeys([{ key: "Escape" }]);
   else await engine.evaluate(`document.getElementById('file-decision-${choice}').click()`);
   await delay(60);
+}
+
+async function verifyIndependentInstances(driver, scratch) {
+  const data = path.join(scratch, "instances-data");
+  const original = path.join(scratch, "instance original.md");
+  const target = path.join(scratch, "--other caffè Ω $(literal).md");
+  fs.writeFileSync(original, "original");
+  fs.writeFileSync(target, "other document");
+  let engine = null;
+  const children = new Set();
+  function instanceProcesses() {
+    return fs.readdirSync("/proc").filter((entry) => /^\d+$/.test(entry)).map(Number).filter((pid) => {
+      try {
+        return fs.realpathSync(`/proc/${pid}/exe`) === APPLICATION &&
+          fs.readFileSync(`/proc/${pid}/environ`, "utf8").split("\0").includes("XDG_DATA_HOME=" + data);
+      } catch { return false; }
+    });
+  }
+  async function launched(action) {
+    const before = new Set(instanceProcesses());
+    await fileAction(engine, action);
+    let pid;
+    await waitUntil(() => { pid = instanceProcesses().find((pid) => !before.has(pid)); return !!pid; }, 5000, "new independent process");
+    children.add(pid);
+    return fs.readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean);
+  }
+  try {
+    engine = new TauriEngine(driver, APPLICATION, ["--debug", original], { ...process.env, XDG_DATA_HOME: data });
+    await engine.start();
+    await waitForEditor(engine, "original");
+    await appendInSource(engine, " unsaved");
+    const directory = path.join(data, "amorist", "recovery-sessions");
+    await waitForRecovery(directory, "original unsaved", 5000);
+    await engine.evaluate(`(() => { window.__qaInstanceSource = document.querySelector('.amorist-editor-source');
+      window.__TAURI__.dialog.open = function () { return Promise.resolve(null); }; })()`);
+    const count = instanceProcesses().length;
+    await fileAction(engine, "open-window");
+    if (instanceProcesses().length !== count) throw new Error("Cancelled picker launched a process.");
+    const rejected = await engine.evaluate(`window.__TAURI__.core.invoke('spawn_document_instance', {path: ${JSON.stringify(target + ".missing")}}).then(() => false, () => true)`);
+    if (!rejected) throw new Error("Invalid new-window target was accepted.");
+    await engine.evaluate(`window.__TAURI__.dialog.open = function () { return Promise.resolve(${JSON.stringify(target)}); }`);
+    const args = await launched("open-window");
+    if (!args.includes("--debug") || args[args.length - 1] !== target || args[args.length - 2] !== "--") {
+      throw new Error("New instance changed filename arguments or debug mode: " + JSON.stringify(args));
+    }
+    const emptyArgs = await launched("new-window");
+    if (emptyArgs.length !== 2 || emptyArgs[1] !== "--debug") throw new Error("New window inherited a file unexpectedly.");
+    const unchanged = await engine.evaluate(`({same: window.__qaInstanceSource === document.querySelector('.amorist-editor-source'),
+      dialog: !!document.querySelector('dialog[open]'), path: document.getElementById('file-path').textContent})`);
+    if (!unchanged.same || unchanged.dialog || unchanged.path !== original || (await editorSnapshot(engine)).source !== "original unsaved"
+        || !recoveryRecords(directory).some((record) => record.unsavedSource === "original unsaved")) {
+      throw new Error("New window changed the original dirty session.");
+    }
+    await engine.crashApplication();
+    await engine.close(); engine = null;
+    await delay(300);
+    for (const pid of children) {
+      if (!instanceProcesses().includes(pid)) throw new Error("Child exited with its launching window.");
+    }
+    if (fs.readFileSync(original, "utf8") !== "original" || fs.readFileSync(target, "utf8") !== "other document") {
+      throw new Error("Launching another window wrote a document.");
+    }
+  } finally {
+    if (engine) await engine.close().catch(() => {});
+    for (const pid of children) {
+      try { process.kill(pid, "SIGKILL"); } catch (error) { if (error.code !== "ESRCH") throw error; }
+    }
+  }
 }
 
 async function verifySaveAsLifecycle(driver, scratch) {

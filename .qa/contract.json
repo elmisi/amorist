@@ -517,6 +517,19 @@
       "risks": [
         "R-009"
       ]
+    },
+    {
+      "id": "REQ-H3",
+      "statement": "New window and Open in new window launch an independent process without changing or prompting to discard the original document. The same package and debug mode are inherited, with filenames passed as structured arguments.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "H",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-009"
+      ]
     }
   ]
 }

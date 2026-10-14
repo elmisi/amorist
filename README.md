@@ -12,6 +12,9 @@ Launch `amorist` without a path to start an untitled document. The **File** menu
 provides **New**, **Open**, **Save As**, and **Reload**. Save on an untitled
 document asks for a destination; no Markdown file is created before saving.
 Save As keeps the editor's history and leaves the previous file in place.
+**New window** starts another untitled document; **Open in new window** chooses
+a Markdown file for another process. Both preserve the current document and
+inherit `--debug`. Each window has its own recovery session.
 
 The standalone app uses a system webview (Tauri 2) with a Rust backend — single binary, no Python, no Electron. The editor is a small vanilla JavaScript component built for this project, so Markdown stays the source of truth.
 

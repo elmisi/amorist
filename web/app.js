@@ -78,6 +78,7 @@
         return doc;
       },
       async inspectOpen(path) { return invoke("inspect_open_document", { path: path, contextId: contextId }); },
+      spawnInstance(path) { return invoke("spawn_document_instance", { path: path || null }); },
       async openDocument(path, discard, recovery) {
         var doc = await invoke("open_document", { path: path, discard: discard, recoveryChoice: recovery, contextId: contextId });
         contextId = doc.contextId;

@@ -59,6 +59,12 @@
       buttons.forEach(function (button) { button.disabled = true; });
       try {
         if (action === "save-as") return await saveAsOperation();
+        if (action === "new-window" || action === "open-window") {
+          var windowPath = action === "open-window" ? await options.backend.chooseOpen(options.getPath()) : null;
+          if (action === "open-window" && !windowPath) return false;
+          await options.backend.spawnInstance(windowPath);
+          return true;
+        }
         var path = null;
         if (action === "open") {
           path = await options.backend.chooseOpen(options.getPath());

@@ -17,4 +17,11 @@ module.exports = [{
       fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("Save As lifecycle")),
       delegated: app.delegated ? [app.delegated] : [] };
   },
+}, {
+  id: "REQ-H3", scope: "run", title: "Independent windows preserve the launching session",
+  async run() {
+    const app = await runTauriAppChecks();
+    return { failures: app.H3, fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("independent instances")),
+      delegated: app.delegated ? [app.delegated] : [] };
+  },
 }];

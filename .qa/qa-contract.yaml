@@ -1633,3 +1633,32 @@ requirements:
       Linux automation drives the built application with controlled chooser and
       confirmation results. Actual native chooser interaction on each published
       platform remains required by the package acceptance gates.
+
+  - id: REQ-H3
+    statement: >
+      New window and Open in new window launch an independent process without
+      changing or prompting to discard the original document. The same package
+      and debug mode are inherited, with filenames passed as structured arguments.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Separate windows must preserve unsaved work and survive closure of their launcher.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - native launch from a dirty editor with original source and recovery retained
+        - separate process arguments for Unicode/spaces and inherited debug mode
+        - child remains alive after the launching window closes
+      success_condition: >
+        Launch cancellation or failure preserves the original session. Successful
+        launch uses an independent process and does not require a dirty-document decision.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Linux native automation checks process isolation and launch arguments.
+      AppImage, Windows and macOS bundle launch, Finder events and rendered
+      child-document acceptance remain separate mandatory package gates.

@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- New window and Open in new window launch another process with inherited debug
+  mode and structured filename arguments, preserving the original dirty session.
+  Launches use the original AppImage or executable, and `open -n` for macOS bundles.
 - Save As and untitled Save use a native destination chooser, retain editor
   history, and change path/title only after successful writing. Cancellation,
   access denial and a destination changed during confirmation preserve the old

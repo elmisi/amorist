@@ -41,19 +41,20 @@ generated; the contract is the source of truth.
 | `REQ-G3` | Every report names the engines actually exercised, and names any published platform that… | R-017, R-021 | manual | advisory | manual | low | low | RED today |
 | `REQ-H1` | New and Open change the current document only after successful preparation and the requir… | R-009 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-H2` | Save As preserves the current editor, history and recovery on cancellation or failure. Su… | R-009 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-H3` | New window and Open in new window launch an independent process without changing or promp… | R-009 | deterministic | blocking | full | medium | low | RED today |
 
 ## Reading this table
 
 **State** is measured against the repository at commit a9d7e73, not assumed:
-8 requirements hold today, 1 holds partially, 23 fail. The suite is
+8 requirements hold today, 1 holds partially, 24 fail. The suite is
 expected to be red on first run — the contract specifies the editor that must
 exist, not the one that does.
 
-**Gate**: 31 blocking, 1 advisory. A blocking failure stops
+**Gate**: 32 blocking, 1 advisory. A blocking failure stops
 publication of a release; it does not stop a commit, a merge or a push
 (`G-PUSH` in the contract).
 
-**Verification**: 31 deterministic, 1 manual. No requirement is verified by
+**Verification**: 32 deterministic, 1 manual. No requirement is verified by
 a model. The runner never calls one, so a red result always means the code is
 wrong — never that a service was unavailable or a model was inconsistent.
 
