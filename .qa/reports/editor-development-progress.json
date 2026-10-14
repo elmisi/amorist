@@ -1870,6 +1870,12 @@
       "Windows/macOS compatibility",
       "three package byte deltas",
       "native activation acceptance"
-    ]
+    ],
+    "backendCommands": {
+      "resolve_link": "validates current context before and after filesystem resolution; returns typed destination",
+      "open_external_link": "resolves reference again and opens only allowed URLs or existing non-Markdown files through backend Opener; other destinations rejected",
+      "rustEvidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/external-link-command-rust-linux.log",
+      "scope": "full Linux Rust suite; actual OS opener dispatch acceptance still pending"
+    }
   }
 }

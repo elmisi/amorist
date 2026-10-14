@@ -337,6 +337,29 @@ async fn save_as_document(app: tauri::AppHandle, token: u64, context_id: u64, ma
 }
 
 #[tauri::command]
+async fn open_external_link(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    run_io(app, move |app, state| {
+        let document = {
+            let path = state.file_path.lock().unwrap();
+            require_context(state, context_id)?;
+            path.clone()
+        };
+        let destination = links::resolve(&reference, document.as_deref())?;
+        let _guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        match destination {
+            links::Destination::Url(url) => app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string()),
+            links::Destination::File(path) => {
+                let path = path.into_os_string().into_string().map_err(|_| "The link path is not valid Unicode.".to_string())?;
+                app.opener().open_path(path, None::<&str>).map_err(|e| e.to_string())
+            }
+            _ => Err("This destination requires editor navigation.".into()),
+        }
+    }).await
+}
+
+#[tauri::command]
 async fn resolve_link(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<links::Destination, String> {
     run_io(app, move |_app, state| {
         let document = {
@@ -1121,6 +1144,7 @@ pub fn run() {
             select_recovery,
             register_image,
             resolve_link,
+            open_external_link,
             load_settings,
             save_settings,
             get_version,
