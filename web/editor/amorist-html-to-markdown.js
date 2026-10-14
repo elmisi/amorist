@@ -89,6 +89,8 @@
       return `${fence}\n${text}${text.endsWith("\n") ? "" : "\n"}${fence}\n\n`;
     }
     const children = () => Array.from(node.childNodes).map(nodeToSource).join("");
+    if (/^H[1-6]$/.test(tag)) return "#".repeat(Number(tag.slice(1)))+" "+children().trim().replace(/\n/g," ")+"\n\n";
+    if (tag === "BLOCKQUOTE") return children().trim().split("\n").map(line=>">"+(line?" "+line:"")).join("\n")+"\n\n";
     if (tag === "BR") return "\n";
     if (tag === "STRONG" || tag === "B") return `**${children()}**`;
     if (tag === "EM" || tag === "I") return `*${children()}*`;

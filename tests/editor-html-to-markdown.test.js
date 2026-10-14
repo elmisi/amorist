@@ -53,4 +53,6 @@ const nested=el("OL",[
  el("LI",[text("next")]),
 ],{start:"5"});
 assert.equal(H._cleanupMarkdown(H._nodeToSource(nested)),"5. parent\n   - nested\n12. explicit\n13. next");
+assert.equal(H._cleanupMarkdown(H._nodeToSource(el("H2",[text("Title"),el("EM",[text(" styled")])]))),"## Title* styled*");
+assert.equal(H._cleanupMarkdown(H._nodeToSource(el("BLOCKQUOTE",[el("P",[text("first")]),el("BLOCKQUOTE",[el("P",[text("nested")])])]))),"> first\n>\n> > nested");
 console.log("html-to-markdown pure helpers OK");
