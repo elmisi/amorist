@@ -506,10 +506,10 @@ fn load_recovery_into(app: &tauri::AppHandle, session: &Mutex<Option<recovery::S
     let listing = store.list()?;
     warnings.extend(listing.warnings);
     let mut candidates: Vec<_> = listing.candidates.into_iter()
-        .filter(|c| !c.active && c.record.path == path && c.record.saved_source == saved
-            && c.record.unsaved_source != saved)
+        .filter(|c| !c.active && c.record.path == path
+            && c.record.unsaved_source != c.record.saved_source && c.record.unsaved_source != saved)
         .map(|c| c.record).collect();
-    if candidates.len() == 1 {
+    if candidates.len() == 1 && candidates[0].saved_source == saved {
         let record = candidates.pop().unwrap();
         *owner = Some(store.claim(&record.session_id)?);
         *checked = true;
@@ -613,7 +613,7 @@ fn select_recovery_inner(app: &tauri::AppHandle, state: &AppState, session_id: S
     let store = recovery_store(&app)?;
     let session = store.claim(&session_id)?;
     let record = store.read(&session_id)?.ok_or("Recovery copy is no longer available.")?;
-    if record.path != expected_path || record.saved_source != saved {
+    if record.path != expected_path || saved != *state.saved_source.lock().unwrap() {
         return Err("Recovery belongs to another document or the saved file changed.".into());
     }
     *state.recovery_session.lock().unwrap() = Some(session);

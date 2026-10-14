@@ -397,11 +397,15 @@
   async function adoptDocument(doc) {
       if (nativeOpen && (doc.path || doc.recoveryMarkdown != null || (doc.recoveryCandidates || []).length)) nativeOpen.claim();
       if (doc.recoveryCandidates && doc.recoveryCandidates.length) {
-        var selected = await chooseRecovery(doc.recoveryCandidates);
+        var selected = await chooseRecovery(doc.recoveryCandidates, false, doc.markdown || "");
         if (selected) {
           var recoveredCopy = await backend.selectRecovery(selected);
           doc.recoveryMarkdown = recoveredCopy.unsavedSource;
           doc.recoveryBoundaryState = recoveredCopy.boundaryState;
+          if (recoveredCopy.savedSource !== (doc.markdown || "")) {
+            doc.recoveryWarnings = (doc.recoveryWarnings || []).concat(
+              "The saved file changed since this recovery copy was made. Recovery does not merge those changes. Use Save As to keep both versions.");
+          }
         }
       }
       state.savedMarkdown = doc.markdown || "";
@@ -435,7 +439,7 @@
       backend.setWindowTitle(doc.name || "");
   }
 
-  function chooseRecovery(copies, cancellable) {
+  function chooseRecovery(copies, cancellable, savedSource) {
     return new Promise(function (resolve) {
       var dialog = document.createElement("dialog");
       dialog.id = "recovery-dialog";
@@ -444,14 +448,19 @@
       title.id = "recovery-title";
       title.textContent = "Choose unsaved work to recover";
       var description = document.createElement("p");
-      description.textContent = "Several copies are available. The other copies will be kept.";
+      var changedBase = savedSource !== undefined && copies.some(function(copy) { return copy.savedSource !== savedSource; });
+      description.textContent = changedBase
+        ? "The saved file changed since the recovery copy was made. Recovering does not merge those changes or write the file. Use Save As to keep both versions. Other copies will be kept."
+        : "Choose a recovery copy. The other copies will be kept.";
       var select = document.createElement("select");
       select.id = "recovery-choice";
       select.setAttribute("aria-label", "Available recovery copies");
       copies.forEach(function (copy, index) {
         var option = document.createElement("option");
         option.value = copy.sessionId;
-        option.textContent = "Copy " + (index + 1) + ": " + copy.unsavedSource.slice(0, 120).replace(/\s+/g, " ");
+        option.textContent = "Copy " + (index + 1)
+          + (savedSource !== undefined && copy.savedSource !== savedSource ? " (saved file changed)" : "")
+          + ": " + copy.unsavedSource.slice(0, 120).replace(/\s+/g, " ");
         select.appendChild(option);
       });
       var actions = document.createElement("div");

@@ -37,6 +37,17 @@ async function main() {
     assert.equal(fs.readFileSync(file, 'utf8'), disk, 'Opening must preserve the externally updated file');
     assert.equal(fs.readFileSync(recordPath, 'utf8'), record, 'The old recovery copy must remain intact');
     assert.equal(ready.dialog, true, 'A recovery copy with a changed saved base must be offered explicitly instead of silently ignored');
+    assert.match(await engine.evaluate(`document.querySelector('#recovery-dialog p').textContent`), /saved file changed.*does not merge/i);
+    await engine.evaluate(`document.getElementById('recover-selected').click()`);
+    const adoptedDeadline = Date.now() + 5000;
+    while (!await engine.evaluate(`!!document.querySelector('.amorist-source-line')`)) {
+      assert.ok(Date.now() < adoptedDeadline, 'Chosen recovery must be adopted');
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    assert.match(await engine.evaluate(`document.querySelector('.amorist-editor-surface').textContent`), /Original document with unsaved work/);
+    assert.match(await engine.evaluate(`document.getElementById('notice').textContent`), /saved file changed/i);
+    assert.equal(fs.readFileSync(file, 'utf8'), disk, 'Recovery must not overwrite the external changes');
+    console.log('Changed-base startup recovery: explicit choice, warning, exact recovered text and unchanged file passed');
   } finally {
     await engine.close();
     fs.rmSync(scratch, { recursive: true, force: true });
