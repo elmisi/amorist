@@ -334,7 +334,9 @@
       whitespace();
     }
     if (invalidWhitespace || cursor >= end || source[cursor] !== ")") return null;
-    return {href: linkValue(source.slice(from, to)), title, end: cursor + 1};
+    const result = {href: linkValue(source.slice(from, to)), title, end: cursor + 1};
+    Object.defineProperties(result,{destinationStart:{value:from},destinationEnd:{value:to}});
+    return result;
   }
 
   // Unicode default case folding; generated from Python str.casefold.

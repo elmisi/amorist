@@ -33,6 +33,14 @@ async function main(){
     const result=editor.getMarkdown();editor.undo();return {focused,unchanged,result,undo:editor.getMarkdown(),removed:!document.querySelector('.amorist-link-dialog')};
    })()`);
    assert.deepEqual(dialog,{focused:true,unchanged:'Label',result:'[Label](../note.md#title)',undo:'Label',removed:true});
+   const edited=await engine.evaluate(`(async()=>{
+    const raw='Before [**Label**](<old path.md> "Title") after\\r\\n';
+    const editor=window.AmoristEditor.create(document.getElementById('host'),{value:raw});editor.setSurfaceSelection(12,12);
+    const pending=editor.runAction('link');const form=document.querySelector('.amorist-link-dialog form'),initial=form.querySelector('input').value;
+    form.querySelector('input').value='../new.md#heading';form.dispatchEvent(new Event('submit',{cancelable:true}));await pending;
+    const source=editor.getMarkdown();editor.undo();return {initial,source,undo:editor.getMarkdown()};
+   })()`);
+   assert.deepEqual(edited,{initial:'old path.md',source:'Before [**Label**](<../new.md#heading> "Title") after\r\n',undo:'Before [**Label**](<old path.md> "Title") after\r\n'});
    console.log(`link activation: ${entry.id} passed`);
   }finally{await engine.close();}
  }}finally{await server.stop();}

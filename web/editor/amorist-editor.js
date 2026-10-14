@@ -1636,10 +1636,35 @@
       this.finishClipboardEdit(selection,String(replacement),plainOnly?"paste-plain":"paste");
     }
 
+    editExistingLink(selection) {
+      for(const descriptor of this.lineDescriptors) {
+        for(const {text,base} of this.clipboardInlineChunks(descriptor)) {
+          let found=null;
+          const visit=tokens=>tokens.forEach(token=> {
+            if(token.type==="link" && !token.referenceKey && selection.start>=base+token.contentStart && selection.end<=base+token.contentEnd) {
+              const destination=MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
+              if(destination) found={destination,base};
+            }
+            if(token.children) visit(token.children);
+          });
+          visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,this.lineDescriptors.references));
+          if(!found) continue;
+          const before=this.model.source,{destination}=found;
+          return window.AmoristInternals.EditingPolicy.requestLink(destination.href).then(href=> {
+            if(!href || !this.root.isConnected || this.model.source!==before) return;
+            const escaped=href.replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[()<>]/g,"\\$&").replace(/[ \t\r\n]/g,encodeURIComponent);
+            this.apply(base+destination.destinationStart,base+destination.destinationEnd,escaped,"link-destination");
+          });
+        }
+      }
+      return null;
+    }
+
     runAction(action) {
       if (action === "source") return this.mode === "source" ? this.showWysiwygMode() : this.showSourceMode();
       if (this.mode === "source") this.showWysiwygMode();
       const sel = this.selectionRaw();
+      if(action==="link") {const pending=this.editExistingLink(sel);if(pending) return pending;}
       const selected = this.model.source.slice(sel.start, sel.end);
       const wraps = { bold: ["**", "**"], italic: ["*", "*"], code: ["`", "`"] };
       if (wraps[action] && selected) this.apply(sel.start, sel.end, wraps[action][0] + selected + wraps[action][1], action);
