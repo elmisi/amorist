@@ -2920,9 +2920,9 @@
     "identity": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:ef207b913d662d91d2d95a8e78ef5627bf2974fb",
-      "fingerprint": "ef207b913d662d91d2d95a8e78ef5627bf2974fb",
-      "commit": "0400352b1cb6ad42e0adaf43adc4f4dc98d4e58a",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
+      "fingerprint": "1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
+      "commit": "726ecd34d68d5448f352911a78364a1b325de3e7",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
@@ -2936,21 +2936,37 @@
       "linux-user-preview-build.log exit0",
       "Headless identity matches reference and clean commit0400352",
       "Actual review runner smoke with empty list and isolated state exit0; personal documents/state not opened or changed",
-      "linux-user-preview-native-smoke.log exit0: actual release binary Settings/Save/Cancel/restart/retry/focus/document preservation"
+      "linux-user-preview-native-smoke.log exit0: actual release binary Settings/Save/Cancel/restart/retry/focus/document preservation",
+      "direct-list-fence-classic-linux.log pass17 fail0 skip0",
+      "direct-list-fence-performance-linux.log exit0 B9 GTK/Chromium",
+      "linux-user-preview-direct-fence-build.log exit0; clean726ecd3 metadata",
+      "Updated preview reference atomically; actual review runner empty-list/isolated-state smoke exit0"
     ],
     "command": "python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/release/amorist",
     "futureBuildPolicy": "Use current release binary directly. Refresh this preview reference to exact successfully built/tested Linux binary identity after subsequent preview updates; retain preview flags while final gates are incomplete. Runner detects identity changes before each file and begins a new build-specific run on restart.",
     "preservedWip": "/home/alessandro/.local/state/amorist/execution-20261013-1932/direct-list-fence-in-progress.patch",
-    "remaining": "Final delivery remains blocked; no push/publication. Direct list-marker fence correction is preserved separately and excluded from this tested preview. Final all-platform requirements and complete end-to-end review proof remain pending."
+    "remaining": "Final delivery remains blocked; no push/publication. Remaining complete Markdown/clipboard/native package/all-platform acceptance and review end-to-end requirements still pending.",
+    "previousIdentities": [
+      {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:ef207b913d662d91d2d95a8e78ef5627bf2974fb",
+        "fingerprint": "ef207b913d662d91d2d95a8e78ef5627bf2974fb",
+        "commit": "0400352b1cb6ad42e0adaf43adc4f4dc98d4e58a",
+        "target": "x86_64-unknown-linux-gnu",
+        "dirty": false
+      }
+    ],
+    "preservedWipStatus": "Direct-list-fence archival patch retained; completed correction now part of preview726ecd3."
   },
   "directListFencesLinux": {
     "status": "partial",
     "implemented": "Fence beginning directly after bullet, wide ordered or task marker, optionally quoted. Literal block retains container marker/checkbox; continuation ownership survives closing fence. Task toggle refreshes containing block metadata and retains horizontal scroll.",
-    "verified": "GTK/Chromium root/quoted/double-quoted bullet and ordered cases; root/quoted tasks; literal content, blank row, shorter inner ticks, continuation owner, CRLF Enter, mode round-trip, toggle and Undo.",
+    "verified": "GTK/Chromium root/quoted/double-quoted bullet and ordered cases; root/quoted tasks; literal content, blank row, shorter inner ticks, continuation owner, CRLF Enter, mode round-trip, toggle and Undo. All17 classic regression files and B9 pass; updated clean release preview build726ecd3 and runner reference verified.",
     "evidence": [
       "direct-list-fence-relative-continuation-linux.log pass3 fail0 skip0",
       "direct-list-fence-task-wrapper-linux.log exit0 GTK/Chromium"
     ],
-    "remaining": "Performance and broader final regression/package/platform acceptance pending. Current user preview remains build0400352 until next successful preview rebuild."
+    "remaining": "Final full contract and native/package/platform acceptance remain pending."
   }
 }
