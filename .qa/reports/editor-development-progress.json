@@ -47,7 +47,7 @@
       "id": 7,
       "name": "clipboard",
       "status": "partial",
-      "evidence": "Safe PRE conversion already implemented. Clipboard core now supports visual/source copy/cut/paste, validated internal payload, plain Markdown/semantic HTML, partial inline delimiters, transactional cut and exact source-mode edits. Directed controlled-clipboard tests pass both Linux engines and all thirteen classic checks pass. Structured fragments, external conversion completeness and real native/system clipboard acceptance remain pending. HTML lists retain nesting and ordered numbering, headings and recursive quotes retain markers, and tables acquire header/separator and escaped pipes. Directed helper tests, REQ-D1 on both Linux engines and all thirteen classic regressions pass. Conversion edge cases and actual system clipboard remain pending."
+      "evidence": "Safe PRE conversion already implemented. Clipboard core now supports visual/source copy/cut/paste, validated internal payload, plain Markdown/semantic HTML, partial inline delimiters, transactional cut and exact source-mode edits. Directed controlled-clipboard tests pass both Linux engines and all thirteen classic checks pass. Structured fragments, external conversion completeness and real native/system clipboard acceptance remain pending. HTML lists retain nesting and ordered numbering, headings and recursive quotes retain markers, and tables acquire header/separator and escaped pipes. Directed helper tests, REQ-D1 on both Linux engines and all thirteen classic regressions pass. Conversion edge cases and actual system clipboard remain pending. Copied references now include required definitions. Internal visual paste scopes incoming labels, preserving existing destinations and undo; table-cell reference dependencies and REQ-I3 pass both Linux engines. Semantic HTML fallback for copied reference links and real clipboard acceptance remain pending."
     },
     {
       "id": 8,
@@ -1196,6 +1196,39 @@
           "escaped image alt brackets"
         ]
       }
+    },
+    "clipboardReferenceDevelopment": {
+      "status": "directed browser clipboard and REQ-I3 passed; system clipboard and remaining contexts pending",
+      "scope": [
+        "required reference definitions included when copying visible link text",
+        "internal visual paste scopes incoming reference labels to avoid collisions and accidental activation of existing unresolved labels",
+        "existing source prefix remains exact and existing link destination unchanged",
+        "table-cell references resolved independently of cell separators",
+        "destination undo restores original document"
+      ],
+      "directedLinux": {
+        "exitCode": 0,
+        "reports": [
+          "clipboard-reference-linux.log",
+          "clipboard-collision-linux.log",
+          "clipboard-table-reference-linux.log"
+        ],
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ]
+      },
+      "referenceGate": {
+        "id": "REQ-I3",
+        "exitCode": 0,
+        "report": "clipboard-reference-i3-qa-linux.json"
+      },
+      "remaining": [
+        "cross-row inline reference projection",
+        "semantic HTML fallback for copied references when custom clipboard types are unavailable",
+        "cross-document relative resources",
+        "real native clipboard MIME and multi-window acceptance"
+      ]
     }
   }
 }

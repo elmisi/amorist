@@ -511,6 +511,14 @@
             || (member !== descriptor && member.projection.list)
             || (member.projection.quoteDepth || 0) !== (descriptor.projection.quoteDepth || 0))) continue;
         if (!references.has(definition.key)) references.set(definition.key, {href: definition.href, title: definition.title, rawDefinition: logicalSource.slice(logicalStarts[at],definition.end)});
+        const opening=logicalStarts[at]+(descriptor.projection.text.match(/^ */)||[""])[0].length;
+        const label=MarkdownCodec.referenceLabelAt(logicalSource,opening);
+        const rawAt=offset=> {
+          let index=at;
+          while(index<last && logicalStarts[index+1]<=offset) index++;
+          return descriptors[index].start+descriptors[index].projection.prefix+offset-logicalStarts[index];
+        };
+        if(label) descriptor.referenceLabel={key:definition.key,start:rawAt(opening+1),end:rawAt(label.end-1)};
         members.forEach(member => { member.projection.referenceDefinition = true; });
         at = last;
       }
@@ -1323,6 +1331,14 @@
       this.source.focus(); this.source.setSelectionRange(caret, caret);
     }
 
+    clipboardInlineChunks(descriptor) {
+      if(descriptor.projection.referenceDefinition) return [];
+      if(descriptor.unitType==="line") return [{text:descriptor.projection.text,base:descriptor.start+descriptor.projection.prefix}];
+      if(descriptor.unitType!=="table") return [];
+      const raw=descriptor.raw, boundaries=[-1,...TableCodec.tableDelimiters(raw),raw.length];
+      return boundaries.slice(0,-1).map((at,index)=>({text:raw.slice(at+1,boundaries[index+1]),base:descriptor.start+at+1}));
+    }
+
     clipboardFragment(selection) {
       const raw=this.model.source;
       if(this.mode==="source") return raw.slice(selection.start,selection.end);
@@ -1362,13 +1378,45 @@
         if(token.children) visit(token.children);
       });
       for(const descriptor of descriptors) {
-        if(descriptor.unitType!=="line" || descriptor.projection.referenceDefinition) continue;
-        const text=descriptor.projection.text;
-        visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,references));
+        for(const {text} of this.clipboardInlineChunks(descriptor)) {
+          visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,references));
+        }
       }
       const definitions=Array.from(needed,key=>references.get(key)?.rawDefinition).filter(Boolean);
       const ending=this.model.lineEndingAt(selection.start);
       return fragment+(definitions.length?ending+ending+definitions.join(ending):"");
+    }
+
+    isolateClipboardReferences(fragment) {
+      if(!this.model.source) return fragment;
+      const incoming=this.buildProjection(fragment), aliases=new Map(), edits=[];
+      if(!incoming.references.size) return fragment;
+      const reserved=new Set(this.buildProjection().references.keys());
+      for(const match of this.model.source.matchAll(/\[([^\[\]]*)\]/g)) {
+        const key=MarkdownCodec.referenceKey(match[1]); if(key) reserved.add(key);
+      }
+      for(const key of incoming.references.keys()) reserved.add(key);
+      let serial=1;
+      for(const key of incoming.references.keys()) {
+        let alias;
+        do {alias="amorist-copy-"+serial++;} while(reserved.has(alias));
+        reserved.add(alias); aliases.set(key,alias);
+      }
+      for(const descriptor of incoming) {
+        const definition=descriptor.referenceLabel;
+        if(definition) edits.push({start:definition.start,end:definition.end,text:aliases.get(definition.key)});
+        for(const {text:source,base} of this.clipboardInlineChunks(descriptor)) {
+        const visit=tokens=>tokens.forEach(token=> {
+          if(token.referenceKey && aliases.has(token.referenceKey)) {
+            edits.push({start:base+token.start,end:base+token.end,
+              text:"["+source.slice(token.contentStart,token.contentEnd)+"]["+aliases.get(token.referenceKey)+"]"});
+          } else if(token.children) visit(token.children);
+        });
+        visit(MarkdownCodec.tokenizeInline(source,0,source.length,0,false,false,incoming.references));
+        }
+      }
+      for(const edit of edits.sort((a,b)=>b.start-a.start)) fragment=fragment.slice(0,edit.start)+edit.text+fragment.slice(edit.end);
+      return fragment;
     }
 
     finishClipboardEdit(selection,replacement,gesture) {
@@ -1409,7 +1457,7 @@
         try {
           const payload=JSON.parse(clipboard.getData(CLIPBOARD_TYPE));
           if(payload && payload.schemaVersion===1 && typeof payload.markdown==="string"
-              && payload.markdown.length<=10*1024*1024 && Object.keys(payload).length===2) replacement=payload.markdown;
+              && payload.markdown.length<=10*1024*1024 && Object.keys(payload).length===2) replacement=this.isolateClipboardReferences(payload.markdown);
         } catch(error) { /* Invalid/unsupported internal data uses public clipboard formats. */ }
       }
       if(replacement===null) {

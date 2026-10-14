@@ -716,6 +716,7 @@
     safeLinkHref,
     linkDestinationAt,
     referenceKey,
+    referenceLabelAt,
     referenceDefinitionAt,
     inlineMarkdown,
   };

@@ -68,6 +68,22 @@ async function main(){
     editor.setMarkdown(fragment);return {fragment,links:Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination)};
    })()`);
    assert.equal(reference.fragment,'[Read][name]\r\n\r\n[name]: notes.md "Title"');assert.deepEqual(reference.links,['notes.md']);
+   const collision=await engine.evaluate(`(() => {
+    const editor=window.__clip,destination=${JSON.stringify('[Existing][name]\n\n[name]: old.md\n\n')},fragment=${JSON.stringify('[Read][name]\n\n[name]: notes.md "Title"')};
+    editor.setMarkdown(destination);editor.setSurfaceSelection(destination.length,destination.length);
+    editor.handlePaste({clipboardData:{getData:type=>type==='application/x-amorist-markdown+json'?JSON.stringify({schemaVersion:1,markdown:fragment}):''},preventDefault(){}});
+    const source=editor.getMarkdown(),links=Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination);
+    editor.undo();return {source,links,undo:editor.getMarkdown(),destination};
+   })()`);
+   assert.ok(collision.source.startsWith(collision.destination));assert.deepEqual(collision.links,['old.md','notes.md']);assert.equal(collision.undo,collision.destination);
+   const tableReferences=await engine.evaluate(`(() => {
+    const editor=window.__clip,source=${JSON.stringify('| Link |\n| --- |\n| [Read][name] |\n\n[name]: notes.md')};
+    editor.setMarkdown(source);const fragment=editor.clipboardFragment({start:0,end:source.indexOf('\\n\\n')});
+    const destination=${JSON.stringify('[Existing][name]\n\n[name]: old.md\n\n')};editor.setMarkdown(destination);editor.setSurfaceSelection(destination.length,destination.length);
+    editor.handlePaste({clipboardData:{getData:type=>type==='application/x-amorist-markdown+json'?JSON.stringify({schemaVersion:1,markdown:fragment}):''},preventDefault(){}});
+    return Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination);
+   })()`);
+   assert.deepEqual(tableReferences,['old.md','notes.md']);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}
