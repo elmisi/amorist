@@ -891,6 +891,14 @@
         this.apply(start, selection.end, "", "backspace"); return;
       }
       if (type === "deleteContentForward") {
+        if(selection.start===selection.end) {
+          const context=this.editingContextAt(selection.start);
+          const record=this.model.automaticBreaks.find(record=>selection.start===record.marker || selection.start===record.marker+1);
+          if(record && (!context || context.kind!=="code")) {
+            const end=record.marker+1+(this.model.source.slice(record.marker+1,record.marker+3)==="\r\n"?2:1);
+            event.preventDefault();this.joinAutomaticBoundary(record,end);return;
+          }
+        }
         event.preventDefault(); const end = selection.start === selection.end ? nextCodeUnit(this.model.source, selection.end) : selection.end;
         this.apply(selection.start, end, "", "delete");
       }

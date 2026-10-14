@@ -20,6 +20,19 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Forward Delete at a generated visual hard-break boundary joins both physical
+      rows in one transaction, removing the owned marker and full LF/CRLF/CR
+      terminator. Undo restores source and provenance. Generated escaping is
+      removed only when no longer required, preserving literal backslashes and
+      intentionally written escape sequences.
+    why: >
+      Completes the forward counterpart of the approved local boundary operation;
+      the hidden marker must not consume a separate user keypress.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       REQ-B3 now requires visual prose Enter to create a backslash hard break using
       the local terminator, without rewriting old boundaries. Existing hard-break
       syntax is not duplicated. A subsequent blank line removes an unnecessary

@@ -18,6 +18,11 @@ async function main(){
         assert.deepEqual(result.boundaries,[{marker:at,escapes:[]}]);
         await engine.sendKeys([{key:"Backspace"}]);assert.equal((await state()).source,source,`${entry.id}: join removes only generated marker and boundary`);
         await engine.evaluate("(()=>{window.__prose.undo();return true})()");assert.equal((await state()).source,expected);assert.equal((await state()).boundaries.length,1);
+        await engine.evaluate(`(()=>{window.__prose.setSurfaceSelection(${at},${at});return true})()`);
+        await engine.sendKeys([{key:"Delete"}]);
+        assert.equal((await state()).source,source,`${entry.id}: forward Delete joins the generated boundary including the full terminator`);
+        assert.equal((await state()).boundaries.length,0);
+        await engine.evaluate("(()=>{window.__prose.undo();return true})()");assert.equal((await state()).source,expected);assert.equal((await state()).boundaries.length,1);
         await engine.evaluate("(()=>{window.__prose.undo();return true})()");assert.equal((await state()).source,source);assert.equal((await state()).boundaries.length,0);
       }
       await mount("alpha",5);await engine.sendKeys([{key:"Enter"},{key:"Enter"}]);
@@ -29,6 +34,11 @@ async function main(){
       assert.deepEqual((await state()).boundaries,[{marker:9,escapes:[8]}]);
       assert.equal((await state()).text,"literal\\\n");
       await engine.sendKeys([{key:"Backspace"}]);assert.equal((await state()).source,"literal\\",`${entry.id}: literal backslash survives joining`);
+      await engine.evaluate("(()=>{window.__prose.undo();window.__prose.setSurfaceSelection(9,9);return true})()");
+      await engine.sendKeys([{key:"Delete"}]);assert.equal((await state()).source,"literal\\",`${entry.id}: forward Delete preserves the original literal backslash`);
+      const intentional="literal"+"\\".repeat(2)+"\nnext";
+      await mount(intentional,9);await engine.sendKeys([{key:"Delete"}]);
+      assert.equal((await state()).source,"literal"+"\\".repeat(2)+"next",`${entry.id}: intentional escaping survives a literal forward boundary deletion`);
       const manual="alpha\\\nbeta";await mount(manual,6);await engine.sendKeys([{key:"Enter"}]);
       assert.equal((await state()).source,"alpha\\\n\nbeta",`${entry.id}: manual hard-break marker remains intentional`);
       assert.equal((await state()).boundaries.length,0);

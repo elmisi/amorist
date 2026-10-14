@@ -41,7 +41,7 @@
       "id": 6,
       "name": "enter-tab-and-local-cleanup",
       "status": "partial",
-      "evidence": "Tab/Shift+Tab in both modes preserves mixed terminators, list subtrees and oriented selections, with undo/redo. Visual prose Enter now generates one local hard-break marker, hides its syntax, removes owned markers for paragraph creation/Backspace joins and protects literal escaping or explicitly retyped source. Provenance survives row indentation. Full Linux suite and eleven isolated regression scripts passed. Structure-transition cleanup, remaining boundary operations, general gesture planning and actual recovery persistence are still pending."
+      "evidence": "Tab/Shift+Tab in both modes preserves mixed terminators, list subtrees and oriented selections, with undo/redo. Visual prose Enter now generates one local hard-break marker, hides its syntax, removes owned markers for paragraph creation/Backspace joins and protects literal escaping or explicitly retyped source. Provenance survives row indentation. Full Linux suite and eleven isolated regression scripts passed. Structure-transition cleanup, remaining boundary operations, general gesture planning and actual recovery persistence are still pending. Forward Delete now joins owned boundaries atomically with undo/provenance restoration, including mixed terminators and literal escaping; full Linux suite and eleven regressions passed."
     },
     {
       "id": 7,
@@ -474,6 +474,31 @@
         "actual recovery persistence",
         "macOS and Windows native acceptance"
       ]
+    },
+    "forwardBoundaryDevelopment": {
+      "status": "directed probes, full Linux suite and eleven isolated regression scripts passed",
+      "check": "tests/editor-prose-enter.test.js",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "scope": [
+        "forward Delete removes owned marker and full LF/CRLF/CR boundary",
+        "undo restores source and automatic ownership",
+        "literal backslash survives generated escaping cleanup",
+        "intentional escaping survives literal boundary deletion"
+      ],
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "forward-boundary-qa-linux.json",
+        "corpusFiles": 21,
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "classicRegressionChecks": {
+        "pass": 11,
+        "fail": 0,
+        "log": "forward-boundary-classic-linux.log"
+      }
     }
   }
 }

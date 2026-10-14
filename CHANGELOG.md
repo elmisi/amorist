@@ -39,6 +39,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   terminator. A subsequent blank line or Backspace join removes its generated
   marker atomically. Literal backslashes and explicitly retyped source remain
   protected; code, source and table Enter stay literal.
+- Forward Delete joins a generated hard-break boundary in one gesture, retaining
+  intentional escaping and restoring source and provenance together on undo.
 
 ### Quality
 - The source model tracks validated automatic-boundary provenance separately
