@@ -17,6 +17,14 @@
           <span id="file-name">Loading...</span>
         </div>
         <div class="actions">
+          <details id="file-menu" class="file-menu" hidden>
+            <summary>File</summary>
+            <div class="file-menu-items">
+              <button type="button" data-file-action="new">New</button>
+              <button type="button" data-file-action="open">Open…</button>
+              <button type="button" data-file-action="reload">Reload</button>
+            </div>
+          </details>
           <button id="report-button" type="button" hidden>Segnala problema</button>
           <button id="reload-button" type="button">Reload</button>
           <button id="save-button" type="button">Save</button>
@@ -54,6 +62,7 @@
     <script src="editor/amorist-editing-policy.js"></script>
     <script src="editor/amorist-editor.js"></script>
     <script src="debug-report.js"></script>
+    <script src="file-actions.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

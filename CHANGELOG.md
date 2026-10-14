@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- The File menu creates an untitled document and opens Markdown with standard
+  shortcuts. Save/Discard/Cancel, cancelled pickers and recovery choices preserve
+  the current editor; failed reads keep its text, history, path and recovery.
+  Successful Open starts fresh history, and New keeps unrelated recovery copies.
 - Saves from different instances share a persistent path lock and recheck the
   destination timestamp after acquiring it. Unique adjacent temporary files
   preserve occupied entries; new-file saves do not replace a file created meanwhile.

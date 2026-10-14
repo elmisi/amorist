@@ -491,6 +491,19 @@
         "R-017",
         "R-021"
       ]
+    },
+    {
+      "id": "REQ-H1",
+      "statement": "New and Open change the current document only after successful preparation and the required Save/Discard/Cancel choice. Cancelling or failing keeps the original path, text, editor history and recovery. New is empty and untitled; successful Open resets history and preserves the selected file's bytes.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "H",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-009"
+      ]
     }
   ]
 }

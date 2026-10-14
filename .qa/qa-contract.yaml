@@ -20,6 +20,20 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      New and Open operate in the current window through a File menu and standard
+      shortcuts. Dirty work requires Save/Discard/Cancel. File-picker cancellation,
+      recovery-choice cancellation and failed preparation keep the original editor,
+      path, history and recovery. The backend reads and validates an existing file
+      before replacing context; New creates an empty untitled session without
+      recovering an unrelated untitled copy. Successful Open starts fresh history.
+    why: >
+      Adds the approved File lifecycle to the release contract as REQ-H1. Native
+      chooser transport and package-level acceptance remain separate platform gates.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Saving and Bug append share persistent standard filesystem locks in app-local
       data. Canonical path identities use fixed FNV-1a 64-bit keys; full identities
       are compared under lock and collisions get separate slots. Aliases, native
@@ -1538,3 +1552,35 @@ requirements:
       wrapper does not support macOS, and a proxy engine would be a different
       build of WebKit rather than the one that ships — which would be claiming
       coverage instead of having it.
+
+  - id: REQ-H1
+    statement: >
+      New and Open change the current document only after successful preparation
+      and the required Save/Discard/Cancel choice. Cancelling or failing keeps the
+      original path, text, editor history and recovery. New is empty and untitled;
+      successful Open resets history and preserves the selected file's bytes.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: >
+      File actions must not turn a cancelled dialog or failed read into lost work.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - native app workflows for picker cancellation, dirty-choice cancellation and invalid reads
+        - unchanged original editor identity, undo/redo, path and recovery
+        - New/Discard, New/Save and successful Open with fresh history
+      success_condition: >
+        Every cancelled or failed transition preserves the original working session.
+        Explicit Save succeeds before transition; failed Save prevents it. Open never
+        creates a missing file. Prepared context replaces the original only on success.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      The Linux native app check controls the chooser's returned path to exercise
+      lifecycle cases deterministically. Actual native chooser interaction on each
+      published platform is still required by the plan's package acceptance gates.

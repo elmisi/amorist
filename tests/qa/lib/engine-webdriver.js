@@ -136,7 +136,7 @@ class WebDriverEngine {
         .then(function () { return (${expression}); })
         .then(
           function (value) { done({ ok: true, value: value }); },
-          function (error) { done({ ok: false, error: String((error && error.stack) || error) }); }
+          function (error) { done({ ok: false, error: String((error && error.message) || error) + "\\n" + String((error && error.stack) || "") }); }
         );
     `;
     const response = await this.request("POST", `/session/${this.sessionId}/execute/async`, {

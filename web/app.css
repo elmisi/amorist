@@ -16,7 +16,8 @@
 [hidden] { display: none !important; }
 
 #report-dialog,
-#recovery-dialog {
+#recovery-dialog,
+#file-decision-dialog {
   max-width: min(560px, calc(100vw - 32px));
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -27,6 +28,10 @@
 #recovery-dialog::backdrop { background: rgb(0 0 0 / 35%); }
 #recovery-dialog { width: min(560px, calc(100vw - 32px)); }
 #recovery-choice { display: block; width: 100%; margin: 16px 0; font: inherit; }
+.file-menu { position: relative; }
+.file-menu summary { cursor: pointer; padding: 8px 12px; }
+.file-menu-items { position: absolute; right: 0; top: 100%; z-index: 40; min-width: 160px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); box-shadow: 0 4px 16px rgb(0 0 0 / 12%); }
+.file-menu-items button { display: block; width: 100%; text-align: left; margin: 2px 0; }
 #report-note { display: block; width: 100%; margin-top: 12px; font: inherit; }
 #report-dialog p { font-size: 14px; }
 #report-error { color: var(--danger); }

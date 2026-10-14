@@ -21,7 +21,7 @@ function runTauriAppChecks() {
 }
 
 async function runOnce() {
-  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], F2: [], fixtures: [] };
+  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], F2: [], H1: [], fixtures: [] };
   if (process.platform !== "linux") {
     // Not a gap: tauri-driver drives the compiled application on Linux only,
     // so the contract's app-embedding verdict is assigned to the Linux run by
@@ -41,6 +41,7 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.F2.push(failure);
+    results.H1.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -55,6 +56,7 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.F2.push(failure);
+    results.H1.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -76,6 +78,7 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.F2.push(failure);
+    results.H1.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -220,6 +223,8 @@ async function runOnce() {
     results.fixtures.push("built app: second live instance detects the first instance's save and retains its own unsaved text");
     await verifyEditingDuringSave(driver, scratch);
     results.fixtures.push("built app: edits made while Save waits for its process lock remain dirty and recoverable after the captured snapshot is saved");
+    await verifyFileLifecycle(driver, scratch);
+    results.fixtures.push("built app: File lifecycle picker/choice cancellation, undo preservation, failed Open/Save, New/Discard, New/Save and successful Open");
   } catch (error) {
     let recovery = "missing";
     try {
@@ -239,6 +244,7 @@ async function runOnce() {
     results.E1.push(failure);
     results.E2.push(failure);
     results.F2.push(failure);
+    results.H1.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -250,6 +256,153 @@ async function runOnce() {
     fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
   return results;
+}
+
+async function fileAction(engine, action) {
+  await engine.evaluate(`(function () {
+    document.getElementById('file-menu').open = true;
+    var button = document.querySelector('[data-file-action="${action}"]');
+    var rect = button.getBoundingClientRect();
+    var hit = document.elementFromPoint((rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2);
+    if (!rect.width || !rect.height || !button.contains(hit)) throw new Error('The File menu item is not visible and reachable');
+    button.click();
+  })()`);
+}
+
+async function decision(engine, choice) {
+  await waitUntil(() => engine.evaluate(`Boolean(document.querySelector('#file-decision-dialog[open]'))`), 5000, "Save/Discard/Cancel dialog");
+  if (choice === "escape") await engine.sendKeys([{ key: "Escape" }]);
+  else await engine.evaluate(`document.getElementById('file-decision-${choice}').click()`);
+  await delay(60);
+}
+
+async function verifyFileLifecycle(driver, scratch) {
+  const data = path.join(scratch, "file-lifecycle-data");
+  const first = path.join(scratch, "first caffè.md");
+  const next = path.join(scratch, "next Ω.md");
+  const missing = path.join(scratch, "missing lifecycle.md");
+  const invalid = path.join(scratch, "invalid lifecycle.md");
+  const saved = "Original\n";
+  const edited = saved + "unsaved";
+  const nextRaw = "# Next\r\nline  \r\n";
+  fs.writeFileSync(first, saved);
+  fs.writeFileSync(next, nextRaw);
+  fs.writeFileSync(invalid, Buffer.from([255, 254]));
+  let engine = null;
+  try {
+    engine = new TauriEngine(driver, APPLICATION, [first], { ...process.env, XDG_DATA_HOME: data });
+    await engine.start();
+    await waitForEditor(engine, saved);
+    await appendInSource(engine, "unsaved");
+    await delay(60);
+    const directory = path.join(data, "amorist", "recovery-sessions");
+    await waitForRecovery(directory, edited, 5000);
+    await engine.evaluate(`window.__qaOriginalSource = document.querySelector('.amorist-editor-source')`);
+
+    async function unchanged() {
+      const same = await engine.evaluate(`document.querySelector('.amorist-editor-source') === window.__qaOriginalSource`);
+      const snapshot = await editorSnapshot(engine);
+      const currentPath = await engine.evaluate(`document.getElementById('file-path').textContent`);
+      if (!same || snapshot.source !== edited || currentPath !== first
+          || !recoveryRecords(directory).some((r) => r.unsavedSource === edited)) {
+        throw new Error("A cancelled/failed file action changed the original session: " + JSON.stringify(snapshot));
+      }
+    }
+    await engine.evaluate(`window.__TAURI__.dialog.open = function () { return Promise.resolve(null); }`);
+    await engine.evaluate(`(function () {
+      document.getElementById('file-menu').open = true;
+      document.querySelector('[data-file-action="open"]').focus();
+    })()`);
+    await engine.sendKeys([{ key: "Escape" }]);
+    if (await engine.evaluate(`document.getElementById('file-menu').open`)) throw new Error("Escape left the File menu open.");
+    await unchanged();
+    await fileAction(engine, "open");
+    await delay(60);
+    await unchanged();
+    await engine.sendKeys([{ key: "o", ctrl: true }]);
+    await delay(60);
+    await unchanged();
+    await engine.sendKeys([{ key: "n", ctrl: true }]);
+    await decision(engine, "escape");
+    await unchanged();
+    await engine.sendKeys([{ key: "z", ctrl: true }]);
+    await delay(60);
+    if ((await editorSnapshot(engine)).source === edited) throw new Error("Cancellation reset undo history.");
+    await engine.sendKeys([{ key: "y", ctrl: true }]);
+    await delay(60);
+    await waitForRecovery(directory, edited, 5000);
+    await unchanged();
+
+    // Recovery selection is part of preparation: cancelling it must not
+    // commit Open, even after Discard was chosen for the original document.
+    const copyIds = ["open-copy-a", "open-copy-b"];
+    for (const id of copyIds) {
+      const folder = path.join(directory, id);
+      fs.mkdirSync(folder);
+      fs.writeFileSync(path.join(folder, "record.json"), JSON.stringify({ schemaVersion: 1,
+        sessionId: id, path: next, savedSource: nextRaw, unsavedSource: nextRaw + id,
+        revision: 1, boundaryState: null, legacyImport: false }));
+    }
+    await engine.evaluate(`window.__TAURI__.dialog.open = function () { return Promise.resolve(${JSON.stringify(next)}); }`);
+    await fileAction(engine, "open");
+    await decision(engine, "discard");
+    await waitUntil(() => engine.evaluate(`Boolean(document.querySelector('#recovery-dialog[open]'))`), 5000, "Open recovery choice");
+    await engine.sendKeys([{ key: "Escape" }]);
+    await delay(60);
+    await unchanged();
+    for (const id of copyIds) fs.rmSync(path.join(directory, id), { recursive: true });
+
+    for (const file of [missing, invalid]) {
+      await engine.evaluate(`window.__TAURI__.dialog.open = function () { return Promise.resolve(${JSON.stringify(file)}); }`);
+      await fileAction(engine, "open");
+      await decision(engine, "discard");
+      await waitUntil(async () => /could not|No such|UTF-8|not exist/i.test((await editorSnapshot(engine)).notice), 5000, "failed Open notice");
+      await unchanged();
+    }
+    if (fs.existsSync(missing)) throw new Error("Open created a missing file.");
+    if (!fs.readFileSync(invalid).equals(Buffer.from([255, 254]))) throw new Error("Open changed an invalid file.");
+
+    // A rejected Save must not perform New or drop the recovery copy.
+    await delay(1100);
+    fs.writeFileSync(first, "external change\n");
+    await engine.evaluate(`window.__TAURI__.dialog.confirm = function () { return Promise.resolve(false); }`);
+    await fileAction(engine, "new");
+    await decision(engine, "save");
+    await waitUntil(async () => /File changed on disk/.test((await editorSnapshot(engine)).notice), 5000, "failed Save preflight");
+    await unchanged();
+    if (fs.readFileSync(first, "utf8") !== "external change\n") throw new Error("Failed Save overwrote the external file.");
+
+    const unrelated = path.join(directory, "unrelated-untitled");
+    fs.mkdirSync(unrelated);
+    fs.writeFileSync(path.join(unrelated, "record.json"), JSON.stringify({ schemaVersion: 1,
+      sessionId: "unrelated-untitled", path: null, savedSource: "", unsavedSource: "older untitled work",
+      revision: 1, boundaryState: null, legacyImport: false }));
+    await fileAction(engine, "new");
+    await decision(engine, "discard");
+    await waitForEditor(engine, "", { noticeHidden: true });
+    if (await engine.evaluate(`document.getElementById('file-path').textContent`) !== "") throw new Error("New retained the old path.");
+    await waitUntil(() => recoveryRecords(directory).length === 1, 5000, "only the old document's copy to be discarded");
+    if (recoveryRecords(directory)[0].sessionId !== "unrelated-untitled") throw new Error("New discarded an unrelated untitled recovery.");
+    await engine.sendKeys([{ key: "z", ctrl: true }]);
+    if ((await editorSnapshot(engine)).source !== "") throw new Error("New retained the old undo history.");
+
+    await engine.evaluate(`window.__TAURI__.dialog.open = function () { return Promise.resolve(${JSON.stringify(next)}); }`);
+    await fileAction(engine, "open");
+    await waitForEditor(engine, nextRaw.replace(/\r\n/g, "\n"), { noticeHidden: true });
+    await appendInSource(engine, " saved before New");
+    await delay(60);
+    await fileAction(engine, "new");
+    await decision(engine, "save");
+    await waitForEditor(engine, "", { noticeHidden: true });
+    if (fs.readFileSync(next, "utf8") !== nextRaw + " saved before New") throw new Error("New/Save did not commit exact source before changing context.");
+    await fileAction(engine, "open");
+    await waitForEditor(engine, (nextRaw + " saved before New").replace(/\r\n/g, "\n"));
+    await engine.sendKeys([{ key: "z", ctrl: true }]);
+    await delay(60);
+    if ((await editorSnapshot(engine)).source !== (nextRaw + " saved before New").replace(/\r\n/g, "\n")) throw new Error("Open retained the previous document's undo history.");
+  } finally {
+    if (engine) await engine.close().catch(() => {});
+  }
 }
 
 async function verifyEditingDuringSave(driver, scratch) {
@@ -632,6 +785,10 @@ async function applicationCaretGeometry(engine) {
 }
 
 async function reloadCleanDocument(engine, expected) {
+  // A file can reach disk just before Save's UI response reenables Reload.
+  // Fixtures must wait for that response, as a real click on the disabled
+  // button cannot start a reload either.
+  await waitUntil(() => engine.evaluate(`!document.getElementById('reload-button').disabled`), 5000, "Reload to become available after Save");
   await engine.evaluate(`document.getElementById("reload-button").click()`);
   await waitForEditor(engine, expected, { noticeHidden: true });
 }

@@ -9,6 +9,7 @@ use tauri_plugin_cli::CliExt;
 
 mod recovery;
 mod file_io;
+mod document;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
@@ -298,8 +299,14 @@ fn load_session_recovery(
     path: Option<&std::path::Path>,
     saved: &str,
 ) -> Result<(Option<recovery::Record>, Vec<recovery::Record>, Vec<String>), String> {
+    load_recovery_into(app, &state.recovery_session, &state.recovery_checked, path, saved)
+}
+
+fn load_recovery_into(app: &tauri::AppHandle, session: &Mutex<Option<recovery::Session>>,
+    checked_state: &Mutex<bool>, path: Option<&std::path::Path>, saved: &str,
+) -> Result<(Option<recovery::Record>, Vec<recovery::Record>, Vec<String>), String> {
     let store = recovery_store(app)?;
-    let mut owner = state.recovery_session.lock().unwrap();
+    let mut owner = session.lock().unwrap();
     if owner.is_none() { *owner = Some(store.create()?); }
     let path = path.map(|p| p.display().to_string());
     if let Some(record) = store.read(owner.as_ref().unwrap().id())? {
@@ -307,7 +314,7 @@ fn load_session_recovery(
             return Ok((Some(record), Vec::new(), Vec::new()));
         }
     }
-    let mut checked = state.recovery_checked.lock().unwrap();
+    let mut checked = checked_state.lock().unwrap();
     if *checked { return Ok((None, Vec::new(), Vec::new())); }
     let mut warnings = Vec::new();
     if let Err(e) = store.import_legacy(&app_data_home(app)?.join("working-copy.json")) {
@@ -327,6 +334,83 @@ fn load_session_recovery(
     }
     *checked = true;
     Ok((None, candidates, warnings))
+}
+
+#[derive(Serialize)]
+struct RecoveryInspection { copies: Vec<recovery::Record>, warnings: Vec<String> }
+
+#[tauri::command]
+async fn inspect_open_document(app: tauri::AppHandle, path: String, context_id: u64) -> Result<RecoveryInspection, String> {
+    run_io(app, move |app, state| {
+        require_context(state, context_id)?;
+        let prepared = document::Prepared::open(std::path::Path::new(&path))?;
+        let store = recovery_store(app)?;
+        let mut warnings = Vec::new();
+        if let Err(e) = store.import_legacy(&app_data_home(app)?.join("working-copy.json")) {
+            warnings.push(format!("Legacy recovery was preserved: {e}"));
+        }
+        let listing = store.list()?;
+        warnings.extend(listing.warnings);
+        let expected = prepared.path.as_ref().map(|p| p.display().to_string());
+        let copies = listing.candidates.into_iter().filter(|c| !c.active && c.record.path == expected
+            && c.record.saved_source == prepared.source && c.record.unsaved_source != prepared.source)
+            .map(|c| c.record).collect();
+        Ok(RecoveryInspection { copies, warnings })
+    }).await
+}
+
+#[tauri::command]
+async fn create_document(app: tauri::AppHandle, context_id: u64, discard: bool) -> Result<DocumentResponse, String> {
+    run_io(app, move |app, state| transition_document(app, state, document::Prepared::untitled(), context_id, discard, None)).await
+}
+
+#[tauri::command]
+async fn open_document(app: tauri::AppHandle, path: String, context_id: u64, discard: bool, recovery_choice: Option<String>) -> Result<DocumentResponse, String> {
+    run_io(app, move |app, state| {
+        require_context(state, context_id)?;
+        let prepared = document::Prepared::open(std::path::Path::new(&path))?;
+        transition_document(app, state, prepared, context_id, discard, recovery_choice)
+    }).await
+}
+
+fn transition_document(app: &tauri::AppHandle, state: &AppState, prepared: document::Prepared,
+    context_id: u64, discard: bool, recovery_choice: Option<String>) -> Result<DocumentResponse, String> {
+    require_context(state, context_id)?;
+    // Stage recovery separately: failed preparation must not touch the old lease.
+    let store = recovery_store(app)?;
+    let mut staged_owner = store.create()?;
+    let mut recovery = None;
+    if let Some(id) = recovery_choice {
+        let claimed = store.claim(&id)?;
+        let record = store.read(&id)?.ok_or("The recovery copy is no longer available.")?;
+        let expected_path = prepared.path.as_ref().map(|p| p.display().to_string());
+        if record.path != expected_path || record.saved_source != prepared.source {
+            return Err("The file or recovery copy changed during selection. Try again.".into());
+        }
+        staged_owner = claimed;
+        recovery = Some(record);
+    }
+    let mut path = state.file_path.lock().unwrap();
+    require_context(state, context_id)?;
+    if *state.dirty.lock().unwrap() && !discard {
+        return Err("Unsaved changes require Save, Discard or Cancel.".into());
+    }
+    // Only now, with a valid candidate and unchanged context, remove our old copy.
+    discard_owned_recovery(state)?;
+    *path = prepared.path.clone();
+    *state.last_modified.lock().unwrap() = prepared.modified;
+    *state.recovery_session.lock().unwrap() = Some(staged_owner);
+    *state.recovery_checked.lock().unwrap() = true;
+    let id = install_read_context(state, &prepared.source, recovery.is_some());
+    Ok(DocumentResponse {
+        context_id: id,
+        path: prepared.path.as_ref().map(|p| p.display().to_string()).unwrap_or_default(),
+        name: prepared.path.as_ref().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Untitled".into()),
+        exists: prepared.path.is_some(), markdown: prepared.source,
+        recovery_markdown: recovery.as_ref().map(|r| r.unsaved_source.clone()),
+        recovery_boundary_state: recovery.and_then(|r| r.boundary_state),
+        recovery_candidates: Vec::new(), recovery_warnings: Vec::new(),
+    })
 }
 
 #[tauri::command]
@@ -855,6 +939,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             read_document,
+            create_document,
+            open_document,
+            inspect_open_document,
             save_document,
             persist_working_copy,
             discard_working_copy,

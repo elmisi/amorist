@@ -18,11 +18,14 @@
     savedMarkdown: "",
     dirty: false,
     contextId: 0,
+    documentPath: "",
+    documentName: "Untitled",
     demo: Boolean(screenshotMode),
   };
 
   let noticeSource = null;
   let saving = false;
+  let fileChanging = false;
 
   function errorMessage(error, fallback) {
     if (typeof error === "string") return error;
@@ -67,6 +70,21 @@
         var doc = await invoke("read_document");
         contextId = doc.contextId;
         return doc;
+      },
+      async createDocument(discard) {
+        var doc = await invoke("create_document", { contextId: contextId, discard: discard });
+        contextId = doc.contextId;
+        return doc;
+      },
+      async inspectOpen(path) { return invoke("inspect_open_document", { path: path, contextId: contextId }); },
+      async openDocument(path, discard, recovery) {
+        var doc = await invoke("open_document", { path: path, discard: discard, recoveryChoice: recovery, contextId: contextId });
+        contextId = doc.contextId;
+        return doc;
+      },
+      chooseOpen(defaultPath) {
+        return window.__TAURI__.dialog.open({ title: "Open Markdown", multiple: false, directory: false,
+          defaultPath: defaultPath || undefined, filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }] });
       },
       async saveDocument(markdown, force, revision) {
         return invoke("save_document", { markdown: markdown, force: force || false, contextId: contextId, revision: revision });
@@ -269,6 +287,24 @@
       return;
     }
 
+    if (window.__TAURI__) window.AmoristFileActions.install({
+      backend: backend, isSaving: function () { return saving || !state.editor || elements.editor.inert; }, isDirty: function () { return state.dirty; },
+      getName: function () { return state.documentName; }, getPath: function () { return state.documentPath; },
+      save: saveDocument, reload: reloadDocument, adopt: adoptDocument, chooseRecovery: chooseRecovery,
+      suspend: function (value) {
+        fileChanging = value;
+        elements.editor.inert = value;
+        setStatus(value ? "Loading" : state.dirty ? "Modified" : "Loaded");
+      },
+      pauseRecovery: function () { clearTimeout(workingCopyTimer); workingCopyTimer = null; },
+      resumeRecovery: function () { if (state.dirty && state.editor) scheduleWorkingCopy(state.editor.getValue()); },
+      error: function (error) { showError(errorMessage(error, "The file action could not be completed."), "file"); },
+      focusEditor: function () {
+        var source = elements.editor.querySelector('.amorist-editor-source');
+        var surface = elements.editor.querySelector('.amorist-editor-surface');
+        if (source && !source.hidden) source.focus(); else if (surface) surface.focus();
+      }
+    });
     backend.startHeartbeat();
     reloadDocument();
   });
@@ -295,6 +331,21 @@
     elements.editor.inert = true;
     try {
       var doc = await backend.loadDocument();
+      await adoptDocument(doc);
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        showError("Load timed out — the server may be unreachable.", "reload");
+      } else {
+        showError(errorMessage(error, "The document could not be loaded."), "reload");
+      }
+      if (state.dirty && state.editor) scheduleWorkingCopy(state.editor.getValue());
+    } finally {
+      elements.editor.inert = false;
+      if (previousFocus && previousFocus.isConnected && elements.editor.contains(previousFocus)) previousFocus.focus();
+    }
+  }
+
+  async function adoptDocument(doc) {
       if (doc.recoveryCandidates && doc.recoveryCandidates.length) {
         var selected = await chooseRecovery(doc.recoveryCandidates);
         if (selected) {
@@ -321,20 +372,9 @@
       }
       setStatus(doc.exists ? "Loaded" : "New file");
       backend.setWindowTitle(doc.name || "");
-    } catch (error) {
-      if (error && error.name === "AbortError") {
-        showError("Load timed out — the server may be unreachable.", "reload");
-      } else {
-        showError(errorMessage(error, "The document could not be loaded."), "reload");
-      }
-      if (state.dirty && state.editor) scheduleWorkingCopy(state.editor.getValue());
-    } finally {
-      elements.editor.inert = false;
-      if (previousFocus && previousFocus.isConnected && elements.editor.contains(previousFocus)) previousFocus.focus();
-    }
   }
 
-  function chooseRecovery(copies) {
+  function chooseRecovery(copies, cancellable) {
     return new Promise(function (resolve) {
       var dialog = document.createElement("dialog");
       dialog.id = "recovery-dialog";
@@ -360,12 +400,19 @@
       recover.textContent = "Recover selected copy";
       var saved = document.createElement("button");
       saved.textContent = "Open saved file";
+      if (cancellable) {
+        var cancel = document.createElement("button");
+        cancel.id = "recovery-cancel";
+        cancel.textContent = "Cancel";
+        cancel.addEventListener("click", function () { finish(undefined); });
+        actions.appendChild(cancel);
+      }
       actions.append(saved, recover);
       dialog.append(title, description, select, actions);
       function finish(id) { dialog.close(); dialog.remove(); resolve(id); }
       recover.addEventListener("click", function () { finish(select.value); });
       saved.addEventListener("click", function () { finish(null); });
-      dialog.addEventListener("cancel", function (event) { event.preventDefault(); finish(null); });
+      dialog.addEventListener("cancel", function (event) { event.preventDefault(); finish(cancellable ? undefined : null); });
       document.body.appendChild(dialog);
       dialog.showModal();
       select.focus();
@@ -397,7 +444,7 @@
   }
 
   async function saveDocument() {
-    if (state.demo || !state.editor || saving || elements.save.disabled) return false;
+    if (state.demo || !state.editor || saving || fileChanging || elements.save.disabled) return false;
     saving = true;
     var editor = state.editor;
     var markdown = editor.getValue();
@@ -491,11 +538,14 @@
       return;
     }
     event.preventDefault();
+    if (document.querySelector("dialog[open]")) return;
     saveDocument();
   }
 
   function setDocumentLabel(doc) {
-    elements.fileName.textContent = doc.name || "Untitled";
+    state.documentName = doc.name || "Untitled";
+    state.documentPath = doc.path || "";
+    elements.fileName.textContent = state.documentName;
     elements.filePath.textContent = doc.path || "";
   }
 
@@ -513,9 +563,10 @@
 
   function setStatus(label) {
     if (saving) label = "Saving";
+    else if (fileChanging) label = "Loading";
     elements.status.textContent = state.dirty ? label + " - modified" : label;
-    elements.save.disabled = saving || state.demo || !state.dirty;
-    elements.reload.disabled = saving || state.demo;
+    elements.save.disabled = saving || fileChanging || state.demo || !state.dirty;
+    elements.reload.disabled = saving || fileChanging || state.demo;
   }
 
   function setDirty(dirty) {

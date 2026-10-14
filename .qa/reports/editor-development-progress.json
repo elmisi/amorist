@@ -59,7 +59,7 @@
       "id": 9,
       "name": "file-actions-recovery-and-windows",
       "status": "partial",
-      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending. Shared canonical-path locks now protect saves, including occupied temporary slots, absent/deleted destinations and other-instance conflicts. Blocking I/O is off the UI thread; a captured save leaves newer edits dirty, with recovery persisted during lock wait and rebased after commit. Obsolete document context commands are rejected."
+      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending. Shared canonical-path locks now protect saves, including occupied temporary slots, absent/deleted destinations and other-instance conflicts. Blocking I/O is off the UI thread; a captured save leaves newer edits dirty, with recovery persisted during lock wait and rebased after commit. Obsolete document context commands are rejected. New/Open now stage file validation and recovery choices before replacing context, with Save/Discard/Cancel, fresh untitled sessions and history reset on successful Open. Rust checks on all platforms and the full 31-requirement Linux suite pass, including actual menu visibility, shortcuts, recovery-choice cancellation and unrelated-copy preservation."
     },
     {
       "id": 10,
@@ -678,6 +678,60 @@
         "log": "shared-writer-complete-classic-linux.log"
       },
       "nativeProbe": "shared-writer-pending-save-protected-linux.json"
+    },
+    "newOpenDevelopment": {
+      "status": "Rust checks on all platforms, final 31-requirement Linux suite and eleven editor regressions passed",
+      "contractRequirement": "REQ-H1",
+      "rustTests": {
+        "linux": 20,
+        "macos": 21,
+        "windows": 20,
+        "fail": 0,
+        "internalFixture": "The ignored process worker is explicitly invoked by cross-process cases.",
+        "logs": [
+          "file-actions-rust-second-linux.log",
+          "file-actions-rust-macos.log",
+          "file-actions-rust-windows.stdout.log"
+        ]
+      },
+      "nativeReport": "file-actions-qa-final-linux.json",
+      "scope": [
+        "native app picker cancellation and real Save/Discard/Cancel modal",
+        "cancel keeps editor identity, path, undo/redo and recovery",
+        "missing/invalid UTF-8 file leaves original session intact",
+        "failed Save prevents New",
+        "New/Discard creates fresh empty untitled",
+        "New/Save commits CRLF source before changing context",
+        "successful Open resets history",
+        "recovery chooser cancellation happens before commit",
+        "unrelated untitled recovery remains intact",
+        "menu item visibility and actual hit target above editor toolbar",
+        "Ctrl+N/Ctrl+O and Escape",
+        "recovery chooser cancellation preserves the original context before Open commit",
+        "New ignores and preserves unrelated untitled copies"
+      ],
+      "remaining": [
+        "Save As and untitled Save",
+        "new independent instances",
+        "Finder lifecycle and initial event deduplication",
+        "cross-document and changed-base recovery UI",
+        "actual native chooser interaction and package acceptance on all platforms"
+      ],
+      "fullSuite": {
+        "exitCode": 0,
+        "requirements": 31,
+        "report": "file-actions-qa-final-linux.json",
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "retainedFailures": [
+        "file-actions-qa-before-menu-fix-linux.json: fixture attempted Reload before Save response reenabled it; fixture waits for availability",
+        "file-actions-qa-ready-first-linux.json and file-actions-native-menu-linux.json: popup overlapped the toolbar; corrected stacking order and native hit checks passed"
+      ],
+      "classicRegressionChecks": {
+        "pass": 11,
+        "fail": 0,
+        "log": "file-actions-classic-linux.log"
+      }
     }
   }
 }
