@@ -168,6 +168,14 @@ async function main(options={}){
     };poll();
    })`);
    assert.equal(failed.state,'failed');assert.equal(failed.fallbackHidden,false);assert.match(failed.text,/Broken/);
+   const navigationSource='before ![Alt](image.png) after';
+   await engine.evaluate(`(() => {const editor=window.__clip;editor.setMarkdown(${JSON.stringify(navigationSource)});editor.focus();editor.setSurfaceSelection(7,7);return true;})()`);
+   await engine.sendKeys([{key:'ArrowRight'}]);await new Promise(resolve=>setTimeout(resolve,80));
+   assert.deepEqual(await engine.evaluate('window.__clip.selectionRaw()'),{start:24,end:24});
+   await engine.sendKeys([{key:'ArrowLeft',shift:true}]);await new Promise(resolve=>setTimeout(resolve,80));
+   assert.deepEqual(await engine.evaluate('window.__clip.selectionRaw()'),{start:7,end:24});
+   assert.equal(await engine.evaluate('window.__clip.selectionDirection()'),'backward');
+   assert.equal(await engine.evaluate('window.__clip.getMarkdown()'),navigationSource);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

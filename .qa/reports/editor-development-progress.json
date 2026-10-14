@@ -1420,6 +1420,19 @@
           "late-load caret viewport compensation",
           "affected-table remeasurement and horizontal-scroll preservation"
         ]
+      },
+      "keyboardNavigation": {
+        "exitCode": 0,
+        "report": "image-navigation-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": [
+          "native ArrowRight traverses image atom in one step",
+          "native Shift+ArrowLeft selects the complete image with backward orientation",
+          "source bytes unchanged"
+        ]
       }
     }
   }

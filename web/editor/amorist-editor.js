@@ -1273,6 +1273,20 @@
       if (mod && !event.shiftKey && event.key.toLowerCase() === "z") { event.preventDefault(); this.undo(); return; }
       if (mod && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"))) { event.preventDefault(); this.redo(); return; }
       if (mod && event.key.toLowerCase() === "f") { event.preventDefault(); this.openFindBar(); return; }
+      if(this.mode==="wysiwyg" && !mod && !event.altKey && ["ArrowLeft","ArrowRight"].includes(event.key)) {
+        const selection=this.selectionRaw(),direction=this.selectionDirection();
+        if(selection.start===selection.end || event.shiftKey) {
+          const active=direction==="backward"?selection.start:selection.end;
+          const anchor=direction==="backward"?selection.end:selection.start;
+          const image=this.imageAtBoundary(active,event.key==="ArrowLeft");
+          if(image) {
+            event.preventDefault();const target=event.key==="ArrowLeft"?image.start:image.end;
+            if(event.shiftKey) this.restoreRawSelection({start:Math.min(anchor,target),end:Math.max(anchor,target),direction:target<anchor?"backward":"forward"});
+            else this.setSurfaceSelection(target,target);
+            this.scheduleCurrentLine?.();return;
+          }
+        }
+      }
       if(this.mode==="wysiwyg" && !mod && !event.altKey && ["Backspace","Delete"].includes(event.key)) {
         const selection=this.selectionRaw(),image=selection.start===selection.end?this.imageAtBoundary(selection.start,event.key==="Backspace"):null;
         if(image) {event.preventDefault();this.apply(image.start,image.end,"","delete-image");return;}
