@@ -20,11 +20,22 @@ async function main(){
   await engine.evaluate(`(()=>{document.getElementById('recovery-choice').value=${JSON.stringify(ids[0])};document.getElementById('recover-selected').click();return true;})()`);
   await waitFor(`!document.querySelector('#recovery-dialog')&&!document.getElementById('editor').inert&&document.body.classList.contains('is-dirty')`);
   assert.equal(await engine.evaluate(`document.getElementById('file-path').textContent`),files[0]);assert.equal(await engine.evaluate(`document.querySelector('.amorist-editor-source').value`),'');unchanged();
+  const other=create();
+  try{
+   await other.start();const deadline=Date.now()+8000;while(!await other.evaluate(`!!document.querySelector('#recovery-dialog[open]')`)){assert.ok(Date.now()<deadline,'Second startup recovery dialog');await new Promise(resolve=>setTimeout(resolve,30));}
+   assert.deepEqual(await other.evaluate(`Array.from(document.querySelector('#recovery-choice').options).map(option=>option.value)`),[ids[1]],'An active recovery copy cannot be offered by another instance');
+   const refusal=await other.evaluate(`(async()=>{const doc=await window.__TAURI__.core.invoke('read_document');try{await window.__TAURI__.core.invoke('recover_startup_document',{sessionId:${JSON.stringify(ids[0])},contextId:doc.contextId});return 'accepted';}catch(error){return String(error);}})()`);
+   assert.match(refusal,/already open in another editor/);unchanged();assert.equal(await engine.evaluate(`document.body.classList.contains('is-dirty')`),true);
+  }finally{await other.close();}
   await engine.evaluate(`document.getElementById('save-button').click()`);await waitFor(`!document.body.classList.contains('is-dirty')`);
   assert.equal(fs.readFileSync(files[0],'utf8'),'');assert.equal(fs.readFileSync(files[1],'utf8'),saved[1]);assert.equal(fs.existsSync(path.join(recovery,ids[0],'record.json')),false);assert.equal(fs.readFileSync(path.join(recovery,ids[1],'record.json'),'utf8'),records[1]);
-  for(const unavailable of ['missing','invalid-utf8']) {
+  assert.notEqual(process.getuid(),0,'Permission-denied proof requires an unprivileged process');
+  for(const unavailable of ['missing','invalid-utf8','permission-denied']) {
    const original=path.join(scratch,unavailable+'.md'),id='s-startup-'+unavailable+'-'+process.pid;
-   const originalBytes=Buffer.from([255,0,254]);if(unavailable==='invalid-utf8')fs.writeFileSync(original,originalBytes);
+   const originalBytes=unavailable==='permission-denied'?Buffer.from('Protected original\r\n'):Buffer.from([255,0,254]);
+   if(unavailable!=='missing')fs.writeFileSync(original,originalBytes);
+   const originalStat=unavailable!=='missing'?fs.statSync(original,{bigint:true}):null;
+   if(unavailable==='permission-denied'){fs.chmodSync(original,0);assert.throws(()=>fs.readFileSync(original),{code:'EACCES'});}
    const directory=path.join(recovery,id);fs.mkdirSync(directory);const source='Recovered '+unavailable+' λ\r\n';
    const bytes=JSON.stringify({schemaVersion:1,sessionId:id,path:original,savedSource:'Former saved document\r\n',unsavedSource:source,revision:1,boundaryState:null,legacyImport:false});fs.writeFileSync(path.join(directory,'record.json'),bytes);
    await engine.close();engine=create();await engine.start();await waitFor(`!!document.querySelector('#recovery-dialog[open]')`);
@@ -34,9 +45,13 @@ async function main(){
    assert.match(await engine.evaluate(`document.getElementById('notice').textContent`),/untitled document; use Save As/);assert.equal(fs.readFileSync(path.join(directory,'record.json'),'utf8'),bytes);
    const target=path.join(scratch,'saved-'+unavailable+'.md');await engine.evaluate(`window.__TAURI__.dialog.save=()=>Promise.resolve(${JSON.stringify(target)})`);await engine.evaluate(`document.getElementById('save-button').click()`);await waitFor(`!document.body.classList.contains('is-dirty')`);
    assert.equal(fs.readFileSync(target,'utf8'),source);assert.equal(fs.existsSync(path.join(directory,'record.json')),false);assert.equal(fs.readFileSync(path.join(recovery,ids[1],'record.json'),'utf8'),records[1]);
-   if(unavailable==='missing')assert.equal(fs.existsSync(original),false);else assert.deepEqual(fs.readFileSync(original),originalBytes);
+   if(unavailable==='missing')assert.equal(fs.existsSync(original),false);else {
+    assert.equal(fs.statSync(original,{bigint:true}).mtimeNs,originalStat.mtimeNs);
+    if(unavailable==='permission-denied'){assert.equal(fs.statSync(original).mode&0o777,0);fs.chmodSync(original,0o600);}
+    assert.deepEqual(fs.readFileSync(original),originalBytes);
+   }
   }
-  console.log('Native startup recovery: documents listed, continue preserves copies, empty recovery saves only own record; missing and invalid UTF-8 originals recover untitled and remain untouched after Save As');
+  console.log('Native startup recovery: documents listed, active copies excluded and stale claims refused, continue preserves copies, empty recovery saves only own record; missing, invalid UTF-8 and permission-denied originals recover untitled and remain untouched after Save As');
  }finally{await engine.close();fs.rmSync(scratch,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
