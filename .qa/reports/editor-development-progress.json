@@ -2043,13 +2043,20 @@
         "only owned application process interrupted",
         "same document recovers exact unsaved text after restart",
         "original remains unchanged before explicit Save",
-        "explicit Save retains CRLF"
+        "explicit Save retains CRLF",
+        "each named document recovers its own source even when another document has a newer checkpoint"
       ],
       "remaining": [
-        "two-document and live-instance recovery isolation",
+        "live-instance recovery isolation",
         "changed-base and cross-document recovery choice",
         "packaged recovery and concurrent-save acceptance"
-      ]
+      ],
+      "twoDocumentEvidence": [
+        "windows-recovery-two-documents-passed.log",
+        "windows-recovery-two-documents-status.json"
+      ],
+      "twoDocumentScope": "Two named temporary documents interrupted sequentially and independently recovered; only one driven window at a time",
+      "twoDocumentRecoveryMs": 2052
     }
   },
   "ciWindowsDevelopment": {
