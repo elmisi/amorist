@@ -179,6 +179,38 @@ async function runOnce() {
     await waitForFileContents(documentPath, saved + saveSuffix);
     await waitForMissing(recoveryPath);
     results.fixtures.push("built app: file sampled before/after recovery timer and changed only by Save");
+
+    // An actual process restart must preserve ownership, not just Markdown.
+    // Backspace distinguishes a restored generated marker from manual syntax.
+    await loadApplicationFixture(engine, documentPath, "alpha");
+    await setApplicationRawSelection(engine, 5);
+    await engine.sendKeys([{ key: "Enter" }, "beta"]);
+    await delay(60);
+    const ownedSource = "alpha\\\nbeta";
+    await waitForRecovery(recoveryPath, ownedSource, RECOVERY_INTERVAL_MS + TIMER_TOLERANCE_MS);
+    const persistedBoundary = JSON.parse(fs.readFileSync(recoveryPath, "utf8")).boundaryState;
+    if (!persistedBoundary || persistedBoundary.automaticBreaks.length !== 1
+        || persistedBoundary.automaticBreaks[0].marker !== 5) {
+      throw new Error("Generated boundary ownership was not persisted with its exact source.");
+    }
+    await engine.crashApplication();
+    engine = null;
+    engine = new TauriEngine(driver, APPLICATION, [documentPath], environment);
+    await engine.start();
+    await waitForEditor(engine, ownedSource);
+    await setApplicationRawSelection(engine, 7);
+    await engine.sendKeys([{ key: "Backspace" }]);
+    await delay(60);
+    const joinedSource = await applicationMarkdown(engine);
+    if (joinedSource !== "alphabeta") {
+      results.E1.push({ fixture: "generated boundary ownership after process restart",
+        detail: "Backspace did not clean up the recovered automatic boundary.",
+        expected: "alphabeta", actual: joinedSource });
+    }
+    if (fs.readFileSync(documentPath, "utf8") !== "alpha") {
+      throw new Error("Recovery or boundary cleanup wrote the user document without Save.");
+    }
+    results.fixtures.push("built app: generated boundary provenance survives SIGKILL and controls cleanup after restart");
   } catch (error) {
     let recovery = "missing";
     try {

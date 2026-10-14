@@ -97,8 +97,8 @@
       syncDirty(dirty) {
         invoke("set_dirty", { dirty: dirty });
       },
-      persistWorkingCopy(savedSource, unsavedSource, revision) {
-        return invoke("persist_working_copy", { savedSource: savedSource, unsavedSource: unsavedSource, revision: revision });
+      persistWorkingCopy(savedSource, unsavedSource, revision, boundaryState) {
+        return invoke("persist_working_copy", { savedSource: savedSource, unsavedSource: unsavedSource, revision: revision, boundaryState: boundaryState });
       },
       discardWorkingCopy() { return invoke("discard_working_copy"); },
       async setWindowTitle(name) {
@@ -288,11 +288,13 @@
       state.savedMarkdown = doc.markdown || "";
       setDocumentLabel(doc);
       mountEditor(doc.recoveryMarkdown || state.savedMarkdown);
+      var recoveryMetadataRestored = doc.recoveryBoundaryState == null || state.editor.model.restoreBoundaryState(doc.recoveryBoundaryState);
       setDirty(false);
       hideNotice();
       if (doc.recoveryMarkdown && doc.recoveryMarkdown !== state.savedMarkdown) {
         setDirty(true);
-        showWarning("Recovered unsaved work. Save to apply it to the file, or Reload to discard it.");
+        showWarning("Recovered unsaved work. Save to apply it to the file, or Reload to discard it."
+          + (recoveryMetadataRestored ? "" : " Recovery metadata was invalid; text was recovered unchanged."));
       }
       setStatus(doc.exists ? "Loaded" : "New file");
       backend.setWindowTitle(doc.name || "");
@@ -449,8 +451,13 @@
   function scheduleWorkingCopy(value) {
     if (state.demo || value === state.savedMarkdown) return;
     clearTimeout(workingCopyTimer);
+    var editor = state.editor;
+    var savedSource = state.savedMarkdown;
+    var revision = editor && editor.model ? editor.model.revision : 0;
+    var boundaries = editor && editor.model ? editor.model.boundaryState() : null;
     workingCopyTimer = setTimeout(function () {
-      backend.persistWorkingCopy(state.savedMarkdown, value, state.editor && state.editor.model ? state.editor.model.revision : 0)
+      if (state.editor !== editor) return;
+      backend.persistWorkingCopy(savedSource, value, revision, boundaries)
         .catch(function () { showWarning("Could not persist recovery copy. Your file was not changed."); });
     }, 2000);
   }

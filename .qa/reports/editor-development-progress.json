@@ -58,8 +58,8 @@
     {
       "id": 9,
       "name": "file-actions-recovery-and-windows",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "Recovery persists automatic boundary metadata with the matching source revision; legacy copies load without inferred ownership. Ten Rust checks on all three platforms, actual Linux SIGKILL/restart/cleanup, full Linux suite and eleven regressions passed. Per-document/session isolation, untitled recovery and File actions remain pending."
     },
     {
       "id": 10,
@@ -530,6 +530,44 @@
         "fail": 0,
         "log": "structure-boundary-classic-linux.log"
       }
+    },
+    "recoveryBoundaryDevelopment": {
+      "status": "Rust checks on Linux/macOS/Windows, actual Linux restart, full Linux suite and eleven regressions passed",
+      "rustTests": {
+        "pass": 10,
+        "fail": 0,
+        "platforms": [
+          "Linux",
+          "macOS",
+          "Windows"
+        ]
+      },
+      "nativeReport": "recovery-metadata-native-linux.json",
+      "scope": [
+        "atomic source and provenance recovery copy",
+        "legacy records without metadata",
+        "mismatched base or path rejected",
+        "SIGKILL/restart restores automatic cleanup ownership",
+        "user document unchanged without Save"
+      ],
+      "remaining": [
+        "per-document/session isolation",
+        "untitled recovery",
+        "multiple recovery choice",
+        "File actions",
+        "native platform acceptance"
+      ],
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "recovery-metadata-qa-linux.json",
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "classicRegressionChecks": {
+        "pass": 11,
+        "fail": 0,
+        "log": "recovery-metadata-classic-linux.log"
+      },
+      "windowsObservation": "Native tests completed with ten passing checks and no cargo/rustc/link processes; SSH observation stayed open and was terminated after retrieving terminal logs."
     }
   }
 }

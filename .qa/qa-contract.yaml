@@ -128,6 +128,19 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Recovery stores automatic boundary provenance with the matching source and
+      revision, in the same atomic copy. Restart restores validated metadata before
+      editing, so a join gesture can remove generated syntax. Older copies lacking
+      metadata remain readable without inferring ownership from their Markdown.
+    why: >
+      The approved recovery mechanism must retain session provenance across a crash.
+      REQ-E1 now checks actual process restart and generated boundary cleanup.
+      Isolation per document/session and untitled recovery remain required work.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Inline rendering uses tokens carrying original source intervals, including
       their content boundaries. Escaped punctuation stays literal; underscore
       emphasis, nested emphasis, strikethrough and exact-width inline code
@@ -1241,10 +1254,13 @@ requirements:
       type: deterministic
       evidence_required:
         - text typed, the process killed without a save, the recovered content
+        - generated boundary metadata persisted with its source and cleanup after restart
       success_condition: >
         The recovered text matches what was typed, verbatim, up to the last
         working-copy interval. That interval MUST be stated in the
-        implementation and asserted by the check.
+        implementation and asserted by the check. Explicit automatic boundary
+        ownership also survives restart; a recovered generated break is removed
+        by a join gesture while legacy copies without metadata remain readable.
     severity: blocking
     false_positive_risk: low
     automation: full

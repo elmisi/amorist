@@ -57,6 +57,8 @@ struct WorkingCopy {
     saved_source: String,
     unsaved_source: String,
     revision: u64,
+    #[serde(default)]
+    boundary_state: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -67,6 +69,7 @@ struct DocumentResponse {
     exists: bool,
     markdown: String,
     recovery_markdown: Option<String>,
+    recovery_boundary_state: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -93,6 +96,7 @@ fn read_document(
         let text = String::from_utf8(raw.clone())
             .map_err(|_| "Markdown files must be UTF-8 encoded.".to_string())?;
         let markdown = text.clone();
+        let recovery = load_recovery_record(&app, path, &text);
 
         if let Ok(mtime) = metadata.modified() {
             *state.last_modified.lock().unwrap() = Some(mtime);
@@ -106,9 +110,11 @@ fn read_document(
                 .unwrap_or_default(),
             exists: true,
             markdown,
-            recovery_markdown: load_recovery(&app, path, &text),
+            recovery_markdown: recovery.as_ref().map(|record| record.unsaved_source.clone()),
+            recovery_boundary_state: recovery.and_then(|record| record.boundary_state),
         })
     } else {
+        let recovery = load_recovery_record(&app, path, "");
         Ok(DocumentResponse {
             path: path.display().to_string(),
             name: path
@@ -117,7 +123,8 @@ fn read_document(
                 .unwrap_or_default(),
             exists: false,
             markdown: String::new(),
-            recovery_markdown: load_recovery(&app, path, ""),
+            recovery_markdown: recovery.as_ref().map(|record| record.unsaved_source.clone()),
+            recovery_boundary_state: recovery.and_then(|record| record.boundary_state),
         })
     }
 }
@@ -247,26 +254,35 @@ fn working_copy_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_home(app)?.join("working-copy.json"))
 }
 
-fn load_recovery(
+fn load_recovery_record(
     app: &tauri::AppHandle,
     path: &std::path::Path,
     saved_source: &str,
-) -> Option<String> {
+) -> Option<WorkingCopy> {
     let file = working_copy_path(app).ok()?;
-    load_recovery_file(&file, path, saved_source)
+    load_recovery_record_file(&file, path, saved_source)
 }
 
+#[cfg(test)]
 fn load_recovery_file(
     file: &std::path::Path,
     path: &std::path::Path,
     saved_source: &str,
 ) -> Option<String> {
+    load_recovery_record_file(file, path, saved_source).map(|record| record.unsaved_source)
+}
+
+fn load_recovery_record_file(
+    file: &std::path::Path,
+    path: &std::path::Path,
+    saved_source: &str,
+) -> Option<WorkingCopy> {
     let record: WorkingCopy = serde_json::from_slice(&fs::read(file).ok()?).ok()?;
     if record.path == path.display().to_string()
         && record.saved_source == saved_source
         && record.unsaved_source != saved_source
     {
-        Some(record.unsaved_source)
+        Some(record)
     } else {
         None
     }
@@ -279,6 +295,7 @@ fn persist_working_copy(
     saved_source: String,
     unsaved_source: String,
     revision: u64,
+    boundary_state: Option<serde_json::Value>,
 ) -> Result<(), String> {
     if unsaved_source.len() as u64 > MAX_MARKDOWN_BYTES
         || saved_source.len() as u64 > MAX_MARKDOWN_BYTES
@@ -292,6 +309,7 @@ fn persist_working_copy(
         saved_source,
         unsaved_source,
         revision,
+        boundary_state,
     };
     persist_working_copy_file(&working_copy_path(&app)?, &record)
 }
@@ -928,6 +946,7 @@ mod tests {
             saved_source: saved.to_string(),
             unsaved_source: unsaved.to_string(),
             revision: 7,
+            boundary_state: None,
         };
 
         persist_working_copy_file(&copy, &record).unwrap();
@@ -939,6 +958,39 @@ mod tests {
         );
         assert_eq!(fs::read(&document).unwrap(), saved.as_bytes());
         assert!(temporary_files_in(&dir).is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn recovery_preserves_boundary_metadata_and_accepts_legacy_records() {
+        let dir = scratch_dir("recovery-metadata");
+        let document = dir.join("nota.md");
+        let copy = dir.join("working-copy.json");
+        let metadata = serde_json::json!({
+            "schemaVersion": 1,
+            "offsetEncoding": "utf16",
+            "automaticBreaks": [{"marker": 2, "escapes": []}]
+        });
+        let record = WorkingCopy {
+            path: document.display().to_string(),
+            saved_source: "😀".into(),
+            unsaved_source: "😀\\\r\n".into(),
+            revision: 3,
+            boundary_state: Some(metadata.clone()),
+        };
+        persist_working_copy_file(&copy, &record).unwrap();
+        let restored = load_recovery_record_file(&copy, &document, "😀").unwrap();
+        assert_eq!(restored.unsaved_source, record.unsaved_source);
+        assert_eq!(restored.boundary_state, Some(metadata));
+        assert!(load_recovery_record_file(&copy, &document, "changed base").is_none());
+        assert!(load_recovery_record_file(&copy, &dir.join("other.md"), "😀").is_none());
+
+        let mut legacy = serde_json::to_value(&record).unwrap();
+        legacy.as_object_mut().unwrap().remove("boundaryState");
+        fs::write(&copy, serde_json::to_vec(&legacy).unwrap()).unwrap();
+        let restored = load_recovery_record_file(&copy, &document, "😀").unwrap();
+        assert_eq!(restored.unsaved_source, record.unsaved_source);
+        assert_eq!(restored.boundary_state, None);
         fs::remove_dir_all(&dir).ok();
     }
 
@@ -968,6 +1020,7 @@ mod tests {
             saved_source: saved.to_string(),
             unsaved_source: "# Modifica non salvata\n".to_string(),
             revision: 1,
+            boundary_state: None,
         };
 
         persist_working_copy_file(&copy, &record).unwrap();

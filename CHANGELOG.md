@@ -7,6 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Recovery copies retain explicit automatic line-break ownership alongside the
+  matching source revision. Older copies remain readable without inferring ownership.
 - Fenced code keeps heading, list, task and quote syntax literal in rendering
   and editing. Enter retains its source line ending; Backspace and paste use
   the same code context as the projection.
