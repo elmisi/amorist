@@ -3,12 +3,14 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
 const {TauriEngine,discoverDriver}=require('./qa/lib/engine-tauri');
 async function main(){
  assert.equal(process.platform,'linux');const root=path.resolve(__dirname,'..');
- const build=cp.spawnSync('cargo',['build','--manifest-path',path.join(root,'src-tauri/Cargo.toml')],{encoding:'utf8'});assert.equal(build.status,0,build.stderr);
+ const application=process.env.AMORIST_QA_APPLICATION||path.join(root,'src-tauri/target/debug/amorist');
+ if(!process.env.AMORIST_QA_APPLICATION){const build=cp.spawnSync('cargo',['build','--manifest-path',path.join(root,'src-tauri/Cargo.toml')],{encoding:'utf8'});assert.equal(build.status,0,build.stderr);}
+ assert.ok(fs.existsSync(application),'The specified native application must exist');
  const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'amorist-settings-native-')),file=path.join(scratch,'preferences λ.md');
  const source='# Preferences\r\nText λ\r\n\r\n| A | B |\r\n| --- | --- |\r\n| left | right |\r\n\r\n```\r\ncode\r\n```';fs.writeFileSync(file,source);
  const environment={...process.env,XDG_DATA_HOME:path.join(scratch,'data'),XDG_CACHE_HOME:path.join(scratch,'cache'),XDG_CONFIG_HOME:path.join(scratch,'config')};
  const settingsPath=path.join(scratch,'data','dev.elmisi.amorist','settings.json');
- const create=()=>new TauriEngine(discoverDriver(),path.join(root,'src-tauri/target/debug/amorist'),['--',file],environment);let engine=create();
+ const create=()=>new TauriEngine(discoverDriver(),application,['--',file],environment);let engine=create();
  async function waitFor(expression){const deadline=Date.now()+7000;while(!await engine.evaluate(`!!document.getElementById('editor')&&(${expression})`)){assert.ok(Date.now()<deadline,'Timed out: '+expression);await new Promise(resolve=>setTimeout(resolve,40));}}
  async function start(){await engine.start();await waitFor(`!document.getElementById('editor').inert&&!document.getElementById('settings-button').hidden&&!!document.querySelector('.amorist-editor-source')`);}
  async function font(){return engine.evaluate(`getComputedStyle(document.querySelector('.amorist-editor-source')).fontSize`);}
@@ -38,7 +40,7 @@ async function main(){
   await engine.sendKeys([{key:'Enter'}]);await waitFor(`!document.getElementById('settings-dialog').open`);assert.equal(await font(),'21px');
   assert.equal(JSON.parse(fs.readFileSync(settingsPath,'utf8')).baseFontSize,21);
   const first=engine,secondFile=path.join(scratch,'second preferences.md');fs.writeFileSync(secondFile,source);
-  const second=new TauriEngine(discoverDriver(),path.join(root,'src-tauri/target/debug/amorist'),['--',secondFile],environment);
+  const second=new TauriEngine(discoverDriver(),application,['--',secondFile],environment);
   function focus(file){const result=cp.spawnSync('python3',[path.join(__dirname,'qa/lib/focus-x11.py'),'amorist — '+path.basename(file)],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);}
   try{
    engine=second;await start();await waitFor(`getComputedStyle(document.querySelector('.amorist-editor-source')).fontSize==='21px'`);
