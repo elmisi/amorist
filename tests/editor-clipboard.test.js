@@ -149,6 +149,25 @@ async function main(options={}){
    assert.equal(await engine.evaluate('window.__clip.getMarkdown()'),'before  after\r\n');
    await engine.sendKeys([{key:'z',ctrl:true}]);await new Promise(resolve=>setTimeout(resolve,100));
    assert.equal(await engine.evaluate('window.__clip.getMarkdown()'),'before ![Alt](image.png) after\r\n');
+   const remoteSource=`before ![Alt](${server.origin}/tests/qa/assets/image.svg "Title") after\r\n`;
+   await engine.evaluate(`(() => {window.__clip.setMarkdown(${JSON.stringify(remoteSource)});return true;})()`);
+   const loaded=await engine.evaluate(`new Promise(resolve=> {
+    const started=Date.now();const poll=()=> {
+      const atom=window.__clip.surface.querySelector('.amorist-image-atom'),image=atom.querySelector('img');
+      if(atom.dataset.imageState==='loaded' || Date.now()-started>3000) resolve({state:atom.dataset.imageState,width:image.naturalWidth,hidden:image.hidden,alt:image.alt,title:image.title,source:window.__clip.getMarkdown()});
+      else setTimeout(poll,20);
+    };poll();
+   })`);
+   assert.deepEqual(loaded,{state:'loaded',width:200,hidden:false,alt:'Alt',title:'Title',source:remoteSource});
+   await engine.evaluate(`(() => {window.__clip.setMarkdown(${JSON.stringify(`![Broken](${server.origin}/missing-image.svg)`)});return true;})()`);
+   const failed=await engine.evaluate(`new Promise(resolve=> {
+    const started=Date.now();const poll=()=> {
+      const atom=window.__clip.surface.querySelector('.amorist-image-atom');
+      if(atom.dataset.imageState==='failed' || Date.now()-started>3000) resolve({state:atom.dataset.imageState,fallbackHidden:atom.querySelector('.amorist-image-fallback').hidden,text:atom.textContent});
+      else setTimeout(poll,20);
+    };poll();
+   })`);
+   assert.equal(failed.state,'failed');assert.equal(failed.fallbackHidden,false);assert.match(failed.text,/Broken/);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

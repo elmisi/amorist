@@ -1366,7 +1366,7 @@
       "scope": "Read-only readiness checks; no remote GUI acceptance claimed"
     },
     "imageTokenDevelopment": {
-      "status": "image grammar and atomic fallback projection implemented; loading/protocol remain pending",
+      "status": "image grammar, atomic projection and HTTP/HTTPS loader implemented; local protocol and native/geometry gates pending",
       "scope": [
         "inline and reference image tokens carry exact raw UTF16 source boundaries",
         "formatted alt flattened to text, destination/title grammar shared with links",
@@ -1382,7 +1382,6 @@
         }
       },
       "remaining": [
-        "remote loading and alt/path fallback",
         "opaque scoped local-image protocol and resource invalidation",
         "image sizing and late-load caret stability",
         "image clipboard resource context",
@@ -1401,6 +1400,25 @@
           "whole-atom Backspace/Delete, actual keyboard Delete and undo",
           "exact CRLF and mode round-trip",
           "source bytes preserved until explicit deletion"
+        ]
+      },
+      "remoteLoader": {
+        "exitCode": 0,
+        "report": "image-remote-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": [
+          "HTTP image served by isolated QA origin decodes and becomes visible",
+          "alt/title retained and source CRLF unchanged",
+          "404 retains readable alt/path fallback",
+          "only HTTP/HTTPS accepted by this loader; local paths remain unresolved",
+          "QA CSP confines image requests to its own origin; no external image fetches in browser checks"
+        ],
+        "implementedButUnverified": [
+          "late-load caret viewport compensation",
+          "affected-table remeasurement and horizontal-scroll preservation"
         ]
       }
     }

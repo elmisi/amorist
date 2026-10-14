@@ -494,3 +494,5 @@ mark.amorist-find-current {
 .amorist-wysiwyg-block > .amorist-source-line { position: relative; z-index: 1; }
 .amorist-image-atom { display: inline-block; max-width: 100%; vertical-align: middle; }
 .amorist-image-fallback { color: var(--muted, #68717d); overflow-wrap: anywhere; }
+.amorist-image { display: block; max-width: 100%; max-height: min(55vh, 480px); object-fit: contain; }
+.amorist-image[hidden], .amorist-image-fallback[hidden] { display: none; }

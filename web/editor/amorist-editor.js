@@ -725,6 +725,41 @@
       return block;
     }
 
+    loadRemoteImage(atom,fallback,token) {
+      let url;
+      try {url=new URL(token.href);} catch(error) {return;}
+      if(!["http:","https:"].includes(url.protocol)) return;
+      const image=document.createElement("img");image.className="amorist-image";image.hidden=true;
+      image.alt=token.alt;image.referrerPolicy="no-referrer";image.decoding="async";
+      if(token.title!==null && token.title!==undefined) image.title=token.title;
+      atom.dataset.imageState="loading";atom.append(image);
+      image.addEventListener("error",()=> {if(atom.isConnected) atom.dataset.imageState="failed";});
+      image.addEventListener("load",()=> {
+        if(!atom.isConnected || !image.naturalWidth) return;
+        const selection=window.getSelection();
+        let caret=null;
+        if(this.mode==="wysiwyg" && document.activeElement===this.surface && selection?.focusNode
+            && this.surface.contains(selection.focusNode)) {
+          const range=document.createRange();range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
+          if(range.getBoundingClientRect().height) caret=range;
+        }
+        const scroller=scrollViewportFor(this.surface), before=caret?.getBoundingClientRect().top;
+        const table=atom.closest(".amorist-wysiwyg-table-block");
+        const left=table?.scrollLeft||0,maximum=table?Math.max(0,table.scrollWidth-table.clientWidth):0;
+        atom.style.maxWidth="100%";image.style.maxWidth="100%";
+        image.hidden=false;fallback.hidden=true;atom.dataset.imageState="loaded";
+        if(table) {
+          table.querySelectorAll('.amorist-wysiwyg-table-cell').forEach(cell=>{cell.style.paddingInlineEnd="0px";});
+          this.layoutTableBlocks([table]);
+          const nextMaximum=Math.max(0,table.scrollWidth-table.clientWidth);
+          table.scrollLeft=maximum>1 && maximum-left<=1?nextMaximum:Math.min(left,nextMaximum);
+        }
+        if(caret && Number.isFinite(before)) scroller.scrollTop+=caret.getBoundingClientRect().top-before;
+        this.scheduleCurrentLine?.();
+      },{once:true});
+      image.src=url.href;
+    }
+
     renderInlineProjection(container, text, rawStart) {
       // Ranges are relative to the physical row. Its sourceStart is refreshed
       // after an earlier edit, so untouched DOM nodes keep valid mappings.
@@ -745,7 +780,8 @@
             this.sourceNodeRanges.set(atom,{start,end});
             const fallback=document.createElement("span");fallback.className="amorist-image-fallback";
             this.appendSourceText(fallback,(token.alt?token.alt+" — ":"")+token.href,start,end);
-            atom.append(fallback);parent.append(boundary(start),atom,boundary(end));continue;
+            atom.append(fallback);parent.append(boundary(start),atom,boundary(end));
+            this.loadRemoteImage(atom,fallback,token);continue;
           }
           if (token.type === "text" || token.type === "code") {
             const leaf = document.createElement(token.type === "code" ? "code" : "span");
