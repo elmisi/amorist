@@ -3366,7 +3366,7 @@
       "linux-candidate-b9b3ddc-raw-loop.log exit0"
     ],
     "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
-    "remaining": "Actual installation/upgrade and desktop activation require an administrative Linux environment; owner question pending. Earlier B2 intermittency remains documented; macOS/Windows acceptance pending. Native owned-boundary recovery now passed on both Linux packages.",
+    "remaining": "Installed-environment GUI/desktop activation and unexplained earlier B2 intermittency remain; macOS/Windows acceptance pending. Administrative install/upgrade prerequisite resolved using local Docker; no personal host upgrade required for this proof.",
     "rollbackPreparation": {
       "package": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-0.10.8-backup/amorist_0.10.8_restore.deb",
       "sha256": "cadd31d72d0d3768b635368c3bcd0ee178e71f6bf40047ee0c711631d10f82f3",
@@ -3385,5 +3385,30 @@
     ],
     "behavior": "Actual native Enter produces CRLF boundary persisted to recovery record; guarded SIGKILL targets only owned process matched by executable, document, private data path, display, nonce and process start identity. Restart renders recovered draft; selecting and indenting removes owned marker; each undo restores exact source and provenance persisted to disk. Original document unchanged.",
     "remaining": "Windows/macOS native acceptance and installed candidate/upgrade pending"
+  },
+  "linuxIsolatedPackageUpgrade": {
+    "status": "passed",
+    "environment": "isolated Ubuntu26.04 Docker on local Unix daemon",
+    "container": "amorist-qa-linux-upgrade-20261014-2393569",
+    "imageId": "sha256:6e92c4fd8dfdf7276d56743a65002a91c9eb35dbe7af327e6c85bd204b646156",
+    "fromVersion": "0.10.8",
+    "toVersion": "0.10.10",
+    "candidateArtifactSha256": "05550c686b4ea6cbc312a2d774b9369c1970a6382d5fbde5b46e96c6c9ee1343",
+    "installedExecutableSha256": "d78e19ceb4bcec2c497a51e24a24d82c94ce22bd26d1a1f459e01fe79ee04eaa",
+    "buildInfo": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:653bea16327f6e1d826b7cb2ace35595712a6bff",
+      "fingerprint": "653bea16327f6e1d826b7cb2ace35595712a6bff",
+      "commit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "userdataFixturesUnchanged": 3,
+    "scope": "Actual package installation and upgrade; installed executable headless identity and exact byte match to native-tested extracted deb. GUI tests inside the installed environment and desktop activation not yet performed. Personal installed0.10.8 and its app data untouched.",
+    "evidence": [
+      "linux-isolated-upgrade.log (installation/upgrade passed; initial identity invocation used wrong CLI syntax)",
+      "linux-isolated-upgrade-completion.log (corrected headless invocation and hash verification passed)"
+    ]
   }
 }
