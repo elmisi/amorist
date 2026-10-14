@@ -2913,5 +2913,34 @@
       "sha256": "84af7ebdb58cdbebad52cfb4e5934bcb9577b4e3c6b1bf41ddde04bd6719f83f",
       "result": "unchanged"
     }
+  },
+  "linuxUserPreview": {
+    "authorized": true,
+    "authorization": "User explicitly requested trying Linux now despite incomplete final delivery, with review-markdown-files.py --debug --amorist src-tauri/target/release/amorist; user accepts seeing latest build.",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:ef207b913d662d91d2d95a8e78ef5627bf2974fb",
+      "fingerprint": "ef207b913d662d91d2d95a8e78ef5627bf2974fb",
+      "commit": "0400352b1cb6ad42e0adaf43adc4f4dc98d4e58a",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "executable": "src-tauri/target/release/amorist",
+    "reference": "/home/alessandro/.local/share/dev.elmisi.amorist/review-release.json",
+    "referenceFlags": {
+      "preview": true,
+      "finalDeliveryValidated": false
+    },
+    "verified": [
+      "linux-user-preview-build.log exit0",
+      "Headless identity matches reference and clean commit0400352",
+      "Actual review runner smoke with empty list and isolated state exit0; personal documents/state not opened or changed",
+      "linux-user-preview-native-smoke.log exit0: actual release binary Settings/Save/Cancel/restart/retry/focus/document preservation"
+    ],
+    "command": "python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/release/amorist",
+    "futureBuildPolicy": "Use current release binary directly. Refresh this preview reference to exact successfully built/tested Linux binary identity after subsequent preview updates; retain preview flags while final gates are incomplete. Runner detects identity changes before each file and begins a new build-specific run on restart.",
+    "preservedWip": "/home/alessandro/.local/state/amorist/execution-20261013-1932/direct-list-fence-in-progress.patch",
+    "remaining": "Final delivery remains blocked; no push/publication. Direct list-marker fence correction is preserved separately and excluded from this tested preview. Final all-platform requirements and complete end-to-end review proof remain pending."
   }
 }
