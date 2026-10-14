@@ -31,6 +31,15 @@ async function main(){
    await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.showSourceMode();editor.focus();editor.source.setSelectionRange(0,0);return true;})()`);
    await send([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**');
+   await engine.evaluate(`(() => {window.__copyEditor.focus();window.__copyEditor.setSurfaceSelection(9,13);return true;})()`);
+   await send([{key:'x',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+   assert.equal(await engine.evaluate('window.__copyEditor.getMarkdown()'),'before  after');
+   await send([{key:'z',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+   assert.equal(await engine.evaluate('window.__copyEditor.getMarkdown()'),'before **bold** after');
+   assert.deepEqual(await engine.evaluate('window.__copyEditor.selectionRaw()'),{start:9,end:13});
+   await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.focus();editor.source.setSelectionRange(0,0);return true;})()`);
+   await send([{key:'v',shift:true,ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+   assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**');
    console.log(`system clipboard: ${entry.id} passed; types=${visual.paste[0].types.join(',')}`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

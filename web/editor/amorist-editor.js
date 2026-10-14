@@ -1420,7 +1420,10 @@
     }
 
     finishClipboardEdit(selection,replacement,gesture) {
-      this.apply(selection.start,selection.end,replacement,gesture);
+      const before={...this.selectionRaw(),direction:this.selectionDirection()};
+      const entry=this.apply(selection.start,selection.end,replacement,gesture);
+      entry.selectionBefore=before;
+      entry.selectionAfter={start:selection.start+replacement.length,end:selection.start+replacement.length,direction:"forward"};
       if(this.mode==="source") {
         this.sourceBeforeInput=null;
         this.source.value=this.model.display;
@@ -1428,6 +1431,27 @@
         this.source.setSelectionRange(caret,caret);
       }
       this.scheduleCurrentLine?.();
+    }
+
+    clipboardCutSelection(selection) {
+      if(this.mode!=="wysiwyg") return selection;
+      const descriptor=this.descriptorAtRaw(selection.start);
+      if(!descriptor || descriptor.unitType!=="line" || descriptor.projection.referenceDefinition || selection.end>descriptor.end) return selection;
+      const text=descriptor.projection.text,base=descriptor.start+descriptor.projection.prefix,tokens=[];
+      const collect=items=>items.forEach(token=> {tokens.push(token);if(token.children) collect(token.children);});
+      collect(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,this.lineDescriptors.references));
+      let result={...selection},changed=true;
+      while(changed) {
+        changed=false;
+        for(const token of tokens) {
+          if(!["em","strong","strong-em","delete","code","link"].includes(token.type)) continue;
+          if(result.start===base+token.contentStart && result.end===base+token.contentEnd
+              && (result.start!==base+token.start || result.end!==base+token.end)) {
+            result={start:base+token.start,end:base+token.end};changed=true;
+          }
+        }
+      }
+      return result;
     }
 
     handleCopy(event,cut) {
@@ -1445,7 +1469,7 @@
       const publicSource=projected.filter(row=>!row.projection.referenceDefinition).map(row=>row.raw+row.ending).join("");
       try {clipboard.setData("text/html",MarkdownCodec.renderMarkdown(publicSource,projected.references,true));} catch(error) { /* Plain Markdown remains available. */ }
       try {clipboard.setData(CLIPBOARD_TYPE,JSON.stringify({schemaVersion:1,markdown}));} catch(error) { /* Some native clipboards reject custom types. */ }
-      if(cut) this.finishClipboardEdit(selection,"","cut");
+      if(cut) this.finishClipboardEdit(this.clipboardCutSelection(selection),"","cut");
     }
 
     handlePaste(event) {

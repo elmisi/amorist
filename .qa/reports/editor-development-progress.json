@@ -1297,6 +1297,21 @@
         "pass": 14,
         "fail": 0,
         "report": "system-clipboard-classic-linux.log"
+      },
+      "cutFollowup": {
+        "status": "passed on both Linux browser engines",
+        "report": "system-clipboard-cut-selection-linux.log",
+        "scope": [
+          "real cut copies formatting and removes fully emptied inline delimiters in one transaction",
+          "undo restores exact source and original selection",
+          "native plain-paste shortcut inserts literal Markdown in source"
+        ],
+        "controlledGate": {
+          "id": "REQ-K1",
+          "exitCode": 0,
+          "report": "clipboard-cut-k1-qa-linux.json"
+        },
+        "remaining": "Partial-format cuts crossing containers and full native package/window acceptance remain pending"
       }
     }
   }
