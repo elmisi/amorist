@@ -397,14 +397,22 @@
   async function adoptDocument(doc) {
       if (nativeOpen && (doc.path || doc.recoveryMarkdown != null || (doc.recoveryCandidates || []).length)) nativeOpen.claim();
       if (doc.recoveryCandidates && doc.recoveryCandidates.length) {
-        var selected = await chooseRecovery(doc.recoveryCandidates, false, doc.markdown || "");
+        var selected = await chooseRecovery(doc.recoveryCandidates, false, doc.markdown || "", doc.path || null);
         if (selected) {
+          var selectedCopy=doc.recoveryCandidates.find(function(copy){return copy.sessionId===selected;});
+          if(selectedCopy && selectedCopy.path && selectedCopy.path!==doc.path) {
+            var inspection=await backend.inspectOpen(selectedCopy.path);
+            doc=await backend.openDocument(selectedCopy.path,false,selected,inspection.savedSource);
+            if(selectedCopy.savedSource!==doc.markdown) doc.recoveryWarnings=(doc.recoveryWarnings||[]).concat(
+              "The saved file changed since this recovery copy was made. Recovery does not merge those changes. Use Save As to keep both versions.");
+          } else {
           var recoveredCopy = await backend.selectRecovery(selected);
           doc.recoveryMarkdown = recoveredCopy.unsavedSource;
           doc.recoveryBoundaryState = recoveredCopy.boundaryState;
           if (recoveredCopy.savedSource !== (doc.markdown || "")) {
             doc.recoveryWarnings = (doc.recoveryWarnings || []).concat(
               "The saved file changed since this recovery copy was made. Recovery does not merge those changes. Use Save As to keep both versions.");
+          }
           }
         }
       }
@@ -441,7 +449,7 @@
       backend.setWindowTitle(doc.name || "");
   }
 
-  function chooseRecovery(copies, cancellable, savedSource) {
+  function chooseRecovery(copies, cancellable, savedSource, currentPath) {
     return new Promise(function (resolve) {
       var dialog = document.createElement("dialog");
       dialog.id = "recovery-dialog";
@@ -450,7 +458,7 @@
       title.id = "recovery-title";
       title.textContent = "Choose unsaved work to recover";
       var description = document.createElement("p");
-      var changedBase = savedSource !== undefined && copies.some(function(copy) { return copy.savedSource !== savedSource; });
+      var changedBase = savedSource !== undefined && copies.some(function(copy) { return (currentPath===undefined || copy.path===currentPath) && copy.savedSource !== savedSource; });
       description.textContent = changedBase
         ? "The saved file changed since the recovery copy was made. Recovering does not merge those changes or write the file. Use Save As to keep both versions. Other copies will be kept."
         : "Choose a recovery copy. The other copies will be kept.";
@@ -461,7 +469,8 @@
         var option = document.createElement("option");
         option.value = copy.sessionId;
         option.textContent = "Copy " + (index + 1)
-          + (savedSource !== undefined && copy.savedSource !== savedSource ? " (saved file changed)" : "")
+          + (copy.path ? " — "+copy.path : " — Untitled")
+          + (savedSource !== undefined && (currentPath===undefined || copy.path===currentPath) && copy.savedSource !== savedSource ? " (saved file changed)" : "")
           + ": " + copy.unsavedSource.slice(0, 120).replace(/\s+/g, " ");
         select.appendChild(option);
       });
@@ -471,7 +480,7 @@
       recover.id = "recover-selected";
       recover.textContent = "Recover selected copy";
       var saved = document.createElement("button");
-      saved.textContent = "Open saved file";
+      saved.textContent = currentPath===null ? "Continue without recovery" : "Open saved file";
       if (cancellable) {
         var cancel = document.createElement("button");
         cancel.id = "recovery-cancel";

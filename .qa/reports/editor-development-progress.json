@@ -2589,6 +2589,26 @@
     "appimageImages": "PASS appimage-current-owned-images-no-host-linux.log exit0: all required formats incl AVIF with host plugin directories hidden, SaveAs/New/resource expiry and unchanged source; owned process exits verified.",
     "debianNoDecoder": "PASS deb-current-owned-images-no-host-negative-linux.log exit0: only AVIF unavailable, other formats/lifecycle work and source preserved; owned process exits verified.",
     "qaCleanup": "Reusable opt-in close-owned-native helper identifies exactly one application using executable (or packaged APPDIR/APPIMAGE), isolated XDG_DATA_HOME and DISPLAY, exact owned document argv and process start identity. Invokes native force_close for test teardown and verifies exit before driver cleanup. Does not constitute user close/unsaved-dialog acceptance.",
-    "ci": "AppImage preference lifecycle/clean-restart gate added before artifact upload; YAML order/scope inspected; no remote run."
+    "ci": "AppImage preference lifecycle/clean-restart gate added before artifact upload; YAML order/scope inspected; no remote run.",
+    "sourceUpdatedSinceBuild": "Startup cross-document recovery changed runtime after commit67de561; package proofs remain attributable to that build and do not certify the latest runtime. Final rebuild and package checks required."
+  },
+  "startupRecoveryAcrossDocumentsLinux": {
+    "status": "partial",
+    "implemented": "Initial launch without a path lists inactive unsaved copies across named and untitled documents. A cross-document choice prepares/inspects that path and uses existing guarded atomic open+recovery transition; named CLI launch remains scoped to its document. A different document is never silently auto-adopted. Options show paths and continue-without-recovery retains copies. Empty unsaved content is a valid candidate.",
+    "verified": [
+      "Actual Linux startup shows two different named paths",
+      "Continue without recovery preserves both original files and record bytes",
+      "Selected empty recovery adopts correct path without writing either file",
+      "Explicit Save writes only selected document and removes only own recovery record",
+      "Existing same-path changed-base Cancel/race/Open/Save/restart cases remain green",
+      "Rust backend regression suite green"
+    ],
+    "evidence": [
+      "recovery-startup-documents-linux.log exit0",
+      "recovery-startup-documents-samepath-linux.log exit0",
+      "recovery-startup-documents-rust-linux.log pass35 fail0 ignored1 (child worker invoked by parent)"
+    ],
+    "ci": "Mandatory Linux native startup recovery gate added and YAML parsed; no remote run.",
+    "remaining": "Recovery when original path is missing/unreadable, full startup interaction and final native package/platform acceptance remain pending."
   }
 }

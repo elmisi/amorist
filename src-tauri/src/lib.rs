@@ -506,10 +506,11 @@ fn load_recovery_into(app: &tauri::AppHandle, session: &Mutex<Option<recovery::S
     let listing = store.list()?;
     warnings.extend(listing.warnings);
     let mut candidates: Vec<_> = listing.candidates.into_iter()
-        .filter(|c| !c.active && c.record.path == path
-            && c.record.unsaved_source != c.record.saved_source && c.record.unsaved_source != saved)
+        .filter(|c| !c.active && (path.is_none() || c.record.path == path)
+            && c.record.unsaved_source != c.record.saved_source
+            && (c.record.path != path || c.record.unsaved_source != saved))
         .map(|c| c.record).collect();
-    if candidates.len() == 1 && candidates[0].saved_source == saved {
+    if candidates.len() == 1 && candidates[0].path == path && candidates[0].saved_source == saved {
         let record = candidates.pop().unwrap();
         *owner = Some(store.claim(&record.session_id)?);
         *checked = true;

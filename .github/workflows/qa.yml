@@ -167,6 +167,10 @@ jobs:
             node tests/editor-recovery-changed-base-native.test.js
           fi
 
+      - name: Verify startup recovery across documents
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-startup-documents-native.test.js
+
       - name: Verify native preference persistence and cross-process focus refresh
         if: matrix.platform == 'linux'
         run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-settings-native.test.js
