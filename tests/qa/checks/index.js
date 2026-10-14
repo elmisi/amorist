@@ -15,4 +15,5 @@ module.exports = [
   ...require("./family-ef"),
   ...require("./family-g"),
   ...require("./family-h"),
+  ...require("./family-i"),
 ];

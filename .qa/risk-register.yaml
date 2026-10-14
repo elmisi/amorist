@@ -98,7 +98,7 @@ risks:
     impact: low
     unacceptable: true
     mitigation: Verbatim pass-through, and never reparse an untouched region.
-    verification_ids: [REQ-A5, REQ-A2]
+    verification_ids: [REQ-A5, REQ-A2, REQ-I1]
     status: open
 
   - id: R-007

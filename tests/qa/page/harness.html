@@ -584,17 +584,23 @@
           firstCharacterTop: function (needle) {
             var target = surface();
             var walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+            var nodes = [], text = "";
             var node = walker.nextNode();
             while (node) {
-              var at = node.textContent.indexOf(needle);
-              if (at !== -1) {
+              nodes.push({ node: node, start: text.length });
+              text += node.textContent;
+              node = walker.nextNode();
+            }
+            var at = needle ? text.indexOf(needle) : -1;
+            if (at < 0) return { found: false };
+            for (var entry of nodes) {
+              if (at >= entry.start && at < entry.start + entry.node.textContent.length) {
                 var range = document.createRange();
-                range.setStart(node, at);
-                range.setEnd(node, at + 1);
+                range.setStart(entry.node, at - entry.start);
+                range.setEnd(entry.node, at - entry.start + 1);
                 var rect = range.getBoundingClientRect();
                 return { found: true, top: rect.top, left: rect.left, height: rect.height };
               }
-              node = walker.nextNode();
             }
             return { found: false };
           },

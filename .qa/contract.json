@@ -543,6 +543,19 @@
       "risks": [
         "R-009"
       ]
+    },
+    {
+      "id": "REQ-I1",
+      "statement": "URI and email autolinks render as links outside literal code, retain exact source intervals and remain editable with undo and mode round-trips. Angle delimiters and plain URL punctuation remain in the original source. Executable or unsupported URI schemes never become browser href attributes.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "I",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-006"
+      ]
     }
   ]
 }

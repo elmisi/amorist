@@ -9,7 +9,7 @@
 
 const { changedLines, splitLines, visible } = require("../lib/diff");
 const { select } = require("../lib/fixtures");
-const { findHandWrappedParagraph } = require("../lib/markdown-shape");
+const { findHandWrappedParagraph, proseViewNeedle } = require("../lib/markdown-shape");
 const { performanceFixture } = require("../lib/performance-fixture");
 const { runTauriAppChecks } = require("../lib/tauri-app-e2e");
 
@@ -43,7 +43,7 @@ module.exports = [
 
         const tops = [];
         for (const line of paragraph) {
-          const needle = line.text.trim().slice(0, 16);
+          const needle = proseViewNeedle(line.text).trim().slice(0, 16);
           const rect = await ctx.page.firstCharacterTop(needle);
           if (!rect.found) {
             failures.push({
@@ -105,7 +105,7 @@ module.exports = [
         const before = await ctx.page.markdown();
         await ctx.page.focusSurface();
         const surfaceText = await ctx.page.surfaceText();
-        const at = surfaceText.indexOf(target.text.trim());
+        const at = surfaceText.indexOf(proseViewNeedle(target.text).trim());
         if (at < 0) {
           failures.push({
             fixture: fixture.name,
@@ -114,7 +114,7 @@ module.exports = [
           });
           continue;
         }
-        await ctx.page.setCaretAtTextOffset(at + target.text.trim().length);
+        await ctx.page.setCaretAtTextOffset(at + proseViewNeedle(target.text).trim().length);
         await ctx.page.sendKeys([addition]);
         await ctx.page.settle(120);
         const after = await ctx.page.markdown();
@@ -158,7 +158,7 @@ module.exports = [
         const before = await ctx.page.markdown();
         await ctx.page.focusSurface();
         const surfaceText = await ctx.page.surfaceText();
-        const needle = target.text.trim();
+        const needle = proseViewNeedle(target.text).trim();
         const at = surfaceText.indexOf(needle);
         if (at < 0) continue;
         await ctx.page.setCaretAtTextOffset(at + Math.floor(needle.length / 2));

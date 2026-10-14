@@ -569,7 +569,9 @@
           wrapper.dataset.rawEnd = String(rawStart + token.end);
           this.sourceNodeRanges.set(wrapper, { start: rawStart + token.start, end: rawStart + token.end });
           if (token.type === "link") {
-            wrapper.setAttribute("href", token.href);
+            const href = MarkdownCodec.safeLinkHref(token.href);
+            if (href != null) wrapper.setAttribute("href", href);
+            wrapper.dataset.linkDestination = token.href;
             wrapper.setAttribute("target", "_blank");
             wrapper.setAttribute("rel", "noopener noreferrer");
           }

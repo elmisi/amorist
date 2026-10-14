@@ -241,7 +241,13 @@
     return ` data-source-line="${Number(block.sourceLine || 0)}"`;
   }
 
-  function tokenizeInline(value, start = 0, end = String(value).length, depth = 0) {
+  function safeLinkHref(value) {
+    const href = String(value);
+    const scheme = href.replace(/[\u0000-\u0020\u007f]/g, "").match(/^([a-z][a-z0-9+.-]*):/i);
+    return !scheme || /^(?:https?|mailto)$/i.test(scheme[1]) ? href : null;
+  }
+
+  function tokenizeInline(value, start = 0, end = String(value).length, depth = 0, inLink = false) {
     const source = String(value);
     const tokens = [];
     const plain = (from, to, text = source.slice(from, to)) => {
@@ -271,7 +277,45 @@
         plain(cursor, runEnd); cursor = runEnd; continue;
       }
       if (char === "\n") { tokens.push({ type: "break", start: cursor, end: cursor + 1 }); cursor += 1; continue; }
-      if (char === "[") {
+      if (!inLink && char === "<") {
+        const closing = source.indexOf(">", cursor + 1);
+        if (closing >= 0 && closing < end) {
+          const label = source.slice(cursor + 1, closing);
+          const uri = /^[a-z][a-z0-9+.-]{1,31}:[^\u0000-\u0020<>]*$/i.test(label);
+          const email = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i.test(label);
+          if (uri || email) {
+            tokens.push({ type: "link", start: cursor, end: closing + 1,
+              contentStart: cursor + 1, contentEnd: closing, href: email ? "mailto:" + label : label,
+              autolink: true, children: [{type: "text", start: cursor + 1, end: closing, text: label}] });
+            cursor = closing + 1; continue;
+          }
+        }
+      }
+      if (!inLink && (cursor === start || /[\s([{>]/.test(source[cursor - 1]))) {
+        const rest = source.slice(cursor, end);
+        const url = rest.match(/^(?:https?:\/\/|www\.)[^\s<>\u0000-\u001f]+/i);
+        const email = !url && rest.match(/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+/i);
+        if (url || email) {
+          let label = (url || email)[0];
+          if (url) {
+            let previous;
+            do {
+              previous = label; label = label.replace(/[.,!?;:]+$/, "");
+              for (const [left, right] of [["(", ")"], ["[", "]"], ["{", "}"]]) {
+                while (label.endsWith(right) && label.split(right).length > label.split(left).length) label = label.slice(0, -1);
+              }
+            } while (label !== previous);
+          } else label = label.replace(/[.,!?;:]+$/, "");
+          if (email || /^(?:https?:\/\/|www\.)[^/?#]+/i.test(label)) {
+            const finish = cursor + label.length;
+            tokens.push({type: "link", start: cursor, end: finish, contentStart: cursor, contentEnd: finish,
+              href: email ? "mailto:" + label : /^www\./i.test(label) ? "https://" + label : label,
+              autolink: true, children: [{type: "text", start: cursor, end: finish, text: label}]});
+            cursor = finish; continue;
+          }
+        }
+      }
+      if (!inLink && char === "[") {
         let closing = cursor + 1, level = 1;
         for (; closing < end; closing += 1) {
           if (source[closing] === "\\") { closing += 1; continue; }
@@ -291,7 +335,7 @@
             const href = source.slice(closing + 2, destinationEnd);
             tokens.push({ type: "link", start: cursor, end: destinationEnd + 1,
               contentStart: cursor + 1, contentEnd: closing, href,
-              children: tokenizeInline(source, cursor + 1, closing, depth + 1) });
+              children: tokenizeInline(source, cursor + 1, closing, depth + 1, true) });
             cursor = destinationEnd + 1; continue;
           }
         }
@@ -317,7 +361,7 @@
                   && !(char === "_" && word.test(source[closing - 1]) && word.test(source[after] || ""))) {
                 tokens.push({ type: char === "~" ? "delete" : width === 1 ? "em" : width === 2 ? "strong" : "strong-em",
                   start: cursor, end: after, contentStart: runEnd, contentEnd: closing,
-                  children: tokenizeInline(source, runEnd, closing, depth + 1) });
+                  children: tokenizeInline(source, runEnd, closing, depth + 1, inLink) });
                 cursor = after; break;
               }
               closing = after;
@@ -338,7 +382,10 @@
       if (token.type === "break") return "<br>";
       if (token.type === "code") return `<code>${TextUtils.escapeHtml(token.text)}</code>`;
       const content = renderInlineTokens(token.children);
-      if (token.type === "link") return `<a href="${TextUtils.escapeAttr(token.href)}" target="_blank" rel="noopener noreferrer">${content}</a>`;
+      if (token.type === "link") {
+        const href = safeLinkHref(token.href);
+        return `<a${href == null ? "" : ` href="${TextUtils.escapeAttr(href)}"`} target="_blank" rel="noopener noreferrer">${content}</a>`;
+      }
       if (token.type === "strong-em") return `<em><strong>${content}</strong></em>`;
       const tag = { em: "em", strong: "strong", delete: "del" }[token.type];
       return `<${tag}>${content}</${tag}>`;
@@ -484,6 +531,7 @@
     serializeBlocks,
     renderInline,
     tokenizeInline,
+    safeLinkHref,
     inlineMarkdown,
   };
 })();

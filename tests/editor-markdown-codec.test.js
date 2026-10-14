@@ -412,4 +412,12 @@ assert.equal(
   "## a b",
 );
 
+assert.equal(codec.renderInline("<https://notes.example/a_b>"), '<a href="https://notes.example/a_b" target="_blank" rel="noopener noreferrer">https://notes.example/a_b</a>');
+assert.equal(codec.renderInline("<writer@example.test>"), '<a href="mailto:writer@example.test" target="_blank" rel="noopener noreferrer">writer@example.test</a>');
+assert.equal(codec.renderInline("<javascript:alert(1)>"), '<a target="_blank" rel="noopener noreferrer">javascript:alert(1)</a>');
+assert.equal(codec.renderInline("`<https://notes.example>`"), '<code>&lt;https://notes.example&gt;</code>');
+assert.equal(codec.safeLinkHref("\tjava\nscript:alert(1)"), null);
+const automatic = codec.tokenizeInline("repeat <https://repeat.example> repeat").find(token => token.type === "link");
+assert.equal(automatic.start, 7); assert.equal(automatic.contentStart, 8);
+assert.equal(automatic.end, 31); assert.equal(automatic.contentEnd, 30);
 console.log("editor-markdown-codec.test.js passed");

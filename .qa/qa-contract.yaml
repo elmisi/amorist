@@ -20,6 +20,18 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Automatic links expose their URI/email label in WYSIWYG while preserving
+      angle delimiters in raw source. Generic A2/B1/B2 gestures target that visible
+      label rather than requiring hidden syntax to be visible. Changed-line
+      envelopes, original-byte comparisons and physical line geometry are unchanged.
+    why: >
+      REQ-I1 implements the approved common Markdown autolinks. Raw-marker text
+      lookup would falsely reject the intended projection before performing an edit.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Save As uses the native chooser and an opaque, single-use destination
       preparation tied to the current context. The destination timestamp or
       absence is captured before replacement confirmation and rechecked under
@@ -1695,3 +1707,33 @@ requirements:
       Rust queue and frontend routing tests cover deterministic event order and
       document preservation. Actual Finder event timing, Dock behavior and bundle
       launch require the mandatory macOS package acceptance gate.
+
+  - id: REQ-I1
+    statement: >
+      URI and email autolinks render as links outside literal code, retain exact
+      source intervals and remain editable with undo and mode round-trips.
+      Angle delimiters and plain URL punctuation remain in the original source.
+      Executable or unsupported URI schemes never become browser href attributes.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: The common Markdown base includes automatic links and exact source mapping.
+    risk_id: R-006
+    verification:
+      type: deterministic
+      evidence_required:
+        - URI/email angle autolinks and plain URL/email recognition
+        - native DOM-caret edits at repeated labels with unchanged surrounding bytes
+        - code and escaped angle delimiters stay literal
+        - undo and mode round-trips retain raw source and CRLF
+        - dangerous scheme attributes and raw HTML cannot execute document text
+      success_condition: >
+        Automatic links expose the expected label and safe destination, with
+        explicit source intervals. Editing changes only the selected raw span.
+        Literal code, original delimiters and untouched bytes remain unchanged.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: Native external activation is a separate approved feature and package gate.

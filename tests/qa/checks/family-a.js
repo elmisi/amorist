@@ -15,7 +15,7 @@
 
 const { firstDifference, changedLines, splitLines, visible } = require("../lib/diff");
 const { select } = require("../lib/fixtures");
-const { findHandWrappedParagraph, classifyLines } = require("../lib/markdown-shape");
+const { findHandWrappedParagraph, classifyLines, proseViewNeedle } = require("../lib/markdown-shape");
 const contract = require("../../../.qa/contract.json");
 
 const A2_GESTURE = Object.freeze({
@@ -240,8 +240,8 @@ module.exports = [
             delta: -(span.length - 1),
             act: async (page) => {
               const surface = await page.surfaceText();
-              const first = surface.indexOf(span[0].text.trim());
-              const lastText = span[2].text.trim();
+              const first = surface.indexOf(proseViewNeedle(span[0].text).trim());
+              const lastText = proseViewNeedle(span[2].text).trim();
               const last = surface.indexOf(lastText);
               if (first < 0 || last < 0) return SELECTION_NOT_PLACEABLE;
               const ok = await page.selectTextRange(first, last + lastText.length);
@@ -260,8 +260,8 @@ module.exports = [
             delta: 2,
             act: async (page) => {
               const surface = await page.surfaceText();
-              const firstText = span[0].text.trim();
-              const lastText = span[2].text.trim();
+              const firstText = proseViewNeedle(span[0].text).trim();
+              const lastText = proseViewNeedle(span[2].text).trim();
               const first = surface.indexOf(firstText);
               const last = surface.indexOf(lastText, first);
               if (first < 0 || last < 0) return SELECTION_NOT_PLACEABLE;
@@ -279,7 +279,7 @@ module.exports = [
           delta: 0,
           act: async (page) => {
             const surface = await page.surfaceText();
-            const needle = target.text.trim();
+            const needle = proseViewNeedle(target.text).trim();
             const at = surface.indexOf(needle);
             if (at < 0) return SELECTION_NOT_PLACEABLE;
             const word = needle.split(/\s+/).find((w) => w.length > 3) || needle.slice(0, 4);
@@ -511,7 +511,7 @@ function indentSubtreeLines(fixture, item) {
 }
 
 async function placeCaretInside(page, lineText) {
-  const needle = lineText.trim();
+  const needle = proseViewNeedle(lineText).trim();
   const surfaceText = await page.surfaceText();
   const at = surfaceText.indexOf(needle);
   if (at < 0) {
@@ -527,7 +527,7 @@ async function placeCaretInside(page, lineText) {
 }
 
 async function placeCaretAtStart(page, lineText) {
-  const needle = lineText.trim();
+  const needle = proseViewNeedle(lineText).trim();
   const surfaceText = await page.surfaceText();
   const at = surfaceText.indexOf(needle);
   if (at < 0) return { ok: false };

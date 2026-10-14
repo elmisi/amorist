@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- URI/email autolinks and plain URLs use explicit source intervals, preserve
+  surrounding delimiters and punctuation, and remain literal inside code.
+  Unsupported executable schemes are kept readable without an active browser href.
 - macOS Finder opens are queued until the frontend is ready. Initial file aliases
   are deduplicated; an unused initial window accepts the first request and later
   requests launch independent instances. Invalid targets report an error.

@@ -35,7 +35,7 @@
       "id": 5,
       "name": "common-markdown-and-mapping",
       "status": "partial",
-      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Setext titles and closed initial front matter now pass native Linux opening/edit/undo/mode probes. Reference links, autolinks, images, nested/container code and remaining block/unsupported-literal contexts still pending."
+      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Setext titles and closed initial front matter now pass native Linux opening/edit/undo/mode probes. Reference links, images, nested/container code, nested link/autolink precedence and remaining block/unsupported-literal contexts still pending. URI/email angle autolinks and plain URL/email recognition now use explicit raw intervals. Unsafe schemes have no executable browser href; code and escaped angles remain literal. Directed Linux DOM-caret/undo/CRLF/mode checks and codec checks on all three platforms pass. The full Linux run passed all checks except B1, whose multi-node targeting was fixed and passed separately; eleven classic checks are green. Native external activation and remaining Markdown contexts are not complete."
     },
     {
       "id": 6,
@@ -813,6 +813,49 @@
         "scope": "All native app scenarios including New window fresh lease, retained old untitled recovery, process survival and file actions"
       },
       "platformGate": "macOS actual initial/later Finder events, Dock, bundle startup order and rendered child acceptance remain unverified; screen remains locked."
+    },
+    "autolinkDevelopment": {
+      "status": "directed probes, composite Linux regression and eleven classic checks passed",
+      "directedLinux": {
+        "exitCode": 0,
+        "report": "autolinks-family-i-linux.json",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ]
+      },
+      "codecPlatforms": {
+        "linux": "pass",
+        "macos": "pass in isolated baseline",
+        "windows": "pass in isolated baseline"
+      },
+      "scope": [
+        "URI and email angle autolinks",
+        "plain URL/email punctuation",
+        "literal code and escaped angles",
+        "non-executable href schemes",
+        "repeated-label DOM caret, exact CRLF, undo and mode round-trip"
+      ],
+      "grammarSource": "https://spec.commonmark.org/0.31.2/#autolinks",
+      "remaining": [
+        "Reference links still pending",
+        "Actual Safari/WebView2 and native external activation acceptance remain pending",
+        "Nested link/autolink precedence still pending with reference-link implementation"
+      ],
+      "fullLinuxSession": 92183,
+      "classicLinux": {
+        "pass": 11,
+        "fail": 0,
+        "report": "autolinks-classic-linux.log"
+      },
+      "compositeLinux": {
+        "fullReport": "autolinks-second-full-linux.json",
+        "fullExitCode": 1,
+        "onlyFullFailure": "REQ-B1 targeting assumed one text node",
+        "followupReport": "autolinks-family-b1-linux.json",
+        "followupExitCode": 0,
+        "scope": "All remaining automated checks passed in the full run; only B1 uses the changed first-character helper and it passes in both Linux engines after the fix. No single final all-green full run is claimed."
+      }
     }
   }
 }
