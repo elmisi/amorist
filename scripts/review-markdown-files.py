@@ -3,13 +3,13 @@
 
 import argparse
 from datetime import datetime, timezone
-import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 
 from review_identity import release_reference_path, verify
+from review_state import load as load_state, save as save_state
 
 
 def main():
@@ -26,14 +26,15 @@ def main():
     except ValueError as error:
         parser.error(str(error))
     paths = list(dict.fromkeys(line for line in args.list.read_text(encoding='utf-8').splitlines() if line))
-    state = json.loads(args.state.read_text(encoding='utf-8')) if args.state.exists() else {'completed': [], 'events': []}
-    completed = set(state['completed'])
+    try:
+        state, run = load_state(args.state, release)
+    except ValueError as error:
+        parser.error(str(error))
+    completed = set(run['completed'])
 
     def record(path, event, **details):
         state['events'].append({'time': datetime.now(timezone.utc).isoformat(), 'path': path, 'event': event, 'version': release['version'], 'buildId': release['buildId'], **details})
-        temporary = args.state.with_name(args.state.name + '.tmp')
-        temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-        temporary.replace(args.state)
+        save_state(args.state, state)
 
     print(f'Amorist: {executable}\nRegistro: {args.state}\nCtrl+C per interrompere e riprendere in seguito.', flush=True)
     for index, path in enumerate(paths, 1):
@@ -75,7 +76,7 @@ def main():
             record(path, 'failed', exit_code=code)
             print(f'Amorist è uscito con codice {code}; arresto la sequenza.', file=sys.stderr)
             return 1
-        state['completed'].append(path)
+        run['completed'].append(path)
         completed.add(path)
         record(path, 'closed')
     print('\nSequenza completata.')
