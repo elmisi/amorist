@@ -53,7 +53,22 @@ async function main(){
    assert.equal(await engine.evaluate('window.__copyEditor.getMarkdown()'),'before **bold** after');
    assert.deepEqual(await engine.evaluate('window.__copyEditor.selectionRaw()'),{start:9,end:13});
    await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.focus();editor.source.setSelectionRange(0,0);return true;})()`);
-   await send([{key:'v',shift:true,ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+   if(process.platform==='win32' && entry.id==='webview2') {
+    // Edge WebDriver emits two trusted paste events for this chord. Windows
+    // SendKeys emits one, as a real keyboard does; retain the same assertions.
+    const script=`Add-Type -AssemblyName System.Windows.Forms
+      $session=(Get-Process -Id $PID).SessionId
+      $owned=@(Get-Process amorist | Where-Object { $_.Path -eq $env:AMORIST_QA_APPLICATION -and $_.SessionId -eq $session })
+      if($owned.Count -ne 1){throw 'Expected exactly one owned application in this session'}
+      $shell=New-Object -ComObject WScript.Shell
+      if(!$shell.AppActivate($owned[0].Id)){throw 'Owned application activation failed'}
+      Start-Sleep -Milliseconds 200
+      [System.Windows.Forms.SendKeys]::SendWait('^+v')`;
+    const result=require('node:child_process').spawnSync('powershell.exe',['-NoProfile','-Command',script],
+      {encoding:'utf8',timeout:10000,env:{...process.env,AMORIST_QA_APPLICATION:engine.application}});
+    assert.equal(result.status,0,result.stderr);
+    await new Promise(resolve=>setTimeout(resolve,100));
+   } else await send([{key:'v',shift:true,ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**');
    console.log(`system clipboard: ${entry.id} passed; types=${visual.paste[0].types.join(',')}`);
   } finally {await engine.close();}

@@ -3581,6 +3581,18 @@
       "target": "universal-apple-darwin",
       "bundle": "app",
       "note": "No GUI acceptance or DMG success claimed; macOS screen still locked"
+    },
+    "windowsClassicRegression": {
+      "initial": "9 of10 passed; plain paste duplicated by Edge WebDriver in WebView2",
+      "diagnosis": "One keydown generated two trusted paste events through WebDriver; native Windows SendKeys generated one and exact expected source. Changing modifier order did not resolve driver duplication. No product change.",
+      "fix": "editor-system-clipboard.test.js uses guarded same-session owned executable Windows SendKeys only for WebView2 plain paste; other engines unchanged",
+      "recheck": "Clipboard passed WebView2 and Edge, exit0; nine other suites passed original batch. Composite evidence, not a second full run.",
+      "logs": [
+        "windows-current-0d35913-classic.stdout.log",
+        "windows-current-0d35913-clipboard-diagnostic.stdout.log",
+        "windows-current-0d35913-clipboard-native-key.stdout.log",
+        "windows-current-clipboard-recheck.stdout.log"
+      ]
     }
   }
 }
