@@ -176,6 +176,25 @@ async function main(options={}){
    assert.deepEqual(await engine.evaluate('window.__clip.selectionRaw()'),{start:7,end:24});
    assert.equal(await engine.evaluate('window.__clip.selectionDirection()'),'backward');
    assert.equal(await engine.evaluate('window.__clip.getMarkdown()'),navigationSource);
+   const lateSource=`![Late](${server.origin}/tests/qa/assets/image.svg?qaDelay=500)\n`+Array.from({length:100},(_,index)=>'line '+index).join('\n');
+   const lateBefore=await engine.evaluate(`(() => {
+    const editor=window.__clip;editor.setMarkdown(${JSON.stringify(lateSource)});editor.focus();
+    const at=editor.getMarkdown().indexOf('line 15');editor.setSurfaceSelection(at,at);window.scrollTo(0,0);
+    const selection=window.getSelection(),range=document.createRange();range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
+    return {top:range.getBoundingClientRect().top,selection:editor.selectionRaw(),state:editor.surface.querySelector('.amorist-image-atom').dataset.imageState};
+   })()`);
+   assert.equal(lateBefore.state,'loading');
+   const lateAfter=await engine.evaluate(`new Promise(resolve=> {
+    const started=Date.now();const poll=()=> {
+      const editor=window.__clip,atom=editor.surface.querySelector('.amorist-image-atom');
+      if(atom.dataset.imageState==='loaded' || Date.now()-started>3000) {
+        const selection=window.getSelection(),range=document.createRange();range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
+        resolve({top:range.getBoundingClientRect().top,selection:editor.selectionRaw(),source:editor.getMarkdown(),state:atom.dataset.imageState});
+      }else setTimeout(poll,20);
+    };poll();
+   })`);
+   assert.equal(lateAfter.state,'loaded');assert.deepEqual(lateAfter.selection,lateBefore.selection);assert.equal(lateAfter.source,lateSource);
+   assert.ok(Math.abs(lateAfter.top-lateBefore.top)<=1,`${entry.id}: late image caret moved from ${lateBefore.top} to ${lateAfter.top}`);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

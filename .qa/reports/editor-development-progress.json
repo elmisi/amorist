@@ -1417,7 +1417,6 @@
           "QA CSP confines image requests to its own origin; no external image fetches in browser checks"
         ],
         "implementedButUnverified": [
-          "late-load caret viewport compensation",
           "affected-table remeasurement and horizontal-scroll preservation"
         ]
       },
@@ -1433,6 +1432,15 @@
           "native Shift+ArrowLeft selects the complete image with backward orientation",
           "source bytes unchanged"
         ]
+      },
+      "lateLoadCaret": {
+        "exitCode": 0,
+        "report": "image-late-caret-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": "500ms fixture response delay above an active caret in a scrollable document; vertical caret movement <=1px, same raw selection and exact source"
       }
     }
   }

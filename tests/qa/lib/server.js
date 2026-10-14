@@ -39,7 +39,10 @@ function startStaticServer(rootDir) {
           "cache-control": "no-store",
           "content-security-policy": "img-src 'self' data:",
         });
-        res.end(data);
+        // Bounded fixture-only latency makes late image layout reproducible.
+        const delay=requested.startsWith("/tests/qa/assets/")
+          ? Math.max(0,Math.min(1000,Number(new URL(req.url,"http://localhost").searchParams.get("qaDelay"))||0)):0;
+        if(delay) setTimeout(()=>res.end(data),delay);else res.end(data);
       });
     });
     server.on("error", reject);
