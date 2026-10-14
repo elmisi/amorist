@@ -2186,10 +2186,11 @@
     "test": "tests/editor-recovery-changed-base-native.test.js",
     "evidence": "recovery-changed-base-reproducer-linux.log in private execution evidence",
     "observed": "Compiled app silently ignores an inactive same-document recovery copy when saved base differs; original updated document and recovery record remain byte exact",
-    "required": "Startup cancellation/race, changed-base save/restart and Windows/macOS package coverage remain pending",
+    "required": "Startup cancellation/race and Windows/macOS native package coverage remain pending",
     "startupEvidence": "recovery-changed-base-fixed-linux.log: native explicit selection, changed-base warning, recovered text and unchanged external file pass",
     "rustEvidence": "recovery-open-rust-linux.log: 35 passed, 1 ignored helper, exit 0",
-    "openEvidence": "recovery-open-native-linux.log: startup and Open explicit recovery; cancellation and file race preserve previous editor root and original/recovery bytes; exit 0"
+    "openEvidence": "recovery-open-native-linux.log: startup and Open explicit recovery; cancellation and file race preserve previous editor root and original/recovery bytes; exit 0",
+    "saveRestartEvidence": "recovery-changed-base-save-restart-fixed-linux.log: explicit Save byte-exact CRLF, selected recovery removal, clean restart; exit 0"
   },
   "subscriptionStop": {
     "remainingPercentThreshold": 60,

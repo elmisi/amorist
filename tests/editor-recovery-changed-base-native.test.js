@@ -83,6 +83,23 @@ async function main() {
     await waitFor(`document.querySelector('.amorist-editor-surface').textContent.includes('Original document with unsaved work')`);
     assert.equal(fs.readFileSync(file, 'utf8'), disk);
     console.log('Changed-base Open recovery: cancel, external race refusal and explicit recovery passed');
+    await engine.evaluate(`document.getElementById('save-button').click()`);
+    const recoveredText = 'Original document with unsaved work\r\n';
+    const saveDeadline = Date.now() + 6000;
+    while (fs.readFileSync(file, 'utf8') !== recoveredText || fs.existsSync(recordPath)) {
+      assert.ok(Date.now() < saveDeadline, 'Explicit Save must commit recovery and remove only its record');
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    await waitFor(`!document.getElementById('reload-button').disabled`);
+    await engine.close();
+    engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
+      ['--', file], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+    await engine.start();
+    await waitFor(`!document.getElementById('editor').inert && !!document.querySelector('.amorist-source-line')`);
+    assert.match(await engine.evaluate(`document.querySelector('.amorist-editor-surface').textContent`), /Original document with unsaved work/);
+    assert.equal(await engine.evaluate(`document.getElementById('notice').hidden`), true);
+    assert.equal(fs.readFileSync(file, 'utf8'), recoveredText);
+    console.log('Changed-base recovery: explicit Save preserves CRLF and restart opens the saved version without recovery');
   } finally {
     await engine.close();
     fs.rmSync(scratch, { recursive: true, force: true });
