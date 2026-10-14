@@ -8,6 +8,11 @@ amorist opens one Markdown file at a time:
 amorist file.md
 ```
 
+Launch `amorist` without a path to start an untitled document. The **File** menu
+provides **New**, **Open**, **Save As**, and **Reload**. Save on an untitled
+document asks for a destination; no Markdown file is created before saving.
+Save As keeps the editor's history and leaves the previous file in place.
+
 The standalone app uses a system webview (Tauri 2) with a Rust backend — single binary, no Python, no Electron. The editor is a small vanilla JavaScript component built for this project, so Markdown stays the source of truth.
 
 ![amorist WYSIWYG editor](docs/screenshots/wysiwyg-mode.png)
@@ -18,8 +23,8 @@ The standalone app uses a system webview (Tauri 2) with a Rust backend — singl
 
 ## Features
 
-- Opens `.md`, `.markdown`, and `.mdown` files from the command line.
-- Saves directly to the same local file with `Ctrl+S` or the Save button.
+- Opens `.md`, `.markdown`, and `.mdown` files from the command line or File menu.
+- Saves to the current file with `Ctrl+S` or Save; Save As changes its destination after a successful write.
 - Keeps existing `LF` or `CRLF` line endings when saving.
 - Undo and redo with full history that survives mode switches.
 - In-editor find bar with real-time match highlighting and navigation.
@@ -46,12 +51,15 @@ To review the collected file list with reporting enabled, run
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+S` | Save |
+| `Ctrl+Shift+S` | Save As |
+| `Ctrl+N` | New untitled document |
+| `Ctrl+O` | Open Markdown |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
 | `Ctrl+F` | Open find bar |
 | `Enter` | Next match (find bar focused) |
 | `Shift+Enter` | Previous match (find bar focused) |
-| `Escape` | Close find bar |
+| `Escape` | Close find bar/menu or cancel a dialog |
 
 On macOS, use `Cmd` instead of `Ctrl`.
 

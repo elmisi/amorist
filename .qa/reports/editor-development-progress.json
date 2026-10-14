@@ -59,7 +59,7 @@
       "id": 9,
       "name": "file-actions-recovery-and-windows",
       "status": "partial",
-      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending. Shared canonical-path locks now protect saves, including occupied temporary slots, absent/deleted destinations and other-instance conflicts. Blocking I/O is off the UI thread; a captured save leaves newer edits dirty, with recovery persisted during lock wait and rebased after commit. Obsolete document context commands are rejected. New/Open now stage file validation and recovery choices before replacing context, with Save/Discard/Cancel, fresh untitled sessions and history reset on successful Open. Rust checks on all platforms and the full 31-requirement Linux suite pass, including actual menu visibility, shortcuts, recovery-choice cancellation and unrelated-copy preservation."
+      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending. Shared canonical-path locks now protect saves, including occupied temporary slots, absent/deleted destinations and other-instance conflicts. Blocking I/O is off the UI thread; a captured save leaves newer edits dirty, with recovery persisted during lock wait and rebased after commit. Obsolete document context commands are rejected. New/Open now stage file validation and recovery choices before replacing context, with Save/Discard/Cancel, fresh untitled sessions and history reset on successful Open. Rust checks on all platforms and the full 31-requirement Linux suite pass, including actual menu visibility, shortcuts, recovery-choice cancellation and unrelated-copy preservation. Save As preserves context and history on cancellation/failure, validates the destination snapshot and changes identity only after a successful write. Empty and edited untitled Save, Save before New and subsequent Save to the new path pass native Linux probes. The full 32-requirement Linux suite is green; Rust checks pass on Linux, Windows and macOS. Independent windows, Finder events and cross-document/changed-base recovery remain pending."
     },
     {
       "id": 10,
@@ -731,6 +731,35 @@
         "pass": 11,
         "fail": 0,
         "log": "file-actions-classic-linux.log"
+      }
+    },
+    "saveAsDevelopment": {
+      "fullLinuxSuite": {
+        "exitCode": 0,
+        "report": "save-as-qa-linux.json",
+        "requirements": 32
+      },
+      "rust": {
+        "linux": 21,
+        "windows": 21,
+        "macos": 22
+      },
+      "nativeScope": [
+        "picker and replacement cancellation",
+        "changed or newly created destination conflict",
+        "denied write retains original context",
+        "single-use destination token",
+        "successful identity change without editor remount",
+        "undo and redo preserved",
+        "subsequent Save uses new path",
+        "empty and edited untitled Save",
+        "Save before New cancellation and success"
+      ],
+      "remaining": "Actual native dialogs and packaged acceptance on all three platforms remain pending.",
+      "classicLinux": {
+        "pass": 11,
+        "fail": 0,
+        "report": "save-as-classic-linux.log"
       }
     }
   }

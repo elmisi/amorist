@@ -9,4 +9,12 @@ module.exports = [{
       fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("File lifecycle")),
       delegated: app.delegated ? [app.delegated] : [] };
   },
+}, {
+  id: "REQ-H2", scope: "run", title: "Save As and untitled Save preserve the current session until writing succeeds",
+  async run() {
+    const app = await runTauriAppChecks();
+    return { failures: app.H2,
+      fixturesExercised: app.fixtures.filter((fixture) => fixture.includes("Save As lifecycle")),
+      delegated: app.delegated ? [app.delegated] : [] };
+  },
 }];

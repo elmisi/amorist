@@ -21,7 +21,7 @@ function runTauriAppChecks() {
 }
 
 async function runOnce() {
-  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], F2: [], H1: [], fixtures: [] };
+  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], F2: [], H1: [], H2: [], fixtures: [] };
   if (process.platform !== "linux") {
     // Not a gap: tauri-driver drives the compiled application on Linux only,
     // so the contract's app-embedding verdict is assigned to the Linux run by
@@ -42,6 +42,7 @@ async function runOnce() {
     results.E2.push(failure);
     results.F2.push(failure);
     results.H1.push(failure);
+    results.H2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -57,6 +58,7 @@ async function runOnce() {
     results.E2.push(failure);
     results.F2.push(failure);
     results.H1.push(failure);
+    results.H2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -79,6 +81,7 @@ async function runOnce() {
     results.E2.push(failure);
     results.F2.push(failure);
     results.H1.push(failure);
+    results.H2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -225,6 +228,8 @@ async function runOnce() {
     results.fixtures.push("built app: edits made while Save waits for its process lock remain dirty and recoverable after the captured snapshot is saved");
     await verifyFileLifecycle(driver, scratch);
     results.fixtures.push("built app: File lifecycle picker/choice cancellation, undo preservation, failed Open/Save, New/Discard, New/Save and successful Open");
+    await verifySaveAsLifecycle(driver, scratch);
+    results.fixtures.push("built app: Save As lifecycle cancellation, destination races, denied write, retained history, new identity and untitled Save/New");
   } catch (error) {
     let recovery = "missing";
     try {
@@ -245,6 +250,7 @@ async function runOnce() {
     results.E2.push(failure);
     results.F2.push(failure);
     results.H1.push(failure);
+    results.H2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -259,6 +265,7 @@ async function runOnce() {
 }
 
 async function fileAction(engine, action) {
+  await waitUntil(() => engine.evaluate(`!document.querySelector('[data-file-action="${action}"]').disabled`), 5000, "the File action to become available");
   await engine.evaluate(`(function () {
     document.getElementById('file-menu').open = true;
     var button = document.querySelector('[data-file-action="${action}"]');
@@ -274,6 +281,143 @@ async function decision(engine, choice) {
   if (choice === "escape") await engine.sendKeys([{ key: "Escape" }]);
   else await engine.evaluate(`document.getElementById('file-decision-${choice}').click()`);
   await delay(60);
+}
+
+async function verifySaveAsLifecycle(driver, scratch) {
+  const data = path.join(scratch, "save-as-data");
+  const original = path.join(scratch, "save-as original.md");
+  const replacement = path.join(scratch, "save-as replacement.md");
+  const appears = path.join(scratch, "appeared destination.md");
+  const destination = path.join(scratch, "saved caffè Ω");
+  const denied = path.join(scratch, "denied save-as");
+  const emptyPath = path.join(scratch, "empty untitled.md");
+  const untitledPath = path.join(scratch, "saved untitled.md");
+  const base = "# Original\r\nline  \r\n";
+  const edited = base + "edited";
+  fs.writeFileSync(original, base);
+  fs.writeFileSync(replacement, "other document\r\n");
+  fs.mkdirSync(denied);
+  let engine = null;
+  try {
+    engine = new TauriEngine(driver, APPLICATION, [original], { ...process.env, XDG_DATA_HOME: data });
+    await engine.start();
+    await waitForEditor(engine, base.replace(/\r\n/g, "\n"));
+    await appendInSource(engine, "edited");
+    await delay(60);
+    const directory = path.join(data, "amorist", "recovery-sessions");
+    await waitForRecovery(directory, edited, 5000);
+    await engine.evaluate(`window.__qaSaveAsSource = document.querySelector('.amorist-editor-source')`);
+    async function unchanged() {
+      const snapshot = await editorSnapshot(engine);
+      const state = await engine.evaluate(`({path: document.getElementById('file-path').textContent,
+        same: document.querySelector('.amorist-editor-source') === window.__qaSaveAsSource})`);
+      if (!state.same || state.path !== original || snapshot.source !== edited.replace(/\r\n/g, "\n")
+          || !recoveryRecords(directory).some((r) => r.unsavedSource === edited)) {
+        throw new Error("Cancelled/failed Save As changed the original session: " + JSON.stringify({snapshot, state}));
+      }
+      if (fs.readFileSync(original, "utf8") !== base) throw new Error("Save As modified the previous file.");
+    }
+    await engine.evaluate(`window.__TAURI__.dialog.save = function () { return Promise.resolve(null); }`);
+    await fileAction(engine, "save-as");
+    await delay(60);
+    await unchanged();
+    await engine.sendKeys([{ key: "s", ctrl: true, shift: true }]);
+    await delay(60);
+    await unchanged();
+    await engine.evaluate(`(function () {
+      window.__TAURI__.dialog.save = function () { return Promise.resolve(${JSON.stringify(replacement)}); };
+      window.__TAURI__.dialog.confirm = function () { return Promise.resolve(false); };
+    })()`);
+    await fileAction(engine, "save-as");
+    await delay(100);
+    await unchanged();
+    if (fs.readFileSync(replacement, "utf8") !== "other document\r\n") throw new Error("Cancelled replacement changed the target.");
+
+    await engine.evaluate(`(function () {
+      window.__qaConfirmResolve = null;
+      window.__TAURI__.dialog.confirm = function () { return new Promise(function (resolve) { window.__qaConfirmResolve = resolve; }); };
+    })()`);
+    await fileAction(engine, "save-as");
+    await waitUntil(() => engine.evaluate(`Boolean(window.__qaConfirmResolve)`), 5000, "replacement confirmation to await the user");
+    await delay(1100);
+    fs.writeFileSync(replacement, "changed during confirmation\r\n");
+    await engine.evaluate(`window.__qaConfirmResolve(true)`);
+    await waitUntil(async () => /CONFLICT/.test((await editorSnapshot(engine)).notice), 5000, "destination conflict");
+    await unchanged();
+    if (fs.readFileSync(replacement, "utf8") !== "changed during confirmation\r\n") throw new Error("Save As overwrote a changed destination.");
+
+    const prepared = await engine.evaluate(`window.__TAURI__.core.invoke('prepare_save_as', {path: ${JSON.stringify(appears)}, contextId: 1})`);
+    fs.writeFileSync(appears, "created externally");
+    const rejected = await engine.evaluate(`window.__TAURI__.core.invoke('save_as_document', {
+      token: ${prepared.token}, contextId: 1, revision: 0, markdown: ${JSON.stringify(edited)}
+    }).then(function () { return false; }, function (e) { return String(e) === 'CONFLICT'; })`);
+    if (!rejected || fs.readFileSync(appears, "utf8") !== "created externally") throw new Error("Save As clobbered a newly created destination.");
+    const replayRejected = await engine.evaluate(`window.__TAURI__.core.invoke('save_as_document', {
+      token: ${prepared.token}, contextId: 1, revision: 0, markdown: ${JSON.stringify(edited)}
+    }).then(function () { return false; }, function (e) { return /no longer valid/.test(String(e)); })`);
+    if (!replayRejected) throw new Error("Save As preparation could be replayed after consumption.");
+    await unchanged();
+    fs.chmodSync(denied, 0o555);
+    try {
+      await engine.evaluate(`window.__TAURI__.dialog.save = function () { return Promise.resolve(${JSON.stringify(path.join(denied, "denied.md"))}); }`);
+      await fileAction(engine, "save-as");
+      await waitUntil(async () => /Permission denied|read-only/i.test((await editorSnapshot(engine)).notice), 5000, "denied Save As");
+      await unchanged();
+      if (fs.existsSync(path.join(denied, "denied.md"))) throw new Error("Denied Save As created a partial destination.");
+    } finally { fs.chmodSync(denied, 0o755); }
+
+    await engine.evaluate(`window.__TAURI__.dialog.save = function () { return Promise.resolve(${JSON.stringify(destination)}); }`);
+    await fileAction(engine, "save-as");
+    const named = destination + ".md";
+    await waitForFileContents(named, edited);
+    await waitUntil(() => engine.evaluate(`document.getElementById('file-path').textContent === ${JSON.stringify(named)}`), 5000, "new Save As identity");
+    await waitUntil(async () => (await editorSnapshot(engine)).status === "Saved", 5000, "Save As completion status");
+    if (!(await engine.evaluate(`document.querySelector('.amorist-editor-source') === window.__qaSaveAsSource`))) throw new Error("Save As reset the editor/history.");
+    await waitForMissing(directory);
+    await engine.sendKeys([{ key: "z", ctrl: true }]);
+    await delay(60);
+    if ((await editorSnapshot(engine)).source === edited.replace(/\r\n/g, "\n")) throw new Error("Save As reset undo history.");
+    await engine.sendKeys([{ key: "y", ctrl: true }]);
+    await waitForEditor(engine, edited.replace(/\r\n/g, "\n"));
+    await appendInSource(engine, " later");
+    await delay(60);
+    await engine.evaluate(`document.getElementById('save-button').click()`);
+    await waitForFileContents(named, edited + " later");
+    await waitUntil(async () => (await editorSnapshot(engine)).status === "Saved", 5000, "Save to new path to settle");
+    if (fs.readFileSync(original, "utf8") !== base) throw new Error("Subsequent Save still targeted the previous file.");
+
+    await engine.evaluate(`(function () {
+      window.__TAURI__.dialog.save = function () { return Promise.resolve(${JSON.stringify(replacement)}); };
+      window.__TAURI__.dialog.confirm = function () { return Promise.resolve(true); };
+    })()`);
+    await fileAction(engine, "save-as");
+    await waitForFileContents(replacement, edited + " later");
+    await waitUntil(() => engine.evaluate(`document.getElementById('file-path').textContent === ${JSON.stringify(replacement)}`), 5000, "replacement identity");
+    await fileAction(engine, "new");
+    await waitForEditor(engine, "");
+    await engine.evaluate(`window.__TAURI__.dialog.save = function () { return Promise.resolve(${JSON.stringify(emptyPath)}); }`);
+    await engine.sendKeys([{ key: "s", ctrl: true }]);
+    await waitForFileContents(emptyPath, "");
+    await waitUntil(() => engine.evaluate(`document.getElementById('file-path').textContent === ${JSON.stringify(emptyPath)}`), 5000, "empty untitled identity");
+
+    await fileAction(engine, "new");
+    await waitForEditor(engine, "");
+    await appendInSource(engine, "untitled\nbody");
+    await delay(60);
+    await engine.evaluate(`window.__TAURI__.dialog.save = function () { return Promise.resolve(null); }`);
+    await fileAction(engine, "new");
+    await decision(engine, "save");
+    await waitForEditor(engine, "untitled\nbody");
+    if (await engine.evaluate(`document.getElementById('file-path').textContent`) !== "") throw new Error("Cancelled untitled Save changed its identity.");
+    await engine.evaluate(`window.__TAURI__.dialog.save = function () { return Promise.resolve(${JSON.stringify(untitledPath)}); }`);
+    await fileAction(engine, "new");
+    await decision(engine, "save");
+    await waitForEditor(engine, "");
+    if (fs.readFileSync(untitledPath, "utf8") !== "untitled\nbody") throw new Error("Untitled Save before New did not preserve LF source.");
+  } finally {
+    if (fs.existsSync(denied)) fs.chmodSync(denied, 0o755);
+    if (engine) await engine.close().catch(() => {});
+  }
 }
 
 async function verifyFileLifecycle(driver, scratch) {

@@ -26,7 +26,20 @@ struct AppState {
     context_id: AtomicU64,
     saved_source: Mutex<String>,
     working_revision: Mutex<u64>,
+    save_target: Mutex<Option<PendingSaveTarget>>,
+    save_target_serial: AtomicU64,
 }
+
+struct PendingSaveTarget { token: u64, context_id: u64, target: document::SaveTarget }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveTargetResponse { token: u64, path: String, exists: bool }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveAsResponse { context_id: Option<u64>, path: String, name: String, exists: bool,
+    saved: bool, recovery_warning: Option<String> }
 
 async fn run_io<T: Send + 'static>(app: tauri::AppHandle,
     operation: impl FnOnce(&tauri::AppHandle, &AppState) -> Result<T, String> + Send + 'static,
@@ -235,6 +248,58 @@ fn reconcile_saved_recovery(app: &tauri::AppHandle, state: &AppState, saved: &st
         session.discard()?;
     }
     Ok(())
+}
+
+#[tauri::command]
+async fn prepare_save_as(app: tauri::AppHandle, path: String, context_id: u64) -> Result<SaveTargetResponse, String> {
+    run_io(app, move |_app, state| {
+        require_context(state, context_id)?;
+        let target = document::SaveTarget::prepare(std::path::Path::new(&path))?;
+        let _guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        let token = state.save_target_serial.fetch_add(1, Ordering::SeqCst) + 1;
+        let response = SaveTargetResponse { token, path: target.path.display().to_string(),
+            exists: !matches!(target.expected, file_io::Expected::Missing) };
+        *state.save_target.lock().unwrap() = Some(PendingSaveTarget { token, context_id, target });
+        Ok(response)
+    }).await
+}
+
+#[tauri::command]
+async fn save_as_document(app: tauri::AppHandle, token: u64, context_id: u64, markdown: String, revision: u64) -> Result<SaveAsResponse, String> {
+    run_io(app, move |app, state| {
+        let pending = {
+            let _guard = state.file_path.lock().unwrap();
+            require_context(state, context_id)?;
+            let mut pending = state.save_target.lock().unwrap();
+            if !pending.as_ref().is_some_and(|p| p.token == token && p.context_id == context_id) {
+                return Err("The Save As destination is no longer valid. Choose it again.".into());
+            }
+            pending.take().unwrap()
+        };
+        let path = &pending.target.path;
+        // The user confirms replacement after preparation. No forced bypass of
+        // its snapshot: a changed destination requires a new selection/confirmation.
+        file_io::write(&app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("locks"),
+            path, &markdown, pending.target.expected, false)?;
+        let mut current_path = state.file_path.lock().unwrap();
+        if require_context(state, context_id).is_err() {
+            return Ok(SaveAsResponse { context_id: None, path: path.display().to_string(),
+                name: path.file_name().unwrap_or_default().to_string_lossy().into_owned(), exists: true, saved: true,
+                recovery_warning: Some("The copy was saved, but the current document changed; its identity was preserved.".into()) });
+        }
+        *current_path = Some(path.clone());
+        *state.last_modified.lock().unwrap() = fs::metadata(path).and_then(|m| m.modified()).ok();
+        *state.saved_source.lock().unwrap() = markdown;
+        *state.working_revision.lock().unwrap() = revision;
+        let recovery_warning = discard_owned_recovery(state).err();
+        let mut dirty = state.dirty.lock().unwrap();
+        let id = state.context_id.fetch_add(1, Ordering::SeqCst) + 1;
+        *dirty = false;
+        Ok(SaveAsResponse { context_id: Some(id), path: path.display().to_string(),
+            name: path.file_name().unwrap_or_default().to_string_lossy().into_owned(), exists: true,
+            saved: true, recovery_warning })
+    }).await
 }
 
 #[tauri::command]
@@ -873,6 +938,8 @@ pub fn run() {
             context_id: AtomicU64::new(0),
             saved_source: Mutex::new(String::new()),
             working_revision: Mutex::new(0),
+            save_target: Mutex::new(None),
+            save_target_serial: AtomicU64::new(0),
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -943,6 +1010,8 @@ pub fn run() {
             open_document,
             inspect_open_document,
             save_document,
+            prepare_save_as,
+            save_as_document,
             persist_working_copy,
             discard_working_copy,
             select_recovery,

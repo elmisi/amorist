@@ -33,6 +33,24 @@
     var buttons = Array.from(document.querySelectorAll("[data-file-action]"));
     var menu = document.getElementById("file-menu");
     menu.hidden = false;
+    async function saveAsOperation() {
+      var committed = false;
+      try {
+        var path = await options.backend.chooseSave(options.getPath() || "Untitled.md");
+        if (!path) return false;
+        options.suspend(true);
+        var target = await options.backend.prepareSaveAs(path);
+        if (target.exists && !(await options.confirmReplace(target.path))) return false;
+        var snapshot = options.snapshot();
+        var result = await options.backend.saveAs(target.token, snapshot.markdown, snapshot.revision);
+        options.pauseRecovery();
+        committed = options.finishSaveAs(snapshot, result);
+        return committed;
+      } finally {
+        options.suspend(false);
+        if (committed) options.savedStatus();
+      }
+    }
     async function run(action) {
       if (busy || options.isSaving() || document.querySelector("dialog[open]")) return false;
       if (action === "reload") { menu.open = false; await options.reload(); return true; }
@@ -40,6 +58,7 @@
       menu.open = false;
       buttons.forEach(function (button) { button.disabled = true; });
       try {
+        if (action === "save-as") return await saveAsOperation();
         var path = null;
         if (action === "open") {
           path = await options.backend.chooseOpen(options.getPath());
@@ -77,7 +96,7 @@
         options.resumeRecovery();
         return false;
       } finally {
-        options.suspend(false);
+        if (action !== "save-as") options.suspend(false);
         busy = false;
         buttons.forEach(function (button) { button.disabled = false; });
         options.focusEditor();
@@ -93,11 +112,16 @@
         menu.querySelector("summary").focus();
         return;
       }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        run("save-as");
+        return;
+      }
       if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
       var action = event.key.toLowerCase() === "n" ? "new" : event.key.toLowerCase() === "o" ? "open" : null;
       if (action) { event.preventDefault(); run(action); }
     });
-    return { run: run, isBusy: function () { return busy; } };
+    return { run: run, saveForTransition: saveAsOperation, isBusy: function () { return busy; } };
   }
 
   window.AmoristFileActions = { install: install };

@@ -26,6 +26,7 @@
   let noticeSource = null;
   let saving = false;
   let fileChanging = false;
+  let fileActions = null;
 
   function errorMessage(error, fallback) {
     if (typeof error === "string") return error;
@@ -85,6 +86,16 @@
       chooseOpen(defaultPath) {
         return window.__TAURI__.dialog.open({ title: "Open Markdown", multiple: false, directory: false,
           defaultPath: defaultPath || undefined, filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }] });
+      },
+      chooseSave(defaultPath) {
+        return window.__TAURI__.dialog.save({ title: "Save Markdown As", defaultPath: defaultPath,
+          filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdown"] }] });
+      },
+      prepareSaveAs(path) { return invoke("prepare_save_as", { path: path, contextId: contextId }); },
+      async saveAs(token, markdown, revision) {
+        var result = await invoke("save_as_document", { token: token, markdown: markdown, revision: revision, contextId: contextId });
+        if (result.contextId != null) contextId = result.contextId;
+        return result;
       },
       async saveDocument(markdown, force, revision) {
         return invoke("save_document", { markdown: markdown, force: force || false, contextId: contextId, revision: revision });
@@ -287,10 +298,23 @@
       return;
     }
 
-    if (window.__TAURI__) window.AmoristFileActions.install({
+    if (window.__TAURI__) fileActions = window.AmoristFileActions.install({
       backend: backend, isSaving: function () { return saving || !state.editor || elements.editor.inert; }, isDirty: function () { return state.dirty; },
       getName: function () { return state.documentName; }, getPath: function () { return state.documentPath; },
-      save: saveDocument, reload: reloadDocument, adopt: adoptDocument, chooseRecovery: chooseRecovery,
+      save: function () { return saveDocument(true); }, reload: reloadDocument, adopt: adoptDocument, chooseRecovery: chooseRecovery,
+      snapshot: function () { return { editor: state.editor, markdown: state.editor.getValue(), revision: state.editor.model.revision }; },
+      confirmReplace: function (path) { return confirmDialog("Replace the existing file at " + path + "?"); },
+      finishSaveAs: function (snapshot, result) {
+        if (state.editor !== snapshot.editor || result.contextId == null) {
+          if (result.recoveryWarning) showWarning(result.recoveryWarning);
+          return false;
+        }
+        state.contextId = result.contextId;
+        setDocumentLabel(result);
+        backend.setWindowTitle(result.name);
+        return finishSave(snapshot.editor, snapshot.markdown, result);
+      },
+      savedStatus: function () { setStatus("Saved"); },
       suspend: function (value) {
         fileChanging = value;
         elements.editor.inert = value;
@@ -443,8 +467,11 @@
     return !state.dirty;
   }
 
-  async function saveDocument() {
+  async function saveDocument(fromFileAction) {
     if (state.demo || !state.editor || saving || fileChanging || elements.save.disabled) return false;
+    if (!state.documentPath && fileActions) {
+      return fromFileAction ? fileActions.saveForTransition() : fileActions.run("save-as");
+    }
     saving = true;
     var editor = state.editor;
     var markdown = editor.getValue();
@@ -534,7 +561,7 @@
 
   function handleKeyDown(event) {
     var command = event.ctrlKey || event.metaKey;
-    if (!command || event.key.toLowerCase() !== "s") {
+    if (!command || event.shiftKey || event.key.toLowerCase() !== "s") {
       return;
     }
     event.preventDefault();
@@ -565,7 +592,7 @@
     if (saving) label = "Saving";
     else if (fileChanging) label = "Loading";
     elements.status.textContent = state.dirty ? label + " - modified" : label;
-    elements.save.disabled = saving || fileChanging || state.demo || !state.dirty;
+    elements.save.disabled = saving || fileChanging || state.demo || (!state.dirty && !!state.documentPath);
     elements.reload.disabled = saving || fileChanging || state.demo;
   }
 

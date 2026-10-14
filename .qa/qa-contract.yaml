@@ -20,6 +20,20 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Save As uses the native chooser and an opaque, single-use destination
+      preparation tied to the current context. The destination timestamp or
+      absence is captured before replacement confirmation and rechecked under
+      the shared writer lock. Path, title, saved source and context change only
+      after a successful write; the existing editor and history are retained.
+      Save on an untitled document invokes this flow, including an empty document.
+    why: >
+      Implements the approved Save As and untitled Save requirements as REQ-H2,
+      preserving recovery and original identity on cancellation or failure.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       New and Open operate in the current window through a File menu and standard
       shortcuts. Dirty work requires Save/Discard/Cancel. File-picker cancellation,
       recovery-choice cancellation and failed preparation keep the original editor,
@@ -1584,3 +1598,38 @@ requirements:
       The Linux native app check controls the chooser's returned path to exercise
       lifecycle cases deterministically. Actual native chooser interaction on each
       published platform is still required by the plan's package acceptance gates.
+
+  - id: REQ-H2
+    statement: >
+      Save As preserves the current editor, history and recovery on cancellation
+      or failure. Successful writing changes its backend identity and saved source
+      while retaining history. Save of an untitled document opens Save As; new
+      documents use LF and a missing extension defaults to .md.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: >
+      Renaming or saving an untitled document must not lose work or replace a
+      destination changed during confirmation.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - native app chooser/replacement cancellation and failed Save As with retained original identity
+        - destination changed or created after preparation, without forced overwrite
+        - successful Save As with the same editor, working undo/redo and a subsequent Save to the new path
+        - empty and edited untitled Save, and Save before New
+      success_condition: >
+        Failed or cancelled Save As leaves source, path, history and recovery
+        intact. Only a successful write changes identity. The captured destination
+        state is checked independently of the previous file's mtime. Untitled
+        Save chooses a path; cancellation prevents a pending New/Open transition.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Linux automation drives the built application with controlled chooser and
+      confirmation results. Actual native chooser interaction on each published
+      platform remains required by the package acceptance gates.

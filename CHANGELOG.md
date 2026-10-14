@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Save As and untitled Save use a native destination chooser, retain editor
+  history, and change path/title only after successful writing. Cancellation,
+  access denial and a destination changed during confirmation preserve the old
+  session. New filenames without an extension default to `.md`.
 - The File menu creates an untitled document and opens Markdown with standard
   shortcuts. Save/Discard/Cancel, cancelled pickers and recovery choices preserve
   the current editor; failed reads keep its text, history, path and recovery.
