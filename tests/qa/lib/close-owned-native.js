@@ -12,7 +12,9 @@ async function closeOwnedNative(engine) {
   const data = engine.environment.XDG_DATA_HOME;
   assert.ok(data && data.startsWith(path.join(os.tmpdir(), "amorist-")), "Requires isolated QA app-data");
   const document = engine.applicationArgs.at(-1);
-  assert.ok(document && document.startsWith(path.dirname(data) + path.sep), "Requires an owned QA document");
+  if(document) assert.ok(document.startsWith(path.dirname(data) + path.sep), "Requires an owned QA document");
+  const nonce=engine.environment.AMORIST_QA_INSTANCE_NONCE;
+  assert.ok(nonce,"Requires a distinct native QA instance identity");
   const matches = [];
   const executable=fs.realpathSync(engine.environment.AMORIST_CODEC_QA_BINARY || engine.application);
   for (const entry of fs.readdirSync("/proc")) {
@@ -22,10 +24,10 @@ async function closeOwnedNative(engine) {
       const exe = fs.readlinkSync(proc + "/exe");
       if (path.basename(exe) !== "amorist") continue;
       const args = fs.readFileSync(proc + "/cmdline", "utf8").split("\0");
-      if (!args.includes(document)) continue;
+      if (document && !args.includes(document)) continue;
       const env = Object.fromEntries(fs.readFileSync(proc + "/environ", "utf8").split("\0")
         .filter(value => value.includes("=")).map(value => { const at=value.indexOf("=");return [value.slice(0,at),value.slice(at+1)]; }));
-      if (env.XDG_DATA_HOME !== data || env.DISPLAY !== engine.environment.DISPLAY) continue;
+      if (env.XDG_DATA_HOME !== data || env.DISPLAY !== engine.environment.DISPLAY || env.AMORIST_QA_INSTANCE_NONCE !== nonce) continue;
       if (exe !== executable && (env.APPIMAGE !== executable || exe !== path.join(env.APPDIR || "", "usr/bin/amorist"))) continue;
       matches.push({pid: Number(entry), stat: fs.readFileSync(proc + "/stat", "utf8").split(") ")[1].split(" ")[19]});
     } catch (error) { if (!["ENOENT", "ESRCH", "EACCES"].includes(error.code)) throw error; }

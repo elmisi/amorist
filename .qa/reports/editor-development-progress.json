@@ -2654,5 +2654,17 @@
       "list-container-code-performance-linux.log exit0 B9 GTK/Chromium"
     ],
     "remaining": "Tabs crossing container columns, quote->list combinations and complete mixed-container clipboard/gesture semantics need further coverage; final full current package/platform acceptance remains pending."
+  },
+  "nativeQaInstanceOwnershipLinux": {
+    "implemented": "Each native Tauri QA engine stamps a distinct per-instance nonce into its isolated child environment. Graceful close helper checks that nonce plus XDG_DATA_HOME, DISPLAY, executable/package identity and process start identity; document argv is additionally required when supplied. No-argument startup can now be closed and restarted without confusing simultaneous instances.",
+    "verified": [
+      "Current native startup recovery suite passes with all graceful exits verified, including two simultaneous instances and unavailable originals",
+      "Two no-argument startups of the existing actual AppImage each exit before restart"
+    ],
+    "evidence": [
+      "recovery-distinct-owned-instance-linux.log exit0",
+      "appimage-noarg-owned-instance-linux.log exit0"
+    ],
+    "packageScope": "AppImage smoke used existing build67de561. It verifies harness/startup teardown, not latest recovery implementation. Runtime/package final rebuild remains required."
   }
 }
