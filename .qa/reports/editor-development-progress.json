@@ -2071,5 +2071,19 @@
       "VM setup.exe install/upgrade/uninstall",
       "delivery packaging manifest and per-package dependency byte deltas"
     ]
+  },
+  "windowsInstallerBuild": {
+    "sourceCommit": "81d5475ad901595ca4198e98835ec4013af67c6b",
+    "configuration": {
+      "installMode": "currentUser",
+      "webviewInstallMode": "downloadBootstrapper",
+      "silent": true
+    },
+    "state": "running",
+    "task": "AmoristQA-InstallerBuild-20261014",
+    "observedPid": 8476,
+    "started": "2026-10-14T13:26:01.9462177+02:00",
+    "evidence": "VM scheduled task Running and CLI package check in installer-task.stderr.log; no installer acceptance claimed",
+    "deliveryBlocked": true
   }
 }
