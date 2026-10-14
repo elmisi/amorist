@@ -93,11 +93,9 @@
     "Chromium on macOS"
   ],
   "remainingPlatformGates": [
-    "Windows WebView2 runner integration",
-    "Windows 10 installer install/upgrade/uninstall acceptance",
-    "macOS Finder, dialogs, clipboard and new instances",
-    "Linux packaged acceptance",
-    "final candidate identity and review-loop end-to-end validation"
+    "Windows native system dialogs, real clipboard, Settings/Bug/link and installed launch acceptance; older-version migration and current uninstall preservation",
+    "macOS universal DMG and unlocked-session Safari/Finder/Dock/dialog/clipboard/settings/image acceptance",
+    "Final requirement-by-requirement audit, current documentation and complete artifact manifest; delivery stays blocked"
   ],
   "verification": {
     "linuxFullSuite": {
@@ -125,7 +123,17 @@
       ],
       "environment": "CGSSessionScreenIsLocked=Yes; unlock requested; no native GUI pass claimed"
     },
-    "windowsFullEngineSuite": "not yet implemented",
+    "windowsFullEngineSuite": {
+      "status": "pass",
+      "sourceCommit": "0d3591380da47ace0a299636360c806f657247cb",
+      "report": "windows-current-0d35913-full.json",
+      "engines": [
+        "application WebView2 155.0.4283.45",
+        "Edge 155.0.4283.45"
+      ],
+      "exitCode": 0,
+      "scope": "38 contract entries; H1-H3 delegated Linux, H4 delegated macOS; does not close manual OS acceptance"
+    },
     "safeFenceGeneration": {
       "webkitgtk": "pass",
       "chromiumLinux": "pass",
@@ -3563,6 +3571,16 @@
       "windows-current-installer-binary-comparison.json:10303488 bytes each; exactly3 bytes bundle marker UNK to NSIS, all remaining bytes identical; installed build identity matches source0d35913.",
       "windows-current-0d35913-installed-native.stdout.log: installed executable Save/Save As and two-document crash recovery passed,2057ms checkpoint, child exit0; picker paths mocked, OS dialogs still pending."
     ],
-    "deliveryBlocked": true
+    "deliveryBlocked": true,
+    "macosUniversalBuild": {
+      "status": "running",
+      "host": "lestrade.local",
+      "pid": 21442,
+      "log": "current-universal-app.log",
+      "exitReceipt": "current-universal-app.exit.txt",
+      "target": "universal-apple-darwin",
+      "bundle": "app",
+      "note": "No GUI acceptance or DMG success claimed; macOS screen still locked"
+    }
   }
 }
