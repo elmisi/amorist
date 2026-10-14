@@ -3366,7 +3366,7 @@
       "linux-candidate-b9b3ddc-raw-loop.log exit0"
     ],
     "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
-    "remaining": "Real native file chooser/opener coverage and original intermittent B2 anomaly still require closure; macOS/Windows acceptance pending.",
+    "remaining": "Dirty-close/native failure paths and external opener integration, original B2 intermittency, macOS/Windows acceptance pending.",
     "rollbackPreparation": {
       "package": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-0.10.8-backup/amorist_0.10.8_restore.deb",
       "sha256": "cadd31d72d0d3768b635368c3bcd0ee178e71f6bf40047ee0c711631d10f82f3",
@@ -3410,7 +3410,7 @@
       "linux-isolated-upgrade.log (installation/upgrade passed; initial identity invocation used wrong CLI syntax)",
       "linux-isolated-upgrade-completion.log (corrected headless invocation and hash verification passed)"
     ],
-    "containerState": "Stopped after completed proof; retained for installed-environment GUI follow-up"
+    "containerState": "Stopped after native chooser proof; retained for remaining acceptance"
   },
   "linuxInstalledGuiAcceptance": {
     "status": "passed",
@@ -3437,5 +3437,31 @@
       "evidence": "linux-installed-desktop-visual-proof.log exit0; installed .desktop launched with gio; source unchanged"
     },
     "remaining": "Real native file chooser/opener coverage and original intermittent B2 anomaly still require closure; macOS/Windows acceptance pending."
+  },
+  "linuxRealNativeFileChoosers": {
+    "status": "passed on installed0.10.10 in isolated Ubuntu26.04",
+    "candidateCommit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
+    "proof": {
+      "launcher": "installed amorist.desktop via gio",
+      "pid": 5634,
+      "file": "/tmp/amorist-desktop-zpj7icgp/desktop activation λ.md",
+      "sourceSha256": "4faa752cfa20537d57fdefe11bd359000301ea84ea52cff720ec855af2824019",
+      "originalUnchanged": true,
+      "nativeOpenCancel": true,
+      "nativeOpenAccepted": true,
+      "nativeSaveAsCancel": true,
+      "nativeSaveAsAccepted": true,
+      "savedCopy": "/tmp/amorist-desktop-zpj7icgp/native saved copy.md",
+      "savedCopyExact": true,
+      "defaultMarkdownHandler": "amorist.desktop",
+      "screenshot": "/tmp/amorist-native-picker.png"
+    },
+    "evidence": [
+      "linux-native-picker-complete.log exit0",
+      "linux-native-picker.png: real GTK Open chooser",
+      "linux-native-picker-complete.png: visually inspected native saved copy.md, NATIVE_PICKER_OPEN_OK, Saved status and expected path"
+    ],
+    "scope": "Actual X11 keyboard interaction with GTK native dialogs, no mocked chooser or frontend injection. Open cancel/accept and Save As cancel/accept; originals preserved and saved copy byte-exact. Explicit focus needed in Xvfb without a window manager; GTK Save filename stem selection handled by selecting complete name.",
+    "remaining": "Dirty-close/native failure paths and external opener integration, original B2 intermittency, macOS/Windows acceptance pending."
   }
 }
