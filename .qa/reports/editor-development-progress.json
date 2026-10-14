@@ -1891,7 +1891,7 @@
     }
   },
   "buildIdentityDevelopment": {
-    "status": "implemented and verified on Linux development binary; runner and packaged-platform acceptance pending",
+    "status": "implemented; Linux/macOS/Windows development machine interface verified; package and delivery handover gates pending",
     "versionSource": "VERSION through AMORIST_VERSION",
     "fingerprint": "Git hash-object of sorted length-delimited relative paths and raw contents across runtime/configuration allowlist; includes untracked runtime files",
     "headlessInterface": "--build-info <new-file.json>, create_new, sync_all, pre-Tauri startup; --version for human output",
@@ -1909,10 +1909,54 @@
     ],
     "remaining": [
       "release missing-provenance failure proof",
-      "Windows/macOS headless machine interface",
       "release packages identity and delivery manifest",
-      "review-release.json handover and runner per-file verification",
-      "immutable Bug snapshot and schema reader acceptance"
+      "review-release.json delivery handover",
+      "packaged Bug and runner acceptance"
+    ],
+    "platformEvidence": {
+      "sourceSnapshot": "679d072",
+      "sourceSha256": "42be8772d5535ef44c58f28568e45edb3e8a46d48dc24871014150d4b13206f9",
+      "macos": "build-info-headless-macos.json",
+      "windows": "build-info-headless-windows.log",
+      "commonFingerprint": "be4fac07e2f7aadad580562a9a6e35289116b9e1",
+      "scope": "development binaries; identical content hash and target-specific buildId; create-new overwrite refusal tested"
+    }
+  },
+  "bugSnapshotDevelopment": {
+    "status": "implemented; directed Linux native snapshot and retry checks passed",
+    "schemaVersion": 2,
+    "evidenceDirectory": "/home/alessandro/.local/state/amorist/execution-20261013-1932",
+    "nativeEvidence": "bug-retry-native-linux.log",
+    "proved": [
+      "snapshot before dialog focus including backward selection",
+      "full unsaved source and last saved source retained",
+      "visible raw intervals and actual scroll viewport",
+      "settings and build identity included",
+      "Ctrl+S behind modal does not save document",
+      "write failure retains note and allows Retry",
+      "retry saves original snapshot without changing file",
+      "log path remains consultable in dialog"
+    ],
+    "legacyReports": "7 valid records; SHA256 84af7ebdb58cdbebad52cfb4e5934bcb9577b4e3c6b1bf41ddde04bd6719f83f matches original baseline",
+    "reader": "schema 1 and 2 accepted; malformed/incomplete lines reported; later valid lines retained; tests/problem_report_reader_test.py passed",
+    "remaining": [
+      "Windows/macOS native and package acceptance",
+      "source-mode snapshot geometry and pointer activation acceptance",
+      "full-schema fixture audit"
+    ]
+  },
+  "reviewRunnerDevelopment": {
+    "status": "implemented identity checks, version-scoped state, cross-process lock and safe interruption; integrated Linux tests passed",
+    "tests": "tests/review_runner_test.py: four integrated cases passed",
+    "identity": "machine interface with 10-second timeout; verify handover before startup and each file",
+    "state": "per buildId rounds; legacy history preserved; malformed state untouched",
+    "interruptEvidence": "runner-interruption-linux.json",
+    "lockEvidence": "runner-lock-linux.json",
+    "remaining": [
+      "Windows/macOS integrated runner checks",
+      "delivery-reference writing after all release gates pass",
+      "packaged installed-command verification",
+      "updated list and interruption-resume acceptance"
     ]
   }
 }

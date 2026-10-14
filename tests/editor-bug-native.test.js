@@ -24,14 +24,21 @@ async function main(){
   assert.match(await engine.evaluate(`document.getElementById('report-log-path').textContent`),/problem-reports\.jsonl$/);
   await engine.sendKeys(['Example bug',{key:'s',ctrl:true}]);await new Promise(resolve=>setTimeout(resolve,100));
   assert.equal(fs.readFileSync(file,'utf8'),source,'Save shortcut behind Bug modal must not save unsaved edits');
+  const reportFile=path.join(scratch,'data','dev.elmisi.amorist','problem-reports.jsonl');
+  fs.mkdirSync(reportFile,{recursive:true});
   await engine.evaluate(`(()=>{document.getElementById('report-submit').click();return true;})()`);
-  const reportFile=path.join(scratch,'data','dev.elmisi.amorist','problem-reports.jsonl');const saving=Date.now();
+  let failed;const failing=Date.now();
+  do {failed=await engine.evaluate(`(()=>({open:document.getElementById('report-dialog').open,note:document.getElementById('report-note').value,error:document.getElementById('report-error').textContent,button:document.getElementById('report-submit').textContent,disabled:document.getElementById('report-submit').disabled}))()`);if(failed.error&&!failed.disabled)break;await new Promise(resolve=>setTimeout(resolve,50));}while(Date.now()-failing<7000);
+  assert.equal(failed.open,true);assert.equal(failed.note,'Example bug');assert.equal(failed.button,'Retry');assert.ok(failed.error);assert.equal(fs.readFileSync(file,'utf8'),source);
+  fs.rmdirSync(reportFile);
+  await engine.evaluate(`(()=>{document.getElementById('report-submit').click();return true;})()`);
+  const saving=Date.now();
   while(!fs.existsSync(reportFile)){assert.ok(Date.now()-saving<5000);await new Promise(resolve=>setTimeout(resolve,50));}
   const report=JSON.parse(fs.readFileSync(reportFile,'utf8').trim());assert.equal(report.schemaVersion,2);assert.equal(report.note,'Example bug');assert.equal(report.filePath,file);
   assert.equal(report.savedMarkdown,source);assert.equal(report.markdown,source.replace('Line 045','XLine 045'));assert.equal(report.selectedMarkdown,before.text);assert.equal(report.selection.direction,'backward');
   assert.equal(report.appVersion,'0.10.10');assert.equal(report.buildId,report.buildInfo.buildId);assert.ok(report.viewport.scrollTop>0);assert.ok(report.visibleBlocks.length<100);
   assert.ok(report.visibleBlocks.every(block=>Number.isInteger(block.rawStart)&&Number.isInteger(block.rawEnd)));assert.equal(fs.readFileSync(file,'utf8'),source);
-  console.log(JSON.stringify({status:'pass',keyboardSnapshot:true,backwardSelection:true,visibleBlocks:report.visibleBlocks.length,scrollTop:report.viewport.scrollTop,buildId:report.buildId,sourceUnchanged:true}));
+  console.log(JSON.stringify({status:'pass',retryPreservedNote:true,keyboardSnapshot:true,backwardSelection:true,visibleBlocks:report.visibleBlocks.length,scrollTop:report.viewport.scrollTop,buildId:report.buildId,sourceUnchanged:true}));
  }finally{await engine.close();fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
