@@ -2079,7 +2079,7 @@
       "webviewInstallMode": "downloadBootstrapper",
       "silent": true
     },
-    "state": "running",
+    "state": "complete",
     "task": "AmoristQA-InstallerBuild-20261014",
     "observedPid": 8476,
     "started": "2026-10-14T13:26:01.9462177+02:00",
@@ -2092,6 +2092,23 @@
       "appdataFilesBackedUpAndHashVerified": 20,
       "backupDirectory": "C:\\Users\\elmis\\AppData\\Local\\AmoristQA\\installer-preflight",
       "evidence": "windows-installer-preflight.json in private execution evidence; no installed files or registry entries changed"
+    },
+    "exitCode": 0,
+    "installerSize": 2425390,
+    "installerSha256": "0a432740abbba3edf516464847f01473a8fa2f1cd0c10128eef09474a80f2aa3",
+    "buildFingerprint": "a5488cd748756f87547965c3f2bb407bff680aad",
+    "installation": {
+      "exitCode": 0,
+      "location": "C:\\Users\\elmis\\AppData\\Local\\amorist",
+      "registeredExtensions": [
+        "md",
+        "markdown",
+        "mdown"
+      ],
+      "existingDataFilesPreserved": 20,
+      "installedBuildIdentityMatches": true,
+      "binaryHashMatchesPreBundle": false,
+      "remaining": "Explain PE binary hash difference; upgrade, uninstall, native installed app flows remain unproved; snapshot predates empty anchor fix"
     }
   },
   "currentClassicLinux": {
@@ -2112,5 +2129,12 @@
   "emptyAnchorNavigation": {
     "status": "implemented",
     "evidence": "empty-anchor-linux.log: GTK and Chromium pass, empty fragment positions caret at offset zero in visual and source modes without changing CRLF document"
+  },
+  "recoveryFollowupLinux": {
+    "result": "green",
+    "requirement": "F2",
+    "exitCode": 0,
+    "evidence": "recovery-failure-location-linux.json/log in private execution evidence",
+    "limitation": "Prior full run failure remains unexplained and retained; no full-suite acceptance"
   }
 }
