@@ -122,6 +122,11 @@ fn append_debug_record(path: &std::path::Path, report: &serde_json::Value, locks
 }
 
 #[tauri::command]
+fn get_report_path(app: tauri::AppHandle) -> Result<String, String> {
+    Ok(app.path().app_local_data_dir().map_err(|e|e.to_string())?.join("problem-reports.jsonl").display().to_string())
+}
+
+#[tauri::command]
 async fn report_problem(app: tauri::AppHandle, report: serde_json::Value) -> Result<String, String> {
     run_io(app, move |app, state| report_problem_inner(app, state, report)).await
 }
@@ -131,7 +136,9 @@ fn report_problem_inner(app: &tauri::AppHandle, state: &AppState, mut report: se
     if !report.is_object() || report.get("note").and_then(|v| v.as_str()).unwrap_or("").trim().is_empty() {
         return Err("Describe the problem before saving.".into());
     }
-    report["filePath"] = serde_json::json!(state.file_path.lock().unwrap().as_ref().map(|p| p.display().to_string()));
+    if report.get("schemaVersion").and_then(|v|v.as_u64()) != Some(2) || !report.get("filePath").is_some_and(|v|v.is_null() || v.is_string()) {
+        report["filePath"] = serde_json::json!(state.file_path.lock().unwrap().as_ref().map(|p| p.display().to_string()));
+    }
     report["appVersion"] = serde_json::json!(env!("AMORIST_VERSION"));
     report["buildId"] = serde_json::json!(build_info::current().build_id);
     report["buildInfo"] = serde_json::to_value(build_info::current()).map_err(|e|e.to_string())?;
@@ -1166,6 +1173,7 @@ pub fn run() {
             get_version,
             debug_enabled,
             report_problem,
+            get_report_path,
             set_dirty,
             force_close,
         ])

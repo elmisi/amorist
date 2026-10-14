@@ -29,7 +29,7 @@
             </div>
           </details>
           <button id="settings-button" type="button" hidden>Settings</button>
-          <button id="report-button" type="button" hidden>Segnala problema</button>
+          <button id="report-button" type="button" hidden>Bug</button>
           <button id="reload-button" type="button">Reload</button>
           <button id="save-button" type="button">Save</button>
         </div>
@@ -46,14 +46,15 @@
 
     <dialog id="report-dialog" aria-labelledby="report-title">
       <form id="report-form">
-        <h2 id="report-title">Segnala problema</h2>
-        <label for="report-note">Qual è il problema? Descrivi anche cosa ti aspettavi.</label>
+        <h2 id="report-title">Report a bug</h2>
+        <label for="report-note">Describe the problem and what you expected.</label>
         <textarea id="report-note" rows="5" required></textarea>
-        <p>La segnalazione include il documento e lo stato dell’editor al momento del clic. Viene salvata solo sul tuo computer.</p>
+        <p>The report includes the document and editor state captured before this dialog opened. It is saved on this computer.</p>
+        <p id="report-log-path"></p>
         <p id="report-error" role="alert"></p>
         <div class="actions">
-          <button id="report-cancel" type="button">Annulla</button>
-          <button id="report-submit" type="submit">Salva segnalazione</button>
+          <button id="report-cancel" type="button">Cancel</button>
+          <button id="report-submit" type="submit">Save report</button>
         </div>
       </form>
     </dialog>
