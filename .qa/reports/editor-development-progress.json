@@ -2920,9 +2920,9 @@
     "identity": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:517c93608c59c2a11d20869fe480e860ed1815a0",
-      "fingerprint": "517c93608c59c2a11d20869fe480e860ed1815a0",
-      "commit": "923d65b95186440702fc00835c5c8ab4e5e0a486",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:8feb98e1b811b645518f48b5de34a6da47e4bf69",
+      "fingerprint": "8feb98e1b811b645518f48b5de34a6da47e4bf69",
+      "commit": "0afe06610131bc2814fe2098c6ad7c9f17121a38",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
@@ -2978,10 +2978,23 @@
         "commit": "57317aa147e4804f976e52e3b7605364eb334844",
         "target": "x86_64-unknown-linux-gnu",
         "dirty": false
+      },
+      {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:517c93608c59c2a11d20869fe480e860ed1815a0",
+        "fingerprint": "517c93608c59c2a11d20869fe480e860ed1815a0",
+        "commit": "923d65b95186440702fc00835c5c8ab4e5e0a486",
+        "target": "x86_64-unknown-linux-gnu",
+        "dirty": false
       }
     ],
     "preservedWipStatus": "Direct-list-fence archival patch retained; completed correction now part of preview726ecd3.",
-    "latestVerifiedEvidence": "linux-preview-bundle-identity-loop.log exit0: release923d65b; clipboard/new reports fixes not yet in preview"
+    "latestVerifiedEvidence": [
+      "linux-preview-clipboard-and-reports-build.log exit0: clean0afe066",
+      "linux-preview-clipboard-and-reports-native-clipboard.log exit0: actual cross-process local-image transfer and HTML fallback",
+      "linux-preview-clipboard-and-reports-loop.log exit0: actual Bug, interruption/resume; user documents/state untouched"
+    ]
   },
   "directListFencesLinux": {
     "status": "partial",
@@ -3205,18 +3218,30 @@
     "remaining": "Rebuild release artifacts and verify their headless identity/native runner, then test on macOS/Windows. Older package manifest is preserved as historical evidence."
   },
   "clipboardDocumentOriginsLinux": {
-    "status": "implemented; classic and full Linux contract passed; release-native proof pending",
+    "status": "implemented; classic/full Linux contract and clean release native clipboard/review loop verified",
     "behavior": "Visual cross-document paste rebases local links/images from source file URI, preserves raw plain text and Source paste, and supplies absolute destinations for semantic HTML fallback. Schema1 compatible; schema2 validates origin. POSIX, drive, UNC, verbatim Windows paths supported.",
     "evidence": [
       "clipboard-origin-full-contract-linux.json: green before new visual fixes",
       "clipboard-relative-origin-fallback-linux.log: actual debug cross-process image and HTML-only clipboard passed",
       "clipboard-and-new-reports-classic-linux.log: pass17 fail0 skip0",
-      "clipboard-and-new-reports-contract-linux.json/log: full contract exit0; Finder/Dock delegated to macOS"
+      "clipboard-and-new-reports-contract-linux.json/log: full contract exit0; Finder/Dock delegated to macOS",
+      "linux-preview-clipboard-and-reports-build.log exit0: clean0afe066",
+      "linux-preview-clipboard-and-reports-native-clipboard.log exit0: actual cross-process local-image transfer and HTML fallback",
+      "linux-preview-clipboard-and-reports-loop.log exit0: actual Bug, interruption/resume; user documents/state untouched"
     ],
-    "remaining": "Updated release-native proof and macOS/Windows pending"
+    "remaining": "macOS/Windows proof and broader final delivery requirements pending; preview only",
+    "releaseIdentity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:8feb98e1b811b645518f48b5de34a6da47e4bf69",
+      "fingerprint": "8feb98e1b811b645518f48b5de34a6da47e4bf69",
+      "commit": "0afe06610131bc2814fe2098c6ad7c9f17121a38",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    }
   },
   "newReports8To10Linux": {
-    "status": "implemented; classic and full Linux contract passed; release-native proof pending",
+    "status": "implemented; classic/full Linux contract and clean release native clipboard/review loop verified",
     "originalReportCount": 10,
     "originalReportsPreserved": true,
     "reports": {
@@ -3229,8 +3254,20 @@
       "blank-arrow-after.log: both engines Up reaches blank row",
       "source-line-geometry-linux.log: GTK/Chromium passed",
       "clipboard-and-new-reports-classic-linux.log: pass17 fail0 skip0",
-      "clipboard-and-new-reports-contract-linux.json/log: full contract exit0; Finder/Dock delegated to macOS"
+      "clipboard-and-new-reports-contract-linux.json/log: full contract exit0; Finder/Dock delegated to macOS",
+      "linux-preview-clipboard-and-reports-build.log exit0: clean0afe066",
+      "linux-preview-clipboard-and-reports-native-clipboard.log exit0: actual cross-process local-image transfer and HTML fallback",
+      "linux-preview-clipboard-and-reports-loop.log exit0: actual Bug, interruption/resume; user documents/state untouched"
     ],
-    "remaining": "Full contract, release and platform proofs pending"
+    "remaining": "macOS/Windows proof and broader final delivery requirements pending; preview only",
+    "releaseIdentity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:8feb98e1b811b645518f48b5de34a6da47e4bf69",
+      "fingerprint": "8feb98e1b811b645518f48b5de34a6da47e4bf69",
+      "commit": "0afe06610131bc2814fe2098c6ad7c9f17121a38",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    }
   }
 }
