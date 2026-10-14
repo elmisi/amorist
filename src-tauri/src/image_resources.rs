@@ -28,9 +28,29 @@ impl Store {
     }
 
     pub fn resolve_reference(&self, reference: &str) -> Result<PathBuf, String> {
-        let path = Path::new(reference);
+        if reference.to_ascii_lowercase().starts_with("file:") {
+            return tauri::Url::parse(reference)
+                .map_err(|e| e.to_string())?
+                .to_file_path()
+                .map_err(|_| "Invalid local file URL.".to_string());
+        }
+        let value = reference.split(['?', '#']).next().unwrap_or("");
+        let decoded = decode_path(value)?;
+        let path = Path::new(&decoded);
         if path.is_absolute() {
             return Ok(path.to_owned());
+        }
+        if let Some((scheme, _)) = value.split_once(':') {
+            if scheme.starts_with(|c: char| c.is_ascii_alphabetic())
+                && scheme
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+            {
+                return Err("This image reference is not a local path.".into());
+            }
+        }
+        if decoded.is_empty() {
+            return Err("An image path is required.".into());
         }
         let parent = self
             .document
@@ -64,6 +84,35 @@ impl Store {
         }
         self.resources.get(id).cloned()
     }
+}
+
+fn decode_path(value: &str) -> Result<String, String> {
+    let input = value.as_bytes();
+    let mut output = Vec::with_capacity(input.len());
+    let mut cursor = 0;
+    while cursor < input.len() {
+        if input[cursor] == b'%' {
+            let hi = input
+                .get(cursor + 1)
+                .and_then(|c| (*c as char).to_digit(16));
+            let lo = input
+                .get(cursor + 2)
+                .and_then(|c| (*c as char).to_digit(16));
+            let byte = match (hi, lo) {
+                (Some(hi), Some(lo)) => (hi * 16 + lo) as u8,
+                _ => return Err("Invalid image path escape.".into()),
+            };
+            output.push(byte);
+            cursor += 3;
+        } else {
+            output.push(input[cursor]);
+            cursor += 1;
+        }
+    }
+    if output.contains(&0) {
+        return Err("Invalid image path character.".into());
+    }
+    String::from_utf8(output).map_err(|_| "Image path is not valid UTF-8.".into())
 }
 
 pub fn image_mime(bytes: &[u8]) -> Option<&'static str> {
@@ -142,6 +191,43 @@ mod tests {
         assert_ne!(id, next);
         store.replace_document(None);
         assert!(store.lookup(&next).is_none());
+    }
+
+    #[test]
+    fn local_references_decode_paths_and_reject_remote_schemes() {
+        let mut store = Store::default();
+        store.replace_document(Some(PathBuf::from("project/notes.md")));
+        assert_eq!(
+            store
+                .resolve_reference("../images/my%20%CE%BB%23photo.png#view")
+                .unwrap(),
+            PathBuf::from("project/../images/my λ#photo.png")
+        );
+        assert!(store
+            .resolve_reference("https://example.test/photo.png")
+            .is_err());
+        assert!(store
+            .resolve_reference("data:image/png;base64,AAAA")
+            .is_err());
+        assert!(store.resolve_reference("image%ZZ.png").is_err());
+        assert!(store.resolve_reference("image%00.png").is_err());
+        assert!(store.resolve_reference("image%FF.png").is_err());
+        assert_eq!(
+            store.resolve_reference("images/my%3Aphoto.png").unwrap(),
+            PathBuf::from("project/images/my:photo.png")
+        );
+        #[cfg(unix)]
+        assert_eq!(
+            store
+                .resolve_reference("file:///tmp/my%20photo.png")
+                .unwrap(),
+            PathBuf::from("/tmp/my photo.png")
+        );
+        #[cfg(windows)]
+        assert_eq!(
+            store.resolve_reference("C:/images/my%20photo.png").unwrap(),
+            PathBuf::from("C:/images/my photo.png")
+        );
     }
 
     #[test]

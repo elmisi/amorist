@@ -1510,6 +1510,19 @@
           "MIME assigned from content signatures"
         ],
         "limit": "Store lifecycle is unit-tested; actual New/Open/SaveAs hooks and protocol are not connected yet"
+      },
+      "pathResolution": {
+        "pass": 4,
+        "fail": 0,
+        "report": "image-path-verified-rust-linux.log",
+        "scope": [
+          "relative paths and ../",
+          "percent-encoded spaces, Unicode and literal #/colon",
+          "URI query/fragment separated before path decode",
+          "file URL conversion via existing Tauri URL type",
+          "nonlocal URI schemes and malformed/NUL/nonUTF8 relative escapes rejected"
+        ],
+        "remaining": "Windows drive/file-URL branch still requires live Windows execution; runtime protocol/hooks remain pending"
       }
     }
   }
