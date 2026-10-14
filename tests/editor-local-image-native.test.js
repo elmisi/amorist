@@ -29,7 +29,26 @@ async function main(){
   assert.equal(actual.state,'loaded',JSON.stringify(actual));assert.equal(actual.width,200);assert.equal(actual.alt,'Alt');assert.equal(actual.title,'Title');
   assert.match(actual.src,/^amorist-image:\/\/localhost\/[a-f0-9]{32}$/);
   assert.equal(fs.readFileSync(file,'utf8'),source);
-  console.log(JSON.stringify({status:'pass',image:actual,sourceUnchanged:true}));
+  const lifecycle=await engine.evaluate(`(async () => {
+    const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document');
+    const id=await invoke('register_image',{reference:'../images/photo%20%CE%BB.svg',contextId:doc.contextId});
+    const uri=window.__TAURI__.core.convertFileSrc(id,'amorist-image');
+    const request=uri=>new Promise(resolve=> {
+      const image=new Image();let done=false;
+      const finish=value=>{if(!done){done=true;resolve(value);}};
+      image.onload=()=>finish({loaded:true,width:image.naturalWidth});image.onerror=()=>finish({loaded:false});
+      image.src=uri;setTimeout(()=>finish({timeout:true}),3000);
+    });
+    const active=await request(uri+'?active=1');
+    const next=await invoke('create_document',{contextId:doc.contextId,discard:true});
+    const expired=await request(uri+'?expired=1');
+    let staleRejected=false;
+    try {await invoke('register_image',{reference:'../images/photo%20%CE%BB.svg',contextId:doc.contextId});} catch(error) {staleRejected=true;}
+    return {active,expired,staleRejected,nextUntitled:next.path===''};
+  })()`);
+  assert.deepEqual(lifecycle,{active:{loaded:true,width:200},expired:{loaded:false},staleRejected:true,nextUntitled:true});
+  assert.equal(fs.readFileSync(file,'utf8'),source);
+  console.log(JSON.stringify({status:'pass',image:actual,lifecycle,sourceUnchanged:true}));
  }finally {await engine.close();fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

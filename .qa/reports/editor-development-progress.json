@@ -1589,6 +1589,18 @@
           "all local image formats and Windows/macOS transport",
           "runtime scoped-registration/source provenance audit"
         ]
+      },
+      "nativeExpiry": {
+        "exitCode": 0,
+        "report": "local-image-expiry-native-linux.log",
+        "scope": [
+          "real custom-protocol image decodes in active document context",
+          "successful native New command invalidates existing URI",
+          "fresh request to old URI fails image decoding",
+          "stale-context resource registration rejected",
+          "original file remains byte-identical"
+        ],
+        "remaining": "UI adoption, Open/SaveAs refresh and other platform/format acceptance still require verification"
       }
     }
   }
