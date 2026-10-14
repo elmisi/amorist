@@ -38,7 +38,25 @@ async function main(){
   assert.equal(report.savedMarkdown,source);assert.equal(report.markdown,source.replace('Line 045','XLine 045'));assert.equal(report.selectedMarkdown,before.text);assert.equal(report.selection.direction,'backward');
   assert.equal(report.appVersion,'0.10.10');assert.equal(report.buildId,report.buildInfo.buildId);assert.ok(report.viewport.scrollTop>0);assert.ok(report.visibleBlocks.length<100);
   assert.ok(report.visibleBlocks.every(block=>Number.isInteger(block.rawStart)&&Number.isInteger(block.rawEnd)));assert.equal(fs.readFileSync(file,'utf8'),source);
-  console.log(JSON.stringify({status:'pass',retryPreservedNote:true,keyboardSnapshot:true,backwardSelection:true,visibleBlocks:report.visibleBlocks.length,scrollTop:report.viewport.scrollTop,buildId:report.buildId,sourceUnchanged:true}));
+  const sourceSelection=await engine.evaluate(`(()=>{
+    document.querySelector('.amorist-editor-toolbar [data-action="source"]').click();
+    const source=document.querySelector('.amorist-editor-source');source.focus();
+    const at=source.value.indexOf('XLine 045');source.setSelectionRange(at,at+5,'backward');source.scrollTop=700;
+    return {start:at,end:at+5,text:source.value.slice(at,at+5)};
+  })()`);
+  await new Promise(resolve=>setTimeout(resolve,100));
+  const sourceScrollBefore=await engine.evaluate(`document.querySelector('.amorist-editor-source').scrollTop`);
+  await engine.evaluate(`(()=>{document.getElementById('report-button').focus();return true;})()`);
+  await engine.sendKeys([{key:'Enter'},'Source bug']);
+  const sourceTyping=Date.now();while(await engine.evaluate(`document.getElementById('report-note').value`)!=='Source bug'){assert.ok(Date.now()-sourceTyping<3000);await new Promise(resolve=>setTimeout(resolve,50));}
+  await engine.evaluate(`(()=>{document.getElementById('report-submit').click();return true;})()`);
+  let records;const sourceSaving=Date.now();
+  do {records=fs.readFileSync(reportFile,'utf8').trim().split('\n').map(line=>JSON.parse(line));if(records.length===2)break;await new Promise(resolve=>setTimeout(resolve,50));}while(Date.now()-sourceSaving<5000);
+  assert.equal(records.length,2);const sourceReport=records[1];assert.equal(sourceReport.mode,'source');assert.equal(sourceReport.note,'Source bug');
+  assert.equal(sourceReport.selectedMarkdown,sourceSelection.text);assert.equal(sourceReport.selection.direction,'backward');assert.equal(sourceReport.viewport.scrollTop,sourceScrollBefore);assert.ok(sourceScrollBefore>0);
+  assert.ok(sourceReport.visibleBlocks.length>0&&sourceReport.visibleBlocks.length<100);assert.ok(sourceReport.visibleBlocks.every(block=>Number.isInteger(block.rawStart)&&Number.isInteger(block.rawEnd)));
+  assert.equal(sourceReport.markdown,report.markdown);assert.equal(fs.readFileSync(file,'utf8'),source);
+  console.log(JSON.stringify({status:'pass',sourceSnapshot:true,retryPreservedNote:true,keyboardSnapshot:true,backwardSelection:true,visibleBlocks:report.visibleBlocks.length,scrollTop:report.viewport.scrollTop,buildId:report.buildId,sourceUnchanged:true}));
  }finally{await engine.close();fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

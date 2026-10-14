@@ -22,6 +22,15 @@
       return {rawStart:spans.length?Math.min(...spans.map(line=>line.start)):null,rawEnd:spans.length?Math.max(...spans.map(line=>line.end)):null, text: node.innerText, html: node.outerHTML, sourceLine: node.dataset.line, top: rect.top, left: rect.left,
         width: rect.width, height: rect.height, scrollLeft: node.scrollLeft, scrollWidth: node.scrollWidth };
     });
+    if(editor.mode==="source") {
+      const lineHeight=parseFloat(style.lineHeight),padding=parseFloat(style.paddingTop)||0;
+      editor.buildProjection().forEach(function(line,index) {
+        const top=paneBounds.top+pane.clientTop+padding+index*lineHeight-pane.scrollTop;
+        if(top+lineHeight<=bounds.top || top>=bounds.bottom) return;
+        blocks.push({rawStart:line.start,rawEnd:line.end,text:line.raw,html:null,sourceLine:index,
+          top:top,left:bounds.left,width:bounds.width,height:lineHeight,scrollLeft:pane.scrollLeft,scrollWidth:pane.scrollWidth});
+      });
+    }
     const selection = capturedSelection || {...editor.selectionRaw(),direction:editor.selectionDirection()};
     return {
       schemaVersion: 2, filePath:state.documentPath || null, contextId:state.contextId, boundaryState:editor.model.boundaryState(), capturedAt: new Date().toISOString(), mode: editor.mode,
