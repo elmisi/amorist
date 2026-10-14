@@ -81,6 +81,20 @@ async function main(options={}){
     assert.match(copiedCode.html,/<blockquote/);assert.match(copiedCode.html,/<pre[^>]*><code class="language-js">/);assert.doesNotMatch(copiedCode.html,/<strong>/);
     assert.deepEqual(copiedCode.fallbackCode,copiedCode.code,`${entry.id}: HTML-only fallback retains quoted literal code`);assert.ok(copiedCode.fallback.startsWith(quote.trimStart()+'````js\r\n'));
    }
+   const blockBoundary=await engine.evaluate(`(() => {
+    const editor=window.__clip,source='leftright\\r\\nend';editor.setMarkdown(source);editor.showWysiwygMode();editor.setSurfaceSelection(4,4);
+    editor.handlePaste({clipboardData:{getData:type=>type==='text/html'?'<pre><code>literal **code**</code></pre>':''},preventDefault(){}});
+    const pasted=editor.getMarkdown(),code=Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>row.textContent.replace(/\\n$/,''));editor.undo();const undo=editor.getMarkdown();editor.redo();const redo=editor.getMarkdown();
+    editor.setMarkdown(source);editor.setSurfaceSelection(4,4);editor.handlePaste({clipboardData:{getData:type=>type==='text/plain'?'# plain':''},preventDefault(){}});
+    return {pasted,code,undo,redo,plain:editor.getMarkdown()};
+   })()`);
+   assert.equal(blockBoundary.pasted,'left\r\n```\r\nliteral **code**\r\n```\r\nright\r\nend');assert.deepEqual(blockBoundary.code,['literal **code**']);assert.equal(blockBoundary.undo,'leftright\r\nend');assert.equal(blockBoundary.redo,blockBoundary.pasted);assert.equal(blockBoundary.plain,'left# plainright\r\nend');
+   const listBoundary=await engine.evaluate(`(() => {
+    const editor=window.__clip,source='leftREMOVEright\\r\\nend';editor.setMarkdown(source);editor.showWysiwygMode();editor.restoreRawSelection({start:4,end:10,direction:'backward'});
+    editor.handlePaste({clipboardData:{getData:type=>type==='text/html'?'<ul><li>parent<ul><li>child</li></ul></li></ul>':''},preventDefault(){}});
+    const pasted=editor.getMarkdown(),items=editor.surface.querySelectorAll('.amorist-wysiwyg-list-item').length;editor.undo();return {pasted,items,undo:editor.getMarkdown(),selection:editor.selectionRaw(),direction:editor.selectionDirection()};
+   })()`);
+   assert.equal(listBoundary.pasted,'left\r\n\r\n- parent\r\n  - child\r\n\r\nright\r\nend');assert.equal(listBoundary.items,2);assert.equal(listBoundary.undo,'leftREMOVEright\r\nend');assert.deepEqual(listBoundary.selection,{start:4,end:10});assert.equal(listBoundary.direction,'backward');
    const reference=await engine.evaluate(`(() => {
     const editor=window.__clip,source=${JSON.stringify('[Read][name]\r\n\r\n[name]: notes.md "Title"')};
     editor.setMarkdown(source);const fragment=editor.clipboardFragment({start:1,end:5});

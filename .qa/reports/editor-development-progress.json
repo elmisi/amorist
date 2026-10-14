@@ -2501,5 +2501,19 @@
         "quoted-code-html-indented-fallback-linux.log pass3 fail0 skip0"
       ]
     }
+  },
+  "structuredPasteBoundariesLinux": {
+    "status": "partial",
+    "implemented": "For HTML or validated internal block fragments in unformatted prose, local replacement adds destination line endings needed to keep blocks separate from surrounding text. Quote/list/multiple blocks receive paragraph separation; code/heading/table boundaries receive a physical line break. Plain text, source and code paste remain verbatim. No whole-document conversion; boundary text and fragment are one history entry.",
+    "verified": [
+      "GTK/Chromium PRE/code inserted between prose preserves literal body, CRLF and surrounding text; undo/redo restores exact source",
+      "HTML nested list replacing backward selection remains separate from adjacent prose; undo restores raw source and selection orientation",
+      "Real system clipboard and history regression checks pass"
+    ],
+    "evidence": [
+      "clipboard-block-boundary-before-linux.log reproduces invalid attached fence",
+      "clipboard-block-boundary-list-regressions-linux.log exit0 pass3 fail0 skip0"
+    ],
+    "remaining": "Boundaries within existing formatted inline spans, headings, lists/quotes/tables and cross-unit cuts/joins need complete gesture planning; full current suite and native package/platform acceptance remain pending."
   }
 }

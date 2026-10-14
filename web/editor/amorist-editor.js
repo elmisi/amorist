@@ -1736,11 +1736,14 @@
       const plainOnly=this.mode==="source" || context?.kind==="code" || event.shiftKey || this.plainPasteRequested;
       this.plainPasteRequested=false;
       let replacement=null;
+      let structured=false;
       if(!plainOnly) {
         try {
           const payload=JSON.parse(clipboard.getData(CLIPBOARD_TYPE));
           if(payload && payload.schemaVersion===1 && typeof payload.markdown==="string"
-              && payload.markdown.length<=10*1024*1024 && Object.keys(payload).length===2) replacement=this.isolateClipboardReferences(payload.markdown);
+              && payload.markdown.length<=10*1024*1024 && Object.keys(payload).length===2) {
+            replacement=this.isolateClipboardReferences(payload.markdown);structured=true;
+          }
         } catch(error) { /* Invalid/unsupported internal data uses public clipboard formats. */ }
       }
       if(replacement===null) {
@@ -1748,9 +1751,29 @@
         replacement=plainOnly ? (plain || html) : html
           ? HtmlToMarkdown.convert(html, {onWarning: message => this.options.onWarning?.(message)})
             .replace(/\r\n|\r|\n/g,this.model.lineEndingAt(selection.start)) : plain;
+        structured=!plainOnly && !!html;
       }
       if(!replacement) return;
+      if(structured) replacement=this.structuredPasteReplacement(selection,String(replacement));
       this.finishClipboardEdit(selection,String(replacement),plainOnly?"paste-plain":"paste");
+    }
+
+    structuredPasteReplacement(selection, replacement) {
+      const first=this.descriptorAtRaw(selection.start),last=this.descriptorAtRaw(selection.end);
+      const plainRow=descriptor=>descriptor?.unitType==="line" && descriptor.projection.tag==="div"
+        && !descriptor.projection.list && !descriptor.projection.listContinuation
+        && !descriptor.projection.referenceDefinition
+        && MarkdownCodec.tokenizeInline(descriptor.projection.text).every(token=>token.type==="text");
+      if(!plainRow(first)||!plainRow(last)) return replacement;
+      const blocks=MarkdownCodec.parseBlocks(replacement);
+      if(!blocks.some(block=>block.type!=="paragraph") && blocks.length<2) return replacement;
+      const separated=blocks.length>1 || blocks.some(block=>["quote","bulletList","orderedList","taskList"].includes(block.type));
+      const needed=separated?2:1,ending=this.model.lineEndingAt(selection.start);
+      const left=this.model.source.slice(first.start,selection.start),right=this.model.source.slice(selection.end,last.end);
+      const count=value=>(value.match(/\r\n|\r|\n/g)||[]).length;
+      if(left.trim()) replacement=ending.repeat(Math.max(0,needed-count(replacement.match(/^(?:\r\n|\r|\n)*/)[0])))+replacement;
+      if(right.trim()) replacement+=ending.repeat(Math.max(0,needed-count(replacement.match(/(?:\r\n|\r|\n)*$/)[0])));
+      return replacement;
     }
 
     editExistingLink(selection) {
