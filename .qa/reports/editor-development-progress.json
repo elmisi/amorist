@@ -3171,13 +3171,36 @@
     "appImageEarlierNativeScope": "Settings/recovery tests apply to AppImage before decoder payload addition (SHA256 cce8a698); do not count these as final acceptance of SHA2562ae70e9e."
   },
   "buildIdentityExternalBundleConfiguration": {
-    "status": "pending",
+    "status": "implemented-and-verified-linux",
     "finding": "Source fingerprint hashes only declared INPUTS, not externally supplied Tauri bundle configuration or its decoder payload. Packaged decoder availability can differ under the same source buildId. Artifact hashes differ, but runner identity alone cannot distinguish this. Must include effective configuration/runtime bundle inputs before final delivery.",
     "evidence": [
       "src-tauri/build_identity.rs:8-20,80-101",
       "current-appimage-no-host-images-linux.log",
       "current-appimage-decoder-config.json",
       "Failing and fixed AppImages share buildId5cf154be but SHA256 and decoder availability differ; recorded current-linux-package-manifest.json"
-    ]
+    ],
+    "change": "Fingerprint includes canonical effective TAURI_CONFIG and actual bytes of Linux AppImage/deb/rpm file payloads; source host paths are replaced by package destination names. External paths/directories and TAURI_CONFIG are registered as rebuild inputs. Missing or malformed inputs fail the build.",
+    "verification": {
+      "unitTests": {
+        "passed": 2,
+        "evidence": "bundle-build-identity-tests.log"
+      },
+      "headlessActualBinary": {
+        "result": "pass",
+        "evidence": "bundle-build-identity-headless-linux.log",
+        "checks": [
+          "same commit/version with absent, original and modified decoder payload produces three distinct buildIds",
+          "restoring baseline restores baseline buildId"
+        ]
+      },
+      "fullRust": {
+        "passed": 37,
+        "failed": 0,
+        "ignored": 1,
+        "ignoredReason": "child worker invoked by parent concurrency test",
+        "evidence": "bundle-build-identity-all-rust-linux.log"
+      }
+    },
+    "remaining": "Rebuild release artifacts and verify their headless identity/native runner, then test on macOS/Windows. Older package manifest is preserved as historical evidence."
   }
 }

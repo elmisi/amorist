@@ -77,6 +77,66 @@ fn hash(root: &Path, bytes: &[u8]) -> Result<String, String> {
     Ok(value)
 }
 
+fn append_entry(manifest: &mut Vec<u8>, name: &str, bytes: &[u8]) {
+    manifest.extend((name.len() as u64).to_be_bytes());
+    manifest.extend(name.as_bytes());
+    manifest.extend((bytes.len() as u64).to_be_bytes());
+    manifest.extend(bytes);
+}
+
+// CLI overrides are not necessarily repository files. Measure their contents,
+// including decoder payloads, without making temporary host paths the identity.
+fn append_bundle_config(manifest: &mut Vec<u8>, config: Option<&str>) -> Result<(), String> {
+    let mut config: serde_json::Value = serde_json::from_str(config.unwrap_or("{}"))
+        .map_err(|e| format!("Invalid effective Tauri configuration: {e}"))?;
+    if !config.is_object() {
+        return Err("Effective Tauri configuration must be an object".into());
+    }
+    config.sort_all_objects();
+    for format in ["appimage", "deb", "rpm"] {
+        let pointer = format!("/bundle/linux/{format}/files");
+        if let Some(files) = config.pointer_mut(&pointer) {
+            let files = files
+                .as_object_mut()
+                .ok_or("Bundle files must be a destination/source map")?;
+            for (destination, source) in files.iter_mut() {
+                let source_path =
+                    PathBuf::from(source.as_str().ok_or("Bundle source must be a path")?);
+                let mut paths = Vec::new();
+                collect(&source_path, &mut paths)?;
+                paths.sort();
+                for path in paths {
+                    let name = if source_path.is_dir() {
+                        let relative =
+                            path.strip_prefix(&source_path).map_err(|e| e.to_string())?;
+                        format!(
+                            "{pointer}/{destination}/{}",
+                            relative
+                                .to_str()
+                                .ok_or("Non-UTF8 bundle destination path")?
+                                .replace('\\', "/")
+                        )
+                    } else {
+                        format!("{pointer}/{destination}")
+                    };
+                    append_entry(
+                        manifest,
+                        &name,
+                        &fs::read(&path).map_err(|e| e.to_string())?,
+                    );
+                }
+                *source = serde_json::Value::String(destination.clone());
+            }
+        }
+    }
+    append_entry(
+        manifest,
+        "effective-tauri-config",
+        &serde_json::to_vec(&config).map_err(|e| e.to_string())?,
+    );
+    Ok(())
+}
+
 pub fn emit(version: &str) -> Result<(), String> {
     let root = Path::new("..");
     let mut files = Vec::new();
@@ -93,11 +153,11 @@ pub fn emit(version: &str) -> Result<(), String> {
             .ok_or("Non-UTF8 build input path")?
             .replace('\\', "/");
         let bytes = fs::read(&path).map_err(|e| e.to_string())?;
-        manifest.extend((relative.len() as u64).to_be_bytes());
-        manifest.extend(relative.as_bytes());
-        manifest.extend((bytes.len() as u64).to_be_bytes());
-        manifest.extend(bytes);
+        append_entry(&mut manifest, &relative, &bytes);
     }
+    println!("cargo:rerun-if-env-changed=TAURI_CONFIG");
+    let config = std::env::var("TAURI_CONFIG").ok();
+    append_bundle_config(&mut manifest, config.as_deref())?;
     let fingerprint = hash(root, &manifest)?;
     for variable in ["AMORIST_BUILD_COMMIT", "AMORIST_BUILD_DIRTY"] {
         println!("cargo:rerun-if-env-changed={variable}");
@@ -146,4 +206,80 @@ pub fn emit(version: &str) -> Result<(), String> {
         println!("cargo:rustc-env={key}={value}");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn effective_bundle_payload_identity_uses_bytes_not_host_paths() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory = std::env::temp_dir().join(format!(
+            "amorist-build-identity-{}-{nonce}",
+            std::process::id()
+        ));
+        fs::create_dir(&directory).unwrap();
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+        let _cleanup = Cleanup(directory.clone());
+        let first = directory.join("one.so");
+        let second = directory.join("two.so");
+        fs::write(&first, b"decoder one").unwrap();
+        fs::write(&second, b"decoder one").unwrap();
+        let measure = |path: &Path| {
+            let config = serde_json::json!({"bundle":{"linux":{"appimage":{"files":{"usr/lib/decoder.so":path}}}}});
+            let mut manifest = Vec::new();
+            append_bundle_config(&mut manifest, Some(&config.to_string())).unwrap();
+            manifest
+        };
+        let baseline = measure(&first);
+        assert_eq!(
+            baseline,
+            measure(&second),
+            "Relocating identical payload must preserve identity"
+        );
+        fs::write(&second, b"decoder two").unwrap();
+        assert_ne!(
+            baseline,
+            measure(&second),
+            "Changed decoder bytes must change identity"
+        );
+        let mut absent = Vec::new();
+        append_bundle_config(&mut absent, None).unwrap();
+        assert_ne!(
+            baseline, absent,
+            "Omitting the decoder must change identity"
+        );
+        let config = serde_json::json!({"bundle":{"linux":{"appimage":{"files":{"usr/lib/decoder.so":directory.join("missing.so")}}}}});
+        assert!(append_bundle_config(&mut Vec::new(), Some(&config.to_string())).is_err());
+    }
+
+    #[test]
+    fn effective_config_changes_are_measured_and_malformed_config_is_rejected() {
+        let measure = |config: &str| {
+            let mut manifest = Vec::new();
+            append_bundle_config(&mut manifest, Some(config)).unwrap();
+            manifest
+        };
+        assert_eq!(
+            measure(r#"{"version":"1","identifier":"test"}"#),
+            measure(r#"{ "identifier": "test", "version": "1" }"#)
+        );
+        assert_ne!(measure(r#"{"version":"1"}"#), measure(r#"{"version":"2"}"#));
+        for invalid in [
+            "not JSON",
+            "[]",
+            r#"{"bundle":{"linux":{"appimage":{"files":[]}}}}"#,
+        ] {
+            assert!(append_bundle_config(&mut Vec::new(), Some(invalid)).is_err());
+        }
+    }
 }
