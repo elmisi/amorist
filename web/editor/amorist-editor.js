@@ -446,6 +446,34 @@
           index = end + 1;
           continue;
         }
+        const logicalRaw = descriptors[index].raw.slice(outerPrefix.length);
+        const previous = descriptors[index - 1];
+        const previousPrefix = quoteDepth && previous ? quotePrefix(previous.raw, quoteDepth) : null;
+        const followsBlank = !previous || !previous.raw.trim()
+          || (previousPrefix !== null && !previous.raw.slice(previousPrefix.length).trim());
+        if (quoteDepth && indentationColumns((logicalRaw.match(/^[ \t]*/) || [""])[0]) >= 4
+            && (followsBlank || previous.unitType === "code")) {
+          let end = index;
+          for (let next = index + 1; next < descriptors.length; next += 1) {
+            const prefix = quotePrefix(descriptors[next].raw, quoteDepth);
+            if (prefix === null && descriptors[next].raw.trim()) break;
+            const content = descriptors[next].raw.slice((prefix || "").length);
+            if (!content.trim()) continue;
+            if (indentationColumns((content.match(/^[ \t]*/) || [""])[0]) < 4) break;
+            end = next;
+          }
+          for (let at = index; at <= end; at += 1) {
+            const prefix = quotePrefix(descriptors[at].raw, quoteDepth) || "";
+            Object.assign(descriptors[at], {
+              unitType: "code", unitStart: index, unitEnd: end,
+              codeContent: true, indentedCode: true,
+              containerPrefix: prefix, containerQuoteDepth: quoteDepth,
+              projection: {prefix: prefix.length, text: descriptors[at].raw.slice(prefix.length), tag: "pre"},
+            });
+          }
+          index = end + 1;
+          continue;
+        }
         if (TableCodec && indentationColumns((rawLines[index].match(/^[ \t]*/) || [""])[0]) < 4
             && TableCodec.isTableStart(rawLines, index)) {
           const columns = TableCodec.splitTableRow(rawLines[index]).length;

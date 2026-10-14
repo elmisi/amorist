@@ -260,6 +260,18 @@ async function main() {
           await sendKeys([{key:'Enter'}]);assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),quoted.slice(0,at)+'\r\n'+prefix+quoted.slice(at));
           await engine.evaluate('(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');
           assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),quoted);
+          const indented=[prefix+'prose',prefix,prefix+'    # literal **bold**',prefix,prefix+'    - [x] literal task','outside'].join('\r\n');
+          const indentedView=await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(indented)});return {source:editor.getMarkdown(),rows:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>({text:row.textContent,styled:!!row.querySelector('strong'),classes:row.className}))};})()`);
+          assert.equal(indentedView.source,indented);assert.equal(indentedView.rows.length,3,`${entry.id}: indented code inside quote`);
+          assert.equal(indentedView.rows[0].text.replace(/\n$/, ''),'    # literal **bold**');assert.ok(indentedView.rows.every(row=>!row.styled&&!/wysiwyg-(h[1-6]|list|quote|task)/.test(row.classes)));
+          const indentAt=indented.indexOf('# literal **bold**')+'# literal **bold**'.length;
+          await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${indentAt},${indentAt});return true;})()`);
+          await sendKeys([{key:'Enter'}]);assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),indented.slice(0,indentAt)+'\r\n'+prefix+'    '+indented.slice(indentAt));
+          await engine.evaluate('(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');
+          assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),indented);
+          const continued=prefix+'prose\r\n'+prefix+'    continued **bold**\r\noutside';
+          const continuedView=await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(continued)});return {source:editor.getMarkdown(),code:editor.surface.querySelectorAll('.amorist-wysiwyg-code').length,bold:!!editor.surface.querySelector('strong')};})()`);
+          assert.deepEqual(continuedView,{source:continued,code:0,bold:true},`${entry.id}: indented continuation cannot interrupt quoted prose with code`);
         }
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
