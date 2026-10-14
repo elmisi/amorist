@@ -53,7 +53,7 @@
       "id": 8,
       "name": "settings-and-active-line",
       "status": "partial",
-      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending. Current-line overlay and effective settings in Bug snapshots are implemented. Soft-wrap, backward active endpoint, source geometry, focus visibility and code viewport clipping pass both Linux engines; all twelve classic regressions pass. Container-boundary selection, isolated highlight preview and native acceptance remain pending."
+      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending. Current-line overlay and effective settings in Bug snapshots are implemented. Soft-wrap, backward active endpoint, source geometry, focus visibility and code viewport clipping pass both Linux engines; all twelve classic regressions pass. Container-boundary selection, isolated highlight preview and native acceptance remain pending. Container-boundary Select All in both directions, isolated palette preview and destroyed-preview viewport cleanup now pass both Linux engines. A single final twelve-test regression run passes after explicit final-input synchronization in prose/list probes. Dedicated Settings contract and native acceptance remain pending."
     },
     {
       "id": 9,
@@ -1040,7 +1040,9 @@
       "classicLinux": {
         "pass": 12,
         "fail": 0,
-        "report": "current-line-classic-linux.log"
+        "report": "settings-boundaries-settled-classic-linux.log",
+        "synchronization": "Prose/list keyboard probes wait 60ms for the final WebKit input callback; assertions unchanged",
+        "priorFailedReport": "settings-boundaries-classic-linux.log"
       },
       "scope": [
         "single noneditable overlay behind document text",
@@ -1053,12 +1055,23 @@
         "effective preference snapshot in new Bug records"
       ],
       "remaining": [
-        "selection endpoint on surface/container boundaries such as Select All",
-        "highlight color preview independent of main-editor focus",
-        "destroyed preview viewport callback cleanup",
         "dedicated blocking Settings contract gate",
         "native package preference/dialog/clipboard acceptance across all platforms"
-      ]
+      ],
+      "boundaryFollowup": {
+        "exitCode": 0,
+        "report": "settings-boundaries-verified-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": [
+          "forward and backward Select All resolve adjacent rendered rows",
+          "line-box alignment instead of glyph-bound alignment",
+          "isolated highlight-color sample while main overlay is hidden by modal",
+          "destroyed preview cannot move document viewport"
+        ]
+      }
     }
   }
 }

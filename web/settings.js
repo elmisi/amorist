@@ -20,17 +20,23 @@
       <label>Dimensione testo <input name="baseFontSize" type="number" min="12" max="24" step="1" required></label>
       <label>Tabelle <select name="tableScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
       <label>Codice <select name="codeScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
-      <div id="settings-preview" aria-label="Anteprima"></div><p id="settings-error" role="alert"></p>
+      <div id="settings-line-preview" aria-label="Anteprima riga attiva">Riga attiva — anteprima</div><div id="settings-preview" aria-label="Anteprima"></div><p id="settings-error" role="alert"></p>
       <div class="actions"><button type="button" data-settings="defaults">Default</button><button type="button" data-settings="cancel">Annulla</button><button type="submit">Salva</button></div></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector('form'), error = dialog.querySelector('#settings-error');
     const read = () => ({highlightCurrentLine:form.elements.highlightCurrentLine.checked,
       highlightColor:form.elements.highlightColor.value, baseFontSize:Number(form.elements.baseFontSize.value),
       tableScale:Number(form.elements.tableScale.value), codeScale:Number(form.elements.codeScale.value)});
+    function updatePreview(value) {
+      const line=dialog.querySelector('#settings-line-preview');
+      line.style.backgroundColor=value.highlightCurrentLine?value.highlightColor:'transparent';
+      line.style.fontSize=value.baseFontSize+'px';
+      if(preview) preview.applySettings(value);
+    }
     function fill(value) {
       form.elements.highlightCurrentLine.checked = value.highlightCurrentLine;
       for (const name of ['highlightColor','baseFontSize','tableScale','codeScale']) form.elements[name].value = value[name];
-      if (preview) preview.applySettings(value);
+      updatePreview(value);
     }
     function apply(value) {
       if (!valid(value)) throw new Error('Preferenze non valide.');
@@ -57,7 +63,7 @@
       preview.toolbar.hidden=true; preview.surface.contentEditable='false'; preview.source.readOnly=true;
       fill(current);
     });
-    form.addEventListener('input',()=> { const value=read(); if(valid(value)&&preview) preview.applySettings(value); });
+    form.addEventListener('input',()=> { const value=read(); if(valid(value)) updatePreview(value); });
     dialog.querySelector('[data-settings="defaults"]').addEventListener('click',()=>fill(defaults));
     dialog.querySelector('[data-settings="cancel"]').addEventListener('click',()=> { if(!saving) dialog.close(); });
     dialog.addEventListener('cancel',event=> { if(saving) event.preventDefault(); });

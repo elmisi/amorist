@@ -122,6 +122,39 @@ async function main() {
         })()`);
         await new Promise(resolve=>setTimeout(resolve,80));
         assert.equal(await engine.evaluate('window.__prefsEditor.currentLine.hidden'),true);
+
+        await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify('first\r\nsecond')});editor.showWysiwygMode();editor.focus();
+          editor.selectSurfaceContents();window.scrollTo(0,0);editor.scheduleCurrentLine();return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        const all=await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor,rows=editor.surface.querySelectorAll('.amorist-source-line');
+          return {hidden:editor.currentLine.hidden,top:editor.currentLine.getBoundingClientRect().top,lastTop:rows[rows.length-1].getBoundingClientRect().top,source:editor.getMarkdown()};
+        })()`);
+        assert.equal(all.hidden,false);assert.ok(Math.abs(all.top-all.lastTop)<1, JSON.stringify(all));assert.equal(all.source,'first\r\nsecond');
+        await engine.evaluate(`(() => {
+          const surface=window.__prefsEditor.surface;window.getSelection().setBaseAndExtent(surface,surface.childNodes.length,surface,0);return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        const reverseAll=await engine.evaluate(`({hidden:window.__prefsEditor.currentLine.hidden,top:window.__prefsEditor.currentLine.getBoundingClientRect().top,firstTop:window.__prefsEditor.surface.firstElementChild.getBoundingClientRect().top})`);
+        assert.equal(reverseAll.hidden,false);assert.ok(Math.abs(reverseAll.top-reverseAll.firstTop)<1);
+        await engine.evaluate(`(() => {
+          document.getElementById('settings-button').click();const form=document.getElementById('settings-form');
+          form.elements.highlightCurrentLine.checked=true;form.elements.highlightColor.value='#e9f5ed';form.dispatchEvent(new Event('input',{bubbles:true}));return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        assert.deepEqual(await engine.evaluate(`({color:getComputedStyle(document.getElementById('settings-line-preview')).backgroundColor,mainHidden:window.__prefsEditor.currentLine.hidden,source:window.__prefsEditor.getMarkdown()})`),{color:'rgb(233, 245, 237)',mainHidden:true,source:'first\r\nsecond'});
+        await engine.evaluate(`(() => {document.querySelector('[data-settings="cancel"]').click();return true;})()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate(`(() => {
+          document.body.style.minHeight='3000px';window.scrollTo(0,0);
+          const host=document.createElement('div');document.body.append(host);
+          const preview=window.AmoristEditor.create(host,{value:'preview'});
+          preview.restoreWysiwygViewportAnchor({line:0,edge:'end'});preview.destroy();host.remove();return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        assert.equal(await engine.evaluate('window.scrollY'),0,`${entry.id}: destroyed preview cannot move main viewport`);
         console.log(`settings: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

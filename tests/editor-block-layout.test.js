@@ -16,6 +16,12 @@ async function main() {
       try {
         await engine.start();
         await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+        // WebKit driver completion can precede the final input callback.
+        // Wait before reading source; document expectations remain unchanged.
+        const sendKeys = async sequence => {
+          await engine.sendKeys(sequence);
+          await new Promise(resolve => setTimeout(resolve, 60));
+        };
         const geometry = await engine.evaluate(`(() => {
           document.documentElement.style.setProperty('--qa-width', '260px');
           const editor = window.__blocks = window.AmoristEditor.create(document.getElementById('host'), {value:${JSON.stringify(original)}});
@@ -56,7 +62,7 @@ async function main() {
           window.__tail = window.__blocks.surface.querySelectorAll('.amorist-source-line')[8];
           window.__blocks.focus(); window.__blocks.setSurfaceSelection(4,4); return true;
         })()`);
-        await engine.sendKeys([{key:"Backspace"}]);
+        await sendKeys([{key:"Backspace"}]);
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original.slice(4),
           `${entry.id}: Backspace removes only the owning item's marker`);
         const ownership = await engine.evaluate(`(() => {
@@ -69,7 +75,7 @@ async function main() {
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original);
         const at = original.indexOf("continuation") + "continuation".length;
         await engine.evaluate(`(() => { window.__blocks.focus(); window.__blocks.setSurfaceSelection(${at},${at}); return true; })()`);
-        await engine.sendKeys([{key:"Enter"}]);
+        await sendKeys([{key:"Enter"}]);
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original.slice(0,at)+"\r\n    "+original.slice(at), `${entry.id}: continuation Enter retains indentation`);
         await engine.evaluate("(() => { window.__blocks.undo(); return true; })()");
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original);
@@ -87,7 +93,7 @@ async function main() {
         await engine.evaluate(`(() => { window.__blocks.setMarkdown(${JSON.stringify(original)}); return true; })()`);
         const end = original.indexOf("nested quotation") + "nested quotation".length;
         await engine.evaluate(`(() => { window.__blocks.focus(); window.__blocks.setSurfaceSelection(${end},${end}); return true; })()`);
-        await engine.sendKeys([{key:"Enter"}]);
+        await sendKeys([{key:"Enter"}]);
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original.slice(0,end)+"\r\n> > "+original.slice(end), `${entry.id}: nested quote Enter retains depth`);
         await engine.evaluate("(() => { window.__blocks.undo(); window.__blocks.showSourceMode(); window.__blocks.showWysiwygMode(); return true; })()");
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original);
@@ -106,7 +112,7 @@ async function main() {
         assert.equal(references.definition, '[Straße]: old.md "Title"\n');
         const destinationAt = referenceSource.indexOf('old.md');
         await engine.evaluate(`(() => { const editor = window.__blocks; editor.focus(); editor.setSurfaceSelection(${destinationAt}, ${destinationAt + 3}); return true; })()`);
-        await engine.sendKeys(['n']);
+        await sendKeys(['n']);
         // WebKit's sendKeys completion can precede its final input callback.
         await new Promise(resolve => setTimeout(resolve, 60));
         const changed = await engine.evaluate(`(() => {

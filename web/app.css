@@ -253,3 +253,4 @@ button:disabled {
 #settings-preview .amorist-editor-surface { padding: 12px; }
 #settings-error { color: #a32626; }
 #settings-preview .amorist-editor-toolbar[hidden] { display: none; }
+#settings-line-preview { padding: 4px 12px; white-space: nowrap; overflow: hidden; margin-top: 16px; color: #1c232b; }

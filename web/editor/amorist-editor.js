@@ -261,20 +261,45 @@
         if (document.activeElement !== this.surface) return;
         const selection=window.getSelection();
         if (!selection?.focusNode || !this.surface.contains(selection.focusNode)) return;
-        const node=selection.focusNode, element=node.nodeType===Node.ELEMENT_NODE?node:node.parentElement;
-        const row=element.closest(".amorist-source-line");
+        let node=selection.focusNode, offset=selection.focusOffset;
+        const element=node.nodeType===Node.ELEMENT_NODE?node:node.parentElement;
+        let row=element.closest(".amorist-source-line");
+        if(!row && node.nodeType===Node.ELEMENT_NODE) {
+          // Select All and block-boundary ranges may end on the container,
+          // rather than on a text node. Resolve only that adjacent subtree.
+          const backward=offset>0;
+          let candidate=node.childNodes[backward?offset-1:0];
+          while(candidate && candidate.nodeType===Node.ELEMENT_NODE) {
+            if(candidate===this.currentLine || candidate.matches('.amorist-wysiwyg-fence,.amorist-wysiwyg-setext-delimiter')) {
+              candidate=backward?candidate.previousElementSibling:candidate.nextElementSibling; continue;
+            }
+            if(candidate.matches('.amorist-source-line')) {row=candidate; break;}
+            candidate=backward?candidate.lastElementChild:candidate.firstElementChild;
+          }
+          if(row) {
+            const walker=document.createTreeWalker(row,NodeFilter.SHOW_TEXT);
+            let text;
+            while((text=walker.nextNode())) {
+              if(!text.length || text.data==='\n') continue;
+              node=text;offset=backward?text.length:0;
+              if(!backward) break;
+            }
+          }
+        }
         if(!row || row.getBoundingClientRect().height<1 || element.closest(".amorist-wysiwyg-fence,.amorist-wysiwyg-setext-delimiter")) return;
-        const range=document.createRange(); range.setStart(node,selection.focusOffset); range.collapse(true);
+        const range=document.createRange(); range.setStart(node,offset); range.collapse(true);
         let rect=Array.from(range.getClientRects()).find(rect=>rect.height>0);
         if(!rect && node.nodeType===Node.TEXT_NODE && node.length) {
-          const point=selection.focusOffset;
+          const point=offset;
           range.setStart(node,point<node.length?point:previousCodeUnit(node.data,point));
           range.setEnd(node,point<node.length?nextCodeUnit(node.data,point):point);
           rect=Array.from(range.getClientRects()).find(rect=>rect.height>0);
         }
         const rowBox=row.getBoundingClientRect(), style=getComputedStyle(row);
         height=parseFloat(style.lineHeight);
-        top=rect?rect.top-(height-rect.height)/2:rowBox.top;
+        const contentTop=rowBox.top+row.clientTop+(parseFloat(style.paddingTop)||0);
+        const line=rect?Math.max(0,Math.floor((rect.top+rect.height/2-contentTop)/height)):0;
+        top=contentTop+line*height;
         const block=row.closest(".amorist-wysiwyg-table-block,.amorist-wysiwyg-code-block") || this.surface;
         if(block!==this.surface) paintParent=block;
         const box=block.getBoundingClientRect();
@@ -1458,6 +1483,7 @@
     restoreSourceViewportAnchor(anchor) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          if (!this.root.isConnected) return;
           const style = window.getComputedStyle(this.source);
           const lineHeight = parseFloat(style.lineHeight) || 21;
           const padding = parseFloat(style.paddingTop) || 0;
@@ -1473,6 +1499,7 @@
     restoreWysiwygViewportAnchor(anchor) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          if (!this.root.isConnected) return;
           const row = this.surface.querySelector(`.amorist-source-line[data-line="${anchor.line}"]`);
           if (!row) return;
           const scroller = scrollViewportFor(this.surface);
