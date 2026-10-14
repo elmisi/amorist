@@ -484,3 +484,11 @@ mark.amorist-find-current {
 .amorist-editor .amorist-wysiwyg-code { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-code-scale, 1)); }
 .amorist-editor .amorist-wysiwyg-table { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-table-scale, .875)); }
 .amorist-editor .amorist-editor-source { font: var(--amorist-base-font-size, 16px)/1.6 "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+
+.amorist-editor { position: relative; isolation: isolate; }
+.amorist-editor-surface, .amorist-editor-source { position: relative; z-index: 1; }
+.amorist-current-line { position: fixed; z-index: 0; pointer-events: none; background: var(--amorist-current-line-color, #eef1f4); }
+.amorist-current-line[hidden] { display: none; }
+.amorist-highlight-current-line .amorist-editor-source { background: transparent; }
+.amorist-wysiwyg-block { isolation: isolate; }
+.amorist-wysiwyg-block > .amorist-source-line { position: relative; z-index: 1; }

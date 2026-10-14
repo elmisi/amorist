@@ -15,6 +15,7 @@
     const selection = editor.selectionRaw();
     return {
       schemaVersion: 1, capturedAt: new Date().toISOString(), mode: editor.mode,
+      settings: {...(editor.settings || window.AmoristSettings?.defaults || {highlightCurrentLine:false,highlightColor:"#eef1f4",baseFontSize:16,tableScale:.875,codeScale:1})},
       markdown: editor.getValue(), savedMarkdown: state.savedMarkdown, dirty: state.dirty,
       selection: selection, selectedMarkdown: editor.getValue().slice(selection.start, selection.end),
       renderedHtml: editor.surface.innerHTML, visibleBlocks: blocks,

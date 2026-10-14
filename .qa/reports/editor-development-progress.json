@@ -53,7 +53,7 @@
       "id": 8,
       "name": "settings-and-active-line",
       "status": "partial",
-      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending."
+      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending. Current-line overlay and effective settings in Bug snapshots are implemented. Soft-wrap, backward active endpoint, source geometry, focus visibility and code viewport clipping pass both Linux engines; all twelve classic regressions pass. Container-boundary selection, isolated highlight preview and native acceptance remain pending."
     },
     {
       "id": 9,
@@ -1025,6 +1025,39 @@
         "effective settings in Bug reports",
         "dedicated QA contract gate and native package preference acceptance",
         "actual cross-process focus reload acceptance"
+      ]
+    },
+    "currentLineDevelopment": {
+      "status": "directed two-engine geometry and twelve classic checks passed; remaining edge/native gates pending",
+      "directedLinux": {
+        "exitCode": 0,
+        "report": "current-line-clipped-ui-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ]
+      },
+      "classicLinux": {
+        "pass": 12,
+        "fail": 0,
+        "report": "current-line-classic-linux.log"
+      },
+      "scope": [
+        "single noneditable overlay behind document text",
+        "one scheduled frame for selection, scroll, input, resize and preferences",
+        "soft-wrapped caret line and backward active selection endpoint",
+        "source physical-row geometry with cached source offsets",
+        "hidden without focus, during dialogs, outside viewport or on invisible marker rows",
+        "horizontal viewport clipping with overlay above block background and below text",
+        "per-editor event/observer cleanup",
+        "effective preference snapshot in new Bug records"
+      ],
+      "remaining": [
+        "selection endpoint on surface/container boundaries such as Select All",
+        "highlight color preview independent of main-editor focus",
+        "destroyed preview viewport callback cleanup",
+        "dedicated blocking Settings contract gate",
+        "native package preference/dialog/clipboard acceptance across all platforms"
       ]
     }
   }

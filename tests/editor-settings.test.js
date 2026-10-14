@@ -54,6 +54,74 @@ async function main() {
         await engine.evaluate(`(() => {window.__prefsStore.baseFontSize=18;window.dispatchEvent(new Event('focus'));return true;})()`);
         await new Promise(resolve=>setTimeout(resolve,80));
         assert.equal(await engine.evaluate('getComputedStyle(window.__prefsEditor.source).fontSize'),'18px');
+
+        const wrappedSource = 'word '.repeat(90)+'\r\nsecond physical line';
+        await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify(wrappedSource)});
+          editor.root.style.width='350px';editor.showWysiwygMode();editor.focus();
+          editor.applySettings({...window.AmoristSettings.defaults,highlightCurrentLine:true,highlightColor:'#e8f2ff'});
+          editor.setSurfaceSelection(65,65);window.scrollTo(0,0);return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        const wrapped=await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor, overlay=editor.currentLine, selection=window.getSelection();
+          const range=document.createRange();range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
+          const rect=range.getBoundingClientRect(),box=overlay.getBoundingClientRect();
+          return {hidden:overlay.hidden,top:box.top,bottom:box.bottom,caretTop:rect.top,caretBottom:rect.bottom,
+            rowHeight:editor.surface.querySelector('.amorist-source-line').getBoundingClientRect().height,height:box.height,
+            color:getComputedStyle(overlay).backgroundColor,source:editor.getMarkdown(),count:editor.root.querySelectorAll('.amorist-current-line').length};
+        })()`);
+        assert.equal(wrapped.hidden,false);assert.equal(wrapped.count,1);assert.equal(wrapped.color,'rgb(232, 242, 255)');
+        assert.ok(wrapped.height<wrapped.rowHeight/2,`${entry.id}: only one soft-wrapped visual line`);
+        assert.ok(wrapped.top<=wrapped.caretTop+1 && wrapped.bottom>=wrapped.caretBottom-1,`${entry.id}: caret lies within overlay`);
+        assert.equal(wrapped.source,wrappedSource);
+        await engine.evaluate(`(() => {
+          const node=document.querySelector('.amorist-editor-surface .amorist-inline-text').firstChild;
+          window.getSelection().setBaseAndExtent(node,80,node,5);return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        const backward=await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor,selection=window.getSelection(),range=document.createRange();
+          range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
+          return {top:editor.currentLine.getBoundingClientRect().top,caret:range.getBoundingClientRect().top,offset:selection.focusOffset};
+        })()`);
+        assert.equal(backward.offset,5);assert.ok(Math.abs(backward.top-backward.caret)<10);
+        await engine.evaluate(`(() => {document.getElementById('settings-button').focus();return true;})()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        assert.equal(await engine.evaluate('window.__prefsEditor.currentLine.hidden'),true);
+        await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor;editor.showSourceMode();editor.focus();
+          editor.source.setSelectionRange(0,editor.source.value.length,'backward');
+          editor.source.dispatchEvent(new Event('select'));editor.scheduleCurrentLine();return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        const physical=await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor,box=editor.source.getBoundingClientRect(),style=getComputedStyle(editor.source);
+          return {hidden:editor.currentLine.hidden,top:editor.currentLine.getBoundingClientRect().top,
+            expected:box.top+editor.source.clientTop+parseFloat(style.paddingTop)-editor.source.scrollTop,height:editor.currentLine.getBoundingClientRect().height,lineHeight:parseFloat(style.lineHeight),source:editor.getMarkdown()};
+        })()`);
+        assert.equal(physical.hidden,false);assert.ok(Math.abs(physical.top-physical.expected)<1);
+        assert.ok(Math.abs(physical.height-physical.lineHeight)<1);assert.equal(physical.source,wrappedSource);
+
+        const horizontalSource='```\r\n'+ 'long code '.repeat(90)+'\r\n```';
+        await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify(horizontalSource)});editor.showWysiwygMode();editor.focus();editor.setSurfaceSelection(10,10);
+          const block=editor.surface.querySelector('.amorist-wysiwyg-code-block');block.scrollLeft=100;window.scrollTo(0,0);editor.scheduleCurrentLine();return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        const horizontal=await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor,block=editor.surface.querySelector('.amorist-wysiwyg-code-block'),box=block.getBoundingClientRect(),overlay=editor.currentLine.getBoundingClientRect();
+          return {hidden:editor.currentLine.hidden,insideBlock:editor.currentLine.parentElement===block,left:overlay.left,right:overlay.right,blockLeft:box.left+block.clientLeft,blockRight:box.left+block.clientLeft+block.clientWidth,source:editor.getMarkdown()};
+        })()`);
+        assert.equal(horizontal.hidden,false);assert.equal(horizontal.insideBlock,true);
+        assert.ok(horizontal.left>=horizontal.blockLeft-1 && horizontal.right<=horizontal.blockRight+1);
+        assert.equal(horizontal.source,horizontalSource);
+        await engine.evaluate(`(() => {
+          const editor=window.__prefsEditor,row=editor.surface.querySelector('.amorist-wysiwyg-fence'),range=document.createRange();
+          range.setStart(row,0);range.collapse(true);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);editor.scheduleCurrentLine();return true;
+        })()`);
+        await new Promise(resolve=>setTimeout(resolve,80));
+        assert.equal(await engine.evaluate('window.__prefsEditor.currentLine.hidden'),true);
         console.log(`settings: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

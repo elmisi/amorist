@@ -180,6 +180,7 @@
       this.buildToolbar();
       this.bind();
       this.render();
+      this.installCurrentLine();
     }
 
     buildToolbar() {
@@ -211,6 +212,94 @@
       this.findInput.addEventListener("keydown", (event) => this.handleFindKeyDown(event));
     }
 
+    installCurrentLine() {
+      this.currentLine = document.createElement("div");
+      this.currentLine.className = "amorist-current-line";
+      this.currentLine.contentEditable = "false";
+      this.currentLine.setAttribute("aria-hidden", "true");
+      this.currentLine.hidden = true;
+      this.root.append(this.currentLine);
+      this.currentLineEvents = new AbortController();
+      const signal = this.currentLineEvents.signal;
+      this.windowFocused = true;
+      this.scheduleCurrentLine = () => {
+        if (this.currentLineFrame) return;
+        this.currentLineFrame = requestAnimationFrame(() => { this.currentLineFrame = 0; this.drawCurrentLine(); });
+      };
+      for (const event of ["selectionchange", "select", "scroll", "input", "keyup", "pointerup", "focusin", "focusout"]) {
+        document.addEventListener(event, this.scheduleCurrentLine, {capture:true, signal});
+      }
+      window.addEventListener("resize", this.scheduleCurrentLine, {signal});
+      window.addEventListener("blur", () => {this.windowFocused=false; this.scheduleCurrentLine();}, {signal});
+      window.addEventListener("focus", () => {this.windowFocused=true; this.scheduleCurrentLine();}, {signal});
+      this.currentLineResize = new ResizeObserver(this.scheduleCurrentLine);
+      this.currentLineResize.observe(this.root);
+      this.currentLineDialogs = new MutationObserver(this.scheduleCurrentLine);
+      this.currentLineDialogs.observe(document.body, {subtree:true, attributes:true, attributeFilter:["open"]});
+    }
+
+    drawCurrentLine() {
+      this.currentLine.hidden = true;
+      if (!this.settings?.highlightCurrentLine || !this.windowFocused || document.querySelector("dialog[open]")) return;
+      let top, height, viewport, paintParent=this.root;
+      if (this.mode === "source") {
+        if (document.activeElement !== this.source) return;
+        if (this.currentLineSource !== this.model.source) {
+          this.currentLineSource = this.model.source;
+          this.currentLineStarts = sourceLines(this.model.source).map(line=>line.start);
+        }
+        const active = this.source.selectionDirection === "backward" ? this.source.selectionStart : this.source.selectionEnd;
+        const raw = this.model.rawOffset(active), starts = this.currentLineStarts;
+        let lo=0, hi=starts.length;
+        while (lo+1<hi) {const mid=(lo+hi)>>1; if(starts[mid]<=raw) lo=mid; else hi=mid;}
+        const style=getComputedStyle(this.source), box=this.source.getBoundingClientRect();
+        height=parseFloat(style.lineHeight);
+        top=box.top+this.source.clientTop+(parseFloat(style.paddingTop)||0)+lo*height-this.source.scrollTop;
+        viewport={left:box.left+this.source.clientLeft,right:box.left+this.source.clientLeft+this.source.clientWidth,
+          top:box.top+this.source.clientTop,bottom:box.top+this.source.clientTop+this.source.clientHeight};
+      } else {
+        if (document.activeElement !== this.surface) return;
+        const selection=window.getSelection();
+        if (!selection?.focusNode || !this.surface.contains(selection.focusNode)) return;
+        const node=selection.focusNode, element=node.nodeType===Node.ELEMENT_NODE?node:node.parentElement;
+        const row=element.closest(".amorist-source-line");
+        if(!row || row.getBoundingClientRect().height<1 || element.closest(".amorist-wysiwyg-fence,.amorist-wysiwyg-setext-delimiter")) return;
+        const range=document.createRange(); range.setStart(node,selection.focusOffset); range.collapse(true);
+        let rect=Array.from(range.getClientRects()).find(rect=>rect.height>0);
+        if(!rect && node.nodeType===Node.TEXT_NODE && node.length) {
+          const point=selection.focusOffset;
+          range.setStart(node,point<node.length?point:previousCodeUnit(node.data,point));
+          range.setEnd(node,point<node.length?nextCodeUnit(node.data,point):point);
+          rect=Array.from(range.getClientRects()).find(rect=>rect.height>0);
+        }
+        const rowBox=row.getBoundingClientRect(), style=getComputedStyle(row);
+        height=parseFloat(style.lineHeight);
+        top=rect?rect.top-(height-rect.height)/2:rowBox.top;
+        const block=row.closest(".amorist-wysiwyg-table-block,.amorist-wysiwyg-code-block") || this.surface;
+        if(block!==this.surface) paintParent=block;
+        const box=block.getBoundingClientRect();
+        viewport={left:box.left+block.clientLeft,right:box.left+block.clientLeft+block.clientWidth,
+          top:box.top+block.clientTop,bottom:box.top+block.clientTop+block.clientHeight};
+        if(block===this.surface) {
+          viewport.left+=parseFloat(getComputedStyle(this.surface).paddingLeft)||0;
+          viewport.right-=parseFloat(getComputedStyle(this.surface).paddingRight)||0;
+        }
+      }
+      const scroller=scrollViewportFor(this.mode==="source"?this.source:this.surface);
+      if(scroller!==document.scrollingElement && scroller!==document.documentElement) {
+        const box=scroller.getBoundingClientRect();
+        viewport.top=Math.max(viewport.top,box.top+scroller.clientTop);
+        viewport.bottom=Math.min(viewport.bottom,box.top+scroller.clientTop+scroller.clientHeight);
+      }
+      const toolbarBottom=this.toolbar.getBoundingClientRect().bottom;
+      const clippedTop=Math.max(top,viewport.top,toolbarBottom,0), bottom=Math.min(top+height,viewport.bottom,window.innerHeight);
+      const left=Math.max(0,viewport.left), right=Math.min(window.innerWidth,viewport.right);
+      if(!Number.isFinite(top) || !Number.isFinite(height) || bottom<=clippedTop || right<=left) return;
+      if(this.currentLine.parentElement!==paintParent) paintParent.append(this.currentLine);
+      Object.assign(this.currentLine.style,{top:clippedTop+"px",left:left+"px",width:(right-left)+"px",height:(bottom-clippedTop)+"px"});
+      this.currentLine.hidden=false;
+    }
+
     applySettings(settings) {
       if (JSON.stringify(this.settings) === JSON.stringify(settings)) return;
       const anchor = this.mode === "source" ? this.sourceViewportAnchor() : this.wysiwygViewportAnchor();
@@ -218,6 +307,7 @@
         block, left:block.scrollLeft, pinned:block.scrollWidth-block.clientWidth-block.scrollLeft<=1,
       }));
       this.settings = {...settings};
+      this.root.classList.toggle("amorist-highlight-current-line", !!settings.highlightCurrentLine);
       this.root.style.setProperty('--amorist-base-font-size', settings.baseFontSize + 'px');
       this.root.style.setProperty('--amorist-table-scale', String(settings.tableScale));
       this.root.style.setProperty('--amorist-code-scale', String(settings.codeScale));
@@ -227,9 +317,14 @@
       scrolls.forEach(({block,left,pinned})=> { const maximum=Math.max(0,block.scrollWidth-block.clientWidth); block.scrollLeft=pinned?maximum:Math.min(left,maximum); });
       if (this.mode === "source") this.restoreSourceViewportAnchor(anchor);
       else this.restoreWysiwygViewportAnchor(anchor);
+      this.scheduleCurrentLine?.();
     }
 
-    destroy() { this.container.replaceChildren(); }
+    destroy() {
+      this.currentLineEvents?.abort(); this.currentLineResize?.disconnect(); this.currentLineDialogs?.disconnect();
+      if (this.currentLineFrame) cancelAnimationFrame(this.currentLineFrame);
+      this.container.replaceChildren();
+    }
     focus() { (this.mode === "source" ? this.source : this.surface).focus(); }
     getMarkdown() { return this.model.source; }
     getValue() { return this.model.source; }
@@ -1419,7 +1514,7 @@
       if (entry.selectionAfter) this.restoreRawSelection(entry.selectionAfter);
       this.emitChange();
     }
-    emitChange() { if (typeof this.options.onChange === "function") this.options.onChange(this.model.source); }
+    emitChange() { this.scheduleCurrentLine?.(); if (typeof this.options.onChange === "function") this.options.onChange(this.model.source); }
     openFindBar() { this.findBar.hidden = false; this.findInput.focus(); this.findInput.select(); this.performFind(); }
     closeFindBar() { this.findBar.hidden = true; this.findMatches = []; this.findIndex = -1; this.findCount.textContent = ""; this.focus(); }
     performFind() {
