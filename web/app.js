@@ -591,7 +591,7 @@
         if(destination.kind==="anchor") {
           if(!editor.navigateHeading(destination.value)) throw new Error("Heading not found: "+destination.value);
         } else if(destination.kind==="markdown") {
-          await window.__TAURI__.core.invoke("spawn_document_instance",{path:destination.value.path,anchor:destination.value.anchor});
+          await window.__TAURI__.core.invoke("spawn_document_instance",{path:destination.value.path,anchor:destination.value.anchor,contextId:contextId});
         } else {
           await window.__TAURI__.core.invoke("open_external_link",{reference:reference,contextId:contextId});
         }

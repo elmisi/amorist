@@ -87,8 +87,9 @@ fn take_startup_anchor(state: State<AppState>) -> Option<String> {
 }
 
 #[tauri::command]
-async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>, anchor: Option<String>) -> Result<u32, String> {
+async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>, anchor: Option<String>, context_id: Option<u64>) -> Result<u32, String> {
     run_io(app, move |_app, state| {
+        if let Some(context_id) = context_id { require_context(state, context_id)?; }
         let file = path.map(|path| document::Prepared::open(std::path::Path::new(&path)).map(|doc| doc.path))
             .transpose()?.flatten();
         #[cfg(not(target_os = "linux"))]
@@ -99,6 +100,8 @@ async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>, an
         let bundle = None;
         #[cfg(target_os = "linux")]
         let executable = PathBuf::from(exec_path()?);
+        let _guard = state.file_path.lock().unwrap();
+        if let Some(context_id) = context_id { require_context(state, context_id)?; }
         instances::Launch::prepare(executable, bundle, file.as_deref(), *state.debug.lock().unwrap()).with_anchor(anchor.as_deref()).spawn()
     }).await
 }
