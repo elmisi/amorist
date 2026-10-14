@@ -1,6 +1,13 @@
 name: Build
 
 on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Explicitly publish the fully verified delivery
+        type: boolean
+        default: false
+        required: true
   push:
     branches: [main]
   pull_request:
@@ -115,10 +122,13 @@ jobs:
 
   release:
     needs: [build, qa]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Require completed development delivery
+        run: python3 scripts/check-delivery-gate.py
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
