@@ -17,6 +17,7 @@ async function main() {
       try {
         await engine.start();
         await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+        await engine.evaluate(`new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/web/settings.js';script.onload=()=>resolve(true);script.onerror=reject;document.body.append(script);})`);
         // The driver may finish before WebKit delivers its final input event.
         const sendKeys = async sequence => {
           await engine.sendKeys(sequence);
@@ -280,6 +281,28 @@ async function main() {
           const at=source.indexOf('# literal **bold**')+'# literal **bold**'.length;
           await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${at},${at});return true;})()`);await sendKeys([{key:'Enter'}]);assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),source.slice(0,at)+'\r\n'+prefix+source.slice(at));
           await engine.evaluate('(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),source);
+        }
+        for(const [quote,marker,indent] of [['> ','- ','  '],['> > ','123. ','     ']]){
+          for(const indented of [false,true]){
+            const prefix=quote+indent;
+            const rows=indented?[quote+marker+'item',quote,prefix+'    # literal **bold**',quote,prefix+'    - [x] literal task',quote+marker+'sibling']
+              :[quote+marker+'item',quote,prefix+'````js',prefix+'# literal **bold**',prefix,prefix+'```',prefix+'````',quote+marker+'sibling'];
+            const source=rows.join('\r\n');
+            const view=await engine.evaluate(`(()=>{const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(source)});return {source:editor.getMarkdown(),rows:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>({text:row.textContent.replace(/\\n$/,''),styled:!!row.querySelector('strong'),owner:editor.lineDescriptors[Number(row.dataset.line)].listOwner?.index})),fences:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-fence')).map(row=>row.getBoundingClientRect().height)};})()`);
+            assert.equal(view.source,source);assert.equal(view.rows.length,3,entry.id+': code inside quoted list');assert.equal(view.rows[0].text,(indented?'    ':'')+'# literal **bold**');assert.ok(view.rows.every(row=>!row.styled&&row.owner===0));assert.ok(view.fences.every(height=>height===0));
+            const at=source.indexOf('# literal **bold**')+'# literal **bold**'.length;
+            await engine.evaluate(`(()=>{const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${at},${at});return true;})()`);await sendKeys([{key:'Enter'}]);assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),source.slice(0,at)+'\r\n'+prefix+(indented?'    ':'')+source.slice(at));
+            await engine.evaluate('(()=>{const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),source);
+            const fragment=await engine.evaluate(`window.__codeRegression.clipboardFragment({start:${source.indexOf('# literal **bold**')},end:${at}})`);
+            assert.equal(fragment,quote+'```'+(indented?'':'js')+'\r\n'+quote+'# literal **bold**\r\n'+quote+'```',entry.id+': quoted list code clipboard strips outer list indentation');
+            const geometry=await engine.evaluate(`(()=>{const editor=window.__codeRegression,owner=editor.rowNodes[0],row=editor.surface.querySelector('.amorist-wysiwyg-code'),block=row.parentElement;return {padding:parseFloat(getComputedStyle(owner).paddingLeft),codeLeft:row.getBoundingClientRect().left-owner.getBoundingClientRect().left,background:getComputedStyle(block).backgroundImage};})()`);
+            assert.ok(Math.abs(geometry.padding-geometry.codeLeft)<1,entry.id+': code aligns with quoted list content '+JSON.stringify(geometry));assert.notEqual(geometry.background,'none');
+            for(const [baseFontSize,codeScale] of [[12,.75],[24,1.5]]){
+              const scaled=await engine.evaluate(`(()=>{const editor=window.__codeRegression;editor.applySettings({...window.AmoristSettings.defaults,baseFontSize:${baseFontSize},codeScale:${codeScale}});const owner=editor.rowNodes[0],row=editor.surface.querySelector('.amorist-wysiwyg-code');return {source:editor.getMarkdown(),padding:parseFloat(getComputedStyle(owner).paddingLeft),left:row.getBoundingClientRect().left-owner.getBoundingClientRect().left,font:parseFloat(getComputedStyle(row).fontSize)};})()`);
+              assert.equal(scaled.source,source);assert.equal(scaled.font,baseFontSize*codeScale);assert.ok(Math.abs(scaled.padding-scaled.left)<1,entry.id+': quoted list code alignment with independent font scales '+JSON.stringify(scaled));
+            }
+            await engine.evaluate('(()=>{window.__codeRegression.applySettings(window.AmoristSettings.defaults);return true;})()');
+          }
         }
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }

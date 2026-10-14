@@ -222,6 +222,16 @@
   padding-left: calc(var(--quote-depth, 1) * 1ch);
 }
 
+.amorist-editor-surface .amorist-wysiwyg-quoted-code.amorist-wysiwyg-quote-list-code {
+  font-size: var(--amorist-base-font-size, 16px);
+  font-family: inherit;
+  border-left: 0;
+  padding-left: var(--list-content-indent);
+  background-image: repeating-linear-gradient(to right, var(--accent, #246b54) 0 3px, transparent 3px 11px);
+  background-size: calc(var(--quote-depth, 1) * 11px) 100%;
+  background-repeat: no-repeat;
+}
+
 .amorist-wysiwyg-code {
   white-space: pre;
 }

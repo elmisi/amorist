@@ -2839,11 +2839,27 @@
       "quoted-list-performance-warmup-barrier-linux.log B9 pass GTK/Chromium"
     ],
     "qaBarrier": "B9 now acknowledges exactly three warmup input frames and corresponding source before resetting batch; additionally checks exactly20 measured characters inserted. Count20 and p95 thresholds unchanged. Original21-sample failure preserved in quoted-list-performance-failed-linux.json.",
-    "remaining": "Quoted nested block code, arbitrary mixed containers and final full native/package/platform acceptance remain pending.",
+    "remaining": "Arbitrary alternating nested containers, direct list-marker code and final full native/package/platform acceptance remain pending.",
     "subtreeIndentation": {
       "implemented": "Quoted list subtree extent uses indentation after the outer quote prefix. Tab/ShiftTab edits that inner indentation, including descendant quote rows, while preserving outer quote markers and source terminators. Explicit selection mapping retains direction and undo.",
       "verified": "Actual native Tab/ShiftTab in visual and source modes on GTK/Chromium: parent, continuation, ordered child, nested quote, untouched sibling, backward selection and undo. Code/inline/history regressions pass.",
       "evidence": "quoted-list-subtree-indentation-linux.log pass4 fail0 skip0"
+    },
+    "blockCode": {
+      "implemented": "Quoted list ownership is applied before nested fenced/indented code interpretation. Raw quote+list prefixes map to literal code content; blank quote rows preserve container state. Code copy rebuilds a standalone quoted fence, and Enter preserves the complete original container. Code indentation uses the prose base font independently of the code font factor.",
+      "verified": [
+        "GTK/Chromium bullet/single quote and wide ordered/double quote fenced and indented code: literal Markdown-looking content, blank row, shorter inner delimiter, zero-height fences, owner indices, CRLF Enter, undo and mode round-trip",
+        "Actual clipboard fragment retains quote and safe fence/language while removing outer list indentation",
+        "Code alignment retains quote bars and matches parent content at base12/code75% and base24/code150% with complete product preferences",
+        "B9 unchanged exact count20 and p95 budgets pass GTK/Chromium"
+      ],
+      "evidence": [
+        "quoted-list-block-code-linux.log pass4 fail0 skip0",
+        "quoted-list-code-valid-settings-linux.log exit0 GTK/Chromium",
+        "quoted-list-block-code-performance-linux.log exit0"
+      ],
+      "diagnostics": "Original geometry failures preserved: generic block background shorthand and smaller inherited wrapper font caused absent bars and indentation drift. Separate fixture-precondition failure (settings defaults module not loaded) preserved; final fixture loads actual settings.js.",
+      "remaining": "Code beginning directly on a list marker, arbitrary alternating nested containers, literal tab overshoot semantics and final full native/package/platform acceptance remain pending."
     }
   }
 }

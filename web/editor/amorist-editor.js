@@ -659,11 +659,53 @@
       }
       const quotedItems=[];
       let quotedDepth=0;
-      for(const descriptor of descriptors){
+      for(let quotedAt=0;quotedAt<descriptors.length;quotedAt++){
+        const descriptor=descriptors[quotedAt];
+        if(quotedItems.length){
+          const outerPrefix=quotePrefix(descriptor.raw,quotedDepth);
+          const inner=outerPrefix===null?null:descriptor.raw.slice(outerPrefix.length);
+          const columns=inner===null?-1:indentationColumns((inner.match(/^[ \t]*/)||[""])[0]);
+          const owner=quotedItems.findLast(item=>columns>=item.contentIndent);
+          if(owner){
+            const prefixFor=raw=>{
+              const quote=quotePrefix(raw,quotedDepth);if(quote===null)return null;
+              const list=listContainerPrefix(raw.slice(quote.length),owner.contentIndent);
+              return list===null?null:quote+list;
+            };
+            const prefix=prefixFor(descriptor.raw),logical=descriptor.raw.slice(prefix.length);
+            const opening=columns-owner.contentIndent<=3&&logical.match(/^ {0,3}(`{3,}|~{3,}).*$/);
+            const previous=descriptors[quotedAt-1];
+            const previousQuote=previous&&quotePrefix(previous.raw,quotedDepth);
+            const blank=previousQuote!==null&&previousQuote!==undefined&&!previous.raw.slice(previousQuote.length).trim();
+            const indented=!opening&&columns>=owner.contentIndent+4&&(blank||previous?.listOwner===owner&&previous.unitType==="code");
+            if(opening||indented){
+              const closing=opening&&new RegExp(`^ {0,3}\\${opening[1][0]}{${opening[1].length},}[ \\t]*$`);
+              let end=quotedAt,closed=false;
+              for(let next=quotedAt+1;next<descriptors.length;next++){
+                const nextPrefix=prefixFor(descriptors[next].raw);if(nextPrefix===null)break;
+                const content=descriptors[next].raw.slice(nextPrefix.length);
+                if(indented){if(!content.trim())continue;if(indentationColumns((content.match(/^[ \t]*/)||[""])[0])<4)break;}
+                end=next;
+                if(opening&&closing.test(content)){closed=true;break;}
+              }
+              for(let row=quotedAt;row<=end;row++){
+                const item=descriptors[row],container=prefixFor(item.raw)||"";
+                const content=indented||row>quotedAt&&(!closed||row<end);
+                Object.assign(item,{unitType:"code",unitStart:quotedAt,unitEnd:end,codeContent:content,
+                  indentedCode:!!indented,listOwner:owner,containerQuoteBeforeList:true,containerPrefix:container,containerQuoteDepth:quotedDepth,
+                  containerQuotePrefix:quotePrefix(item.raw,quotedDepth)||"",
+                  projection:content?{prefix:container.length,text:item.raw.slice(container.length),tag:"pre"}
+                    :{prefix:item.raw.length,text:"",tag:"pre",fence:true}});
+              }
+              quotedAt=end;continue;
+            }
+          }
+        }
         const outer=descriptor.projection;
         if(descriptor.unitType!=="line"||outer.tag!=="blockquote") { quotedItems.length=0;quotedDepth=0;continue; }
         if(quotedDepth!==outer.quoteDepth)quotedItems.length=0;
         quotedDepth=outer.quoteDepth;
+        if(!outer.text.trim())continue;
         const inner=projectionLine(outer.text);
         const whitespace=(outer.text.match(/^[ \t]*/)||[""])[0];
         const columns=indentationColumns(whitespace);
@@ -979,6 +1021,11 @@
       if (this.lineDescriptors[start].containerQuoteDepth) {
         block.classList.add("amorist-wysiwyg-quoted-code");
         block.style.setProperty("--quote-depth", String(this.lineDescriptors[start].containerQuoteDepth));
+      }
+      if(this.lineDescriptors[start].containerQuoteBeforeList){
+        block.classList.add("amorist-wysiwyg-quote-list-code");
+        block.style.marginInlineStart="0";
+        block.style.setProperty("--list-content-indent",this.lineDescriptors[start].listOwner.layoutPadding);
       }
       block.dataset.unitStart = String(start);
       block.dataset.unitEnd = String(end);
