@@ -901,7 +901,7 @@
       }
     },
     "referenceLinkDevelopment": {
-      "status": "directed Linux browser checks and classic regressions passed; full Linux regression running",
+      "status": "directed Linux browser checks, eleven classic regressions, codec platforms and full Linux regression passed",
       "codecPlatforms": {
         "linux": "pass",
         "macos": "pass in isolated baseline",
@@ -936,7 +936,13 @@
         "dedicated QA contract gate for reference links",
         "shipping Safari/WebView2 and package acceptance"
       ],
-      "fullLinuxSession": 59472
+      "fullLinuxSession": 59472,
+      "fullLinux": {
+        "exitCode": 0,
+        "report": "reference-qa-linux.json",
+        "declaredRequirements": 35,
+        "scope": "Current declared QA contract; dedicated reference-link gate remains separate pending work"
+      }
     }
   }
 }
