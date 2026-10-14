@@ -230,8 +230,11 @@ async function verifyApplicationEditing(engine, documentPath) {
     });
   }
   await engine.sendKeys(["alpha"]);
-  if (await applicationMarkdown(engine) !== "- alpha") {
-    failures.B4.push({ fixture: "built app bullet shortcut", detail: "Typing after the projected bullet reordered the source." });
+  // Reading through the Source toggle must follow the final native input event.
+  await delay(60);
+  const shortcutSource = await applicationMarkdown(engine);
+  if (shortcutSource !== "- alpha") {
+    failures.B4.push({ fixture: "built app bullet shortcut", detail: "Typing after the projected bullet reordered the source.", expected: "- alpha", actual: shortcutSource });
   }
 
   const listCases = [

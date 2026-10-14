@@ -69,12 +69,8 @@
       return true;
     }
 
-    transaction(start, end, replacement, gesture, boundaryState) {
-      start = Math.max(0, Math.min(start, this.source.length));
-      end = Math.max(start, Math.min(end, this.source.length));
-      replacement = String(replacement);
-      const removed = this.source.slice(start, end);
-      const beforeBoundaries = this.boundaryState();
+    boundaryStateAfterEdit(start, end, replacement) {
+      if (!this.automaticBreaks.length) return { schemaVersion: 1, offsetEncoding: "utf16", automaticBreaks: [] };
       const nextSource = this.source.slice(0, start) + replacement + this.source.slice(end);
       const shift = replacement.length - (end - start);
       const position = (at) => at < start ? at : at >= end ? at + shift : null;
@@ -89,7 +85,17 @@
         const valid = validatedBoundaries(nextSource, candidate);
         if (valid) surviving.push(...valid);
       }
-      const afterBoundaries = boundaryState === undefined ? { schemaVersion: 1, offsetEncoding: "utf16", automaticBreaks: surviving } : boundaryState;
+      return { schemaVersion: 1, offsetEncoding: "utf16", automaticBreaks: surviving };
+    }
+
+    transaction(start, end, replacement, gesture, boundaryState) {
+      start = Math.max(0, Math.min(start, this.source.length));
+      end = Math.max(start, Math.min(end, this.source.length));
+      replacement = String(replacement);
+      const removed = this.source.slice(start, end);
+      const beforeBoundaries = this.boundaryState();
+      const nextSource = this.source.slice(0, start) + replacement + this.source.slice(end);
+      const afterBoundaries = boundaryState === undefined ? this.boundaryStateAfterEdit(start, end, replacement) : boundaryState;
       const validated = validatedBoundaries(nextSource, afterBoundaries);
       if (!validated) throw new Error("Invalid automatic boundary state for transaction");
       const forward = { start, end, replacement, gesture: gesture || "edit", revision: this.revision,

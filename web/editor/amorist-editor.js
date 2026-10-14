@@ -119,6 +119,7 @@
       && a.listContinuation === b.listContinuation && a.layoutPadding === b.layoutPadding
       && a.markerWidth === b.markerWidth && a.marker === b.marker
       && a.setextLevel === b.setextLevel
+      && a.suffix === b.suffix
       && (typeof a.checked === "boolean") === (typeof b.checked === "boolean");
   }
 
@@ -200,6 +201,10 @@
       this.surface.addEventListener("keydown", (event) => this.handleKeyDown(event));
       this.surface.addEventListener("click", (event) => this.handleClick(event));
       this.source.addEventListener("input", () => this.handleSourceInput());
+      this.source.addEventListener("beforeinput", (event) => {
+        this.sourceBeforeInput = { start:this.model.rawOffset(this.source.selectionStart), end:this.model.rawOffset(this.source.selectionEnd),
+          inputType:event.inputType, data:event.data, revision:this.model.revision };
+      });
       this.source.addEventListener("keydown", (event) => this.handleKeyDown(event));
       this.findInput.addEventListener("input", () => this.performFind());
       this.findInput.addEventListener("keydown", (event) => this.handleFindKeyDown(event));
@@ -211,6 +216,7 @@
     getValue() { return this.model.source; }
 
     setMarkdown(markdown, options) {
+      this.sourceBeforeInput = null;
       this.model = new DocumentModel(markdown || "");
       this.history = new TransactionJournal(100);
       this.sourceNodeRanges = new WeakMap();
@@ -349,6 +355,15 @@
         for (let line = first; line < at; line += 1) descriptors[line].projection.tag = tag;
         delimiter.projection = { prefix: delimiter.raw.length, text: "", tag: "div", setextDelimiter: true, setextLevel: tag };
       }
+      for (const descriptor of descriptors) {
+        const projection = descriptor.projection;
+        if (descriptor.unitType !== "line" || !descriptor.ending || projection.fence || projection.rule || projection.setextDelimiter || /^h[1-6]$/.test(projection.tag)) continue;
+        const run = (descriptor.raw.match(/\\+$/) || [""])[0].length;
+        if (run % 2 === 1 && projection.text.slice(0,-1).trim()) {
+          projection.suffix = 1;
+          projection.text = projection.text.slice(0,-1);
+        }
+      }
       return descriptors;
     }
 
@@ -362,10 +377,22 @@
         else high = mid;
       }
       const descriptor = descriptors[Math.max(0, low - 1)];
+      if (descriptor && (descriptor.projection.rule || descriptor.projection.setextDelimiter)) return { kind: "separator", start: descriptor.start, end: descriptor.end };
+      if (descriptor && descriptor.unitType === "table") return { kind: "table", start: descriptor.start, end: descriptor.end };
       if (descriptor && (descriptor.unitType === "code" || descriptor.unitType === "literal")) {
         return { kind: "code", start: descriptor.start, end: descriptor.end,
           contentStart: descriptor.start, fence: descriptor.projection.fence,
           indent: (descriptor.raw.match(/^[ \t]*/) || [""])[0] };
+      }
+      if (descriptor) {
+        const base=descriptor.start+descriptor.projection.prefix;
+        const containsCode=(tokens)=>tokens.some(token=>token.type==="code"
+          ? offset>=base+token.contentStart && offset<=base+token.contentEnd
+          : token.children && containsCode(token.children));
+        if(containsCode(MarkdownCodec.tokenizeInline(descriptor.projection.text))) {
+          return {kind:"code",start:descriptor.start,end:descriptor.end,contentStart:offset,fence:false,
+            indent:(descriptor.raw.match(/^[ \t]*/)||[""])[0]};
+        }
       }
       if (descriptor && /^h[1-6]$/.test(descriptor.projection.tag)
           && !/^ {0,3}#{1,6}[ \t]+/.test(descriptor.raw)) {
@@ -469,7 +496,10 @@
           row.append(caret);
           if (!descriptor.ending) row.append(document.createElement("br"));
         } else if (!descriptor.ending) {
-          row.append(document.createElement("br"));
+          const caret = document.createElement("span");
+          caret.className = "amorist-empty-caret";
+          this.appendSourceText(caret, CARET_SENTINEL, 0, 0);
+          row.append(caret);
         }
         // Keep the editable text stream aligned with physical source lines.
         // Block layout alone is invisible to TreeWalker-based selection APIs.
@@ -523,7 +553,7 @@
           if (token.type === "text" || token.type === "code") {
             const leaf = document.createElement(token.type === "code" ? "code" : "span");
             leaf.classList.add("amorist-inline-text");
-            leaf.dataset.inlineStart = String(rawStart + (token.type === "code" ? token.contentStart : token.start + (token.escaped ? 1 : 0)));
+            leaf.dataset.inlineStart = String(rawStart + (token.type === "code" ? token.contentStart : token.start));
             leaf.dataset.inlineEnd = String(rawStart + (token.type === "code" ? token.contentEnd : token.end));
             this.sourceNodeRanges.set(leaf, { start: rawStart + token.start, end: rawStart + token.end });
             this.appendSourceText(leaf, token.text, Number(leaf.dataset.inlineStart), Number(leaf.dataset.inlineEnd));
@@ -788,10 +818,10 @@
       selection.addRange(range);
     }
 
-    apply(start, end, replacement, gesture) {
+    apply(start, end, replacement, gesture, boundaryState) {
       const beforeSource = this.model.source;
       const beforeDescriptors = this.lineDescriptors;
-      const entry = this.model.transaction(start, end, replacement, gesture);
+      const entry = this.model.transaction(start, end, replacement, gesture, boundaryState);
       this.history.push(entry);
       const caret = start + replacement.length;
       this.patchProjection(beforeSource, beforeDescriptors, entry.forward, { start: caret, end: caret });
@@ -819,14 +849,15 @@
         return;
       }
       if (type === "insertParagraph" || type === "insertLineBreak") {
-        const context = selection.start === selection.end
-          ? this.editingContextAt(selection.start)
-          : null;
+        const context = this.editingContextAt(selection.start);
         if (context && context.kind === "code") {
           event.preventDefault();
           this.apply(selection.start, selection.end,
             this.model.lineEndingAt(selection.start) + (context.fence ? "" : context.indent), "code-enter");
           return;
+        }
+        if (context && (context.kind === "table" || context.kind === "separator")) {
+          event.preventDefault(); this.apply(selection.start,selection.end,this.model.lineEndingAt(selection.start),`${context.kind}-enter`); return;
         }
         if (context && selection.start >= context.contentStart && selection.start <= context.end) {
           event.preventDefault();
@@ -839,9 +870,7 @@
           }
           return;
         }
-        // REQ-B3 defines ordinary prose Enter as one bare LF. Existing
-        // terminators stay verbatim; only the new boundary is LF.
-        event.preventDefault(); this.apply(selection.start, selection.end, "\n", "enter"); return;
+        event.preventDefault(); this.proseEnter(selection); return;
       }
       if (type === "deleteContentBackward") {
         const context = selection.start === selection.end
@@ -852,6 +881,12 @@
           this.apply(context.markerStart, context.contentStart, "", context.kind === "list" ? "list-backspace" : "block-backspace");
           return;
         }
+        if (selection.start === selection.end && selection.start === lineStart(this.model.source,selection.start)) {
+          const record = this.model.automaticBreaks.find(record => record.marker + 1 + (this.model.source.slice(record.marker+1,record.marker+3)==="\r\n"?2:1) === selection.start);
+          if (record && (!context || context.kind !== "code")) {
+            event.preventDefault(); this.joinAutomaticBoundary(record,selection.start); return;
+          }
+        }
         event.preventDefault(); const start = selection.start === selection.end ? previousCodeUnit(this.model.source, selection.start) : selection.start;
         this.apply(start, selection.end, "", "backspace"); return;
       }
@@ -859,6 +894,41 @@
         event.preventDefault(); const end = selection.start === selection.end ? nextCodeUnit(this.model.source, selection.end) : selection.end;
         this.apply(selection.start, end, "", "delete");
       }
+    }
+
+    proseEnter(selection) {
+      const source=this.model.source, descriptor=this.descriptorAtRaw(selection.start);
+      let at=selection.start;
+      if (selection.start===selection.end && descriptor.projection.suffix && at>=descriptor.end-descriptor.projection.suffix) at=descriptor.end;
+      const end=selection.start===selection.end?at:Math.max(at,selection.end);
+      const ending=this.model.lineEndingAt(at), start=lineStart(source,at), prefix=source.slice(start,at);
+      if (!prefix.trim()) {
+        const previous=this.model.automaticBreaks.find(record=>record.marker+1+(source.slice(record.marker+1,record.marker+3)==="\r\n"?2:1)===start);
+        if (previous) {
+          this.apply(previous.marker,end,source.slice(previous.marker+1,at)+ending,"paragraph-enter"); return;
+        }
+        this.apply(at,end,ending,"enter");return;
+      }
+      if (/[\r\n]/.test(source[at]||"")) {
+        const owned=this.model.automaticBreaks.find(record=>record.marker===at-1);
+        this.apply(owned?owned.marker:at,end,ending,"paragraph-enter");return;
+      }
+      if (/ {2,}$/.test(prefix)) { this.apply(at,end,ending,"enter");return; }
+      const run=(prefix.match(/\\+$/)||[""])[0].length;
+      const added=run%2===1?"\\\\":"\\", replacement=added+ending;
+      const state=this.model.boundaryStateAfterEdit(at,end,replacement);
+      state.automaticBreaks.push({marker:at+added.length-1,escapes:added.length===2?[at]:[]});
+      this.apply(at,end,replacement,"prose-enter",state);
+    }
+
+    joinAutomaticBoundary(record,end) {
+      const source=this.model.source, next=source[end]||"";
+      const removeEscapes=!next || !/[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~\r\n]/.test(next);
+      const positions=new Set([record.marker,...(removeEscapes?record.escapes:[])]);
+      const start=Math.min(...positions);
+      let replacement="";
+      for(let at=start;at<record.marker;at+=1) if(!positions.has(at)) replacement+=source[at];
+      this.apply(start,end,replacement,"join-automatic-boundary");
     }
 
     handleKeyDown(event) {
@@ -973,7 +1043,9 @@
         return position + shift;
       };
       const afterSelection = { start: map(beforeSelection.start), end: map(beforeSelection.end), direction: beforeSelection.direction };
-      const entry = this.apply(start, end, replacement, outdent ? "outdent" : "indent");
+      const boundaries=this.model.boundaryState();
+      boundaries.automaticBreaks=boundaries.automaticBreaks.map(record=>({marker:map(record.marker),escapes:record.escapes.map(map)}));
+      const entry = this.apply(start, end, replacement, outdent ? "outdent" : "indent", boundaries);
       entry.selectionBefore = beforeSelection; entry.selectionAfter = afterSelection;
       this.restoreRawSelection(afterSelection);
     }
@@ -982,6 +1054,13 @@
       // textarea has already converted CRLF to LF.  Map just the display range
       // it changed back to raw rather than accepting its value as authority.
       const old = this.model.display; const next = this.source.value;
+      const intent=this.sourceBeforeInput;this.sourceBeforeInput=null;
+      if(old===next) {
+        if(intent && intent.revision===this.model.revision && intent.end>intent.start && String(intent.inputType||"").startsWith("insert")) {
+          this.apply(intent.start,intent.end,this.model.source.slice(intent.start,intent.end),"source-replacement");
+        }
+        return;
+      }
       let start = 0; while (start < old.length && old[start] === next[start]) start += 1;
       let oldEnd = old.length; let nextEnd = next.length;
       while (oldEnd > start && nextEnd > start && old[oldEnd - 1] === next[nextEnd - 1]) { oldEnd--; nextEnd--; }

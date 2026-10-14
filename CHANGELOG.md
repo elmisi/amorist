@@ -35,12 +35,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   selection direction. List indentation moves descendants with their item;
   prose and code insert two spaces at the caret. Undo/redo restores the gesture's
   selection, and Escape returns focus to the toolbar.
+- Visual prose Enter creates a local backslash hard break with the existing
+  terminator. A subsequent blank line or Backspace join removes its generated
+  marker atomically. Literal backslashes and explicitly retyped source remain
+  protected; code, source and table Enter stay literal.
 
 ### Quality
 - The source model tracks validated automatic-boundary provenance separately
   from Markdown, including generated escaping positions and UTF-16 offsets.
   Transactions and undo/redo preserve it; malformed metadata cannot edit source.
-  Prose gesture generation, cleanup and actual recovery persistence remain pending.
+  Structural boundary cleanup and actual recovery persistence remain pending.
 - Linux automated graphical checks explicitly use X11 under Xvfb, avoiding an
   inherited Wayland session. Graphical regression scripts run sequentially.
 - This version is the editor development candidate. Delivery remains blocked

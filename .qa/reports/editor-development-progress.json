@@ -41,7 +41,7 @@
       "id": 6,
       "name": "enter-tab-and-local-cleanup",
       "status": "partial",
-      "evidence": "Tab/Shift+Tab in both modes now covers caret insertion, mixed terminators, selected rows, list descendants and continuations, oriented selection, undo/redo and Escape focus. Native Linux probes and full regression passed under explicit X11. Prose Enter hard-break provenance, local boundary cleanup, recovery persistence and remaining structural/container semantics still pending. The model now validates, rebases and journals explicit automatic-boundary provenance with UTF-16 JSON round trips; EOF inherits the preceding terminator. UI prose generation/cleanup and real recovery persistence remain pending."
+      "evidence": "Tab/Shift+Tab in both modes preserves mixed terminators, list subtrees and oriented selections, with undo/redo. Visual prose Enter now generates one local hard-break marker, hides its syntax, removes owned markers for paragraph creation/Backspace joins and protects literal escaping or explicitly retyped source. Provenance survives row indentation. Full Linux suite and eleven isolated regression scripts passed. Structure-transition cleanup, remaining boundary operations, general gesture planning and actual recovery persistence are still pending."
     },
     {
       "id": 7,
@@ -433,6 +433,46 @@
         "atomic local marker cleanup",
         "structural-shortcut integration",
         "actual recovery persistence"
+      ]
+    },
+    "visualProseEnterDevelopment": {
+      "status": "directed probes, full Linux suite and eleven isolated regression scripts passed",
+      "check": "tests/editor-prose-enter.test.js",
+      "engines": [
+        "WebKitGTK",
+        "Chromium on Linux"
+      ],
+      "scope": [
+        "one local hard-break marker with LF/CRLF/CR",
+        "hidden marker has no visible text",
+        "second Enter forms paragraph with atomic generated-marker removal",
+        "Backspace joins generated boundary and preserves literal escaping",
+        "undo restores source and provenance",
+        "explicit same-byte source replacement removes automatic ownership",
+        "indentation preserves provenance",
+        "inline code and source Enter remain literal"
+      ],
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "prose-enter-complete-qa-linux.json",
+        "corpusFiles": 21,
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "classicRegressionChecks": {
+        "pass": 11,
+        "fail": 0,
+        "log": "prose-enter-isolated-classic-linux.log"
+      },
+      "retainedFailures": [
+        "prose-enter-first-qa-linux.json: native app read occurred before final input event; Source-toggle read now settles as other native cases do",
+        "prose-enter-complete-classic-linux.log: concurrent graphical runs missed inputs; isolated rerun passed all eleven scripts"
+      ],
+      "remaining": [
+        "structure-transition cleanup",
+        "forward deletion and remaining boundary operations",
+        "inline spans across physical rows",
+        "actual recovery persistence",
+        "macOS and Windows native acceptance"
       ]
     }
   }

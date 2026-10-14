@@ -20,6 +20,22 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      REQ-B3 now requires visual prose Enter to create a backslash hard break using
+      the local terminator, without rewriting old boundaries. Existing hard-break
+      syntax is not duplicated. A subsequent blank line removes an unnecessary
+      automatically owned marker; joining that generated boundary with Backspace
+      removes it in the same transaction. Literal backslashes and intentional
+      escaping remain protected. Source, code, metadata and table Enter stay
+      literal. Hidden hard-break syntax retains explicit source selection mapping.
+    why: >
+      Applies the approved new prose-writing rule, replacing the historical bare-LF
+      requirement before changing its checks. Structural shortcut cleanup and actual
+      recovery persistence remain required integration work before delivery.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       A new boundary uses its physical line's terminator, or the last preceding
       terminator at an unterminated EOF, and LF when none exists. Automatic
       hard-break ownership is explicit session metadata, never inferred merely
@@ -805,21 +821,23 @@ requirements:
 
   - id: REQ-B3
     statement: >
-      In ordinary prose, Enter inserts a bare newline at the caret. It does not
-      create a paragraph break and never writes the two-space hard break.
+      In ordinary visual prose, Enter inserts a backslash hard break at the caret
+      using the local terminator. Existing physical boundaries remain verbatim.
       Structural list behavior is specified separately by REQ-B6.
     category: invariant
-    origin: user-statement (Q-010 answer, D-018)
+    origin: approved editor development plan, 2026-10-13
     motivation: >
-      Matches how Sublime and Zed behave, and avoids writing trailing spaces that
-      the user's own Zed deletes on save.
+      Preserves the visual line break in conventional Markdown without rewriting
+      old paragraphs or relying on trailing spaces. Generated markers retain
+      provenance so later local cleanup preserves intentional escaping.
     risk_id: R-015
     verification:
       type: deterministic
       evidence_required: [the bytes written after a single Enter keypress]
       success_condition: >
-        Exactly one "\n" is inserted at the caret offset. No spaces are added
-        before it, and no blank line after it.
+        Exactly one backslash plus the local terminator is inserted at a prose
+        midpoint. Original characters and boundaries remain unchanged. Blank-line
+        creation and generated-marker cleanup are covered by the native prose probes.
     severity: blocking
     false_positive_risk: low
     automation: full

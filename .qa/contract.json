@@ -254,7 +254,7 @@
     },
     {
       "id": "REQ-B3",
-      "statement": "In ordinary prose, Enter inserts a bare newline at the caret. It does not create a paragraph break and never writes the two-space hard break. Structural list behavior is specified separately by REQ-B6.",
+      "statement": "In ordinary visual prose, Enter inserts a backslash hard break at the caret using the local terminator. Existing physical boundaries remain verbatim. Structural list behavior is specified separately by REQ-B6.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",

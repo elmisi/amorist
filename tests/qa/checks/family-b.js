@@ -141,8 +141,8 @@ module.exports = [
 
   {
     id: "REQ-B3",
-    title: "Enter inserts a bare newline: no paragraph break, no two-space hard break",
-    note: "Matches how a plain text editor behaves, and avoids writing trailing spaces that other editors delete on save.",
+    title: "Visual prose Enter inserts one local backslash hard break",
+    note: "Old physical boundaries stay verbatim; only the user-created prose boundary receives a marker.",
     async run(ctx) {
       const fixtures = select(ctx.corpus, "hasHandWrappedParagraph");
       const failures = [];
@@ -162,43 +162,17 @@ module.exports = [
         const at = surfaceText.indexOf(needle);
         if (at < 0) continue;
         await ctx.page.setCaretAtTextOffset(at + Math.floor(needle.length / 2));
+        const caret = (await ctx.page.rawSelection()).start;
+        const current = before.slice(caret).match(/\r\n|\r|\n/);
+        const previous = before.slice(0,caret).match(/\r\n|\r|\n/g) || [];
+        const ending = current ? current[0] : previous[previous.length-1] || "\n";
         await ctx.page.sendKeys([{ key: "Enter" }]);
         await ctx.page.settle(120);
         const after = await ctx.page.markdown();
+        const expected = before.slice(0,caret) + "\\" + ending + before.slice(caret);
+        if (after !== expected) failures.push({fixture:fixture.name,
+          detail:"Visual prose Enter did not create exactly one local hard-break boundary.", expected, actual:after});
 
-        // Exactly one newline inserted, and not one other character touched.
-        const strippedBefore = before.replace(/\n/g, "");
-        const strippedAfter = after.replace(/\n/g, "");
-        const newlineDelta = (after.match(/\n/g) || []).length - (before.match(/\n/g) || []).length;
-
-        if (strippedBefore !== strippedAfter) {
-          failures.push({
-            fixture: fixture.name,
-            detail: "Enter changed characters other than inserting a newline.",
-            expected: `${strippedBefore.length} non-newline characters`,
-            actual: `${strippedAfter.length} non-newline characters`,
-          });
-        } else if (newlineDelta !== 1) {
-          failures.push({
-            fixture: fixture.name,
-            detail: `Enter inserted ${newlineDelta} newline(s); the contract allows exactly one.`,
-            expected: "1",
-            actual: String(newlineDelta),
-          });
-        }
-
-        const gainedTrailingSpace = splitLines(after)
-          .map((line) => line.replace(/\r?\n$/, ""))
-          .some((line, index) => {
-            const originals = splitLines(before).map((l) => l.replace(/\r?\n$/, ""));
-            return /[ \t]$/.test(line) && !originals.includes(line);
-          });
-        if (gainedTrailingSpace) {
-          failures.push({
-            fixture: fixture.name,
-            detail: "Enter left trailing whitespace behind — a hard break written where the user asked for a plain newline.",
-          });
-        }
       }
 
       return { failures, fixturesExercised: exercised };

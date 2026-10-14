@@ -21,7 +21,7 @@ generated; the contract is the source of truth.
 | `REQ-A10` | Switching between WYSIWYG and source, any number of times and in any order, leaves the do… | R-002, R-007, R-012 | deterministic | blocking | full | low | low | RED today |
 | `REQ-B1` | Every line of the file is shown as its own line in the WYSIWYG view. Soft breaks are not… | R-005, R-015 | deterministic | blocking | full | high | medium | RED today |
 | `REQ-B2` | Typing lengthens the current line. It never moves the other lines of the same paragraph. | R-005 | deterministic | blocking | full | low | low | RED today |
-| `REQ-B3` | In ordinary prose, Enter inserts a bare newline at the caret. It does not create a paragr… | R-015 | deterministic | blocking | full | low | low | RED today |
+| `REQ-B3` | In ordinary visual prose, Enter inserts a backslash hard break at the caret using the loc… | R-015 | deterministic | blocking | full | low | low | RED today |
 | `REQ-B4` | When typed Markdown becomes a visual construct, subsequent typing remains at the visible… | R-011 | deterministic | blocking | full | low | low | green today |
 | `REQ-B6` | WYSIWYG list editing follows conventional editor behavior while retaining exact Markdown… | R-011, R-013 | deterministic | blocking | full | medium | low | green today |
 | `REQ-B7` | Hidden heading and quote prefixes participate in conventional WYSIWYG editing. Enter cont… | R-011 | deterministic | blocking | full | low | low | green today |

@@ -336,6 +336,7 @@
           markdown: function () {
             return editor.getMarkdown();
           },
+          rawSelection: function () { return editor.selectionRaw(); },
 
           mode: function () {
             return source() && !source().hidden ? "source" : "wysiwyg";

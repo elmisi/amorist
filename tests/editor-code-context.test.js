@@ -101,7 +101,8 @@ async function main() {
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),table);
         for (const [source, selector, caret, rawCaret] of [
           ["same **same** same", "strong .amorist-inline-text", 2, 9],
-          ["same \\*same\\* same", '.amorist-inline-text[data-inline-start="6"]', 1, 7],
+          ["same \\*same\\* same", '.amorist-inline-text[data-inline-start="5"]', 1, 7],
+          ["same \\*same\\* same", '.amorist-inline-text[data-inline-start="5"]', 0, 5],
           ["same ``same`same`` same", "code", 5, 12],
           ["same __same__ same", "strong .amorist-inline-text", 2, 9],
           ["same ~~same~~ same", "del .amorist-inline-text", 2, 9],
@@ -162,7 +163,10 @@ async function main() {
             `${entry.id}: element boundary ${side} emphasis is outside its delimiters`);
         }
         await engine.evaluate("(() => {const editor=window.__codeRegression;editor.setMarkdown('# title\\n- item');editor.focus();return true;})()");
-        await engine.sendKeys([{key:"a",ctrl:process.platform!=="darwin",meta:process.platform==="darwin"},"Z"]);
+        await engine.sendKeys([{key:"a",ctrl:process.platform!=="darwin",meta:process.platform==="darwin"}]);
+        assert.deepEqual(await engine.evaluate("window.__codeRegression.selectionRaw()"),{start:0,end:14},
+          `${entry.id}: native Select All reaches both document boundaries`);
+        await engine.sendKeys(["Z"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),"Z",
           `${entry.id}: native Select All includes the first hidden structural prefix`);
         const blocks = "First title\r\n===\r\n\r\nSecond title\r\n---\r\n\r\n    # literal\r\n    1. literal\r\n\r\n    **literal**\r\n\r\nparagraph\r\n    continuation\r\n\r\n- list\r\n  continuation";
