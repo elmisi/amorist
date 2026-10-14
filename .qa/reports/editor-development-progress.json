@@ -2084,6 +2084,14 @@
     "observedPid": 8476,
     "started": "2026-10-14T13:26:01.9462177+02:00",
     "evidence": "VM scheduled task Running and CLI package check in installer-task.stderr.log; no installer acceptance claimed",
-    "deliveryBlocked": true
+    "deliveryBlocked": true,
+    "preflight": {
+      "captured": "2026-10-14T13:26:58.7058242+02:00",
+      "existingInstallations": 0,
+      "checkedAssociationKeysInitiallyAbsent": true,
+      "appdataFilesBackedUpAndHashVerified": 20,
+      "backupDirectory": "C:\\Users\\elmis\\AppData\\Local\\AmoristQA\\installer-preflight",
+      "evidence": "windows-installer-preflight.json in private execution evidence; no installed files or registry entries changed"
+    }
   }
 }
