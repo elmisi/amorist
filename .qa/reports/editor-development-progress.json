@@ -2148,5 +2148,36 @@
     "exitCode": 0,
     "evidence": "recovery-failure-location-linux.json/log in private execution evidence",
     "limitation": "Prior full run failure remains unexplained and retained; no full-suite acceptance"
+  },
+  "windowsInstalledAppChecks": {
+    "snapshot": "81d5475ad901595ca4198e98835ec4013af67c6b",
+    "cli": {
+      "exitCode": 0,
+      "unicodePath": true,
+      "leadingDashBasename": true,
+      "headingAnchor": true,
+      "debug": true,
+      "rawSourceUnchanged": true,
+      "evidence": "windows-installed-cli.log in private execution evidence"
+    },
+    "file": {
+      "exitCode": 0,
+      "nativeKeyboard": true,
+      "controlledPickerResponses": true,
+      "cancelSaveAsPreservesFile": true,
+      "saveAndSaveAsExactSource": true,
+      "editorRetained": true,
+      "evidence": "windows-installed-file.log in private execution evidence"
+    },
+    "uninstall": {
+      "exitCode": 0,
+      "executableRemoved": true,
+      "uninstallRegistrationRemoved": true,
+      "originalDataFilesPreserved": 20,
+      "associationProgramIdsRemoved": true,
+      "extensionKeysRemainEmpty": true,
+      "evidence": "windows-installer-uninstall-verification.json plus registry inspection; no dangling open commands"
+    },
+    "remaining": "Actual OS pickers, upgrade, Settings/Bug/clipboard and recovery on installed package remain unproved; VM now has no installed candidate"
   }
 }
