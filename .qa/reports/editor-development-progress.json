@@ -3542,5 +3542,17 @@
       "gesture-planner-b2-corpus-trace-linux.log:50 cyclic insertions across five original fixtures passed"
     ],
     "retainedRisk": "First full-run reference GTK B2 inserted one unexpected character on another row; original red evidence retained. Cause not identified; not reproduced in110 directed checks or final complete recheck. No application fix claimed."
+  },
+  "currentCrossPlatformSource": {
+    "commit": "0d3591380da47ace0a299636360c806f657247cb",
+    "archive": "platform-source-0d35913.tar",
+    "sha256": "c91106d98459a67f5a434eb251cd6e508af1e6879232e8ca0abb8e2629f69c5f",
+    "windows": "Archive hash verified; old source/diagnostics and debug executable backed up in private QA root; current Rust test restarted with MinGit PATH and child-written exit receipt",
+    "macos": "Archive hash verified; old source/diagnostics and debug executable backed up; current Rust tests36 passed1 worker ignored plus2 build-identity integration tests passed; GUI session locked",
+    "evidence": [
+      "macos-current-0d35913-rust-tests.log exit0",
+      "Windows first invocations exposed PowerShell stderr and missing Git environment problems; no passing Windows result claimed"
+    ],
+    "deliveryBlocked": true
   }
 }
