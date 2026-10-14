@@ -2422,7 +2422,9 @@
     "relatedRegressionChecks": {
       "combined": "list-code-related-regressions-linux.log: pass4 fail1; Shift+Tab indentation mismatch",
       "isolated": "list-code-indentation-diagnostic-linux.log exit0 on GTK and Chromium",
-      "assessment": "Intermittent input/readiness issue suspected but not established; keep failing evidence and investigate before final acceptance."
+      "assessment": "Intermittent input/readiness issue suspected but not established; keep failing evidence and investigate before final acceptance.",
+      "diagnosis": "GTK emits Shift+Tab with key Unidentified, physical code Tab and keyCode9; editor already handles physical code. Test now waits for actual native Tab keydown (including physical code), verifies Shift modifier, then reads source/selection after rendering. Duplicate native keyups are not treated as multiple keydowns.",
+      "verified": "list-code-native-key-barrier-linux.log exit0 pass5 fail0 skip0; GTK/Chromium indentation, block layout, prose Enter, history and clipboard"
     }
   }
 }

@@ -13,6 +13,26 @@ async function main() {
       assert.ok(entry.available,entry.reason); const engine=entry.create();
       try {
         await engine.start(); await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+        await engine.evaluate(`(() => {
+          window.__indentKeyEvents=[];
+          for(const type of ['keydown','keyup']) document.addEventListener(type,event=>{
+            window.__indentKeyEvents.push({type,key:event.key,code:event.code,keyCode:event.keyCode,shift:event.shiftKey});
+          },true);
+          return true;
+        })()`);
+        const sendKeys=async sequence=>{
+          const before=await engine.evaluate('window.__indentKeyEvents.length');
+          await engine.sendKeys(sequence);
+          const tabs=sequence.filter(item=>item.key==='Tab');
+          const deadline=Date.now()+3000;
+          while(await engine.evaluate(`window.__indentKeyEvents.slice(${before}).filter(item=>item.type==='keydown'&&(item.key==='Tab'||item.code==='Tab')).length`)<tabs.length){
+            assert.ok(Date.now()<deadline,`${entry.id}: native Tab keydown was not delivered ${JSON.stringify(await engine.evaluate(`({events:window.__indentKeyEvents.slice(${before}),active:document.activeElement.outerHTML.slice(0,300)})`))}`);
+            await new Promise(resolve=>setTimeout(resolve,20));
+          }
+          const delivered=await engine.evaluate(`window.__indentKeyEvents.slice(${before})`);
+          assert.deepEqual(delivered.filter(item=>item.type==='keydown'&&(item.key==='Tab'||item.code==='Tab')).map(item=>({shift:item.shift})),tabs.map(item=>({shift:!!item.shift})),`${entry.id}: delivered Tab modifiers ${JSON.stringify(delivered)}`);
+          await engine.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+        };
         for (const mode of ["wysiwyg","source"]) {
           const mount = async (source,start,end=start,backward=false) => engine.evaluate(`(() => {
             const host=document.getElementById('host'); if(window.__indent) window.__indent.destroy();host.replaceChildren();
@@ -23,14 +43,14 @@ async function main() {
           const state = () => engine.evaluate("({source:window.__indent.getMarkdown(),selection:window.__indent.selectionRaw(),direction:window.__indent.selectionDirection()})");
           for (const ending of ["\n","\r\n","\r"]) {
             const source=`before${ending}alpha omega${ending}after`,at=source.indexOf('omega');
-            await mount(source,at); await engine.sendKeys([{key:"Tab"}]);
+            await mount(source,at); await sendKeys([{key:"Tab"}]);
             assert.deepEqual(await state(),{source:source.slice(0,at)+"  "+source.slice(at),selection:{start:at+2,end:at+2},direction:"forward"},`${entry.id}/${mode}: Tab inserts at caret with ${JSON.stringify(ending)}`);
             await engine.evaluate("(() => {window.__indent.undo();return true;})()");
             assert.deepEqual((await state()).selection,{start:at,end:at});assert.equal((await state()).source,source);
           }
           const selected="outside\r\none\ntwo\rthree\r\ntail";
           const start=selected.indexOf('one'),end=selected.indexOf('three')+'three'.length;
-          await mount(selected,start,end,true); await engine.sendKeys([{key:"Tab"}]);
+          await mount(selected,start,end,true); await sendKeys([{key:"Tab"}]);
           await engine.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
           const indented="outside\r\n  one\n  two\r  three\r\ntail";
           assert.deepEqual(await state(),{source:indented,selection:{start:start+2,end:end+6},direction:"backward"},`${entry.id}/${mode}: selected mixed-ending lines and direction`);
@@ -38,18 +58,18 @@ async function main() {
           assert.deepEqual(await state(),{source:selected,selection:{start,end},direction:"backward"});
           await engine.evaluate("(() => {window.__indent.redo();return true;})()");
           assert.equal((await state()).source,indented);assert.equal((await state()).direction,"backward");
-          await engine.sendKeys([{key:"Tab",shift:true}]);
+          await sendKeys([{key:"Tab",shift:true}]);
           assert.equal((await state()).source,selected);
           const list="- parent\r\n  continuation\n  1. child\r    > quote\r\n- sibling";
-          await mount(list,4);await engine.sendKeys([{key:"Tab"}]);
+          await mount(list,4);await sendKeys([{key:"Tab"}]);
           assert.equal((await state()).source,"  - parent\r\n    continuation\n    1. child\r      > quote\r\n- sibling",`${entry.id}/${mode}: list subtree moves without sibling`);
           assert.deepEqual((await state()).selection,{start:6,end:6});
-          await engine.sendKeys([{key:"Tab",shift:true}]);assert.equal((await state()).source,list);
+          await sendKeys([{key:"Tab",shift:true}]);assert.equal((await state()).source,list);
           await engine.evaluate("(() => {window.__indent.undo();window.__indent.undo();return true;})()");
           assert.equal((await state()).source,list);
           const code="before\r```\r    literal\r```\rafter";
           const codeAt=code.indexOf('literal')+3;
-          await mount(code,codeAt);await engine.sendKeys([{key:"Tab"}]);
+          await mount(code,codeAt);await sendKeys([{key:"Tab"}]);
           assert.equal((await state()).source,code.slice(0,codeAt)+"  "+code.slice(codeAt));
           assert.deepEqual((await state()).selection,{start:codeAt+2,end:codeAt+2});
           await engine.sendKeys([{key:"Escape"}]);
