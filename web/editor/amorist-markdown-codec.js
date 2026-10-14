@@ -111,7 +111,7 @@
         paragraph.push(lines[index]);
         index += 1;
       }
-      blocks.push({ type: "paragraph", text: joinTextLines(paragraph), sourceLine });
+      blocks.push({ type: "paragraph", text: joinTextLines(paragraph), clipboardText: paragraph.join("\n"), sourceLine });
     }
 
     return blocks;
@@ -243,7 +243,7 @@
         if(clipboard) return `<ol start="${block.items[0]?.number ?? 1}">`+block.items.map(item=>`<li value="${item.number}">${renderInline(item.text,references,clipboard)}${renderSublists(item,references,clipboard)}</li>`).join("")+"</ol>";
         return `<ol${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ol>`;
       default:
-        return `<p${attrs}>${renderInline(block.text,references,clipboard)}</p>`;
+        return `<p${attrs}>${renderInline(clipboard ? block.clipboardText ?? block.text : block.text,references,clipboard)}</p>`;
     }
   }
 
@@ -455,6 +455,9 @@
     if (depth > 64) return [{ type: "text", start, end, text: source.slice(start, end) }];
     for (let cursor = start; cursor < end;) {
       const char = source[cursor];
+      if (char === "\\" && source[cursor + 1] === "\n") {
+        tokens.push({ type: "break", start: cursor, end: cursor + 2 }); cursor += 2; continue;
+      }
       if (char === "\\" && cursor + 1 < end && /[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/.test(source[cursor + 1])) {
         plain(cursor, cursor + 2, source[cursor + 1]); cursor += 2; continue;
       }
@@ -466,7 +469,9 @@
           if (text.startsWith(" ") && text.endsWith(" ") && /[^ ]/.test(text)) {
             text = text.slice(1, -1); contentStart += 1; contentEnd -= 1;
           }
-          tokens.push({ type: "code", ...code, contentStart, contentEnd, text }); cursor = code.end; continue;
+          const token = { type: "code", ...code, contentStart, contentEnd, text };
+          Object.defineProperty(token, "clipboardText", { value: source.slice(contentStart, contentEnd) });
+          tokens.push(token); cursor = code.end; continue;
         }
         let runEnd = cursor + 1;
         while (runEnd < end && source[runEnd] === "`") runEnd += 1;
@@ -592,7 +597,7 @@
         return `<img${href == null ? "" : ` src="${TextUtils.escapeAttr(href)}"`} alt="${TextUtils.escapeAttr(token.alt)}"${token.title == null ? "" : ` title="${TextUtils.escapeAttr(token.title)}"`}>`;
       }
       if (token.type === "break") return "<br>";
-      if (token.type === "code") return `<code>${TextUtils.escapeHtml(token.text)}</code>`;
+      if (token.type === "code") return `<code${clipboard ? ' style="white-space:pre-wrap"' : ""}>${TextUtils.escapeHtml(clipboard ? token.clipboardText ?? token.text : token.text)}</code>`;
       const content = renderInlineTokens(token.children,clipboard);
       if (token.type === "link") {
         const href = safeLinkHref(token.href);

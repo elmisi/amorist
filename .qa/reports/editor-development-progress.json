@@ -2744,6 +2744,15 @@
       "verified": "Pure conversion helpers and rendered two-row inline code on WebKitGTK/Chromium pass.",
       "evidence": "html-inline-code-newlines-linux.log exit0; node tests/editor-html-to-markdown.test.js exit0",
       "remaining": "Internally generated semantic HTML still needs raw multiline code fidelity, including hard-break and container context; full final regression remains required."
+    },
+    "generatedHtmlCodeNewlines": {
+      "implemented": "Clipboard paragraph rendering tokenizes physical source; code tokens retain raw content separately from normalized display text. HTML code carries pre-wrap styling; prose backslash hard breaks become break tokens. Normal codec rendering remains unchanged.",
+      "verified": "Actual copy handlers generate HTML; HTML-only round-trip preserves two rendered code rows for plain, emphasized and quoted code on GTK/Chromium. Four related regression files and B9 performance gate pass.",
+      "evidence": [
+        "generated-html-code-newlines-linux.log pass4 fail0 skip0",
+        "generated-html-code-performance-linux.log exit0 B9 GTK/Chromium"
+      ],
+      "remaining": "List/task code HTML fidelity, trailing literal backslash inside multiline code and full final regression/package acceptance remain pending."
     }
   }
 }
