@@ -1584,7 +1584,6 @@
         },
         "guard": "context id checked before resolving path and after filesystem read; stale frontend results ignored",
         "remaining": [
-          "SaveAs refresh of already rendered image atoms",
           "native expired-URI and New/Open acceptance",
           "all local image formats and Windows/macOS transport",
           "runtime scoped-registration/source provenance audit"
@@ -1601,6 +1600,22 @@
           "original file remains byte-identical"
         ],
         "remaining": "UI adoption, Open/SaveAs refresh and other platform/format acceptance still require verification"
+      },
+      "saveAsRebaseIntegration": {
+        "status": "passed directed Linux compiled-app test with controlled native picker",
+        "evidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-save-as-expiry-native-linux.log",
+        "proved": [
+          "relative image reloaded from new document directory",
+          "same editor root and image atom retained",
+          "original and destination Markdown bytes unchanged",
+          "old image URI expired immediately after SaveAs",
+          "New expires resources and rejects stale context registration"
+        ],
+        "remaining": [
+          "actual operating-system picker acceptance",
+          "viewport and history acceptance during image refresh",
+          "Windows and macOS native protocol acceptance"
+        ]
       }
     }
   }

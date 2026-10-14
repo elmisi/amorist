@@ -29,6 +29,33 @@ async function main(){
   assert.equal(actual.state,'loaded',JSON.stringify(actual));assert.equal(actual.width,200);assert.equal(actual.alt,'Alt');assert.equal(actual.title,'Title');
   assert.match(actual.src,/^amorist-image:\/\/localhost\/[a-f0-9]{32}$/);
   assert.equal(fs.readFileSync(file,'utf8'),source);
+  const destination=path.join(scratch,'other','docs','note.md');
+  fs.mkdirSync(path.dirname(destination),{recursive:true});fs.mkdirSync(path.join(scratch,'other','images'));
+  fs.writeFileSync(path.join(scratch,'other','images','photo λ.svg'),fs.readFileSync(path.join(root,'tests/qa/assets/image.svg'),'utf8').replace('width="200"','width="320"'));
+  await engine.evaluate(`(() => {
+    window.__imageRoot=document.querySelector('.amorist-editor');window.__imageAtom=document.querySelector('.amorist-image-atom');
+    window.__TAURI__.dialog.save=()=>Promise.resolve(${JSON.stringify(destination)});
+    document.querySelector('[data-file-action="save-as"]').click();return true;
+  })()`);
+  let rebased;const rebaseStarted=Date.now();
+  do {
+    rebased=await engine.evaluate(`(() => {
+      const atom=document.querySelector('.amorist-image-atom'),image=atom?.querySelector('img');
+      return {state:atom?.dataset.imageState,width:image?.naturalWidth,src:image?.src,path:document.getElementById('file-path').textContent,
+        rootSame:document.querySelector('.amorist-editor')===window.__imageRoot,atomSame:atom===window.__imageAtom};
+    })()`);
+    if(rebased.state==='loaded' && rebased.width===320 && rebased.path===destination) break;
+    await new Promise(resolve=>setTimeout(resolve,100));
+  }while(Date.now()-rebaseStarted<8000);
+  assert.equal(rebased.state,'loaded',JSON.stringify(rebased));assert.equal(rebased.width,320);assert.equal(rebased.path,destination);
+  assert.equal(rebased.rootSame,true);assert.equal(rebased.atomSame,true);assert.notEqual(rebased.src,actual.src);
+  assert.equal(fs.readFileSync(destination,'utf8'),source);assert.equal(fs.readFileSync(file,'utf8'),source);
+  const saveAsExpired=await engine.evaluate(`new Promise(resolve=> {
+    const image=new Image();let done=false;const finish=value=>{if(!done){done=true;resolve(value);}};
+    image.onload=()=>finish({loaded:true});image.onerror=()=>finish({loaded:false});
+    image.src=${JSON.stringify(actual.src)}+'?save-as-expired=1';setTimeout(()=>finish({timeout:true}),3000);
+  })`);
+  assert.deepEqual(saveAsExpired,{loaded:false});
   const lifecycle=await engine.evaluate(`(async () => {
     const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document');
     const id=await invoke('register_image',{reference:'../images/photo%20%CE%BB.svg',contextId:doc.contextId});
@@ -46,9 +73,9 @@ async function main(){
     try {await invoke('register_image',{reference:'../images/photo%20%CE%BB.svg',contextId:doc.contextId});} catch(error) {staleRejected=true;}
     return {active,expired,staleRejected,nextUntitled:next.path===''};
   })()`);
-  assert.deepEqual(lifecycle,{active:{loaded:true,width:200},expired:{loaded:false},staleRejected:true,nextUntitled:true});
+  assert.deepEqual(lifecycle,{active:{loaded:true,width:320},expired:{loaded:false},staleRejected:true,nextUntitled:true});
   assert.equal(fs.readFileSync(file,'utf8'),source);
-  console.log(JSON.stringify({status:'pass',image:actual,lifecycle,sourceUnchanged:true}));
+  console.log(JSON.stringify({status:'pass',image:actual,rebased,saveAsExpired,lifecycle,sourceUnchanged:true}));
  }finally {await engine.close();fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

@@ -725,7 +725,19 @@
       return block;
     }
 
-    async loadRemoteImage(atom,fallback,token) {
+    refreshLocalImages() {
+      for(const atom of this.surface.querySelectorAll('.amorist-image-atom')) {
+        const token=atom.imageToken;if(!token) continue;
+        try {if(["http:","https:"].includes(new URL(token.href).protocol)) continue;}catch(error) {}
+        atom.querySelectorAll('img').forEach(image=>image.remove());
+        const fallback=atom.querySelector('.amorist-image-fallback');fallback.hidden=false;
+        this.loadImage(atom,fallback,token);
+      }
+      this.scheduleCurrentLine?.();
+    }
+
+    async loadImage(atom,fallback,token) {
+      const generation=(atom.imageGeneration||0)+1;atom.imageGeneration=generation;
       let url;
       try {url=new URL(token.href);} catch(error) {url=null;}
       if(!url || !["http:","https:"].includes(url.protocol)) {
@@ -733,18 +745,19 @@
         atom.dataset.imageState="loading";
         try {
           const resolved=await this.options.resolveImage(token.href);
-          if(!resolved || !atom.isConnected) {if(atom.isConnected) atom.dataset.imageState="failed";return;}
+          if(!atom.isConnected || atom.imageGeneration!==generation) return;
+          if(!resolved) {atom.dataset.imageState="failed";return;}
           url=new URL(resolved);
           if(!["amorist-image:","http:","https:"].includes(url.protocol)) throw new Error("Invalid image transport.");
-        }catch(error) {if(atom.isConnected) atom.dataset.imageState="failed";return;}
+        }catch(error) {if(atom.isConnected && atom.imageGeneration===generation) atom.dataset.imageState="failed";return;}
       }
       const image=document.createElement("img");image.className="amorist-image";image.hidden=true;
       image.alt=token.alt;image.referrerPolicy="no-referrer";image.decoding="async";
       if(token.title!==null && token.title!==undefined) image.title=token.title;
       atom.dataset.imageState="loading";atom.append(image);
-      image.addEventListener("error",()=> {if(atom.isConnected) atom.dataset.imageState="failed";});
+      image.addEventListener("error",()=> {if(atom.isConnected && image.isConnected && atom.imageGeneration===generation) atom.dataset.imageState="failed";});
       image.addEventListener("load",()=> {
-        if(!atom.isConnected || !image.naturalWidth) return;
+        if(!atom.isConnected || !image.isConnected || atom.imageGeneration!==generation || !image.naturalWidth) return;
         const selection=window.getSelection();
         let caret=null;
         if(this.mode==="wysiwyg" && document.activeElement===this.surface && selection?.focusNode
@@ -788,10 +801,11 @@
             const atom=document.createElement("span");atom.className="amorist-image-atom";atom.contentEditable="false";
             atom.dataset.rawStart=String(start);atom.dataset.rawEnd=String(end);atom.dataset.imageDestination=token.href;
             this.sourceNodeRanges.set(atom,{start,end});
+            atom.imageToken={href:token.href,alt:token.alt,title:token.title};
             const fallback=document.createElement("span");fallback.className="amorist-image-fallback";
             this.appendSourceText(fallback,(token.alt?token.alt+" — ":"")+token.href,start,end);
             atom.append(fallback);parent.append(boundary(start),atom,boundary(end));
-            this.loadRemoteImage(atom,fallback,token);continue;
+            this.loadImage(atom,fallback,token);continue;
           }
           if (token.type === "text" || token.type === "code") {
             const leaf = document.createElement(token.type === "code" ? "code" : "span");

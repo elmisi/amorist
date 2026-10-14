@@ -321,6 +321,7 @@
         }
         state.contextId = result.contextId;
         setDocumentLabel(result);
+        snapshot.editor.refreshLocalImages();
         backend.setWindowTitle(result.name);
         return finishSave(snapshot.editor, snapshot.markdown, result);
       },
