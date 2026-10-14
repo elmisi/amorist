@@ -13,6 +13,10 @@ from review_state import load as load_state, save as save_state, exclusive
 
 
 def main():
+    # Redirected Windows streams may use a code page unable to encode filenames.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8')
     root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--list', type=Path, default=root / 'markdown-file-paths.txt')

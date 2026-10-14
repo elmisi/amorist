@@ -90,6 +90,13 @@ class ReviewRunnerTests(unittest.TestCase):
         self.assertEqual(events[-1]['event'],'failed')
         self.assertEqual(events[-1]['path'],str(self.files[1]))
 
+    def test_unicode_paths_survive_ascii_console_configuration(self):
+        result=subprocess.run(self.command(),capture_output=True,encoding='utf-8',timeout=10,
+                              env={**os.environ,'PYTHONIOENCODING':'ascii'})
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn(str(self.files[1]),result.stdout)
+        self.assertEqual(self.opened(),[['--',str(file)] for file in self.files])
+
     def test_identity_mismatch_opens_nothing(self):
         self.identity.write_text(json.dumps({**self.info,'fingerprint':'f'*40}))
         result=self.run_loop();self.assertNotEqual(result.returncode,0);self.assertIn('differs',result.stderr)
