@@ -1478,7 +1478,7 @@
       }
     },
     "localImageProtocolDevelopment": {
-      "status": "content signature classifier implemented; protocol/store/lifecycle integration pending",
+      "status": "content classifier and document-scoped resource store implemented; runtime integration pending",
       "mimeClassifier": {
         "pass": 2,
         "fail": 0,
@@ -1492,13 +1492,25 @@
         "limit": "Header classification is not a full image decoder; browser decode and valid format fixtures remain required"
       },
       "remaining": [
-        "document-scoped opaque resource store",
         "relative/escaped/Unicode/Windows reference resolution",
         "asynchronous Tauri protocol transport",
         "New/Open/SaveAs invalidation",
         "frontend integration and native format acceptance",
         "SVG encoding/doctype completeness"
-      ]
+      ],
+      "store": {
+        "pass": 3,
+        "fail": 0,
+        "report": "image-store-rust-linux.log",
+        "scope": [
+          "opaque identifiers contain no path",
+          "exact current-map lookup rejects arbitrary paths",
+          "document replacement invalidates all previous identifiers",
+          "relative paths require a document base and retain ../ and Unicode",
+          "MIME assigned from content signatures"
+        ],
+        "limit": "Store lifecycle is unit-tested; actual New/Open/SaveAs hooks and protocol are not connected yet"
+      }
     }
   }
 }
