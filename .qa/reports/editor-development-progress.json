@@ -1344,6 +1344,26 @@
           "system-clipboard-focused-window-linux.log"
         ]
       }
+    },
+    "clipboardCurrentFullLinux": {
+      "exitCode": 0,
+      "report": "clipboard-complete-current-qa-linux.json",
+      "executedAutomatedRequirements": 38,
+      "declaredRequirements": 39,
+      "manualAdvisory": 1,
+      "scope": "Full current declared Linux contract including native application scenarios and controlled clipboard/preferences gates; compiled clipboard, Finder/Dock and other platform/package acceptance remain mandatory"
+    },
+    "diagnosticPreservationRefresh": {
+      "records": 7,
+      "validRecords": 7,
+      "originalSevenByteIdentical": true,
+      "sha256": "84af7ebdb58cdbebad52cfb4e5934bcb9577b4e3c6b1bf41ddde04bd6719f83f"
+    },
+    "remoteReadinessRefresh": {
+      "windowsSsh": "reachable",
+      "macosSsh": "reachable",
+      "macosScreenLocked": true,
+      "scope": "Read-only readiness checks; no remote GUI acceptance claimed"
     }
   }
 }
