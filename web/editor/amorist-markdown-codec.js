@@ -211,9 +211,9 @@
     const attrs = sourceLineAttr(block);
     switch (block.type) {
       case "heading":
-        return `<h${block.level}${attrs}>${renderInline(block.text,references)}</h${block.level}>`;
+        return `<h${block.level}${attrs}>${renderInline(block.text,references,clipboard)}</h${block.level}>`;
       case "quote":
-        return `<blockquote${attrs}>${renderInline(block.text,references)}</blockquote>`;
+        return `<blockquote${attrs}>${renderInline(block.text,references,clipboard)}</blockquote>`;
       case "hr":
         return `<hr${attrs}>`;
       case "code":
@@ -228,27 +228,27 @@
             return result;
           };
           const rows=block.text.split("\n");
-          const html=(row,tag)=>"<tr>"+cells(row).map(text=>`<${tag}>${renderInline(text,references)}</${tag}>`).join("")+"</tr>";
+          const html=(row,tag)=>"<tr>"+cells(row).map(text=>`<${tag}>${renderInline(text,references,clipboard)}</${tag}>`).join("")+"</tr>";
           return "<table><thead>"+html(rows[0],"th")+"</thead><tbody>"+rows.slice(2).map(row=>html(row,"td")).join("")+"</tbody></table>";
         }
         return `<pre class="amorist-markdown-table" data-block-type="table"${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "taskList":
-        if(clipboard) return "<ul>"+block.items.map(item=>'<li><input type="checkbox" disabled'+(item.checked?' checked':'')+'>'+renderInline(item.text,references)+renderSublists(item,references,clipboard)+'</li>').join("")+"</ul>";
+        if(clipboard) return "<ul>"+block.items.map(item=>'<li><input type="checkbox" disabled'+(item.checked?' checked':'')+'>'+renderInline(item.text,references,clipboard)+renderSublists(item,references,clipboard)+'</li>').join("")+"</ul>";
         return `<ul class="amorist-task-list"${attrs}>${block.items.map((item) =>
-          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text,references)}</span>${renderSublists(item,references,clipboard)}</li>`,
+          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text,references,clipboard)}</span>${renderSublists(item,references,clipboard)}</li>`,
         ).join("")}</ul>`;
       case "bulletList":
         return `<ul${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ul>`;
       case "orderedList":
-        if(clipboard) return `<ol start="${block.items[0]?.number ?? 1}">`+block.items.map(item=>`<li value="${item.number}">${renderInline(item.text,references)}${renderSublists(item,references,clipboard)}</li>`).join("")+"</ol>";
+        if(clipboard) return `<ol start="${block.items[0]?.number ?? 1}">`+block.items.map(item=>`<li value="${item.number}">${renderInline(item.text,references,clipboard)}${renderSublists(item,references,clipboard)}</li>`).join("")+"</ol>";
         return `<ol${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ol>`;
       default:
-        return `<p${attrs}>${renderInline(block.text,references)}</p>`;
+        return `<p${attrs}>${renderInline(block.text,references,clipboard)}</p>`;
     }
   }
 
   function renderListItem(item, references = null, clipboard = false) {
-    return `<li>${renderInline(item.text,references)}${renderSublists(item,references,clipboard)}</li>`;
+    return `<li>${renderInline(item.text,references,clipboard)}${renderSublists(item,references,clipboard)}</li>`;
   }
 
   function renderSublists(item,references = null, clipboard = false) {
@@ -581,12 +581,17 @@
     return tokens;
   }
 
-  function renderInlineTokens(tokens) {
+  function renderInlineTokens(tokens, clipboard = false) {
     return tokens.map(token => {
-      if (token.type === "text" || token.type === "image") return TextUtils.escapeHtml(token.text);
+      if (token.type === "text") return TextUtils.escapeHtml(token.text);
+      if (token.type === "image") {
+        if (!clipboard) return TextUtils.escapeHtml(token.text);
+        const href = safeLinkHref(token.href);
+        return `<img${href == null ? "" : ` src="${TextUtils.escapeAttr(href)}"`} alt="${TextUtils.escapeAttr(token.alt)}"${token.title == null ? "" : ` title="${TextUtils.escapeAttr(token.title)}"`}>`;
+      }
       if (token.type === "break") return "<br>";
       if (token.type === "code") return `<code>${TextUtils.escapeHtml(token.text)}</code>`;
-      const content = renderInlineTokens(token.children);
+      const content = renderInlineTokens(token.children,clipboard);
       if (token.type === "link") {
         const href = safeLinkHref(token.href);
         return `<a${href == null ? "" : ` href="${TextUtils.escapeAttr(href)}"`}${token.title == null ? "" : ` title="${TextUtils.escapeAttr(token.title)}"`} target="_blank" rel="noopener noreferrer">${content}</a>`;
@@ -597,8 +602,8 @@
     }).join("");
   }
 
-  function renderInline(text, references = null) {
-    return renderInlineTokens(tokenizeInline(text,0,String(text).length,0,false,false,references)) || "<br>";
+  function renderInline(text, references = null, clipboard = false) {
+    return renderInlineTokens(tokenizeInline(text,0,String(text).length,0,false,false,references),clipboard) || "<br>";
   }
 
   function serializeBlocks(surface) {

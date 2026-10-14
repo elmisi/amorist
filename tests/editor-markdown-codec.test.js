@@ -490,3 +490,11 @@ assert.equal(codec.tokenizeInline('`![alt](image.png)`')[0].type,"code");
 const imageRef=codec.tokenizeInline('![Straße][]',0,11,0,false,false,definitions)[0];
 assert.equal(imageRef.type,"image");assert.equal(imageRef.href,"notes.md");
 console.log("editor-markdown-codec.test.js passed");
+
+// Clipboard HTML retains image semantics without granting executable destinations.
+assert.equal(codec.renderInline('![A & B](../photo.svg "Caption")', null, true),
+  '<img src="../photo.svg" alt="A &amp; B" title="Caption">');
+assert.equal(codec.renderInline('![Unsafe](javascript:alert)', null, true),
+  '<img alt="Unsafe">');
+assert.ok(codec.renderMarkdown('- ![Photo](photo.svg)', null, true).includes('<img src="photo.svg" alt="Photo">'));
+assert.ok(codec.renderMarkdown('| Image |\n| --- |\n| ![Photo](photo.svg) |', null, true).includes('<img src="photo.svg" alt="Photo">'));
