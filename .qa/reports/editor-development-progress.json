@@ -1889,5 +1889,30 @@
       "scopeLimit": "Source-development evidence; not published webview/package acceptance",
       "linuxNativeKeyboard": "link-dialog-keyboard-native-linux.log: native key input confirms destination, Ctrl+Z restores it, Escape cancels; original file remains unchanged"
     }
+  },
+  "buildIdentityDevelopment": {
+    "status": "implemented and verified on Linux development binary; runner and packaged-platform acceptance pending",
+    "versionSource": "VERSION through AMORIST_VERSION",
+    "fingerprint": "Git hash-object of sorted length-delimited relative paths and raw contents across runtime/configuration allowlist; includes untracked runtime files",
+    "headlessInterface": "--build-info <new-file.json>, create_new, sync_all, pre-Tauri startup; --version for human output",
+    "reportIdentity": "new reports include buildId and full buildInfo; old records untouched",
+    "evidenceDirectory": "/home/alessandro/.local/state/amorist/execution-20261013-1932",
+    "headlessEvidence": "build-info-headless-linux.json",
+    "variationEvidence": "build-fingerprint-variation-linux.json",
+    "proved": [
+      "no display required",
+      "overwrite and missing output path refused",
+      "version matches VERSION",
+      "same-version same-commit runtime addition and content changes produce different fingerprints",
+      "removal restores original fingerprint",
+      "untracked unrelated plans/reports excluded from dirty identity"
+    ],
+    "remaining": [
+      "release missing-provenance failure proof",
+      "Windows/macOS headless machine interface",
+      "release packages identity and delivery manifest",
+      "review-release.json handover and runner per-file verification",
+      "immutable Bug snapshot and schema reader acceptance"
+    ]
   }
 }
