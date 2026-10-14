@@ -2920,9 +2920,9 @@
     "identity": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:0fa985e2997b65e07b64dd809f8bd80388ca38ce",
-      "fingerprint": "0fa985e2997b65e07b64dd809f8bd80388ca38ce",
-      "commit": "76f012d9ea92bc596fba5df4bbd692477d2ff314",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:653bea16327f6e1d826b7cb2ace35595712a6bff",
+      "fingerprint": "653bea16327f6e1d826b7cb2ace35595712a6bff",
+      "commit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
@@ -2996,13 +2996,22 @@
         "commit": "0afe06610131bc2814fe2098c6ad7c9f17121a38",
         "target": "x86_64-unknown-linux-gnu",
         "dirty": false
+      },
+      {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:0fa985e2997b65e07b64dd809f8bd80388ca38ce",
+        "fingerprint": "0fa985e2997b65e07b64dd809f8bd80388ca38ce",
+        "commit": "76f012d9ea92bc596fba5df4bbd692477d2ff314",
+        "target": "x86_64-unknown-linux-gnu",
+        "dirty": false
       }
     ],
     "preservedWipStatus": "Direct-list-fence archival patch retained; completed correction now part of preview726ecd3.",
     "latestVerifiedEvidence": [
-      "linux-preview-multiline-images-build.log exit0: clean76f012d",
-      "linux-preview-multiline-images-native-clipboard.log exit0: multiline image local protocol, cross-directory/process and HTML-only fallback",
-      "linux-preview-multiline-images-loop.log exit0: actual Bug/interruption/resume; original documents and personal review state untouched"
+      "linux-candidate-combined-package-build.log exit0: cleanb9b3ddc; decoder-aware config",
+      "linux-candidate-b9b3ddc-raw-clipboard.log exit0: trusted real clipboard and multiline local image transfer",
+      "linux-candidate-b9b3ddc-raw-loop.log exit0: actual Bug/interruption/resume; personal documents/review state unchanged"
     ]
   },
   "directListFencesLinux": {
@@ -3322,12 +3331,38 @@
       "gesture-planner-b2-corpus-trace-linux.log:50 exact-insertion cycles across five original B2 fixtures passed with beforeinput offsets recorded",
       "gesture-planner-full-contract-recheck-linux.json/log: final full contract green; actual Finder/Dock delegated to macOS"
     ],
-    "remaining": "Final candidate package/native/recovery/platform acceptance pending. Preserve and investigate first-run intermittent B2 typing failure during native acceptance;80 exact insertions plus isolated family B and full recheck passed, cause not identified."
+    "remaining": "Final candidate package/native/recovery/platform acceptance pending. Preserve and investigate first-run intermittent B2 typing failure during native acceptance;80 exact insertions plus isolated family B and full recheck passed, cause not identified.",
+    "candidateReleaseIdentity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:653bea16327f6e1d826b7cb2ace35595712a6bff",
+      "fingerprint": "653bea16327f6e1d826b7cb2ace35595712a6bff",
+      "commit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    }
   },
   "linuxCandidatePackaging": {
-    "status": "prepared; build pending",
+    "status": "built; extracted deb and runnable AppImage native acceptance passed; install/upgrade pending",
     "previousArtifactsBackup": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-packages-before-gesture-planner/manifest.json",
     "decoderConfig": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-candidate-combined-decoder-config.json",
-    "deliveryBlocked": true
+    "deliveryBlocked": true,
+    "manifest": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-candidate-b9b3ddc-manifest.json",
+    "nativeEvidence": [
+      "linux-candidate-b9b3ddc-appimage-editor-clipboard-native.log exit0",
+      "linux-candidate-b9b3ddc-appimage-editor-recovery-startup-documents-native.log exit0",
+      "linux-candidate-b9b3ddc-appimage-editor-settings-native.log exit0",
+      "linux-candidate-b9b3ddc-appimage-loop.log exit0",
+      "linux-candidate-b9b3ddc-appimage-no-host-images.log exit0",
+      "linux-candidate-b9b3ddc-deb-editor-clipboard-native.log exit0",
+      "linux-candidate-b9b3ddc-deb-editor-recovery-startup-documents-native.log exit0",
+      "linux-candidate-b9b3ddc-deb-editor-settings-native.log exit0",
+      "linux-candidate-b9b3ddc-deb-local-images.log exit0",
+      "linux-candidate-b9b3ddc-deb-loop.log exit0",
+      "linux-candidate-b9b3ddc-raw-clipboard.log exit0",
+      "linux-candidate-b9b3ddc-raw-loop.log exit0"
+    ],
+    "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
+    "remaining": "Actual installed candidate/upgrade and desktop activation, native gesture/recovery provenance proof, unexplained earlier B2 intermittency and macOS/Windows acceptance still pending. sudo -n true failed: interactive authentication required; installed0.10.8 untouched."
   }
 }
