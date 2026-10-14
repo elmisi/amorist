@@ -69,4 +69,5 @@ assert.equal(H._nodeToSource(text("- literal")),"\\- literal");
 const codeCell=el("CODE",[]);codeCell.textContent="a|b";
 rows[1].children[0].childNodes=[codeCell];
 assert.equal(H._cleanupMarkdown(H._nodeToSource(table)),"| Name | Note |\n| --- | --- |\n| `a|b` | value |");
+assert.equal(H._nodeToSource(el("A",[text("Read")],{href:"notes.md",title:'A "title" &copy;'})), '[Read](<notes.md> "A \\"title\\" &amp;copy;")');
 console.log("html-to-markdown pure helpers OK");

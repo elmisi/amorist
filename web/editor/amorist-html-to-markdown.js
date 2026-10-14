@@ -67,8 +67,8 @@
       // Keep the only Markdown-representable attributes.  In particular an
       // image without alt/src is a silent paste loss.
       Array.from(node.attributes || []).forEach((attr) => {
-        const allowed = (tag === "A" && attr.name === "href")
-          || (tag === "IMG" && (attr.name === "src" || attr.name === "alt"))
+        const allowed = (tag === "A" && (attr.name === "href" || attr.name === "title"))
+          || (tag === "IMG" && (attr.name === "src" || attr.name === "alt" || attr.name === "title"))
           || (tag === "OL" && attr.name === "start")
           || (tag === "LI" && attr.name === "value");
         if (!allowed) {
@@ -122,8 +122,10 @@
       return fence+(padded?" ":"")+text+(padded?" ":"")+fence;
     }
     const destination=value=>"<"+String(value).replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[<>]/g,char=>"\\"+char).replace(/\r\n|\r|\n/g,"%0A")+">";
-    if (tag === "A") return `[${children()}](${destination(node.getAttribute("href") || "")})`;
-    if (tag === "IMG") return `![${String(node.getAttribute("alt") || "").replace(/[\\[\]]/g,char=>"\\"+char)}](${destination(node.getAttribute("src") || "")})`;
+    const title=node.getAttribute("title");
+    const titleSource=title===null?"":" \""+String(title).replace(/&/g,"&amp;").replace(/[\\"]/g,char=>"\\"+char).replace(/\r\n|\r|\n/g," ")+"\"";
+    if (tag === "A") return `[${children()}](${destination(node.getAttribute("href") || "")}${titleSource})`;
+    if (tag === "IMG") return `![${String(node.getAttribute("alt") || "").replace(/[\\[\]]/g,char=>"\\"+char)}](${destination(node.getAttribute("src") || "")}${titleSource})`;
     if (tag === "UL" || tag === "OL") {
       let number=Number.parseInt(node.getAttribute("start") || "1",10);
       if(!Number.isFinite(number)) number=1;

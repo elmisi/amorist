@@ -90,9 +90,9 @@ async function main(){
     editor.handleCopy({clipboardData:{setData:(type,value)=>data.set(type,value)},preventDefault(){}},false);
     const html=data.get('text/html');data.delete('application/x-amorist-markdown+json');editor.setMarkdown('');editor.setSurfaceSelection(0,0);
     editor.handlePaste({clipboardData:{getData:type=>data.get(type)||''},preventDefault(){}});
-    return {html,links:Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination)};
+    return {html,links:Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination),titles:Array.from(editor.surface.querySelectorAll('a')).map(a=>a.getAttribute('title'))};
    })()`);
-   assert.match(fallback.html,/href="notes.md"/);assert.doesNotMatch(fallback.html,/name.*notes/);assert.deepEqual(fallback.links,['notes.md']);
+   assert.match(fallback.html,/href="notes.md"/);assert.doesNotMatch(fallback.html,/name.*notes/);assert.deepEqual(fallback.links,['notes.md']);assert.deepEqual(fallback.titles,['Title']);
    const semanticTable=await engine.evaluate(`(() => {
     const editor=window.__clip,source=${JSON.stringify('| A | B |\n| --- | --- |\n| one | two |')},data=new Map();
     editor.setMarkdown(source);editor.selectSurfaceContents();editor.handleCopy({clipboardData:{setData:(type,value)=>data.set(type,value)},preventDefault(){}},false);
