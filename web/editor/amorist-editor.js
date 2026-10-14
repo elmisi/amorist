@@ -118,6 +118,7 @@
       && a.indent === b.indent && a.quoteDepth === b.quoteDepth
       && a.listContinuation === b.listContinuation && a.layoutPadding === b.layoutPadding
       && a.markerWidth === b.markerWidth && a.marker === b.marker
+      && a.referenceDefinition === b.referenceDefinition
       && a.setextLevel === b.setextLevel
       && a.suffix === b.suffix
       && (typeof a.checked === "boolean") === (typeof b.checked === "boolean");
@@ -343,11 +344,38 @@
             tag: "div", listContinuation: true, layoutPadding: owner.layoutPadding };
         } else if (descriptor.raw.trim()) items.length = 0;
       }
+      const references = new Map();
+      descriptors.references = references;
+      const logicalStarts = [];
+      let logicalSource = "";
+      descriptors.forEach(descriptor => {
+        logicalStarts.push(logicalSource.length);
+        logicalSource += descriptor.projection.text + descriptor.ending;
+      });
+      for (let at = 0; at < descriptors.length; at++) {
+        const descriptor = descriptors[at], previous = descriptors[at - 1];
+        if (descriptor.unitType !== "line" || descriptor.projection.rule || descriptor.projection.fence) continue;
+        // Definitions may start a paragraph, but cannot interrupt ordinary prose.
+        if (previous && previous.unitType === "line" && previous.raw.trim()
+            && !previous.projection.referenceDefinition && !descriptor.projection.list
+            && previous.projection.tag === "div" && !previous.projection.rule) continue;
+        const definition = MarkdownCodec.referenceDefinitionAt(logicalSource, logicalStarts[at]);
+        if (!definition) continue;
+        let last = at;
+        while (last + 1 < descriptors.length && logicalStarts[last + 1] < definition.end) last++;
+        const members = descriptors.slice(at, last + 1);
+        if (members.some(member => member.unitType !== "line" || member.projection.rule || member.projection.fence
+            || (member !== descriptor && member.projection.list)
+            || (member.projection.quoteDepth || 0) !== (descriptor.projection.quoteDepth || 0))) continue;
+        if (!references.has(definition.key)) references.set(definition.key, {href: definition.href, title: definition.title});
+        members.forEach(member => { member.projection.referenceDefinition = true; });
+        at = last;
+      }
       for (let at = 1; at < descriptors.length; at += 1) {
         const delimiter = descriptors[at];
         if (delimiter.unitType !== "line" || delimiter.projection.list || !/^ {0,3}(?:=+|-+)[ \t]*$/.test(delimiter.raw)) continue;
         let first = at - 1;
-        const eligible = (line) => line && line.unitType === "line" && line.raw.trim()
+        const eligible = (line) => line && line.unitType === "line" && !line.projection.referenceDefinition && line.raw.trim()
           && line.projection.tag === "div" && !line.projection.list && !line.projection.listContinuation;
         if (!eligible(descriptors[first])) continue;
         while (eligible(descriptors[first - 1])) first -= 1;
@@ -357,7 +385,7 @@
       }
       for (const descriptor of descriptors) {
         const projection = descriptor.projection;
-        if (descriptor.unitType !== "line" || !descriptor.ending || projection.fence || projection.rule || projection.setextDelimiter || /^h[1-6]$/.test(projection.tag)) continue;
+        if (descriptor.unitType !== "line" || !descriptor.ending || projection.fence || projection.rule || projection.referenceDefinition || projection.setextDelimiter || /^h[1-6]$/.test(projection.tag)) continue;
         const run = (descriptor.raw.match(/\\+$/) || [""])[0].length;
         if (run % 2 === 1 && projection.text.slice(0,-1).trim()) {
           projection.suffix = 1;
@@ -379,7 +407,7 @@
       const descriptor = descriptors[Math.max(0, low - 1)];
       if (descriptor && (descriptor.projection.rule || descriptor.projection.setextDelimiter)) return { kind: "separator", start: descriptor.start, end: descriptor.end };
       if (descriptor && descriptor.unitType === "table") return { kind: "table", start: descriptor.start, end: descriptor.end };
-      if (descriptor && (descriptor.unitType === "code" || descriptor.unitType === "literal")) {
+      if (descriptor && (descriptor.unitType === "code" || descriptor.unitType === "literal" || descriptor.projection.referenceDefinition)) {
         return { kind: "code", start: descriptor.start, end: descriptor.end,
           contentStart: descriptor.start, fence: descriptor.projection.fence,
           indent: (descriptor.raw.match(/^[ \t]*/) || [""])[0] };
@@ -389,7 +417,7 @@
         const containsCode=(tokens)=>tokens.some(token=>token.type==="code"
           ? offset>=base+token.contentStart && offset<=base+token.contentEnd
           : token.children && containsCode(token.children));
-        if(containsCode(MarkdownCodec.tokenizeInline(descriptor.projection.text))) {
+        if(containsCode(MarkdownCodec.tokenizeInline(descriptor.projection.text, 0, descriptor.projection.text.length, 0, false, false, this.lineDescriptors.references))) {
           return {kind:"code",start:descriptor.start,end:descriptor.end,contentStart:offset,fence:false,
             indent:(descriptor.raw.match(/^[ \t]*/)||[""])[0]};
         }
@@ -464,6 +492,8 @@
         if (descriptor.unitType === "table") row.classList.add("amorist-wysiwyg-table");
         if (descriptor.projection.literal) {
           this.appendSourceText(row, raw, 0, raw.length);
+        } else if (projection.referenceDefinition) {
+          this.appendSourceText(row, projection.text, projection.prefix, raw.length);
         } else if (descriptor.codeContent) {
           row.classList.add("amorist-wysiwyg-code");
           this.appendSourceText(row, raw || CARET_SENTINEL, 0, raw.length);
@@ -591,7 +621,7 @@
           parent.append(wrapper);
         }
       };
-      append(container, MarkdownCodec.tokenizeInline(text));
+      append(container, MarkdownCodec.tokenizeInline(text, 0, text.length, 0, false, false, this.lineDescriptors.references));
     }
 
     renderTableRow(row, raw) {
@@ -705,6 +735,42 @@
           this.rowNodes[index] = row;
         });
       }
+      const referenceSignature = (descriptor, references) => {
+        if (!descriptor || descriptor.unitType === "code" || descriptor.unitType === "literal"
+            || descriptor.projection.referenceDefinition) return "";
+        const links = [];
+        const visit = tokens => tokens.forEach(token => {
+          if (token.referenceKey) links.push([token.start, token.end, token.referenceKey, token.href, token.title]);
+          if (token.children) visit(token.children);
+        });
+        const text = descriptor.projection.text;
+        visit(MarkdownCodec.tokenizeInline(text, 0, text.length, 0, false, false, references));
+        return JSON.stringify(links);
+      };
+      const refreshedTables = new Set(after.unitType === "table" ? [after.unitStart] : []);
+      const referencesChanged = JSON.stringify(Array.from(beforeDescriptors.references || []))
+        !== JSON.stringify(Array.from(nextDescriptors.references || []));
+      if (referencesChanged) nextDescriptors.forEach((descriptor, index) => {
+        if (index === after.index || referenceSignature(beforeDescriptors[index], beforeDescriptors.references)
+            === referenceSignature(descriptor, nextDescriptors.references)) return;
+        if (descriptor.unitType === "table") {
+          if (refreshedTables.has(descriptor.unitStart)) return;
+          refreshedTables.add(descriptor.unitStart);
+          const oldBlock = this.rowNodes[index].closest(".amorist-wysiwyg-table-block");
+          const left = oldBlock.scrollLeft;
+          const pinned = oldBlock.scrollWidth - oldBlock.clientWidth - left <= 1;
+          const block = this.renderTableBlock(descriptor.unitStart, descriptor.unitEnd);
+          oldBlock.replaceWith(block);
+          this.layoutTableBlocks([block]);
+          const maximum = Math.max(0, block.scrollWidth - block.clientWidth);
+          block.scrollLeft = pinned ? maximum : Math.min(left, maximum);
+        } else {
+          const oldRow = this.rowNodes[index];
+          const row = this.renderSourceLine(descriptor);
+          oldRow.replaceWith(row);
+          this.rowNodes[index] = row;
+        }
+      });
       this.setSurfaceSelection(selection.start, selection.end);
       if (tableScroll) {
         const maximum = Math.max(0, tableScroll.block.scrollWidth - tableScroll.block.clientWidth);

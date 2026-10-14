@@ -35,7 +35,7 @@
       "id": 5,
       "name": "common-markdown-and-mapping",
       "status": "partial",
-      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Setext titles and closed initial front matter now pass native Linux opening/edit/undo/mode probes. Reference links, images, nested/container code, cross-row inline projection and remaining block/unsupported-literal contexts still pending. URI/email angle autolinks and plain URL/email recognition now use explicit raw intervals. Unsafe schemes have no executable browser href; code and escaped angles remain literal. Directed Linux DOM-caret/undo/CRLF/mode checks and codec checks on all three platforms pass. The full Linux run passed all checks except B1, whose multi-node targeting was fixed and passed separately; eleven classic checks are green. Native external activation and remaining Markdown contexts are not complete. Inline link grammar now separates decoded destination and title, handles escaped/balanced parentheses and angle paths with spaces, and decodes standard character references once without reinterpreting escaped entities. Nested explicit links and angle autolinks take precedence without nested anchors. Styled labels (including UTF16 emoji prefixes) and empty labels pass native Linux editing/undo/CRLF/mode probes. The full Linux suite is green and codec probes pass on all three platforms. Reference definitions and cross-row inline projection remain pending."
+      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Setext titles and closed initial front matter now pass native Linux opening/edit/undo/mode probes. Reference links, images, nested/container code, cross-row inline projection and remaining block/unsupported-literal contexts still pending. URI/email angle autolinks and plain URL/email recognition now use explicit raw intervals. Unsafe schemes have no executable browser href; code and escaped angles remain literal. Directed Linux DOM-caret/undo/CRLF/mode checks and codec checks on all three platforms pass. The full Linux run passed all checks except B1, whose multi-node targeting was fixed and passed separately; eleven classic checks are green. Native external activation and remaining Markdown contexts are not complete. Inline link grammar now separates decoded destination and title, handles escaped/balanced parentheses and angle paths with spaces, and decodes standard character references once without reinterpreting escaped entities. Nested explicit links and angle autolinks take precedence without nested anchors. Styled labels (including UTF16 emoji prefixes) and empty labels pass native Linux editing/undo/CRLF/mode probes. The full Linux suite is green and codec probes pass on all three platforms. Reference definitions and cross-row inline projection remain pending. Reference-link development now passes native Linux browser probes for Unicode/full/collapsed/shortcut resolution, first-definition precedence, editable multiline definitions, dependent prose/table refresh, unrelated DOM preservation, undo and CRLF/mode round-trip. Codec checks pass on Linux/macOS/Windows; eleven classic checks pass. Cross-row inline projection and nested-container completeness remain pending."
     },
     {
       "id": 6,
@@ -899,6 +899,44 @@
         "fail": 0,
         "report": "link-grammar-classic-linux.log"
       }
+    },
+    "referenceLinkDevelopment": {
+      "status": "directed Linux browser checks and classic regressions passed; full Linux regression running",
+      "codecPlatforms": {
+        "linux": "pass",
+        "macos": "pass in isolated baseline",
+        "windows": "pass in isolated baseline"
+      },
+      "directedLinux": {
+        "exitCode": 0,
+        "report": "reference-block-layout-verified-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ]
+      },
+      "classicLinux": {
+        "pass": 11,
+        "fail": 0,
+        "report": "reference-classic-linux.log"
+      },
+      "scope": [
+        "full, collapsed and shortcut reference links",
+        "Unicode default case folding, whitespace normalization and first-definition precedence",
+        "escaped labels remain raw for lookup",
+        "multiline definition destinations and titles, malformed next-line title fallback",
+        "literal editable definition rows, excluding code/front matter and interrupted prose",
+        "native destination edit updates prose/table dependents and preserves unrelated DOM",
+        "exact CRLF, undo and mode round-trip"
+      ],
+      "grammarSource": "https://spec.commonmark.org/0.31.2/#reference-links",
+      "remaining": [
+        "cross-row inline projection",
+        "complete nested container contexts",
+        "dedicated QA contract gate for reference links",
+        "shipping Safari/WebView2 and package acceptance"
+      ],
+      "fullLinuxSession": 59472
     }
   }
 }

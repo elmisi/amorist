@@ -20,5 +20,12 @@ generated += json.dumps(references, ensure_ascii=True, sort_keys=True, separator
 numeric = {str(value): html.unescape(f"&#{value};") for value in range(0x80, 0xa0)
            if html.unescape(f"&#{value};") != chr(value)}
 generated += "  const HTML_NUMERIC_REPLACEMENTS = " + json.dumps(numeric, ensure_ascii=True, sort_keys=True, separators=(",", ":")) + ";\n"
+source = source[:start] + generated + source[end:]
+start = source.index("  // Unicode default case folding;")
+end = source.index("\n\n", start)
+fold = {chr(value): chr(value).casefold() for value in range(0x110000)
+        if chr(value).casefold() != chr(value)}
+generated = "  // Unicode default case folding; generated from Python str.casefold.\n  const REFERENCE_CASE_FOLD = "
+generated += json.dumps(fold, ensure_ascii=True, separators=(",", ":")) + ";"
 path.write_text(source[:start] + generated + source[end:])
 print(f"Generated {len(references)} HTML named character references")

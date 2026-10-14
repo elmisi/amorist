@@ -91,6 +91,49 @@ async function main() {
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original.slice(0,end)+"\r\n> > "+original.slice(end), `${entry.id}: nested quote Enter retains depth`);
         await engine.evaluate("(() => { window.__blocks.undo(); window.__blocks.showSourceMode(); window.__blocks.showWysiwygMode(); return true; })()");
         assert.equal(await engine.evaluate("window.__blocks.getMarkdown()"), original);
+
+        const referenceSource = '[Read][STRASSE] and [Straße][]\r\n\r\n| Link | Note |\r\n| --- | --- |\r\n| [Straße] | stable |\r\n\r\n[Straße]: old.md "Title"\r\n[Straße]: ignored.md\r\n\r\nuntouched tail';
+        const references = await engine.evaluate(`(() => {
+          const editor = window.__blocks;
+          editor.setMarkdown(${JSON.stringify(referenceSource)});
+          const rows = editor.surface.querySelectorAll('.amorist-source-line');
+          window.__referenceTail = rows[9];
+          return {source: editor.getMarkdown(), links: Array.from(editor.surface.querySelectorAll('a')).map(a => a.dataset.linkDestination),
+            definition: rows[6].textContent};
+        })()`);
+        assert.equal(references.source, referenceSource);
+        assert.deepEqual(references.links, ['old.md', 'old.md', 'old.md']);
+        assert.equal(references.definition, '[Straße]: old.md "Title"\n');
+        const destinationAt = referenceSource.indexOf('old.md');
+        await engine.evaluate(`(() => { const editor = window.__blocks; editor.focus(); editor.setSurfaceSelection(${destinationAt}, ${destinationAt + 3}); return true; })()`);
+        await engine.sendKeys(['n']);
+        // WebKit's sendKeys completion can precede its final input callback.
+        await new Promise(resolve => setTimeout(resolve, 60));
+        const changed = await engine.evaluate(`(() => {
+          const editor = window.__blocks;
+          return {source: editor.getMarkdown(), links: Array.from(editor.surface.querySelectorAll('a')).map(a => a.dataset.linkDestination),
+            tailSame: editor.surface.querySelectorAll('.amorist-source-line')[9] === window.__referenceTail};
+        })()`);
+        assert.equal(changed.source, referenceSource.replace('old.md', 'n.md'));
+        assert.deepEqual(changed.links, ['n.md', 'n.md', 'n.md']);
+        assert.equal(changed.tailSame, true, `${entry.id}: definition edit preserves unrelated DOM`);
+        await engine.evaluate('(() => { window.__blocks.undo(); return true; })()');
+        assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'), referenceSource);
+        assert.deepEqual(await engine.evaluate("Array.from(window.__blocks.surface.querySelectorAll('a')).map(a => a.dataset.linkDestination)"), ['old.md', 'old.md', 'old.md']);
+        const metadataSource = '[Name]:\r\n  <docs/λ.md>\r\n  "first\r\nsecond"\r\n\r\n[Name]\r\n\r\nordinary paragraph\r\n[Hidden]: hidden.md\r\n\r\n[Hidden]\r\n\r\n~~~\r\n[Code]: code.md\r\n~~~\r\n[Code]';
+        const metadata = await engine.evaluate(`(() => {
+          const editor = window.__blocks;
+          const source = ${JSON.stringify(metadataSource)};
+          editor.setMarkdown(source);
+          const result = {source: editor.getMarkdown(), definitions: editor.lineDescriptors.filter(d => d.projection.referenceDefinition).length,
+            links: Array.from(editor.surface.querySelectorAll('a')).map(a => ({href:a.dataset.linkDestination, title:a.getAttribute('title')}))};
+          editor.showSourceMode(); editor.showWysiwygMode();
+          result.roundtrip = editor.getMarkdown();
+          return result;
+        })()`);
+        assert.equal(metadata.definitions, 4);
+        assert.deepEqual(metadata.links, [{href:'docs/λ.md',title:'first\r\nsecond'}]);
+        assert.equal(metadata.roundtrip, metadata.source);
         console.log(`block-layout: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

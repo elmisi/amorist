@@ -443,4 +443,43 @@ assert.equal(codec.linkDestinationAt('(notes.md "first\r\nsecond")', 0).title, '
 assert.equal(codec.linkDestinationAt('(notes.md "first\r\n   \r\nsecond")', 0), null);
 assert.equal(codec.linkDestinationAt('(notes.md\n\n"title")', 0), null);
 assert.equal(codec.renderInline('[unsafe](javascr&#x69;pt:alert(1))'), '<a target="_blank" rel="noopener noreferrer">unsafe</a>');
+
+const definitions = new Map([
+  [codec.referenceKey("Straße"), {href: "notes.md", title: "A title"}],
+  ["other", {href: "other.md", title: null}],
+  ["a\\*b", {href: "escaped.md", title: null}],
+]);
+for (const source of ["[Read][STRASSE]", "[Straße][]", "[STRAẞE]"]) {
+  const tokens = codec.tokenizeInline(source, 0, source.length, 0, false, false, definitions);
+  assert.equal(tokens[0].type, "link", source);
+  assert.equal(tokens[0].href, "notes.md");
+  assert.equal(tokens[0].end, source.length);
+  assert.equal(tokens[0].contentStart, 1);
+}
+for (const source of ["[Straße][undefined]", "`[Straße]`", "[a*b]", "\\[Straße]"]) {
+  assert.equal(codec.tokenizeInline(source, 0, source.length, 0, false, false, definitions)
+    .filter(token => token.referenceKey).length, 0, source);
+}
+assert.equal(codec.referenceKey(" A\t B\r\nC "), "a b c");
+assert.equal(codec.referenceKey("😀".repeat(999)), "😀".repeat(999));
+assert.equal(codec.referenceKey("😀".repeat(1000)), null);
+assert.equal(codec.referenceKey("a[b"), null);
+for (const [source, href, title, end] of [
+  ['[Name]: <docs/caffè λ.md> "&copy;"\r\nnext', 'docs/caffè λ.md', '©', 34],
+  ['[Name]:\r\n  notes_(v2).md\r\n  "first\r\nsecond"\r\nnext', 'notes_(v2).md', 'first\r\nsecond', 43],
+  ['[Name]: <>', '', null, 10],
+  ['[Name]: notes.md\n"unclosed', 'notes.md', null, 16],
+]) {
+  const definition = codec.referenceDefinitionAt(source);
+  assert.ok(definition, source);
+  assert.equal(definition.key, 'name');
+  assert.equal(definition.href, href);
+  assert.equal(definition.title, title);
+  // Endpoint is the end of the last consumed physical content row.
+  assert.equal(definition.end, end);
+  assert.equal(source[definition.end] || '', source.endsWith('next') ? '\r' : source.includes('\n') ? '\n' : '');
+}
+for (const source of ['[x]:', '[x]: bad)path', '[x]: path "bad', '    [x]: path', '[x]: path trailing', '[x]: path "a\n\nb"']) {
+  assert.equal(codec.referenceDefinitionAt(source), null, source);
+}
 console.log("editor-markdown-codec.test.js passed");
