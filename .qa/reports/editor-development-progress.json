@@ -3366,7 +3366,7 @@
       "linux-candidate-b9b3ddc-raw-loop.log exit0"
     ],
     "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
-    "remaining": "Dirty-close/native failure paths and external opener integration, original B2 intermittency, macOS/Windows acceptance pending.",
+    "remaining": "External opener integration and unexplained first-run B2 timing anomaly, Windows/macOS acceptance pending.",
     "rollbackPreparation": {
       "package": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-0.10.8-backup/amorist_0.10.8_restore.deb",
       "sha256": "cadd31d72d0d3768b635368c3bcd0ee178e71f6bf40047ee0c711631d10f82f3",
@@ -3410,7 +3410,7 @@
       "linux-isolated-upgrade.log (installation/upgrade passed; initial identity invocation used wrong CLI syntax)",
       "linux-isolated-upgrade-completion.log (corrected headless invocation and hash verification passed)"
     ],
-    "containerState": "Stopped after native chooser proof; retained for remaining acceptance"
+    "containerState": "Stopped after dirty-close and save-failure proof; retained for remaining acceptance"
   },
   "linuxInstalledGuiAcceptance": {
     "status": "passed",
@@ -3463,5 +3463,39 @@
     ],
     "scope": "Actual X11 keyboard interaction with GTK native dialogs, no mocked chooser or frontend injection. Open cancel/accept and Save As cancel/accept; originals preserved and saved copy byte-exact. Explicit focus needed in Xvfb without a window manager; GTK Save filename stem selection handled by selecting complete name.",
     "remaining": "Dirty-close/native failure paths and external opener integration, original B2 intermittency, macOS/Windows acceptance pending."
+  },
+  "linuxNativeDirtyCloseAndSaveFailure": {
+    "status": "passed on installed0.10.10 in isolated Ubuntu26.04",
+    "candidateCommit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
+    "dirtyClose": {
+      "launcher": "installed amorist.desktop via gio",
+      "pid": 379,
+      "file": "/tmp/amorist-desktop-dg1km7_b/desktop activation λ.md",
+      "sourceSha256": "4faa752cfa20537d57fdefe11bd359000301ea84ea52cff720ec855af2824019",
+      "originalUnchanged": true,
+      "nativeDirtyCloseCancelPreservesDraft": true,
+      "nativeDirtyCloseDiscardCloses": true,
+      "defaultMarkdownHandler": "amorist.desktop",
+      "screenshot": "/tmp/amorist-native-dirty-close.png"
+    },
+    "saveFailure": {
+      "launcher": "installed amorist.desktop via gio",
+      "pid": 587,
+      "file": "/tmp/amorist-desktop-nlrkx90p/desktop activation λ.md",
+      "sourceSha256": "10e6e2ebcc1b2eaa19c7fde16a0094cf59def57deec0e40ed644b7fbbb8f4419",
+      "deniedSavePreservesOriginal": true,
+      "deniedSavePreservesDraft": true,
+      "retryWritesExactDraft": true,
+      "defaultMarkdownHandler": "amorist.desktop",
+      "screenshot": "/tmp/amorist-native-save-retry.png"
+    },
+    "evidence": [
+      "linux-native-dirty-close-complete.log exit0: actual WM_DELETE_WINDOW, native confirmation, Cancel preserves exact draft via real clipboard; OK closes while disk unchanged",
+      "linux-native-dirty-close.png: visually inspected native unsaved-changes confirmation with actual draft visible",
+      "linux-native-save-failure.log exit0: parent directory read-only for nonroot user; failed Ctrl+S preserves original and draft; restoring permissions and retry saves exact text",
+      "linux-native-save-denied.png: visually inspected Permission denied (os error13), dirty marker and retained draft"
+    ],
+    "scope": "Actual keyboard/mouse GTK interaction; owned process/window checks; only generated temporary documents altered. Initial xdotool windowclose used XDestroyWindow and was rejected as invalid close-protocol evidence. Corrected to existing PID-checked WM_DELETE_WINDOW helper.",
+    "remaining": "External opener integration and unexplained first-run B2 timing anomaly, Windows/macOS acceptance pending."
   }
 }
