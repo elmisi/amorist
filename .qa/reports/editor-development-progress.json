@@ -3366,7 +3366,7 @@
       "linux-candidate-b9b3ddc-raw-loop.log exit0"
     ],
     "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
-    "remaining": "External opener integration and unexplained first-run B2 timing anomaly, Windows/macOS acceptance pending.",
+    "remaining": "Original intermittent B2 anomaly remains unexplained; current final full suite, isolated family B and80 traced insertions passed. Windows/macOS and final requirement-by-requirement acceptance still pending.",
     "rollbackPreparation": {
       "package": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-0.10.8-backup/amorist_0.10.8_restore.deb",
       "sha256": "cadd31d72d0d3768b635368c3bcd0ee178e71f6bf40047ee0c711631d10f82f3",
@@ -3410,7 +3410,7 @@
       "linux-isolated-upgrade.log (installation/upgrade passed; initial identity invocation used wrong CLI syntax)",
       "linux-isolated-upgrade-completion.log (corrected headless invocation and hash verification passed)"
     ],
-    "containerState": "Stopped after dirty-close and save-failure proof; retained for remaining acceptance"
+    "containerState": "Stopped after external opener proof; retained for remaining acceptance"
   },
   "linuxInstalledGuiAcceptance": {
     "status": "passed",
@@ -3497,5 +3497,38 @@
     ],
     "scope": "Actual keyboard/mouse GTK interaction; owned process/window checks; only generated temporary documents altered. Initial xdotool windowclose used XDestroyWindow and was rejected as invalid close-protocol evidence. Corrected to existing PID-checked WM_DELETE_WINDOW helper.",
     "remaining": "External opener integration and unexplained first-run B2 timing anomaly, Windows/macOS acceptance pending."
+  },
+  "linuxActualExternalOpeners": {
+    "status": "passed with documented container browser condition",
+    "candidateCommit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
+    "proof": {
+      "status": "pass",
+      "defaults": {
+        "x-scheme-handler/http": "org.gnome.Epiphany.desktop",
+        "text/plain": "org.gnome.TextEditor.desktop"
+      },
+      "browserRequests": 1,
+      "browserPids": [
+        305
+      ],
+      "editorPids": [
+        495
+      ],
+      "parentUnchanged": true,
+      "filesUnchanged": true,
+      "scope": "Actual installed backend command and OS default application dispatch; frontend modifier-click separately tested"
+    },
+    "evidence": [
+      "linux-external-opener-utf8.log exit0",
+      "linux-external-opener.png: visually inspected GNOME Text Editor with system file λ.txt and SYSTEM_FILE_OPEN_OK λ",
+      "linux-external-opener-control.log: direct gio control reproduces Epiphany namespace/sandbox failure independent of Amorist"
+    ],
+    "scope": "Actual installed open_external_link command dispatches through official plugin and OS associations to real Epiphany and GNOME Text Editor; HTTP request and owned application profiles verified; parent UI/path and both source files unchanged. Frontend modifier-click covered separately by native/editor checks.",
+    "environmentConditions": [
+      "LANG and LC_ALL set C.UTF-8; minimal container ASCII locale caused MIME tool failure for Unicode paths",
+      "Installed file utility for generic xdg-mime detection",
+      "Only private QA Epiphany desktop entry sets WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 to work around Docker namespace restriction; Amorist environment and delivered code/config unchanged"
+    ],
+    "remaining": "Original intermittent B2 anomaly remains unexplained; current final full suite, isolated family B and80 traced insertions passed. Windows/macOS and final requirement-by-requirement acceptance still pending."
   }
 }
