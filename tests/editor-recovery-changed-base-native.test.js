@@ -23,7 +23,7 @@ async function main() {
     savedSource: 'Original document\r\n', unsavedSource: 'Original document with unsaved work\r\n',
     revision: 1, boundaryState: null, legacyImport: false });
   fs.writeFileSync(recordPath, record);
-  const engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
+  let engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
     ['--', file], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
   try {
     await engine.start();
@@ -48,6 +48,41 @@ async function main() {
     assert.match(await engine.evaluate(`document.getElementById('notice').textContent`), /saved file changed/i);
     assert.equal(fs.readFileSync(file, 'utf8'), disk, 'Recovery must not overwrite the external changes');
     console.log('Changed-base startup recovery: explicit choice, warning, exact recovered text and unchanged file passed');
+    await engine.close();
+    engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
+      ['--new-document'], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+    await engine.start();
+    async function waitFor(expression) {
+      const deadline = Date.now() + 6000;
+      while (!await engine.evaluate(expression)) {
+        assert.ok(Date.now() < deadline, 'Timed out: ' + expression);
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+    await waitFor(`!document.getElementById('editor').inert && !!document.querySelector('.amorist-editor-surface')`);
+    await engine.evaluate(`window.__previousRecoveryEditor=document.querySelector('.amorist-editor-surface')`);
+    async function openChoice() {
+      await engine.evaluate(`(()=>{window.__TAURI__.dialog.open=()=>Promise.resolve(${JSON.stringify(file)});document.querySelector('[data-file-action="open"]').click();return true;})()`);
+      await waitFor(`!!document.querySelector('#recovery-dialog[open]')`);
+    }
+    await openChoice();
+    await engine.evaluate(`document.getElementById('recovery-cancel').click()`);
+    await waitFor(`!document.querySelector('#recovery-dialog') && !document.getElementById('editor').inert`);
+    assert.equal(await engine.evaluate(`document.querySelector('.amorist-editor-surface')===window.__previousRecoveryEditor`), true);
+    assert.equal(fs.readFileSync(file, 'utf8'), disk);
+    await openChoice();
+    fs.writeFileSync(file, 'Changed again during selection\r\n');
+    await engine.evaluate(`document.getElementById('recover-selected').click()`);
+    await waitFor(`document.getElementById('notice').textContent.includes('changed during recovery selection')`);
+    assert.equal(await engine.evaluate(`document.querySelector('.amorist-editor-surface')===window.__previousRecoveryEditor`), true);
+    assert.equal(fs.readFileSync(file, 'utf8'), 'Changed again during selection\r\n');
+    assert.equal(fs.readFileSync(recordPath, 'utf8'), record);
+    fs.writeFileSync(file, disk);
+    await openChoice();
+    await engine.evaluate(`document.getElementById('recover-selected').click()`);
+    await waitFor(`document.querySelector('.amorist-editor-surface').textContent.includes('Original document with unsaved work')`);
+    assert.equal(fs.readFileSync(file, 'utf8'), disk);
+    console.log('Changed-base Open recovery: cancel, external race refusal and explicit recovery passed');
   } finally {
     await engine.close();
     fs.rmSync(scratch, { recursive: true, force: true });

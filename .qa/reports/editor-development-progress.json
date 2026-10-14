@@ -2181,14 +2181,15 @@
     "remaining": "Actual OS pickers, upgrade, Settings/Bug/clipboard and recovery on installed package remain unproved; VM now has no installed candidate"
   },
   "changedBaseRecoveryReproducer": {
-    "status": "startup-fixed",
+    "status": "startup-and-open-fixed-linux",
     "exitCode": 1,
     "test": "tests/editor-recovery-changed-base-native.test.js",
     "evidence": "recovery-changed-base-reproducer-linux.log in private execution evidence",
     "observed": "Compiled app silently ignores an inactive same-document recovery copy when saved base differs; original updated document and recovery record remain byte exact",
-    "required": "Open changed-base inspection/selection, cancel and file-race native checks plus Windows/macOS package coverage remain pending",
+    "required": "Startup cancellation/race, changed-base save/restart and Windows/macOS package coverage remain pending",
     "startupEvidence": "recovery-changed-base-fixed-linux.log: native explicit selection, changed-base warning, recovered text and unchanged external file pass",
-    "rustEvidence": "recovery-changed-base-rust-linux.log: full Linux cargo tests exit 0"
+    "rustEvidence": "recovery-open-rust-linux.log: 35 passed, 1 ignored helper, exit 0",
+    "openEvidence": "recovery-open-native-linux.log: startup and Open explicit recovery; cancellation and file race preserve previous editor root and original/recovery bytes; exit 0"
   },
   "subscriptionStop": {
     "remainingPercentThreshold": 60,

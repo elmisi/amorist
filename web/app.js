@@ -87,8 +87,8 @@
       spawnInstance(path) { return invoke("spawn_document_instance", { path: path || null }); },
       takeNativeOpenRequests() { return invoke("take_native_open_requests"); },
       listenNativeOpen(handler) { return window.__TAURI__.event.listen("native-open-available", handler); },
-      async openDocument(path, discard, recovery) {
-        var doc = await invoke("open_document", { path: path, discard: discard, recoveryChoice: recovery, contextId: contextId });
+      async openDocument(path, discard, recovery, expectedSavedSource) {
+        var doc = await invoke("open_document", { path: path, discard: discard, recoveryChoice: recovery, expectedSavedSource: expectedSavedSource, contextId: contextId });
         contextId = doc.contextId;
         return doc;
       },

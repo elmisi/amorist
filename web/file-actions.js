@@ -84,17 +84,21 @@
         if (action === "open") {
           var inspection = await options.backend.inspectOpen(path);
           warnings = inspection.warnings || [];
-          if (inspection.copies.length > 1) {
-            recovery = await options.chooseRecovery(inspection.copies, true);
+          if (inspection.copies.length > 1 || (inspection.copies.length === 1 && inspection.copies[0].savedSource !== inspection.savedSource)) {
+            recovery = await options.chooseRecovery(inspection.copies, true, inspection.savedSource);
             if (recovery === undefined) return false;
           } else if (inspection.copies.length === 1) {
             recovery = inspection.copies[0].sessionId;
+          }
+          var selectedCopy = inspection.copies.find(function(copy) { return copy.sessionId === recovery; });
+          if (selectedCopy && selectedCopy.savedSource !== inspection.savedSource) {
+            warnings.push("The saved file changed since this recovery copy was made. Recovery does not merge those changes. Use Save As to keep both versions.");
           }
         }
         options.pauseRecovery();
         var doc = action === "new"
           ? await options.backend.createDocument(discard)
-          : await options.backend.openDocument(path, discard, recovery);
+          : await options.backend.openDocument(path, discard, recovery, inspection.savedSource);
         doc.recoveryWarnings = (doc.recoveryWarnings || []).concat(warnings);
         await options.adopt(doc);
         return true;

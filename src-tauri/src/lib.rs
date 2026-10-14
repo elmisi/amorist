@@ -520,7 +520,8 @@ fn load_recovery_into(app: &tauri::AppHandle, session: &Mutex<Option<recovery::S
 }
 
 #[derive(Serialize)]
-struct RecoveryInspection { copies: Vec<recovery::Record>, warnings: Vec<String> }
+#[serde(rename_all = "camelCase")]
+struct RecoveryInspection { copies: Vec<recovery::Record>, warnings: Vec<String>, saved_source: String }
 
 #[tauri::command]
 async fn inspect_open_document(app: tauri::AppHandle, path: String, context_id: u64) -> Result<RecoveryInspection, String> {
@@ -536,9 +537,9 @@ async fn inspect_open_document(app: tauri::AppHandle, path: String, context_id: 
         warnings.extend(listing.warnings);
         let expected = prepared.path.as_ref().map(|p| p.display().to_string());
         let copies = listing.candidates.into_iter().filter(|c| !c.active && c.record.path == expected
-            && c.record.saved_source == prepared.source && c.record.unsaved_source != prepared.source)
+            && c.record.unsaved_source != c.record.saved_source && c.record.unsaved_source != prepared.source)
             .map(|c| c.record).collect();
-        Ok(RecoveryInspection { copies, warnings })
+        Ok(RecoveryInspection { copies, warnings, saved_source: prepared.source })
     }).await
 }
 
@@ -548,10 +549,13 @@ async fn create_document(app: tauri::AppHandle, context_id: u64, discard: bool) 
 }
 
 #[tauri::command]
-async fn open_document(app: tauri::AppHandle, path: String, context_id: u64, discard: bool, recovery_choice: Option<String>) -> Result<DocumentResponse, String> {
+async fn open_document(app: tauri::AppHandle, path: String, context_id: u64, discard: bool, recovery_choice: Option<String>, expected_saved_source: Option<String>) -> Result<DocumentResponse, String> {
     run_io(app, move |app, state| {
         require_context(state, context_id)?;
         let prepared = document::Prepared::open(std::path::Path::new(&path))?;
+        if recovery_choice.is_some() && expected_saved_source.as_deref() != Some(prepared.source.as_str()) {
+            return Err("The saved file changed during recovery selection. Try again.".into());
+        }
         transition_document(app, state, prepared, context_id, discard, recovery_choice)
     }).await
 }
@@ -567,7 +571,7 @@ fn transition_document(app: &tauri::AppHandle, state: &AppState, prepared: docum
         let claimed = store.claim(&id)?;
         let record = store.read(&id)?.ok_or("The recovery copy is no longer available.")?;
         let expected_path = prepared.path.as_ref().map(|p| p.display().to_string());
-        if record.path != expected_path || record.saved_source != prepared.source {
+        if record.path != expected_path {
             return Err("The file or recovery copy changed during selection. Try again.".into());
         }
         staged_owner = claimed;
