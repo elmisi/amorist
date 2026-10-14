@@ -5,9 +5,10 @@ import argparse
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
+
+from review_identity import release_reference_path, verify
 
 
 def main():
@@ -15,18 +16,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--list', type=Path, default=root / 'markdown-file-paths.txt')
     parser.add_argument('--state', type=Path, default=root / 'markdown-review-state.json')
-    parser.add_argument('--amorist', default='amorist', help='Executable name or path')
+    parser.add_argument('--amorist', help='Executable override; must match the delivery identity')
+    parser.add_argument('--release-reference', type=Path, default=release_reference_path())
     parser.add_argument('--debug', action='store_true', help='Enable problem reporting in Amorist')
     args = parser.parse_args()
-    executable = shutil.which(args.amorist)
-    if not executable:
-        parser.error(f'Executable not found: {args.amorist}')
+    try:
+        executable, release, identity = verify(args.release_reference, args.amorist)
+    except ValueError as error:
+        parser.error(str(error))
     paths = list(dict.fromkeys(line for line in args.list.read_text(encoding='utf-8').splitlines() if line))
     state = json.loads(args.state.read_text(encoding='utf-8')) if args.state.exists() else {'completed': [], 'events': []}
     completed = set(state['completed'])
 
     def record(path, event, **details):
-        state['events'].append({'time': datetime.now(timezone.utc).isoformat(), 'path': path, 'event': event, **details})
+        state['events'].append({'time': datetime.now(timezone.utc).isoformat(), 'path': path, 'event': event, 'version': release['version'], 'buildId': release['buildId'], **details})
         temporary = args.state.with_name(args.state.name + '.tmp')
         temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         temporary.replace(args.state)
@@ -39,6 +42,12 @@ def main():
             print(f'File assente o percorso non assoluto, saltato: {path}', flush=True)
             record(path, 'skipped')
             continue
+        try:
+            executable, _, identity = verify(args.release_reference, args.amorist, expected=release)
+        except ValueError as error:
+            record(path, 'failed', error=str(error), version=release['version'], buildId=release['buildId'])
+            print(str(error), file=sys.stderr)
+            return 1
         print(f'\n[{index}/{len(paths)}] {path}', flush=True)
         record(path, 'opened', executable=executable)
         process = None
