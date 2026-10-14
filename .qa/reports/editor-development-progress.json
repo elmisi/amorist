@@ -2093,5 +2093,13 @@
       "backupDirectory": "C:\\Users\\elmis\\AppData\\Local\\AmoristQA\\installer-preflight",
       "evidence": "windows-installer-preflight.json in private execution evidence; no installed files or registry entries changed"
     }
+  },
+  "currentClassicLinux": {
+    "sourceCommit": "b7ff1e2",
+    "suiteCount": 16,
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": "current-classic-linux.log in private execution evidence; Node exit 0; includes GTK/Chromium editor and actual system clipboard tests; does not replace full contract or package acceptance"
   }
 }
