@@ -28,6 +28,14 @@ impl Launch {
         Self { executable, arguments, wait_for_launcher }
     }
 
+    pub fn with_anchor(mut self, anchor: Option<&str>) -> Self {
+        if let Some(anchor) = anchor {
+            let at = self.arguments.iter().position(|arg| arg == "--").unwrap_or(self.arguments.len());
+            self.arguments.splice(at..at, [OsString::from("--heading-anchor"), OsString::from(anchor)]);
+        }
+        self
+    }
+
     pub fn spawn(self) -> Result<u32, String> {
         let mut command = Command::new(&self.executable);
         command.args(&self.arguments).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
@@ -70,6 +78,8 @@ mod tests {
         assert_eq!(plan.executable, PathBuf::from("/usr/bin/open"));
         assert_eq!(plan.arguments, vec![OsString::from("-n"), bundle.into_os_string(), "--args".into(),
             "--debug".into(), "--".into(), filename.as_os_str().into()]);
+        let anchored = Launch::prepare("/tmp/amorist".into(), None, Some(filename), false).with_anchor(Some("heading λ"));
+        assert_eq!(anchored.arguments, vec![OsString::from("--heading-anchor"), OsString::from("heading λ"), OsString::from("--"), filename.as_os_str().into()]);
         let plain = Launch::prepare("/tmp/amorist".into(), None, None, false);
         assert_eq!(plain.arguments, vec![OsString::from("--new-document")]);
         assert_eq!(macos_bundle(Path::new("/Applications/Test.app/Contents/MacOS/amorist")), Some("/Applications/Test.app".into()));

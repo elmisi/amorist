@@ -28,7 +28,11 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["md", "markdown", "mdown"],
+        "ext": [
+          "md",
+          "markdown",
+          "mdown"
+        ],
         "mimeType": "text/markdown",
         "description": "Markdown document"
       }
@@ -47,6 +51,11 @@
           "name": "debug",
           "takesValue": false,
           "description": "Enable local problem reporting."
+        },
+        {
+          "name": "heading-anchor",
+          "takesValue": true,
+          "description": "Navigate to a heading after opening the document."
         },
         {
           "name": "new-document",

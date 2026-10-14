@@ -35,6 +35,7 @@ struct AppState {
     save_target_serial: AtomicU64,
     native_open: Mutex<native_open::Queue>,
     image_resources: Mutex<image_resources::Store>,
+    startup_anchor: Mutex<Option<String>>,
 }
 
 struct PendingSaveTarget { token: u64, context_id: u64, target: document::SaveTarget }
@@ -81,7 +82,12 @@ fn debug_enabled(state: State<AppState>) -> bool {
 }
 
 #[tauri::command]
-async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>) -> Result<u32, String> {
+fn take_startup_anchor(state: State<AppState>) -> Option<String> {
+    state.startup_anchor.lock().unwrap().take()
+}
+
+#[tauri::command]
+async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>, anchor: Option<String>) -> Result<u32, String> {
     run_io(app, move |_app, state| {
         let file = path.map(|path| document::Prepared::open(std::path::Path::new(&path)).map(|doc| doc.path))
             .transpose()?.flatten();
@@ -93,7 +99,7 @@ async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>) ->
         let bundle = None;
         #[cfg(target_os = "linux")]
         let executable = PathBuf::from(exec_path()?);
-        instances::Launch::prepare(executable, bundle, file.as_deref(), *state.debug.lock().unwrap()).spawn()
+        instances::Launch::prepare(executable, bundle, file.as_deref(), *state.debug.lock().unwrap()).with_anchor(anchor.as_deref()).spawn()
     }).await
 }
 
@@ -1061,6 +1067,7 @@ pub fn run() {
             save_target_serial: AtomicU64::new(0),
             native_open: Mutex::new(native_open::Queue::default()),
             image_resources: Mutex::new(image_resources::Store::default()),
+            startup_anchor: Mutex::new(None),
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -1084,6 +1091,8 @@ pub fn run() {
             let matches = app.cli().matches()?;
             *app.state::<AppState>().debug.lock().unwrap() = matches.args.get("debug")
                 .map(|arg| arg.value.as_bool().unwrap_or(false)).unwrap_or(false);
+            *app.state::<AppState>().startup_anchor.lock().unwrap() = matches.args.get("heading-anchor")
+                .and_then(|arg| arg.value.as_str()).map(str::to_owned);
             let fresh_document = matches.args.get("new-document").is_some_and(|arg| arg.occurrences > 0);
             if fresh_document { *app.state::<AppState>().recovery_checked.lock().unwrap() = true; }
             match check_install_cli(app) {
@@ -1144,6 +1153,7 @@ pub fn run() {
             select_recovery,
             register_image,
             resolve_link,
+            take_startup_anchor,
             open_external_link,
             load_settings,
             save_settings,
