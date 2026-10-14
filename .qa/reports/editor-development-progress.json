@@ -3548,10 +3548,11 @@
     "archive": "platform-source-0d35913.tar",
     "sha256": "c91106d98459a67f5a434eb251cd6e508af1e6879232e8ca0abb8e2629f69c5f",
     "windows": "Archive hash verified; old source/diagnostics and debug executable backed up in private QA root; current Rust test restarted with MinGit PATH and child-written exit receipt",
-    "macos": "Archive hash verified; old source/diagnostics and debug executable backed up; current Rust tests36 passed1 worker ignored plus2 build-identity integration tests passed; GUI session locked",
+    "macos": "Current Rust36 passed1 ignored worker plus2 integration tests passed;6 headless JavaScript checks passed; GUI screen locked, owner unlock requested",
     "evidence": [
       "macos-current-0d35913-rust-tests.log exit0",
-      "Windows first invocations exposed PowerShell stderr and missing Git environment problems; no passing Windows result claimed"
+      "Windows first invocations exposed PowerShell stderr and missing Git environment problems; no passing Windows result claimed",
+      "macos-current-0d35913-headless-js.log:6 passed0 failed"
     ],
     "deliveryBlocked": true
   }
