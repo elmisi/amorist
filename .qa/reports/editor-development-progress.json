@@ -2338,5 +2338,14 @@
     },
     "loadedLibraryEvidence": "appimage-codec-observed-process-v2.json and appimage-explicit-codec-observer-status.json exit0: mapped HEIF loader and libheif from extracted package",
     "ci": "AppImage native no-host AV1 image check declared before artifact upload; required driver/Node22/codec added; YAML parsed locally, remote CI not run"
+  },
+  "settingsTallImageGeometry": {
+    "status": "fixed-browser-linux",
+    "defect": "Wrapped caption following a tall inline image gets active-line overlay from a uniform row grid, clipping caret at image height237 in GTK",
+    "fix": "For rows with a visible image, anchor one line of text to actual caret rectangle; other rows retain prior geometry",
+    "evidence": "settings-tall-image-wrapped-caption-linux.log reproduces; settings-tall-image-wrapped-caption-fixed-linux.log GTK and Chromium pass",
+    "coverage": "Seven requested image heights, plain and wrapped captions, caret before/after image, overlay height/containment, requested image sizing, exact CRLF source and raw selection",
+    "ci": "Covered by existing editor-settings test invocation; no remote CI run",
+    "remaining": "Native compiled Windows/macOS settings and final package/performance acceptance remain pending"
   }
 }

@@ -304,7 +304,10 @@
         height=parseFloat(style.lineHeight);
         const contentTop=rowBox.top+row.clientTop+(parseFloat(style.paddingTop)||0);
         const line=rect?Math.max(0,Math.floor((rect.top+rect.height/2-contentTop)/height)):0;
-        top=contentTop+line*height;
+        // Inline images make successive wrapped lines unevenly spaced. Keep
+        // one text-line height, anchored to the actual caret's visual line.
+        top=rect && row.querySelector('.amorist-image:not([hidden])')
+          ? rect.top-(height-rect.height)/2 : contentTop+line*height;
         const block=row.closest(".amorist-wysiwyg-table-block,.amorist-wysiwyg-code-block") || this.surface;
         if(block!==this.surface) paintParent=block;
         const box=block.getBoundingClientRect();

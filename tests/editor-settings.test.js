@@ -158,6 +158,39 @@ async function main(options = {}) {
         })()`);
         await new Promise(resolve=>setTimeout(resolve,80));
         assert.equal(await engine.evaluate('window.scrollY'),0,`${entry.id}: destroyed preview cannot move main viewport`);
+        const tallImage='![Alt]('+server.origin+'/tests/qa/assets/image-tall.svg)';
+        for(const tallSource of ['Before '+tallImage+' after\r\n','Before '.repeat(9)+tallImage+' '+ 'after '.repeat(12)+'\r\n']) {
+        await engine.evaluate(`(async () => {
+          const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify(tallSource)});
+          editor.showWysiwygMode();editor.applySettings({...window.AmoristSettings.defaults,highlightCurrentLine:true});
+          const deadline=Date.now()+5000;
+          while(!editor.surface.querySelector('img')?.naturalHeight){if(Date.now()>deadline)throw new Error('Tall image did not load');await new Promise(resolve=>setTimeout(resolve,30));}
+          editor.focus();window.scrollTo(0,0);return true;
+        })()`);
+        for(const imageHeight of [217,237,257,277,297,317,337]) {
+        await engine.evaluate(`window.__prefsEditor.surface.querySelector('img').style.height='${imageHeight}px'`);
+        for(const at of [3,tallSource.lastIndexOf('after')+2]) {
+          await engine.evaluate(`window.__prefsEditor.setSurfaceSelection(${at},${at})`);
+          await engine.evaluate(`window.getSelection().focusNode.parentElement.scrollIntoView({block:'center'})`);
+          await new Promise(resolve=>setTimeout(resolve,80));
+          const active=await engine.evaluate(`(() => {
+            const editor=window.__prefsEditor,selection=window.getSelection(),range=document.createRange();
+            range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
+            const caret=range.getBoundingClientRect(),box=editor.currentLine.getBoundingClientRect();
+            return {hidden:editor.currentLine.hidden,top:box.top,bottom:box.bottom,caretTop:caret.top,caretBottom:caret.bottom,
+              height:box.height,lineHeight:parseFloat(getComputedStyle(editor.surface.querySelector('.amorist-source-line')).lineHeight),
+              imageHeight:editor.surface.querySelector('img').getBoundingClientRect().height,maxImageHeight:Math.min(window.innerHeight*.55,480),
+              selection:editor.selectionRaw(),source:editor.getMarkdown()};
+          })()`);
+          assert.equal(active.hidden,false);
+          assert.ok(active.imageHeight>200);
+          assert.ok(Math.abs(active.imageHeight-Math.min(imageHeight,active.maxImageHeight))<=1,`${entry.id}: exercise the requested image height: ${JSON.stringify(active)}`);
+          assert.ok(active.height<=active.lineHeight+1,`${entry.id}: image must not enlarge active line`);
+          assert.ok(active.top<=active.caretTop+1 && active.bottom>=active.caretBottom-1,`${entry.id}: tall-image caption caret must lie inside active line: ${JSON.stringify(active)}`);
+          assert.equal(active.selection.start,at);assert.equal(active.selection.end,at);assert.equal(active.source,tallSource);
+        }
+        }
+        }
         exercised.push(entry.id);
         console.log(`settings: ${entry.id} passed`);
       } finally { await engine.close(); }
