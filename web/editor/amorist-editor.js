@@ -1721,6 +1721,19 @@
     }
 
     navigateHeading(anchor) {
+      if (anchor === "") {
+        if (this.mode === "source") {
+          this.source.focus();
+          this.source.setSelectionRange(0, 0);
+          this.source.scrollTop = 0;
+        } else {
+          this.surface.focus();
+          this.setSurfaceSelection(0, 0);
+          scrollViewportFor(this.surface).scrollTop = 0;
+        }
+        this.scheduleCurrentLine?.();
+        return true;
+      }
       const descriptors = this.mode === "source" ? this.buildProjection() : this.lineDescriptors;
       const used = new Set();
       const textOf = tokens => tokens.map(token => token.type === "image" ? token.alt

@@ -25,6 +25,15 @@ async function main(){
     return {first,second,missing,source,one:one.start,two:two.start,unchanged:editor.getMarkdown()===before};
    })()`);
    assert.deepEqual(headings,{first:true,second:true,missing:false,source:true,one:2,two:17,unchanged:true});
+   const top=await engine.evaluate(`(() => {
+    const editor=window.AmoristEditor.create(document.getElementById('host'),{value:'First\\r\\n\\r\\n# Heading\\r\\n'});
+    const before=editor.getMarkdown();editor.setSurfaceSelection(12,12);
+    const visual=editor.navigateHeading(''),visualAt=editor.selectionRaw().start;
+    editor.showSourceMode();editor.source.setSelectionRange(10,10);editor.source.scrollTop=100;
+    const source=editor.navigateHeading('');
+    return {visual,visualAt,source,sourceAt:editor.source.selectionStart,scroll:editor.source.scrollTop,unchanged:editor.getMarkdown()===before};
+   })()`);
+   assert.deepEqual(top,{visual:true,visualAt:0,source:true,sourceAt:0,scroll:0,unchanged:true});
    const dialog=await engine.evaluate(`(async()=>{
     const editor=window.AmoristEditor.create(document.getElementById('host'),{value:'Label'});editor.setSurfaceSelection(0,5);
     const cancelled=editor.runAction('link');const modal=document.querySelector('.amorist-link-dialog');const focused=document.activeElement===modal.querySelector('input');

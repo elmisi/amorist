@@ -2101,5 +2101,16 @@
     "failed": 0,
     "skipped": 0,
     "evidence": "current-classic-linux.log in private execution evidence; Node exit 0; includes GTK/Chromium editor and actual system clipboard tests; does not replace full contract or package acceptance"
+  },
+  "currentFullLinux": {
+    "sourceCommit": "d55fa45",
+    "exitCode": 1,
+    "result": "red",
+    "evidence": "current-full-qa-linux.json and current-full-qa-linux.log in private execution evidence",
+    "failure": "Native app recovery scenario times out waiting for exact persisted recovery copy; browser checks pass; requires investigation; no acceptance claimed"
+  },
+  "emptyAnchorNavigation": {
+    "status": "implemented",
+    "evidence": "empty-anchor-linux.log: GTK and Chromium pass, empty fragment positions caret at offset zero in visual and source modes without changing CRLF document"
   }
 }
