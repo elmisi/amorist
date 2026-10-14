@@ -111,7 +111,9 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml --lib -- --test-threads=1
 
       - name: Run review-loop identity, state and concurrency regressions
-        run: python3 tests/review_runner_test.py
+        run: |
+          python3 tests/review_runner_test.py
+          python3 tests/problem_report_reader_test.py
 
       - name: Run codec, toolbar and code-context regressions
         run: |
