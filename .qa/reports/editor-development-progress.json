@@ -2379,13 +2379,21 @@
       "Persisted settings after process restart",
       "Exact CRLF document and backward selection preserved",
       "Write failure keeps dialog open and preferences unchanged; retry succeeds",
-      "Corrupt settings retain original bytes, use defaults and show startup warning"
+      "Corrupt settings retain original bytes, use defaults and show startup warning",
+      "Two live native processes share persisted preferences; actual X11 focus refresh adopts another process save without document writes"
     ],
     "fix": "Refresh preferences after document notice reset, preserving simultaneous recovery warnings; Settings UI labels use English.",
     "evidence": [
       "settings-native-warning-fixed-linux.log exit0",
-      "settings-warning-regression-linux.log pass1 fail0 skip0"
+      "settings-warning-regression-linux.log pass1 fail0 skip0",
+      "settings-native-focus-netwm-linux.log exit0"
     ],
-    "remaining": "Cross-process focus refresh, package and performance acceptance remain pending."
+    "remaining": "Package and performance acceptance remain pending."
+  },
+  "linuxFullQaAfterSettings": {
+    "status": "failed",
+    "evidence": "settings-lifecycle-full-qa-linux.log exit1; full report retained in private execution directory",
+    "failure": "Native Save As recovery fixture timed out; readiness helper accepted mounted editor while its container was still inert. Corrected helper waits for enabled editor; focused recovery verification is running.",
+    "acceptance": "No full-suite pass claimed."
   }
 }

@@ -1178,6 +1178,7 @@ async function waitForEditor(engine, expectedSource, options) {
   await waitUntil(async () => {
     const snapshot = await editorSnapshot(engine);
     return snapshot.source === expectedSource
+      && await engine.evaluate(`!document.getElementById('editor').inert`)
       && snapshot.status !== "Starting"
       && snapshot.status !== "Loading"
       && (!noticeHidden || snapshot.notice === "");

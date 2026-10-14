@@ -37,10 +37,19 @@ async function main(){
   await engine.evaluate(`document.querySelector('#settings-form button[type="submit"]').focus()`);
   await engine.sendKeys([{key:'Enter'}]);await waitFor(`!document.getElementById('settings-dialog').open`);assert.equal(await font(),'21px');
   assert.equal(JSON.parse(fs.readFileSync(settingsPath,'utf8')).baseFontSize,21);
+  const first=engine,secondFile=path.join(scratch,'second preferences.md');fs.writeFileSync(secondFile,source);
+  const second=new TauriEngine(discoverDriver(),path.join(root,'src-tauri/target/debug/amorist'),['--',secondFile],environment);
+  function focus(file){const result=cp.spawnSync('python3',[path.join(__dirname,'qa/lib/focus-x11.py'),'amorist — '+path.basename(file)],{encoding:'utf8'});assert.equal(result.status,0,result.stderr);}
+  try{
+   engine=second;await start();await waitFor(`getComputedStyle(document.querySelector('.amorist-editor-source')).fontSize==='21px'`);
+   focus(secondFile);await waitFor('document.hasFocus()');await openSettings();await chooseSize(18);await engine.sendKeys([{key:'Enter'}]);await waitFor(`!document.getElementById('settings-dialog').open`);
+   engine=first;focus(file);await waitFor(`document.hasFocus()&&getComputedStyle(document.querySelector('.amorist-editor-source')).fontSize==='18px'`);
+   assert.equal(JSON.parse(fs.readFileSync(settingsPath,'utf8')).baseFontSize,18);assert.equal(fs.readFileSync(secondFile,'utf8'),source);
+  }finally{engine=first;await second.close();}
   await engine.close();const corrupt='{broken settings';fs.writeFileSync(settingsPath,corrupt);engine=create();await start();
   await waitFor(`!document.getElementById('notice').hidden&&document.getElementById('notice').textContent.includes('defaults')`);
   assert.equal(await font(),'16px');assert.equal(fs.readFileSync(settingsPath,'utf8'),corrupt);assert.equal(fs.readFileSync(file,'utf8'),source);
-  console.log('Native settings: Save/Cancel/restart, exact selection and CRLF document, failed write/retry and preserved corrupt settings passed');
+  console.log('Native settings: Save/Cancel/restart, exact selection and CRLF document, failed write/retry, cross-process native focus refresh and preserved corrupt settings passed');
  }finally{await engine.close();fs.rmSync(scratch,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
