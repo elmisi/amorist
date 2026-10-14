@@ -2346,6 +2346,29 @@
     "evidence": "settings-tall-image-wrapped-caption-linux.log reproduces; settings-tall-image-wrapped-caption-fixed-linux.log GTK and Chromium pass",
     "coverage": "Seven requested image heights, plain and wrapped captions, caret before/after image, overlay height/containment, requested image sizing, exact CRLF source and raw selection",
     "ci": "Covered by existing editor-settings test invocation; no remote CI run",
-    "remaining": "Native compiled Windows/macOS settings and final package/performance acceptance remain pending"
+    "remaining": "Native settings persistence/error/focus between processes and macOS/package/performance acceptance remain pending",
+    "classicLinux": {
+      "suiteCount": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0,
+      "evidence": "post-tall-image-classic-linux.log"
+    },
+    "windowsRenderer": {
+      "requirement": "J1",
+      "engine": "webview2",
+      "exitCode": 0,
+      "evidence": "settings-tall-image-webview2-windows.json/log; interactive task finished with code0",
+      "buildIdentity": {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-pc-windows-msvc:462f4edd5d4592ebf2f5e57b90cb31a51a065c85",
+        "fingerprint": "462f4edd5d4592ebf2f5e57b90cb31a51a065c85",
+        "commit": "fc68144333eadbf52a8b8527b70b13dd0a59816f",
+        "target": "x86_64-pc-windows-msvc",
+        "dirty": false
+      }
+    }
   }
 }
