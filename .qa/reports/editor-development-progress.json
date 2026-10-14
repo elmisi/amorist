@@ -2394,6 +2394,11 @@
     "status": "failed",
     "evidence": "settings-lifecycle-full-qa-linux.log exit1; full report retained in private execution directory",
     "failure": "Native Save As recovery fixture timed out; readiness helper accepted mounted editor while its container was still inert. Corrected helper waits for enabled editor; focused recovery verification is running.",
-    "acceptance": "No full-suite pass claimed."
+    "acceptance": "No full-suite pass claimed.",
+    "focusedRecovery": {
+      "result": "pass",
+      "evidence": "recovery-editor-ready-linux.log exit0 REQ-F2 green",
+      "scope": "Native app recovery lifecycle; full suite must be rerun with enabled-editor readiness guard."
+    }
   }
 }
