@@ -2239,10 +2239,12 @@
     "debianDependency": "heif-gdk-pixbuf added; inferred GTK/WebKit dependencies retained by Tauri CLI dependency merge; actual .deb control verification pending",
     "ci": "HEIF loader declared in Linux build/QA environment; native image lifecycle test explicitly added to Linux QA workflow",
     "missingLoaderProbe": {
-      "result": "not-proved",
-      "evidence": "avif-missing-loader-linux.log: empty GDK_PIXBUF_MODULE_FILE does not disable AVIF in this app session; negative assertion fails as intended, no success claimed",
+      "result": "codec-absence-proved",
+      "evidence": "avif-no-host-codec-repo-wrapper-linux.log exit0: real mount namespace hides host AV1 plugin directory; AVIF resource fails, other formats and SaveAs/New/source preservation pass",
       "secondEvidence": "avif-missing-loader-directory-linux.log: both cache and module directory overridden, AVIF still decodes; negative probe still not proved",
-      "codecPathEvidence": "avif-missing-codec-linux.log: overriding LIBHEIF_PLUGIN_PATH also leaves decoder available on this host; absence remains unproved"
+      "codecPathEvidence": "avif-missing-codec-linux.log: overriding LIBHEIF_PLUGIN_PATH also leaves decoder available on this host; absence remains unproved",
+      "wrapper": "tests/qa/lib/no-host-av1.sh; read-only root, writable fixture /tmp, private PID namespace and die-with-parent; no host file changed",
+      "limitation": "Proves resource failure, not full visible AVIF atom fallback; prior env-only failures preserved"
     }
   },
   "linuxDebianBuild": {
@@ -2267,19 +2269,22 @@
     "remaining": "Clean package installation/upgrade, AppImage self-contained loader, absent decoder simulation and full package acceptance remain pending"
   },
   "linuxAppImageAvif": {
-    "state": "built-with-codec-gap",
+    "state": "built-native-avif-fails-without-host",
     "handle": 99248,
     "binarySnapshot": "eb9087161729bbed2d9d25d9913af28fff25d08b",
     "initialFailure": "GTK linuxdeploy plugin cannot query librsvg-2.0 libdir because private build environment lacks librsvg-2.0.pc",
     "preparation": "librsvg2-dev 2.61.3+dfsg-3ubuntu0.1 downloaded and extracted into private tools/root, no system installation; pkg-config libdir now resolves /usr/lib/x86_64-linux-gnu",
     "evidence": "avif-appimage-bundle-rsvg-linux.log exit0; completed AppDir inspected; AV1 plugin absent",
-    "remaining": "Bundle libheif AV1 plugin/dependencies and set package-local decoder lookup; native acceptance without host decoder still required; no AppImage acceptance claimed",
+    "remaining": "Diagnose package-local codec loading; actual native AVIF without host decoder must pass before acceptance",
     "deliveryBlocked": true,
     "exitCode": 0,
-    "sha256": "fb79644d9e33793bd589283d448f058e78b76eacbed96d61edb2e3ffe6e60de4",
+    "sha256": "eb185378795cda3bced2e3d0adef08216f155e0ee2e2c66311bb72f881b0aec0",
     "included": [
       "libpixbufloader-heif.so",
-      "libheif.so.1"
+      "libheif.so.1",
+      "usr/lib/amorist/heif/plugins/libheif-aomdec.so",
+      "libaom.so.3",
+      "codec dependency libraries and copyright notices"
     ],
     "missing": [
       "libheif AV1 decoder plugin",
@@ -2305,6 +2310,16 @@
       "provenance": "Generator is within already-fingerprinted src-tauri/linux; no new fingerprint exclusions",
       "evidence": "appimage-av1-config.json prepared against installed plugin/ldd; copyright notices included; appimage-av1-rust-linux.log full Rust tests exit0",
       "remaining": "Release rebuild and AppImage bundling with generated config; inspect artifact and prove native AVIF without host codec; CI execution remains unproved"
-    }
+    },
+    "identity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:d163b20edffdc59f8b440842d401fdb3b88718bf",
+      "fingerprint": "d163b20edffdc59f8b440842d401fdb3b88718bf",
+      "commit": "2dc7df0235ad9433fd049b54c9189751b0f8c7bf",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "nativeEvidence": "appimage-av1-no-host-native-linux.log exit1: all formats except AVIF pass; package codec loading still fails when host AV1 plugin directory is hidden"
   }
 }

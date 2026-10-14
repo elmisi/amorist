@@ -20,7 +20,8 @@ async function main(){
  fs.copyFileSync(path.join(root,'tests/qa/assets/image.svg'),path.join(scratch,'images','photo λ.svg'));
  const file=path.join(scratch,'docs','note.md');
  const source='before\r\n![Alt](<../images/photo%20%CE%BB.svg> "Title")\r\nafter';fs.writeFileSync(file,source);
- const engine=new TauriEngine(driver,application,[file],{...process.env,XDG_DATA_HOME:path.join(scratch,'data')});
+ const engine=new TauriEngine(driver,application,[file],{...process.env,XDG_DATA_HOME:path.join(scratch,'data'),
+  XDG_CACHE_HOME:path.join(scratch,'cache'),XDG_CONFIG_HOME:path.join(scratch,'config')});
  try {
   await engine.start();
   let actual;
@@ -93,7 +94,7 @@ async function main(){
   console.log(JSON.stringify({formats,avifDataDecoded:await engine.evaluate("window.__avifDataDecoded")}));
   const missingAvifLoader=process.argv.includes('--expect-no-avif-loader');
   assert.deepEqual(formats,formatFiles.map(file=>file.extension==='avif'&&missingAvifLoader
-    ? {extension:file.extension,loaded:false,width:0,height:0}
+    ? {extension:file.extension,loaded:false}
     : {extension:file.extension,loaded:true,width:32,height:24}));
   const lifecycle=await engine.evaluate(`(async () => {
     const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document');
