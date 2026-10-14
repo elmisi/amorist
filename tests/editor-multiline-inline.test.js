@@ -37,7 +37,10 @@ async function main(){const server=await startStaticServer(path.resolve(__dirnam
  }
  const htmlCode=await engine.evaluate(`(()=>{const source=window.AmoristInternals.HtmlToMarkdown.convert('<p><code>first\\nsecond</code></p>');window.__multi.setMarkdown(source);return {source,code:Array.from(window.__multi.surface.querySelectorAll('code')).map(node=>node.textContent)};})()`);
  assert.deepEqual(htmlCode,{source:'`first\nsecond`',code:['first','second']},entry.id+': external HTML code keeps physical rows');
- for(const source of ['`first\r\nsecond`','**`first\nsecond`**','> `first\n> second`']){
+ const literalSlash='`first\\\r\nsecond`';
+ const slashView=await engine.evaluate(`(()=>{window.__multi.setMarkdown(${JSON.stringify(literalSlash)});return {source:window.__multi.getMarkdown(),code:Array.from(window.__multi.surface.querySelectorAll('code')).map(node=>node.textContent)};})()`);
+ assert.deepEqual(slashView,{source:literalSlash,code:['first\\','second']},entry.id+': code keeps literal trailing backslash');
+ for(const source of ['`first\r\nsecond`','**`first\nsecond`**','> `first\n> second`','- `first\n  second`','- [x] `first\n  second`','123. `first\n     second`']){
   const value=await engine.evaluate(`(()=>{const editor=window.__multi,data=new Map();editor.setMarkdown(${JSON.stringify(source)});editor.setSurfaceSelection(0,editor.getMarkdown().length);editor.handleCopy({clipboardData:{setData:(type,value)=>data.set(type,value)},preventDefault(){}},false);const html=data.get('text/html'),markdown=window.AmoristInternals.HtmlToMarkdown.convert(html);editor.setMarkdown(markdown);return {code:Array.from(editor.surface.querySelectorAll('code')).map(node=>node.textContent),htmlCode:(new DOMParser().parseFromString(html,'text/html')).querySelector('code').textContent};})()`);
   assert.deepEqual(value,{code:['first','second'],htmlCode:'first\nsecond'},entry.id+': generated HTML-only code round-trip');
  }

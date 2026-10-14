@@ -2753,6 +2753,22 @@
         "generated-html-code-performance-linux.log exit0 B9 GTK/Chromium"
       ],
       "remaining": "List/task code HTML fidelity, trailing literal backslash inside multiline code and full final regression/package acceptance remain pending."
+    },
+    "listHtmlAndLiteralBackslash": {
+      "implemented": "Indented physical continuation lines remain within list item inline scope; clipboard HTML retains their raw newlines for bullet/task/wide ordered lists. Projection restores trailing backslashes when they belong to multiline inline code, preserving prose hard-break behavior.",
+      "verified": [
+        "Actual generated HTML-only round-trip passes GTK/Chromium for bullet/task/wide ordered code",
+        "Literal backslash code and prose Enter/code/clipboard regression files pass",
+        "All17 classic Linux test files pass, fail0 skip0",
+        "B9 typing budgets pass on GTK/Chromium"
+      ],
+      "evidence": [
+        "list-html-code-newlines-linux.log pass4",
+        "inline-code-literal-backslash-linux.log pass4",
+        "current-multiline-classic-linux.log pass17 fail0 skip0",
+        "list-html-code-backslash-performance-linux.log exit0"
+      ],
+      "remaining": "Arbitrary mixed/nested container block conversion, tab-width continuation semantics, cross-row image/link editing and full final contract/native package/platform acceptance remain pending."
     }
   }
 }

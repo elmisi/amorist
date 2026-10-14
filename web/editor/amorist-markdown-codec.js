@@ -148,6 +148,7 @@
     return {
       number: bullet ? null : Number.parseInt(match[2],10),
       indent: match[1].length,
+      contentIndent: line.length - match[3].length,
       type: task ? "taskList" : (bullet ? "bulletList" : "orderedList"),
       checked: Boolean(task) && task[1].toLowerCase() === "x",
       text: task ? task[2] : match[3],
@@ -183,6 +184,18 @@
       if (item.type !== block.type) break;
       block.items.push(makeListItem(block.type, item));
       index = probe + 1;
+      const current = block.items[block.items.length - 1];
+      const continuation = [item.text];
+      while (index < lines.length && lines[index].trim() && !matchListItem(lines[index])) {
+        const prefix = lines[index].match(/^ */)[0].length;
+        if (prefix < item.contentIndent) break;
+        continuation.push(lines[index].slice(item.contentIndent));
+        index += 1;
+      }
+      if (continuation.length > 1) {
+        current.text = joinTextLines(continuation);
+        Object.defineProperty(current,"clipboardText",{value:continuation.join("\n")});
+      }
     }
 
     return { block, nextIndex: index };
@@ -233,14 +246,14 @@
         }
         return `<pre class="amorist-markdown-table" data-block-type="table"${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "taskList":
-        if(clipboard) return "<ul>"+block.items.map(item=>'<li><input type="checkbox" disabled'+(item.checked?' checked':'')+'>'+renderInline(item.text,references,clipboard)+renderSublists(item,references,clipboard)+'</li>').join("")+"</ul>";
+        if(clipboard) return "<ul>"+block.items.map(item=>'<li><input type="checkbox" disabled'+(item.checked?' checked':'')+'>'+renderInline(item.clipboardText ?? item.text,references,clipboard)+renderSublists(item,references,clipboard)+'</li>').join("")+"</ul>";
         return `<ul class="amorist-task-list"${attrs}>${block.items.map((item) =>
           `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text,references,clipboard)}</span>${renderSublists(item,references,clipboard)}</li>`,
         ).join("")}</ul>`;
       case "bulletList":
         return `<ul${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ul>`;
       case "orderedList":
-        if(clipboard) return `<ol start="${block.items[0]?.number ?? 1}">`+block.items.map(item=>`<li value="${item.number}">${renderInline(item.text,references,clipboard)}${renderSublists(item,references,clipboard)}</li>`).join("")+"</ol>";
+        if(clipboard) return `<ol start="${block.items[0]?.number ?? 1}">`+block.items.map(item=>`<li value="${item.number}">${renderInline(item.clipboardText ?? item.text,references,clipboard)}${renderSublists(item,references,clipboard)}</li>`).join("")+"</ol>";
         return `<ol${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ol>`;
       default:
         return `<p${attrs}>${renderInline(clipboard ? block.clipboardText ?? block.text : block.text,references,clipboard)}</p>`;
@@ -248,7 +261,7 @@
   }
 
   function renderListItem(item, references = null, clipboard = false) {
-    return `<li>${renderInline(item.text,references,clipboard)}${renderSublists(item,references,clipboard)}</li>`;
+    return `<li>${renderInline(clipboard ? item.clipboardText ?? item.text : item.text,references,clipboard)}${renderSublists(item,references,clipboard)}</li>`;
   }
 
   function renderSublists(item,references = null, clipboard = false) {

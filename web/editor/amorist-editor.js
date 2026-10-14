@@ -732,10 +732,16 @@
         let last=first;while(last+1<descriptors.length&&eligible(descriptors[last+1])&&scope(descriptors[last+1])===scope(descriptors[first]))last++;
         if(last>first) {
           const rows=descriptors.slice(first,last+1),starts=[];let text="";
-          for(const row of rows){starts.push(text.length);text+=row.projection.text+"\n";}
+          for(const row of rows){starts.push(text.length);text+=row.projection.text+(row.projection.suffix?row.raw.slice(-row.projection.suffix):"")+"\n";}
           const tokens=MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,references);
           const crosses=items=>items.some(token=>(token.type!=="text"&&token.type!=="break"&&starts.some(boundary=>boundary>token.start&&boundary<token.end))||(token.children&&crosses(token.children)));
           if(crosses(tokens))rows.forEach((row,index)=>{
+            const trailing = starts[index]+row.projection.text.length;
+            const inCode=items=>items.some(token=>(token.type==="code"&&token.contentStart<=trailing&&token.contentEnd>trailing)||(token.children&&inCode(token.children)));
+            if(row.projection.suffix&&inCode(tokens)){
+              row.projection.text+=row.raw.slice(-row.projection.suffix);
+              row.projection.suffix=0;
+            }
             row.projection.inlineTokens=inlineRowTokens(tokens,text,starts[index],starts[index]+row.projection.text.length);
             row.projection.inlineSignature=JSON.stringify(row.projection.inlineTokens);
           });
