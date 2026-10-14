@@ -3557,7 +3557,8 @@
       "windows-current-0d35913-rust.stderr.log: clean test completion; child exit receipt0",
       "windows-current-0d35913-headless-js.log:6 passed0 failed; debug build child receipt0",
       "windows-current-0d35913-full.json/stdout.log: full contract green, child exit0, 2026-10-14T22:49:17Z to22:52:49Z; H1-H3 delegated Linux, H4 delegated macOS; G3 manual advisory remains",
-      "windows-current-0d35913-native.stdout.log: editor-file-windows and editor-recovery-windows passed; child exit0; exact Save/Save As CRLF, cancellation, editor retained; two interrupted processes and isolated recovery2042ms. Native picker paths mocked; actual OS picker acceptance remains pending."
+      "windows-current-0d35913-native.stdout.log: editor-file-windows and editor-recovery-windows passed; child exit0; exact Save/Save As CRLF, cancellation, editor retained; two interrupted processes and isolated recovery2042ms. Native picker paths mocked; actual OS picker acceptance remains pending.",
+      "windows-current-0d35913-installer-manifest.json and nsis.stderr.log: release build4m00, NSIS packaging exit0; application10303488 bytes, installer2443709 bytes, full SHA256 and clean source metadata recorded; installation/upgrade acceptance still pending. Headless build-info receipt verified; initial PowerShell LASTEXITCODE check invalid for GUI-subsystem executable."
     ],
     "deliveryBlocked": true
   }
