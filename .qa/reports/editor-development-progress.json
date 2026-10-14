@@ -3547,7 +3547,7 @@
     "commit": "0d3591380da47ace0a299636360c806f657247cb",
     "archive": "platform-source-0d35913.tar",
     "sha256": "c91106d98459a67f5a434eb251cd6e508af1e6879232e8ca0abb8e2629f69c5f",
-    "windows": "Current Rust34 passed1 ignored worker plus2 integration tests passed; current debug application built successfully;6 headless JavaScript tests passed. Native GUI/installer acceptance pending.",
+    "windows": "Current Rust34 plus2 integration and6 headless JavaScript checks passed; current debug executable built; full contract suite passed on actual application WebView2 and Edge155.0.4283.45. Remaining native OS acceptance and current installer/upgrade gates stay blocked.",
     "macos": "Current Rust36 passed1 ignored worker plus2 integration tests passed;6 headless JavaScript checks passed; GUI screen locked, owner unlock requested",
     "evidence": [
       "macos-current-0d35913-rust-tests.log exit0",
@@ -3555,7 +3555,8 @@
       "macos-current-0d35913-headless-js.log:6 passed0 failed",
       "windows-current-0d35913-rust.stdout.log:34 backend and2 integration passed",
       "windows-current-0d35913-rust.stderr.log: clean test completion; child exit receipt0",
-      "windows-current-0d35913-headless-js.log:6 passed0 failed; debug build child receipt0"
+      "windows-current-0d35913-headless-js.log:6 passed0 failed; debug build child receipt0",
+      "windows-current-0d35913-full.json/stdout.log: full contract green, child exit0, 2026-10-14T22:49:17Z to22:52:49Z; H1-H3 delegated Linux, H4 delegated macOS; G3 manual advisory remains"
     ],
     "deliveryBlocked": true
   }
