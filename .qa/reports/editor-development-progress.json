@@ -2653,7 +2653,12 @@
       "list-nested-quoted-code-linux.log exit0 GTK/Chromium",
       "list-container-code-performance-linux.log exit0 B9 GTK/Chromium"
     ],
-    "remaining": "Tabs crossing container columns, quote->list combinations and complete mixed-container clipboard/gesture semantics need further coverage; final full current package/platform acceptance remains pending."
+    "remaining": "Tabs crossing container columns, quote->list combinations and complete mixed-container clipboard/gesture semantics need further coverage; final full current package/platform acceptance remains pending.",
+    "tabCoverage": {
+      "evidence": "list-quoted-code-tab-containers-linux.log exit0 GTK/Chromium",
+      "verified": "Tab-indented quoted fences inside bullet items and double-tab quoted fences inside a wide numbered child preserve literal content, correct continuation ownership, exact tab+quote prefix on Enter, undo and mode round-trip.",
+      "limit": "Does not certify partial-tab literal indentation inside unquoted code or all tab/container combinations."
+    }
   },
   "nativeQaInstanceOwnershipLinux": {
     "implemented": "Each native Tauri QA engine stamps a distinct per-instance nonce into its isolated child environment. Graceful close helper checks that nonce plus XDG_DATA_HOME, DISPLAY, executable/package identity and process start identity; document argv is additionally required when supplied. No-argument startup can now be closed and restarted without confusing simultaneous instances.",

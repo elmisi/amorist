@@ -273,7 +273,7 @@ async function main() {
           const continuedView=await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(continued)});return {source:editor.getMarkdown(),code:editor.surface.querySelectorAll('.amorist-wysiwyg-code').length,bold:!!editor.surface.querySelector('strong')};})()`);
           assert.deepEqual(continuedView,{source:continued,code:0,bold:true},`${entry.id}: indented continuation cannot interrupt quoted prose with code`);
         }
-        for(const [marker,indent,quote] of [['- ','  ','> '],['123. ','     ','> '],['- parent\r\n  123. ','       ','> > ']]) {
+        for(const [marker,indent,quote] of [['- ','  ','> '],['123. ','     ','> '],['- parent\r\n  123. ','       ','> > '],['- ','\t','> '],['- parent\r\n  123. ','\t\t','> > ']]) {
           const prefix=indent+quote,source=[marker+'item',prefix+'````js',prefix+'# literal **bold**',prefix,prefix+'```',prefix+'````',indent+'continuation','- sibling'].join('\r\n');
           const view=await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(source)});return {source:editor.getMarkdown(),rows:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>row.textContent.replace(/\\n$/,'')),continuation:editor.lineDescriptors.find(row=>row.raw.trim()==='continuation').listOwner?.index};})()`);
           assert.equal(view.source,source);assert.equal(view.rows.length,3,`${entry.id}: fenced code in quote within list`);assert.equal(view.rows[0],'# literal **bold**');assert.equal(view.rows[2],'```');assert.equal(view.continuation,marker.includes('\r\n')?1:0);
