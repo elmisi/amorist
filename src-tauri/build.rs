@@ -4,7 +4,7 @@ fn main() {
         .unwrap_or_else(|_| "0.0.0".to_string())
         .trim()
         .to_string();
-    println!("cargo:rustc-env=CARGO_PKG_VERSION={}", version);
+    println!("cargo:rustc-env=AMORIST_VERSION={}", version);
     sync_tauri_conf_version(&version);
     tauri_build::build()
 }

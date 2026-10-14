@@ -131,7 +131,7 @@ fn report_problem_inner(app: &tauri::AppHandle, state: &AppState, mut report: se
         return Err("Describe the problem before saving.".into());
     }
     report["filePath"] = serde_json::json!(state.file_path.lock().unwrap().as_ref().map(|p| p.display().to_string()));
-    report["appVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
+    report["appVersion"] = serde_json::json!(env!("AMORIST_VERSION"));
     report["platform"] = serde_json::json!(std::env::consts::OS);
     let directory = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
@@ -412,7 +412,7 @@ async fn save_settings(app: tauri::AppHandle, settings: settings::Settings) -> R
 
 #[tauri::command]
 fn get_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+    env!("AMORIST_VERSION").to_string()
 }
 
 #[tauri::command]
