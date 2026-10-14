@@ -2241,7 +2241,8 @@
     "missingLoaderProbe": {
       "result": "not-proved",
       "evidence": "avif-missing-loader-linux.log: empty GDK_PIXBUF_MODULE_FILE does not disable AVIF in this app session; negative assertion fails as intended, no success claimed",
-      "secondEvidence": "avif-missing-loader-directory-linux.log: both cache and module directory overridden, AVIF still decodes; negative probe still not proved"
+      "secondEvidence": "avif-missing-loader-directory-linux.log: both cache and module directory overridden, AVIF still decodes; negative probe still not proved",
+      "codecPathEvidence": "avif-missing-codec-linux.log: overriding LIBHEIF_PLUGIN_PATH also leaves decoder available on this host; absence remains unproved"
     }
   },
   "linuxDebianBuild": {
@@ -2264,5 +2265,15 @@
     },
     "nativeImageEvidence": "deb-avif-images-native-linux.log: executable extracted from actual .deb passes all image formats, Save As rebase, expiry and unchanged source; no installed package update",
     "remaining": "Clean package installation/upgrade, AppImage self-contained loader, absent decoder simulation and full package acceptance remain pending"
+  },
+  "linuxAppImageAvif": {
+    "state": "packaging-running",
+    "handle": 99248,
+    "binarySnapshot": "eb9087161729bbed2d9d25d9913af28fff25d08b",
+    "initialFailure": "GTK linuxdeploy plugin cannot query librsvg-2.0 libdir because private build environment lacks librsvg-2.0.pc",
+    "preparation": "librsvg2-dev 2.61.3+dfsg-3ubuntu0.1 downloaded and extracted into private tools/root, no system installation; pkg-config libdir now resolves /usr/lib/x86_64-linux-gnu",
+    "evidence": "avif-appimage-bundle-verbose-linux.log and avif-appimage-bundle-rsvg-linux.log",
+    "remaining": "Inspect artifact, ensure libheif AV1 plugin and dependencies are bundled and loaded independently of host; native package image proof remains required",
+    "deliveryBlocked": true
   }
 }
