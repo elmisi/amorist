@@ -96,7 +96,7 @@ module.exports = [
     async run() {
       return {
         failures: collect("qa_req_f1_", "REQ-F1"),
-        fixturesExercised: ["a successful save", "a save into a directory that cannot be written"],
+        fixturesExercised: ["a successful save", "a save into a directory that cannot be written", "occupied temporary slots with preserved foreign bytes", "canonical path aliases on the platform's filesystem"],
       };
     },
   },
@@ -107,9 +107,11 @@ module.exports = [
     title: "A file changed outside amorist is detected and never silently overwritten",
     note: "Modification-time comparison has known limits on filesystems with coarse timestamps; the contract records that rather than hiding it.",
     async run() {
+      const app = await runTauriAppChecks();
       return {
-        failures: collect("qa_req_f2_", "REQ-F2"),
-        fixturesExercised: ["a file changed between opening and saving", "a forced save after the conflict"],
+        failures: [...collect("qa_req_f2_", "REQ-F2"), ...app.F2],
+        fixturesExercised: ["a file changed between opening and saving", "a forced save after the conflict", "cross-process lock wait and mtime recheck", "persistent identity collisions and bounded lock wait", "created/deleted destinations", ...app.fixtures.filter((fixture) => fixture.includes("second live instance"))],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },

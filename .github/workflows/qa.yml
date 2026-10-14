@@ -105,6 +105,11 @@ jobs:
             exit 1
           }
 
+      - name: Run native backend and cross-process filesystem regressions
+        # Cross-process cases supply their own concurrency. Isolate unrelated
+        # fixture leases from temporary descriptor inheritance during fork.
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib -- --test-threads=1
+
       - name: Run codec, toolbar and code-context regressions
         run: |
           checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js"

@@ -20,6 +20,22 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Saving and Bug append share persistent standard filesystem locks in app-local
+      data. Canonical path identities use fixed FNV-1a 64-bit keys; full identities
+      are compared under lock and collisions get separate slots. Aliases, native
+      case rules and unresolved path components must route consistently before a
+      write. Waiting is bounded by five seconds. Saves recheck the destination
+      timestamp inside the lock and use unique adjacent temporaries. A destination
+      expected absent cannot replace a file created meanwhile. Log append preserves
+      a truncated tail and separates the next complete record with a newline.
+    why: >
+      Implements the approved shared writer prerequisite for File and new instances,
+      with real cross-process checks extending REQ-F1/F2 rather than weakening them.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Working copies are separate records owned by one session, including untitled
       documents. Concurrent instances of the same path cannot overwrite or discard
       each other's records. A live-session lease prevents recovery adoption by
@@ -1328,9 +1344,12 @@ requirements:
       evidence_required:
         - a save into a read-only directory, a save with the tmp path blocked
         - the directory listing afterwards
+        - unique temporary allocation with an occupied candidate and preserved foreign bytes
       success_condition: >
         The original file is unchanged, no .amorist-tmp file remains, and the
         error is reported to the user rather than swallowed.
+        An occupied temporary name is retried without deleting or modifying the
+        existing entry. Failed allocation never deletes someone else's temporary.
     severity: blocking
     false_positive_risk: low
     automation: full
@@ -1353,9 +1372,19 @@ requirements:
       evidence_required:
         - a file changed on disk between open and save
         - the returned error, and the file's bytes afterwards
+        - a second process waiting for the first writer, checking mtime after lock acquisition
+        - filesystem aliases, collision routing, newly created and externally deleted destinations
       success_condition: >
         Save fails with a conflict, the file on disk is untouched, and it is
         overwritten only after the forced retry.
+        A second instance also detects the first instance's completed save. A
+        path expected absent does not overwrite a file created meanwhile; an
+        externally deleted open file is not silently recreated.
+        Editing while a save waits for its lock retains the newer editor text;
+        only the captured snapshot becomes saved and newer changes remain dirty.
+        Recovery also completes within its stated interval while that save is
+        pending, then rebases the newer copy onto the committed snapshot. Commands
+        from an obsolete document context cannot save or discard the current one.
     severity: blocking
     false_positive_risk: medium
     false_positive_note: >

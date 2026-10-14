@@ -17,10 +17,12 @@
     editor: null,
     savedMarkdown: "",
     dirty: false,
+    contextId: 0,
     demo: Boolean(screenshotMode),
   };
 
   let noticeSource = null;
+  let saving = false;
 
   function errorMessage(error, fallback) {
     if (typeof error === "string") return error;
@@ -50,6 +52,7 @@
 
   function createTauriBackend() {
     const { invoke } = window.__TAURI__.core;
+    var contextId = 0;
 
     function getAppWindow() {
       try {
@@ -61,10 +64,12 @@
 
     return {
       async loadDocument() {
-        return invoke("read_document");
+        var doc = await invoke("read_document");
+        contextId = doc.contextId;
+        return doc;
       },
-      async saveDocument(markdown, force) {
-        return invoke("save_document", { markdown: markdown, force: force || false });
+      async saveDocument(markdown, force, revision) {
+        return invoke("save_document", { markdown: markdown, force: force || false, contextId: contextId, revision: revision });
       },
       async getVersion() {
         return invoke("get_version");
@@ -95,13 +100,14 @@
         console.error("confirm-close: no listen API available");
       },
       syncDirty(dirty) {
-        invoke("set_dirty", { dirty: dirty });
+        invoke("set_dirty", { dirty: dirty, contextId: contextId });
       },
-      persistWorkingCopy(savedSource, unsavedSource, revision, boundaryState) {
-        return invoke("persist_working_copy", { savedSource: savedSource, unsavedSource: unsavedSource, revision: revision, boundaryState: boundaryState });
+      getContextId() { return contextId; },
+      persistWorkingCopy(savedSource, unsavedSource, revision, boundaryState, capturedContext) {
+        return invoke("persist_working_copy", { savedSource: savedSource, unsavedSource: unsavedSource, revision: revision, boundaryState: boundaryState, contextId: capturedContext });
       },
-      discardWorkingCopy() { return invoke("discard_working_copy"); },
-      selectRecovery(sessionId) { return invoke("select_recovery", { sessionId: sessionId }); },
+      discardWorkingCopy() { return invoke("discard_working_copy", { contextId: contextId }); },
+      selectRecovery(sessionId) { return invoke("select_recovery", { sessionId: sessionId, contextId: contextId }); },
       async setWindowTitle(name) {
         try {
           var appWindow = getAppWindow();
@@ -268,6 +274,7 @@
   });
 
   async function reloadDocument() {
+    if (saving) return;
     if (state.dirty && !(await confirmDialog("Discard unsaved changes and reload the file?"))) {
       return;
     }
@@ -284,6 +291,8 @@
     }
 
     setBusy("Loading");
+    var previousFocus = document.activeElement;
+    elements.editor.inert = true;
     try {
       var doc = await backend.loadDocument();
       if (doc.recoveryCandidates && doc.recoveryCandidates.length) {
@@ -295,6 +304,7 @@
         }
       }
       state.savedMarkdown = doc.markdown || "";
+      state.contextId = doc.contextId || 0;
       setDocumentLabel(doc);
       mountEditor(doc.recoveryMarkdown == null ? state.savedMarkdown : doc.recoveryMarkdown);
       var recoveryMetadataRestored = doc.recoveryBoundaryState == null || state.editor.model.restoreBoundaryState(doc.recoveryBoundaryState);
@@ -317,6 +327,10 @@
       } else {
         showError(errorMessage(error, "The document could not be loaded."), "reload");
       }
+      if (state.dirty && state.editor) scheduleWorkingCopy(state.editor.getValue());
+    } finally {
+      elements.editor.inert = false;
+      if (previousFocus && previousFocus.isConnected && elements.editor.contains(previousFocus)) previousFocus.focus();
     }
   }
 
@@ -369,53 +383,58 @@
     }
   }
 
-  async function saveDocument() {
-    if (state.demo || !state.editor) {
-      return;
-    }
-
-    setBusy("Saving");
-    var markdown = state.editor.getValue();
+  function finishSave(editor, markdown, result) {
+    if (state.editor !== editor) return false;
     clearTimeout(workingCopyTimer);
     workingCopyTimer = null;
+    state.savedMarkdown = markdown;
+    var latest = editor.getValue();
+    setDirty(latest !== markdown);
+    hideNotice();
+    if (result && result.recoveryWarning) showWarning("File saved, but its recovery copy could not be removed: " + result.recoveryWarning);
+    if (state.dirty) scheduleWorkingCopy(latest);
+    return !state.dirty;
+  }
 
+  async function saveDocument() {
+    if (state.demo || !state.editor || saving || elements.save.disabled) return false;
+    saving = true;
+    var editor = state.editor;
+    var markdown = editor.getValue();
+    var revision = editor.model ? editor.model.revision : 0;
+    setBusy("Saving");
+    clearTimeout(workingCopyTimer);
+    workingCopyTimer = null;
     try {
-      var result = await backend.saveDocument(markdown);
-      state.savedMarkdown = markdown;
-      setDirty(false);
-      setStatus("Saved");
-      hideNotice();
-      if (result && result.recoveryWarning) showWarning("File saved, but its recovery copy could not be removed: " + result.recoveryWarning);
-    } catch (error) {
-      var msg = errorMessage(error, "The document could not be saved.");
-      if (msg === "CONFLICT") {
-        if (await confirmDialog("The file was modified outside amorist.\n\nOverwrite with your version?")) {
-          try {
-            var retryResult = await backend.saveDocument(markdown, true);
-            state.savedMarkdown = markdown;
-            setDirty(false);
-            setStatus("Saved");
-            hideNotice();
-            if (retryResult && retryResult.recoveryWarning) showWarning("File saved, but its recovery copy could not be removed: " + retryResult.recoveryWarning);
-          } catch (retryError) {
-            showError(errorMessage(retryError, "The document could not be saved."), "save");
-            setDirty(true);
-            scheduleWorkingCopy(state.editor.getValue());
+      try {
+        return finishSave(editor, markdown, await backend.saveDocument(markdown, false, revision));
+      } catch (error) {
+        if (state.editor !== editor) return false;
+        var msg = errorMessage(error, "The document could not be saved.");
+        if (msg === "CONFLICT") {
+          if (await confirmDialog("The file was modified outside amorist.\n\nOverwrite with your version?")) {
+            if (state.editor !== editor) return false;
+            try {
+              return finishSave(editor, markdown, await backend.saveDocument(markdown, true, revision));
+            } catch (retryError) {
+              if (state.editor !== editor) return false;
+              showError(errorMessage(retryError, "The document could not be saved."), "save");
+            }
+          } else {
+            showWarning("File changed on disk. Use Reload to load the latest version.");
           }
+        } else if (error && error.name === "AbortError") {
+          showError("Save timed out — the server may be unreachable. Your changes are still in the editor.", "save");
         } else {
-          setDirty(true);
-          scheduleWorkingCopy(state.editor.getValue());
-          showWarning("File changed on disk. Use Reload to load the latest version.");
+          showError(msg, "save");
         }
-        return;
+        setDirty(editor.getValue() !== state.savedMarkdown);
+        scheduleWorkingCopy(editor.getValue());
+        return false;
       }
-      if (error && error.name === "AbortError") {
-        showError("Save timed out — the server may be unreachable. Your changes are still in the editor.", "save");
-      } else {
-        showError(msg, "save");
-      }
-      setDirty(true);
-      scheduleWorkingCopy(state.editor.getValue());
+    } finally {
+      saving = false;
+      if (state.editor === editor) setStatus(state.dirty ? "Modified" : "Saved");
     }
   }
 
@@ -451,10 +470,11 @@
     }
     elements.editor.innerHTML = "";
 
-    state.editor = window.AmoristEditor.create(elements.editor, {
+    var editor = window.AmoristEditor.create(elements.editor, {
       value: markdown,
       spellcheck: true,
       onChange: function (value) {
+        if (state.editor !== editor) return;
         setDirty(value !== state.savedMarkdown);
         scheduleWorkingCopy(value);
       },
@@ -462,6 +482,7 @@
         showWarning(message, "editor");
       },
     });
+    state.editor = editor;
   }
 
   function handleKeyDown(event) {
@@ -491,9 +512,10 @@
   }
 
   function setStatus(label) {
+    if (saving) label = "Saving";
     elements.status.textContent = state.dirty ? label + " - modified" : label;
-    elements.save.disabled = state.demo || !state.dirty;
-    elements.reload.disabled = state.demo;
+    elements.save.disabled = saving || state.demo || !state.dirty;
+    elements.reload.disabled = saving || state.demo;
   }
 
   function setDirty(dirty) {
@@ -516,10 +538,11 @@
     var savedSource = state.savedMarkdown;
     var revision = editor && editor.model ? editor.model.revision : 0;
     var boundaries = editor && editor.model ? editor.model.boundaryState() : null;
+    var context = backend.getContextId ? backend.getContextId() : 0;
     workingCopyTimer = setTimeout(function () {
       if (state.editor !== editor) return;
-      backend.persistWorkingCopy(savedSource, value, revision, boundaries)
-        .catch(function () { showWarning("Could not persist recovery copy. Your file was not changed."); });
+      backend.persistWorkingCopy(savedSource, value, revision, boundaries, context)
+        .catch(function () { if (state.editor === editor) showWarning("Could not persist recovery copy. Your file was not changed."); });
     }, 2000);
   }
 

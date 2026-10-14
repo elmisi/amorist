@@ -59,7 +59,7 @@
       "id": 9,
       "name": "file-actions-recovery-and-windows",
       "status": "partial",
-      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending."
+      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending. Shared canonical-path locks now protect saves, including occupied temporary slots, absent/deleted destinations and other-instance conflicts. Blocking I/O is off the UI thread; a captured save leaves newer edits dirty, with recovery persisted during lock wait and rebased after commit. Obsolete document context commands are rejected."
     },
     {
       "id": 10,
@@ -70,8 +70,8 @@
     {
       "id": 11,
       "name": "bug-build-identity-and-review-runner",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "Concurrent Bug append uses the shared filesystem lock and preserves truncated original tails before the next full record. Build identity, immutable Bug capture enhancements and the per-version review runner remain pending."
     },
     {
       "id": 12,
@@ -622,6 +622,62 @@
         "log": "recovery-sessions-classic-linux.log",
         "sourceScope": "Editor regression sources unchanged by the final legacy import receipt refinements; final app integration covered by the full Linux suite."
       }
+    },
+    "sharedWriterDevelopment": {
+      "status": "Rust checks on all platforms, directed native probes, final full Linux suite and eleven editor regressions passed",
+      "rustTests": {
+        "linux": 19,
+        "macos": 20,
+        "windows": 19,
+        "fail": 0,
+        "internalFixture": "One ignored child entry point is invoked explicitly by parent cross-process checks and the native lock-holder probe; it is not a skipped acceptance check.",
+        "execution": "--test-threads=1 isolates fixture leases while each process test supplies actual concurrent workers.",
+        "logs": [
+          "shared-writer-rust-complete-linux.log",
+          "shared-writer-rust-complete-macos.log",
+          "shared-writer-rust-complete-windows.stdout.log"
+        ]
+      },
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "shared-writer-complete-qa-linux.json",
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "scope": [
+        "FNV-1a fixed vectors and persistent full-path collision comparison",
+        "unknown and corrupt lock headers preserved",
+        "bounded lock wait",
+        "native path aliases and filesystem casing on the tested volumes",
+        "unique temporary allocation and foreign-entry preservation",
+        "exclusive new-file rename without clobber",
+        "deleted destinations not recreated implicitly",
+        "mtime checked after acquiring a cross-process lock",
+        "64 long concurrent JSONL records preserve interrupted original tail",
+        "native second-instance save conflict preserves CRLF and unsaved text",
+        "editing during lock wait remains dirty after captured save",
+        "recovery meets interval during pending Save and rebases newer copy",
+        "stale document save/persist/discard rejected",
+        "I/O dispatched to blocking workers; loading suspends old editor input",
+        "recovery persists before a pending Save completes, then retains and rebases newer revisions"
+      ],
+      "retainedFailures": [
+        "shared-writer-qa-first-linux.json: new native test had a script syntax error; corrected and rerun",
+        "shared-writer-async-rust-linux.log: unrelated parallel fixture lease was temporarily inherited during fork; fixture runs are now serial, concurrency remains explicit within process cases",
+        "shared-writer-pending-save-async-before-settled-linux.json: newer text was incorrectly marked saved; fixed with captured-save reconciliation",
+        "shared-writer-pending-save-async-before-linux.json: WebKit storage shutdown cleanup raced; bounded cleanup retries now preserve the verdict"
+      ],
+      "remaining": [
+        "File menu and New/Open/Save As lifecycle",
+        "all-document and changed-base recovery selection",
+        "actual Windows and macOS GUI acceptance",
+        "candidate package acceptance and final identity/loop gates"
+      ],
+      "classicRegressionChecks": {
+        "pass": 11,
+        "fail": 0,
+        "log": "shared-writer-complete-classic-linux.log"
+      },
+      "nativeProbe": "shared-writer-pending-save-protected-linux.json"
     }
   }
 }

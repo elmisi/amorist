@@ -7,6 +7,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Saves from different instances share a persistent path lock and recheck the
+  destination timestamp after acquiring it. Unique adjacent temporary files
+  preserve occupied entries; new-file saves do not replace a file created meanwhile.
+  Canonical aliases, native casing and lock-key collisions are handled explicitly.
+- Concurrent Bug reports keep complete records separate, including after a
+  previously interrupted log entry, while preserving the original log bytes.
+- File I/O runs off the UI thread. Edits made while Save waits remain modified;
+  recovery meets its interval and keeps newer content when the captured snapshot
+  becomes saved. Obsolete document callbacks cannot modify the current context.
 - Recovery records are isolated per session, including untitled documents. Multiple
   copies of the same file require a choice, and discard affects only the chosen copy.
   Existing recovery files migrate with an exact receipt, retaining the original and

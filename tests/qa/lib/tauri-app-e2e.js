@@ -21,7 +21,7 @@ function runTauriAppChecks() {
 }
 
 async function runOnce() {
-  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], fixtures: [] };
+  const results = { B4: [], B6: [], B7: [], C2: [], E1: [], E2: [], F2: [], fixtures: [] };
   if (process.platform !== "linux") {
     // Not a gap: tauri-driver drives the compiled application on Linux only,
     // so the contract's app-embedding verdict is assigned to the Linux run by
@@ -40,6 +40,7 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.F2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -53,6 +54,7 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.F2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -73,6 +75,7 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.F2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
@@ -213,6 +216,10 @@ async function runOnce() {
     results.fixtures.push("built app: generated boundary provenance survives SIGKILL and controls cleanup after restart");
     await verifyIndependentRecoverySessions(driver, scratch);
     results.fixtures.push("built app: simultaneous same-path copies, explicit choice, own-copy discard, remaining-copy recovery and untitled restart");
+    await verifyConcurrentNativeSaves(driver, scratch);
+    results.fixtures.push("built app: second live instance detects the first instance's save and retains its own unsaved text");
+    await verifyEditingDuringSave(driver, scratch);
+    results.fixtures.push("built app: edits made while Save waits for its process lock remain dirty and recoverable after the captured snapshot is saved");
   } catch (error) {
     let recovery = "missing";
     try {
@@ -231,15 +238,132 @@ async function runOnce() {
     };
     results.E1.push(failure);
     results.E2.push(failure);
+    results.F2.push(failure);
     results.C2.push(failure);
     results.B4.push(failure);
     results.B6.push(failure);
     results.B7.push(failure);
   } finally {
     if (engine) await engine.close().catch(() => {});
-    fs.rmSync(scratch, { recursive: true, force: true });
+    // WebKit's storage process may finish its final origin write just after
+    // the app and driver exit. Preserve the verdict across that cleanup race.
+    fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
   return results;
+}
+
+async function verifyEditingDuringSave(driver, scratch) {
+  const data = path.join(scratch, "pending-save-data");
+  const document = path.join(scratch, "pending save.md");
+  const environment = { ...process.env, XDG_DATA_HOME: data };
+  const ready = path.join(scratch, "pending-save-ready");
+  const release = path.join(scratch, "pending-save-release");
+  const result = path.join(scratch, "pending-save-result");
+  const captured = "original first second";
+  const latest = captured + " newer";
+  fs.writeFileSync(document, "original");
+  let engine = null;
+  let worker = null;
+  try {
+    engine = new TauriEngine(driver, APPLICATION, [document], environment);
+    await engine.start();
+    await waitForEditor(engine, "original");
+    await appendInSource(engine, " first");
+    await delay(60);
+    await engine.evaluate(`document.getElementById('save-button').click()`);
+    await waitForFileContents(document, "original first");
+    await waitUntil(async () => (await editorSnapshot(engine)).status === "Saved", 5000, "the first save response to settle");
+    await appendInSource(engine, " second");
+    await delay(60);
+    const job = { root: path.join(data, "dev.elmisi.amorist", "locks"), path: document,
+      ready, result, expected: "Any", content: "", append_count: 0, number: 0, hold_until: release };
+    worker = childProcess.spawn("cargo", ["test", "--manifest-path", MANIFEST, "--lib",
+      "file_io::tests::process_operation", "--", "--ignored", "--exact"],
+    { env: { ...process.env, AMORIST_QA_FILE_JOB: JSON.stringify(job) }, stdio: "ignore" });
+    await waitUntil(() => fs.existsSync(ready), 15000, "the separate process to hold the document lock");
+    await engine.evaluate(`document.getElementById('save-button').click()`);
+    await waitUntil(async () => /^Saving\b/.test((await editorSnapshot(engine)).status), 5000, "Save to wait for its lock");
+    await appendInSource(engine, " newer");
+    const editedAt = Date.now();
+    const directory = path.join(data, "amorist", "recovery-sessions");
+    await waitForRecovery(directory, latest, RECOVERY_INTERVAL_MS + TIMER_TOLERANCE_MS);
+    if (Date.now() - editedAt > RECOVERY_INTERVAL_MS + TIMER_TOLERANCE_MS) throw new Error("Recovery missed its interval while Save waited.");
+    if (fs.readFileSync(document, "utf8") !== "original first") throw new Error("Save bypassed the held process lock.");
+    if (recoveryRecords(directory).find((r) => r.unsavedSource === latest).savedSource !== "original first") {
+      throw new Error("Recovery before Save completed did not use the original committed base.");
+    }
+    fs.writeFileSync(release, "release");
+    await waitForFileContents(document, captured);
+    await waitUntil(async () => !/^Saving\b/.test((await editorSnapshot(engine)).status), 5000, "the save response to settle");
+    await waitForRecovery(directory, latest, 5000);
+    const recovered = recoveryRecords(directory).find((r) => r.unsavedSource === latest);
+    if (recovered.savedSource !== captured) throw new Error("Pending-save recovery used the previous saved base.");
+    await delay(60);
+    const snapshot = await editorSnapshot(engine);
+    if (snapshot.source !== latest || !/modified/i.test(snapshot.status)) {
+      throw new Error("Save marked edits made during lock wait as saved: " + JSON.stringify(snapshot));
+    }
+    await waitUntil(() => fs.existsSync(result), 5000, "the lock holder to finish");
+    if (JSON.parse(fs.readFileSync(result, "utf8")).Ok !== null) throw new Error("The separate lock holder failed.");
+    await engine.evaluate(`(function () {
+      window.__TAURI__.dialog.confirm = function () { return Promise.resolve(true); };
+      document.getElementById('reload-button').click();
+    })()`);
+    await waitForEditor(engine, captured, { noticeHidden: true });
+    const rejected = await engine.evaluate(`(async function () {
+      var requests = [
+        ['persist_working_copy', {savedSource: ${JSON.stringify(captured)}, unsavedSource: 'stale callback', revision: 999, boundaryState: null, contextId: 1}],
+        ['discard_working_copy', {contextId: 1}],
+        ['save_document', {markdown: 'stale save', force: true, revision: 999, contextId: 1}]
+      ];
+      for (var request of requests) {
+        try { await window.__TAURI__.core.invoke(request[0], request[1]); return false; }
+        catch (error) { if (String(error).indexOf('STALE_DOCUMENT') < 0) throw error; }
+      }
+      return true;
+    })()`);
+    if (!rejected || fs.readFileSync(document, "utf8") !== captured || recoveryRecords(directory).length) {
+      throw new Error("An obsolete document context modified the new editor or its recovery.");
+    }
+  } finally {
+    fs.writeFileSync(release, "release");
+    if (worker && worker.exitCode === null) worker.kill("SIGTERM");
+    if (engine) await engine.close().catch(() => {});
+  }
+}
+
+async function verifyConcurrentNativeSaves(driver, scratch) {
+  const data = path.join(scratch, "concurrent-save-data");
+  const document = path.join(scratch, "concurrent save caffè.md");
+  const environment = { ...process.env, XDG_DATA_HOME: data };
+  const saved = "Original\r\n";
+  fs.writeFileSync(document, saved);
+  let first = null;
+  let second = null;
+  try {
+    first = new TauriEngine(driver, APPLICATION, [document], environment);
+    await first.start();
+    await waitForEditor(first, saved.replace(/\r\n/g, "\n"));
+    await appendInSource(first, "first writer");
+    second = new TauriEngine(driver, APPLICATION, [document], environment);
+    await second.start();
+    await waitForEditor(second, saved.replace(/\r\n/g, "\n"));
+    await appendInSource(second, "second writer");
+    await delay(60);
+    await first.evaluate(`document.getElementById('save-button').click()`);
+    await waitForFileContents(document, saved + "first writer");
+    await second.evaluate(`(function () {
+      window.__TAURI__.dialog.confirm = function () { return Promise.resolve(false); };
+      document.getElementById('save-button').click();
+    })()`);
+    await waitUntil(async () => /File changed on disk/.test((await editorSnapshot(second)).notice), 10000, "second-instance save conflict");
+    const current = await editorSnapshot(second);
+    if (current.source !== saved.replace(/\r\n/g, "\n") + "second writer") throw new Error("Conflicting Save lost the second instance's text.");
+    if (fs.readFileSync(document, "utf8") !== saved + "first writer") throw new Error("The second instance silently replaced the first instance's save.");
+  } finally {
+    if (first) await first.close().catch(() => {});
+    if (second) await second.close().catch(() => {});
+  }
 }
 
 async function verifyIndependentRecoverySessions(driver, scratch) {
