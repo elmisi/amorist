@@ -1669,6 +1669,17 @@
       "installedLoader": "heif-gdk-pixbuf 1.21.2",
       "conclusion": "Failure reproduced in WebKit image decoding despite working system pixbuf decoder; not explained by missing system HEIF loader",
       "next": "Inspect exact installed WebKit build image-decoder support before selecting compatible transport or packaging fix"
+    },
+    "installedWebKitPackageProbe": {
+      "package": "libwebkit2gtk-4.1-0 2.52.6-0ubuntu0.26.04.1",
+      "evidence": "apt-cache show, ldd and strings inspected locally",
+      "observations": [
+        "installed package does not declare libavif dependency",
+        "ldd shows no libavif/libheif decoder dependency",
+        "system GdkPixbuf loader exists and successfully decodes same fixture",
+        "existing Rust GTK crates are transitive; no public Tauri GTK decoder reexport found"
+      ],
+      "conclusion": "No dependency-free Rust decoder access established yet; do not add an unapproved crate or claim format support from fallback"
     }
   }
 }
