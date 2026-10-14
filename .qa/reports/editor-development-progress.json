@@ -3366,7 +3366,7 @@
       "linux-candidate-b9b3ddc-raw-loop.log exit0"
     ],
     "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
-    "remaining": "Original intermittent B2 anomaly remains unexplained; current final full suite, isolated family B and80 traced insertions passed. Windows/macOS and final requirement-by-requirement acceptance still pending.",
+    "remaining": "Windows/macOS current-source and package/native acceptance, final complete plan audit and documented retained B2 timing risk.",
     "rollbackPreparation": {
       "package": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-0.10.8-backup/amorist_0.10.8_restore.deb",
       "sha256": "cadd31d72d0d3768b635368c3bcd0ee178e71f6bf40047ee0c711631d10f82f3",
@@ -3410,7 +3410,7 @@
       "linux-isolated-upgrade.log (installation/upgrade passed; initial identity invocation used wrong CLI syntax)",
       "linux-isolated-upgrade-completion.log (corrected headless invocation and hash verification passed)"
     ],
-    "containerState": "Stopped after external opener proof; retained for remaining acceptance"
+    "containerState": "Stopped after installed B2 proof; retained for audit/reproduction"
   },
   "linuxInstalledGuiAcceptance": {
     "status": "passed",
@@ -3530,5 +3530,17 @@
       "Only private QA Epiphany desktop entry sets WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 to work around Docker namespace restriction; Amorist environment and delivered code/config unchanged"
     ],
     "remaining": "Original intermittent B2 anomaly remains unexplained; current final full suite, isolated family B and80 traced insertions passed. Windows/macOS and final requirement-by-requirement acceptance still pending."
+  },
+  "linuxInstalledB2Acceptance": {
+    "status": "passed",
+    "candidateCommit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
+    "evidence": [
+      "linux-installed-b2-native.log exit0:30 exact insertions in installed native application; each complete source compared against single expected insertion; original file unchanged",
+      "gesture-planner-full-contract-recheck-linux.json: final full Linux contract green",
+      "gesture-planner-family-b-recheck-linux.json: all family B green on GTK/Chromium",
+      "gesture-planner-b2-trace-linux.log:30 reference-engine exact insertions passed",
+      "gesture-planner-b2-corpus-trace-linux.log:50 cyclic insertions across five original fixtures passed"
+    ],
+    "retainedRisk": "First full-run reference GTK B2 inserted one unexpected character on another row; original red evidence retained. Cause not identified; not reproduced in110 directed checks or final complete recheck. No application fix claimed."
   }
 }
