@@ -569,7 +569,12 @@ module.exports = [
             await ctx.page.sendKeys(["x"]);
             await ctx.page.settle(20);
           }
-          const samples = await ctx.page.latencies();
+          let samples = await ctx.page.latencies();
+          const sampleDeadline = Date.now() + 1000;
+          while(samples.length < 20 && Date.now() < sampleDeadline) {
+            await ctx.page.settle(20);
+            samples = await ctx.page.latencies();
+          }
           const afterIdentity = await ctx.page.projectionIdentity();
           const p95 = samples.length === 20 ? nearestRankP95(samples) : null;
           const limit = size === 500 ? 50 : 100;

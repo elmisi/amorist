@@ -2679,5 +2679,28 @@
     "skipped": 0,
     "evidence": "current-container-classic-linux.log exit0",
     "scope": "All sixteen current Linux classic files, including nested/tab quoted code, link keyboard accessibility, clipboard, settings and geometry. Full native contract run must follow."
+  },
+  "linuxFullQaBeforeMultilineInline": {
+    "result": "pass",
+    "evidence": "container-current-full-qa-linux.log/json exit0",
+    "scope": "Full suite before this new multiline-inline runtime change; H4 native macOS delegated."
+  },
+  "multilineInlineLinux": {
+    "status": "partial",
+    "implemented": "Contiguous plain physical prose rows share inline tokenization, then tokens are clipped to explicit row-relative raw spans. Emphasis and code remain styled across original terminators without adding rendered rows. Row signatures invalidate only dependent rows; code editing context uses projected tokens.",
+    "verified": [
+      "GTK/Chromium strong/emphasis/strikethrough/code across LF/CRLF/CR: exact source, physical row count, edit, undo and mode round-trip",
+      "Multiline inline-code Enter stays literal without automatic prose marker",
+      "Deleting closing emphasis updates earlier dependent row and retains unrelated outside DOM; undo restores style",
+      "Code-context/clipboard/link/prose regressions green; B9 budgets/counts green"
+    ],
+    "evidence": [
+      "multiline-inline-before-linux.log reproduces missing style",
+      "multiline-inline-dependency-code-enter-linux.log exit0 GTK/Chromium",
+      "multiline-inline-related-linux.log pass4 fail0 skip0",
+      "multiline-inline-complete-performance-linux.log exit0 B9 GTK/Chromium"
+    ],
+    "qaFix": "B9 latency read waits boundedly for 20 actual measured frames; budgets unchanged, no sample truncation. Earlier19-sample report retained in multiline-inline-performance-incomplete-frame-linux.json.",
+    "remaining": "Inline integration within quote/list/heading containers, cross-row images/link editing, clipboard wrapper/cut behavior and final full current native/package/platform acceptance remain pending."
   }
 }

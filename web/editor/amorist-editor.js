@@ -119,6 +119,7 @@
       && a.indent === b.indent && a.quoteDepth === b.quoteDepth
       && a.listContinuation === b.listContinuation && a.layoutPadding === b.layoutPadding
       && a.containerListPadding === b.containerListPadding
+      && a.inlineSignature === b.inlineSignature
       && a.markerWidth === b.markerWidth && a.marker === b.marker
       && a.referenceDefinition === b.referenceDefinition
       && a.setextLevel === b.setextLevel
@@ -149,6 +150,23 @@
     let consumed=0,offset=0;
     while(consumed<columns) {const char=whitespace[offset++];consumed+=char==='\t'?4-consumed%4:1;}
     return whitespace.slice(0,offset);
+  }
+
+  function inlineRowTokens(tokens, source, start, end) {
+    const point=value=>Math.max(0,Math.min(end,value)-start);
+    return tokens.filter(token=>token.end>start&&token.start<end&&token.type!=="break").map(token=>{
+      if(token.type==="image"&&(token.start<start||token.end>end)) {
+        return {type:"text",start:point(token.start),end:point(token.end),text:source.slice(Math.max(start,token.start),Math.min(end,token.end))};
+      }
+      const result={...token,start:point(token.start),end:point(token.end)};
+      if(token.contentStart!==undefined)result.contentStart=point(token.contentStart);
+      if(token.contentEnd!==undefined)result.contentEnd=point(token.contentEnd);
+      if(token.children)result.children=inlineRowTokens(token.children,source,start,end);
+      if((token.type==="text"||token.type==="code")&&(token.start<start||token.end>end)) {
+        result.text=source.slice(Math.max(start,token.contentStart??token.start),Math.min(end,token.contentEnd??token.end));
+      }
+      return result;
+    });
   }
 
   class AmoristEditor {
@@ -691,6 +709,24 @@
           projection.text = projection.text.slice(0,-1);
         }
       }
+      const eligible=descriptor=>descriptor.unitType==="line"&&descriptor.projection.tag==="div"
+        &&!descriptor.projection.list&&!descriptor.projection.listContinuation&&!descriptor.projection.referenceDefinition
+        &&!descriptor.projection.rule&&!descriptor.projection.setextDelimiter&&!!descriptor.projection.text.trim();
+      for(let first=0;first<descriptors.length;first++) {
+        if(!eligible(descriptors[first]))continue;
+        let last=first;while(last+1<descriptors.length&&eligible(descriptors[last+1]))last++;
+        if(last>first) {
+          const rows=descriptors.slice(first,last+1),starts=[];let text="";
+          for(const row of rows){starts.push(text.length);text+=row.projection.text+"\n";}
+          const tokens=MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,references);
+          const crosses=items=>items.some(token=>(token.type!=="text"&&token.type!=="break"&&starts.some(boundary=>boundary>token.start&&boundary<token.end))||(token.children&&crosses(token.children)));
+          if(crosses(tokens))rows.forEach((row,index)=>{
+            row.projection.inlineTokens=inlineRowTokens(tokens,text,starts[index],starts[index]+row.projection.text.length);
+            row.projection.inlineSignature=JSON.stringify(row.projection.inlineTokens);
+          });
+        }
+        first=last;
+      }
       return descriptors;
     }
 
@@ -718,7 +754,7 @@
         const containsCode=(tokens)=>tokens.some(token=>token.type==="code"
           ? offset>=base+token.contentStart && offset<=base+token.contentEnd
           : token.children && containsCode(token.children));
-        if(containsCode(MarkdownCodec.tokenizeInline(descriptor.projection.text, 0, descriptor.projection.text.length, 0, false, false, this.lineDescriptors.references))) {
+        if(containsCode(descriptor.projection.inlineTokens||MarkdownCodec.tokenizeInline(descriptor.projection.text, 0, descriptor.projection.text.length, 0, false, false, this.lineDescriptors.references))) {
           return {kind:"code",start:descriptor.start,end:descriptor.end,contentStart:offset,fence:false,
             indent:(descriptor.raw.match(/^[ \t]*/)||[""])[0]};
         }
@@ -822,7 +858,7 @@
         } else if (projection.rule || projection.fence) {
           row.setAttribute("aria-label", projection.rule ? "Horizontal rule" : "Code fence");
         } else if (projection.text) {
-          this.renderInlineProjection(row, projection.text, projection.prefix);
+          this.renderInlineProjection(row, projection.text, projection.prefix,projection.inlineTokens);
         } else if (projection.prefix) {
           // An empty rendered construct still needs a real DOM position after
           // its hidden Markdown marker.  Without it WebKit/Chromium place the
@@ -945,7 +981,7 @@
       image.src=url.href;
     }
 
-    renderInlineProjection(container, text, rawStart) {
+    renderInlineProjection(container, text, rawStart, projectedTokens) {
       // Ranges are relative to the physical row. Its sourceStart is refreshed
       // after an earlier edit, so untouched DOM nodes keep valid mappings.
       const append = (parent, tokens) => {
@@ -1007,7 +1043,7 @@
           parent.append(wrapper);
         }
       };
-      append(container, MarkdownCodec.tokenizeInline(text, 0, text.length, 0, false, false, this.lineDescriptors.references));
+      append(container, projectedTokens||MarkdownCodec.tokenizeInline(text, 0, text.length, 0, false, false, this.lineDescriptors.references));
     }
 
     renderTableRow(row, raw) {
