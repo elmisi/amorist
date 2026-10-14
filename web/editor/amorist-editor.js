@@ -518,6 +518,10 @@
           while(index<last && logicalStarts[index+1]<=offset) index++;
           return descriptors[index].start+descriptors[index].projection.prefix+offset-logicalStarts[index];
         };
+        const reference=references.get(definition.key);
+        if(!Object.prototype.hasOwnProperty.call(reference,"destinationStart")) {
+          Object.defineProperties(reference,{destinationStart:{value:rawAt(definition.destinationStart)},destinationEnd:{value:rawAt(definition.destinationEnd)}});
+        }
         if(label) descriptor.referenceLabel={key:definition.key,start:rawAt(opening+1),end:rawAt(label.end-1)};
         members.forEach(member => { member.projection.referenceDefinition = true; });
         at = last;
@@ -1641,9 +1645,10 @@
         for(const {text,base} of this.clipboardInlineChunks(descriptor)) {
           let found=null;
           const visit=tokens=>tokens.forEach(token=> {
-            if(token.type==="link" && !token.referenceKey && selection.start>=base+token.contentStart && selection.end<=base+token.contentEnd) {
-              const destination=MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
-              if(destination) found={destination,base};
+            if(token.type==="link" && selection.start>=base+token.contentStart && selection.end<=base+token.contentEnd) {
+              const destination=token.referenceKey ? this.lineDescriptors.references.get(token.referenceKey)
+                : MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
+              if(destination) found={destination,base:token.referenceKey?0:base};
             }
             if(token.children) visit(token.children);
           });
@@ -1653,7 +1658,7 @@
           return window.AmoristInternals.EditingPolicy.requestLink(destination.href).then(href=> {
             if(!href || !this.root.isConnected || this.model.source!==before) return;
             const escaped=href.replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[()<>]/g,"\\$&").replace(/[ \t\r\n]/g,encodeURIComponent);
-            this.apply(base+destination.destinationStart,base+destination.destinationEnd,escaped,"link-destination");
+            this.apply(found.base+destination.destinationStart,found.base+destination.destinationEnd,escaped,"link-destination");
           });
         }
       }

@@ -41,6 +41,14 @@ async function main(){
     const source=editor.getMarkdown();editor.undo();return {initial,source,undo:editor.getMarkdown()};
    })()`);
    assert.deepEqual(edited,{initial:'old path.md',source:'Before [**Label**](<../new.md#heading> "Title") after\r\n',undo:'Before [**Label**](<old path.md> "Title") after\r\n'});
+   const reference=await engine.evaluate(`(async()=>{
+    const raw='[One][shared] and [Two][shared]\\r\\n\\r\\n[shared]: <old path.md> "Title"\\r\\n';
+    const editor=window.AmoristEditor.create(document.getElementById('host'),{value:raw});editor.setSurfaceSelection(2,2);
+    const pending=editor.runAction('link');const form=document.querySelector('.amorist-link-dialog form');form.querySelector('input').value='../changed.md';form.dispatchEvent(new Event('submit',{cancelable:true}));await pending;
+    const source=editor.getMarkdown(),destinations=Array.from(editor.surface.querySelectorAll('a')).map(link=>link.dataset.linkDestination);editor.undo();
+    return {source,destinations,undo:editor.getMarkdown()};
+   })()`);
+   assert.deepEqual(reference,{source:'[One][shared] and [Two][shared]\r\n\r\n[shared]: <../changed.md> "Title"\r\n',destinations:['../changed.md','../changed.md'],undo:'[One][shared] and [Two][shared]\r\n\r\n[shared]: <old path.md> "Title"\r\n'});
    console.log(`link activation: ${entry.id} passed`);
   }finally{await engine.close();}
  }}finally{await server.stop();}

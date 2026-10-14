@@ -428,11 +428,11 @@
         cursor++; horizontal();
         valid = cursor === source.length || /[\r\n]/.test(source[cursor]);
       }
-      if (!valid) return nextLine ? {key: label.key, href: linkValue(source.slice(from, to)), title: null, end: lineEnd} : null;
+      if (!valid) return nextLine ? Object.defineProperties({key: label.key, href: linkValue(source.slice(from, to)), title: null, end: lineEnd},{destinationStart:{value:from},destinationEnd:{value:to}}) : null;
       title = linkValue(rawTitle);
     } else if (nextLine) cursor = lineEnd;
     else if (cursor !== source.length && !/[\r\n]/.test(source[cursor])) return null;
-    return {key: label.key, href: linkValue(source.slice(from, to)), title, end: cursor};
+    return Object.defineProperties({key: label.key, href: linkValue(source.slice(from, to)), title, end: cursor},{destinationStart:{value:from},destinationEnd:{value:to}});
   }
 
   function inlineText(tokens) {
