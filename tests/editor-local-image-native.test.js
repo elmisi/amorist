@@ -5,6 +5,7 @@ const os=require('node:os');
 const path=require('node:path');
 const cp=require('node:child_process');
 const {TauriEngine,discoverDriver}=require('./qa/lib/engine-tauri');
+const {closeOwnedNative}=require('./qa/lib/close-owned-native');
 async function main(){
  assert.equal(process.platform,'linux','This directed native probe requires Linux');
  const root=path.resolve(__dirname,'..'),manifest=path.join(root,'src-tauri/Cargo.toml');
@@ -116,6 +117,6 @@ async function main(){
   assert.deepEqual(lifecycle,{active:{loaded:true,width:320},expired:{loaded:false},staleRejected:true,nextUntitled:true});
   assert.equal(fs.readFileSync(file,'utf8'),source);
   console.log(JSON.stringify({status:'pass',image:actual,rebased,saveAsExpired,formats,lifecycle,sourceUnchanged:true}));
- }finally {await engine.close();fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
+ }finally {await closeOwnedNative(engine);fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

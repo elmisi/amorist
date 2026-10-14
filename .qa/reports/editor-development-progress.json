@@ -2583,8 +2583,12 @@
       "deb-current-images-native-linux.log exit0 all required image formats/SaveAs/New/stale resource/source preservation",
       "Control version0.10.10 amd64 dependencies heif-gdk-pixbuf WebKit GTK inspected"
     ],
-    "appimageSettings": "FAILED appimage-current-settings-native-linux.log: prior restarted AppImage QA instances remained alive, duplicate exact window title makes native focus ambiguous. Investigate driver/launcher process cleanup before accepting package settings.",
+    "appimageSettings": "PASS appimage-owned-close-settings-linux.log exit0: Save/Cancel/restart, failed write/retry, corrupt file preservation and two-process native focus; original duplicate-window failure retained.",
     "cleanup": "Only three owned QA processes stopped after verifying executable path, unique fixture argv and matching isolated XDG_DATA_HOME; evidence appimage-settings-owned-process-cleanup.json. Test handle then completed exit1.",
-    "remaining": "AppImage native settings after cleanup fix, current no-host AVIF proof, all other final package flows and clean install/upgrade/full final Linux acceptance remain pending. No user install/handover."
+    "remaining": "All other final packaged flows, clean install/upgrade, full final Linux acceptance and remaining Markdown/clipboard implementation remain pending. No user install/handover.",
+    "appimageImages": "PASS appimage-current-owned-images-no-host-linux.log exit0: all required formats incl AVIF with host plugin directories hidden, SaveAs/New/resource expiry and unchanged source; owned process exits verified.",
+    "debianNoDecoder": "PASS deb-current-owned-images-no-host-negative-linux.log exit0: only AVIF unavailable, other formats/lifecycle work and source preserved; owned process exits verified.",
+    "qaCleanup": "Reusable opt-in close-owned-native helper identifies exactly one application using executable (or packaged APPDIR/APPIMAGE), isolated XDG_DATA_HOME and DISPLAY, exact owned document argv and process start identity. Invokes native force_close for test teardown and verifies exit before driver cleanup. Does not constitute user close/unsaved-dialog acceptance.",
+    "ci": "AppImage preference lifecycle/clean-restart gate added before artifact upload; YAML order/scope inspected; no remote run."
   }
 }

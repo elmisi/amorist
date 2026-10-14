@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),cp=require('node:child_process');
 const {TauriEngine,discoverDriver}=require('./qa/lib/engine-tauri');
+const {closeOwnedNative}=require('./qa/lib/close-owned-native');
 async function main(){
  assert.equal(process.platform,'linux');const root=path.resolve(__dirname,'..');
  const application=process.env.AMORIST_QA_APPLICATION||path.join(root,'src-tauri/target/debug/amorist');
@@ -16,7 +17,7 @@ async function main(){
  async function font(){return engine.evaluate(`getComputedStyle(document.querySelector('.amorist-editor-source')).fontSize`);}
  async function openSettings(){await engine.evaluate(`document.getElementById('settings-button').click()`);await waitFor(`document.getElementById('settings-dialog').open`);}
  async function chooseSize(size){await engine.evaluate(`document.getElementById('settings-form').elements.baseFontSize.focus()`);await engine.sendKeys([{key:'a',ctrl:true},String(size)]);await waitFor(`document.getElementById('settings-form').elements.baseFontSize.value==='${size}'`);}
- async function restart(){await engine.close();engine=create();await start();}
+ async function restart(){await closeOwnedNative(engine);engine=create();await start();}
  try{
   await start();assert.equal(await font(),'16px');
   await engine.evaluate(`(()=>{document.querySelector('[data-action="source"]').click();const source=document.querySelector('.amorist-editor-source');source.focus();source.setSelectionRange(3,8,'backward');return true;})()`);
@@ -47,11 +48,11 @@ async function main(){
    focus(secondFile);await waitFor('document.hasFocus()');await openSettings();await chooseSize(18);await engine.sendKeys([{key:'Enter'}]);await waitFor(`!document.getElementById('settings-dialog').open`);
    engine=first;focus(file);await waitFor(`document.hasFocus()&&getComputedStyle(document.querySelector('.amorist-editor-source')).fontSize==='18px'`);
    assert.equal(JSON.parse(fs.readFileSync(settingsPath,'utf8')).baseFontSize,18);assert.equal(fs.readFileSync(secondFile,'utf8'),source);
-  }finally{engine=first;await second.close();}
-  await engine.close();const corrupt='{broken settings';fs.writeFileSync(settingsPath,corrupt);engine=create();await start();
+  }finally{engine=first;await closeOwnedNative(second);}
+  await closeOwnedNative(engine);const corrupt='{broken settings';fs.writeFileSync(settingsPath,corrupt);engine=create();await start();
   await waitFor(`!document.getElementById('notice').hidden&&document.getElementById('notice').textContent.includes('defaults')`);
   assert.equal(await font(),'16px');assert.equal(fs.readFileSync(settingsPath,'utf8'),corrupt);assert.equal(fs.readFileSync(file,'utf8'),source);
   console.log('Native settings: Save/Cancel/restart, exact selection and CRLF document, failed write/retry, cross-process native focus refresh and preserved corrupt settings passed');
- }finally{await engine.close();fs.rmSync(scratch,{recursive:true,force:true});}
+ }finally{await closeOwnedNative(engine);fs.rmSync(scratch,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
