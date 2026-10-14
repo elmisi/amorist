@@ -62,6 +62,12 @@ async function main(){
    })()`);
    assert.equal(structured[0].fragment,'# adi');assert.equal(structured[1].fragment,'- [x] ask');assert.equal(structured[2].fragment,'> uot');
    assert.match(structured[3].fragment,/^`{3,}js\r\node \r\n`{3,}$/);
+   const reference=await engine.evaluate(`(() => {
+    const editor=window.__clip,source=${JSON.stringify('[Read][name]\r\n\r\n[name]: notes.md "Title"')};
+    editor.setMarkdown(source);const fragment=editor.clipboardFragment({start:1,end:5});
+    editor.setMarkdown(fragment);return {fragment,links:Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination)};
+   })()`);
+   assert.equal(reference.fragment,'[Read][name]\r\n\r\n[name]: notes.md "Title"');assert.deepEqual(reference.links,['notes.md']);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

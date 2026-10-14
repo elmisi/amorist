@@ -510,7 +510,7 @@
         if (members.some(member => member.unitType !== "line" || member.projection.rule || member.projection.fence
             || (member !== descriptor && member.projection.list)
             || (member.projection.quoteDepth || 0) !== (descriptor.projection.quoteDepth || 0))) continue;
-        if (!references.has(definition.key)) references.set(definition.key, {href: definition.href, title: definition.title});
+        if (!references.has(definition.key)) references.set(definition.key, {href: definition.href, title: definition.title, rawDefinition: logicalSource.slice(logicalStarts[at],definition.end)});
         members.forEach(member => { member.projection.referenceDefinition = true; });
         at = last;
       }
@@ -1354,7 +1354,21 @@
         visit(MarkdownCodec.tokenizeInline(projection.text,0,projection.text.length,0,false,false,this.lineDescriptors.references));
       };
       edge(first,selection.start,true); edge(last,selection.end,false);
-      return prefix+raw.slice(selection.start,selection.end)+suffix;
+      const fragment=prefix+raw.slice(selection.start,selection.end)+suffix;
+      const descriptors=this.buildProjection(fragment), needed=new Set();
+      const references=this.lineDescriptors.references;
+      const visit=tokens=>tokens.forEach(token=> {
+        if(token.referenceKey && !descriptors.references.has(token.referenceKey)) needed.add(token.referenceKey);
+        if(token.children) visit(token.children);
+      });
+      for(const descriptor of descriptors) {
+        if(descriptor.unitType!=="line" || descriptor.projection.referenceDefinition) continue;
+        const text=descriptor.projection.text;
+        visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,references));
+      }
+      const definitions=Array.from(needed,key=>references.get(key)?.rawDefinition).filter(Boolean);
+      const ending=this.model.lineEndingAt(selection.start);
+      return fragment+(definitions.length?ending+ending+definitions.join(ending):"");
     }
 
     finishClipboardEdit(selection,replacement,gesture) {
