@@ -2214,7 +2214,7 @@
   "subscriptionStop": {
     "remainingPercentThreshold": 60,
     "usedPercentThreshold": 40,
-    "lastObservedUsedPercent": 24,
+    "lastObservedUsedPercent": 25,
     "source": "current session rate_limits events in local rollout log",
     "actionAtThreshold": "pause at user request and leave documented restart point"
   },
@@ -2240,7 +2240,15 @@
     "ci": "HEIF loader declared in Linux build/QA environment; native image lifecycle test explicitly added to Linux QA workflow",
     "missingLoaderProbe": {
       "result": "not-proved",
-      "evidence": "avif-missing-loader-linux.log: empty GDK_PIXBUF_MODULE_FILE does not disable AVIF in this app session; negative assertion fails as intended, no success claimed"
+      "evidence": "avif-missing-loader-linux.log: empty GDK_PIXBUF_MODULE_FILE does not disable AVIF in this app session; negative assertion fails as intended, no success claimed",
+      "secondEvidence": "avif-missing-loader-directory-linux.log: both cache and module directory overridden, AVIF still decodes; negative probe still not proved"
     }
+  },
+  "linuxDebianBuild": {
+    "snapshot": "eb90871",
+    "state": "running",
+    "handle": 76760,
+    "evidence": "avif-debian-build-linux.log and live rustc compiling amorist; no artifact acceptance yet",
+    "deliveryBlocked": true
   }
 }
