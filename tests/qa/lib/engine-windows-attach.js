@@ -12,9 +12,15 @@ class WindowsAttachEngine extends WebDriverEngine {
   this.applicationProcess.on('error',error=>{this.applicationError=error;});
   await super.start();
  }
+ async crashApplication(){
+  const application=this.applicationProcess;
+  if(!application?.pid || application.exitCode!==null || application.signalCode!==null)throw new Error('The owned application is not live; refusing an unrelated process kill.');
+  const exited=new Promise(resolve=>application.once('exit',resolve));application.kill();await exited;
+  this.sessionId='';await this.close();
+ }
  async close(){
   try{await super.close();}finally{
-   if(this.applicationProcess&&this.applicationProcess.exitCode===null){this.applicationProcess.kill();await new Promise(resolve=>this.applicationProcess.once('exit',resolve));}
+   if(this.applicationProcess&&this.applicationProcess.exitCode===null&&this.applicationProcess.signalCode===null){this.applicationProcess.kill();await new Promise(resolve=>this.applicationProcess.once('exit',resolve));}
    if(this.profile){
     const cleanup=cp.spawnSync('powershell.exe',['-NoProfile','-Command',
       `$owned=Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($env:AMORIST_QA_PROFILE_DIR,[StringComparison]::OrdinalIgnoreCase) -ge 0 }; $owned | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`],

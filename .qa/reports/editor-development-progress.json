@@ -2029,6 +2029,27 @@
         "installer associations and packaged CLI acceptance",
         "new-instance lifetime and recovery proofs"
       ]
+    },
+    "recoveryProof": {
+      "evidence": [
+        "windows-recovery-passed.log",
+        "windows-recovery-passed-status.json"
+      ],
+      "scope": "compiled Windows application directly launched and attached; one named temporary Unicode-path document",
+      "recoveryMs": 2096,
+      "thresholdMs": 2750,
+      "proved": [
+        "recovery checkpoint contains exact saved and unsaved source",
+        "only owned application process interrupted",
+        "same document recovers exact unsaved text after restart",
+        "original remains unchanged before explicit Save",
+        "explicit Save retains CRLF"
+      ],
+      "remaining": [
+        "two-document and live-instance recovery isolation",
+        "changed-base and cross-document recovery choice",
+        "packaged recovery and concurrent-save acceptance"
+      ]
     }
   },
   "ciWindowsDevelopment": {
