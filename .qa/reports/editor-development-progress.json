@@ -1148,7 +1148,15 @@
         "dedicated clipboard contract gate",
         "real clipboard MIME/fallback across windows and platforms",
         "native plain-paste shortcut acceptance"
-      ]
+      ],
+      "emptyClipboardFollowup": {
+        "status": "passed on both Linux browser engines",
+        "report": "clipboard-empty-linux.log",
+        "scope": [
+          "empty paste preserves selection",
+          "HTML-only source/code paste remains literal"
+        ]
+      }
     },
     "externalHtmlStructureDevelopment": {
       "status": "directed helpers, D1 and thirteen classic checks passed; native clipboard and remaining conversion edges pending",
@@ -1172,11 +1180,22 @@
         "safe PRE fences retain literal content"
       ],
       "remaining": [
-        "inline-code delimiter safety and destination escaping",
         "HTML table spans and nested-table degradation",
         "unsupported content warning behavior",
         "real system clipboard on published webviews"
-      ]
+      ],
+      "inlineSafety": {
+        "status": "passed",
+        "helperTest": "tests/editor-html-to-markdown.test.js",
+        "clipboardReport": "html-inline-clipboard-linux.log",
+        "D1Report": "html-inline-d1-qa-linux.json",
+        "scope": [
+          "variable inline code delimiters and edge padding",
+          "angle destinations protect spaces and parentheses",
+          "ampersands decoded exactly once",
+          "escaped image alt brackets"
+        ]
+      }
     }
   }
 }
