@@ -2922,7 +2922,7 @@
       "version": "0.10.10",
       "buildId": "0.10.10:x86_64-unknown-linux-gnu:5cf154be1ad3ed3754b9f1eab15435b5956e1284",
       "fingerprint": "5cf154be1ad3ed3754b9f1eab15435b5956e1284",
-      "commit": "57317aa147e4804f976e52e3b7605364eb334844",
+      "commit": "4e36d512a267d76dbded525d2b469d4451a0c0e0",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
@@ -2942,7 +2942,10 @@
       "linux-user-preview-direct-fence-build.log exit0; clean726ecd3 metadata",
       "Updated preview reference atomically; actual review runner empty-list/isolated-state smoke exit0",
       "file-button-secondary-style-linux.log GTK/Chromium: identical secondary button style, height34, no marker and click open/close",
-      "linux-preview-file-button-build.log exit0; clean57317aa identity matches updated preview reference"
+      "linux-preview-file-button-build.log exit0; clean57317aa identity matches updated preview reference",
+      "current-linux-package-build.log exit0: deb and AppImage built at4e36d51",
+      "new-package-raw-clipboard-linux.log exit0: real cross-process clipboard, cut/Undo and source paste",
+      "current-raw-review-loop.log exit0: actual Bug, interruption and resume, mismatched-window close refusal"
     ],
     "command": "python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/release/amorist",
     "futureBuildPolicy": "Use current release binary directly. Refresh this preview reference to exact successfully built/tested Linux binary identity after subsequent preview updates; retain preview flags while final gates are incomplete. Runner detects identity changes before each file and begins a new build-specific run on restart.",
@@ -2964,6 +2967,15 @@
         "buildId": "0.10.10:x86_64-unknown-linux-gnu:1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
         "fingerprint": "1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
         "commit": "726ecd34d68d5448f352911a78364a1b325de3e7",
+        "target": "x86_64-unknown-linux-gnu",
+        "dirty": false
+      },
+      {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+        "fingerprint": "5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+        "commit": "57317aa147e4804f976e52e3b7605364eb334844",
         "target": "x86_64-unknown-linux-gnu",
         "dirty": false
       }
@@ -3047,5 +3059,125 @@
       "original CRLF and UTF8 files unchanged"
     ],
     "remaining": "Structured fragment completeness, current packages and macOS/Windows native clipboard acceptance"
+  },
+  "linuxPackageRefresh4e36d51": {
+    "identity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+      "fingerprint": "5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+      "commit": "4e36d512a267d76dbded525d2b469d4451a0c0e0",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "manifest": "/home/alessandro/.local/state/amorist/execution-20261013-1932/current-linux-package-manifest.json",
+    "nativeResults": [
+      {
+        "package": "deb",
+        "flow": "settings",
+        "exitCode": 0,
+        "log": "/home/alessandro/.local/state/amorist/execution-20261013-1932/current-deb-settings-native-linux.log"
+      },
+      {
+        "package": "deb",
+        "flow": "recovery-startup-documents",
+        "exitCode": 0,
+        "log": "/home/alessandro/.local/state/amorist/execution-20261013-1932/current-deb-recovery-startup-documents-native-linux.log"
+      },
+      {
+        "package": "deb",
+        "flow": "local-image",
+        "exitCode": 0,
+        "log": "/home/alessandro/.local/state/amorist/execution-20261013-1932/current-deb-local-image-native-linux.log"
+      },
+      {
+        "package": "appimage",
+        "flow": "settings",
+        "exitCode": 0,
+        "log": "/home/alessandro/.local/state/amorist/execution-20261013-1932/current-appimage-settings-native-linux.log"
+      },
+      {
+        "package": "appimage",
+        "flow": "recovery-startup-documents",
+        "exitCode": 0,
+        "log": "/home/alessandro/.local/state/amorist/execution-20261013-1932/current-appimage-recovery-startup-documents-native-linux.log"
+      },
+      {
+        "package": "appimage",
+        "flow": "local-image",
+        "exitCode": 0,
+        "log": "/home/alessandro/.local/state/amorist/execution-20261013-1932/current-appimage-local-image-native-linux.log"
+      }
+    ],
+    "additionalPassed": [
+      "current-appimage-clipboard-linux.log",
+      "current-appimage-review-loop.log",
+      "current-deb-clipboard-linux.log",
+      "current-deb-review-loop.log"
+    ],
+    "avifHostIndependence": {
+      "initialResult": "fail",
+      "evidence": "current-appimage-no-host-images-linux.log",
+      "preservedFailingPackage": "/home/alessandro/.local/state/amorist/execution-20261013-1932/appimage-4e36d51-without-decoder.AppImage",
+      "cause": "Local cargo tauri build omitted generated AV1 decoder bundle configuration used by CI",
+      "fix": "build-appimage.sh now always calls prepare-appimage.py and passes generated decoder/library/license configuration",
+      "fixedResult": "pass",
+      "fixedEvidence": "current-appimage-no-host-images-fixed-linux.log",
+      "buildEvidence": "current-appimage-decoder-build.log exit0",
+      "formatsPassedWithoutHostDecoder": [
+        "PNG",
+        "JPEG",
+        "GIF",
+        "WebP",
+        "BMP",
+        "AVIF",
+        "UTF16 LE and BE SVG"
+      ]
+    },
+    "remaining": [
+      "Linux installation/upgrade and native OS file-pickers",
+      "remaining plan coverage",
+      "macOS and Windows current-source package acceptance"
+    ],
+    "deliveryBlocked": true,
+    "artifacts": [
+      {
+        "kind": "deb",
+        "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/bundle/deb/amorist_0.10.10_amd64.deb",
+        "bytes": 3744158,
+        "sha256": "830afa60ed735da6fae1002cde9bbfbf2d4db0f1bb7e399d47195fe2bd35b0b3"
+      },
+      {
+        "kind": "appimage",
+        "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/bundle/appimage/amorist_0.10.10_amd64.AppImage",
+        "bytes": 85916152,
+        "sha256": "2ae70e9ebf2969b45a214d90fdd98261795b057b5b815577fa7ce1f20c1127e8",
+        "identity": {
+          "schemaVersion": 1,
+          "version": "0.10.10",
+          "buildId": "0.10.10:x86_64-unknown-linux-gnu:5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+          "fingerprint": "5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+          "commit": "4e36d512a267d76dbded525d2b469d4451a0c0e0",
+          "target": "x86_64-unknown-linux-gnu",
+          "dirty": false
+        }
+      }
+    ],
+    "currentAppImagePassed": [
+      "current-appimage-no-host-images-fixed-linux.log",
+      "current-appimage-decoder-clipboard.log",
+      "current-appimage-decoder-review-loop.log"
+    ],
+    "appImageEarlierNativeScope": "Settings/recovery tests apply to AppImage before decoder payload addition (SHA256 cce8a698); do not count these as final acceptance of SHA2562ae70e9e."
+  },
+  "buildIdentityExternalBundleConfiguration": {
+    "status": "pending",
+    "finding": "Source fingerprint hashes only declared INPUTS, not externally supplied Tauri bundle configuration or its decoder payload. Packaged decoder availability can differ under the same source buildId. Artifact hashes differ, but runner identity alone cannot distinguish this. Must include effective configuration/runtime bundle inputs before final delivery.",
+    "evidence": [
+      "src-tauri/build_identity.rs:8-20,80-101",
+      "current-appimage-no-host-images-linux.log",
+      "current-appimage-decoder-config.json",
+      "Failing and fixed AppImages share buildId5cf154be but SHA256 and decoder availability differ; recorded current-linux-package-manifest.json"
+    ]
   }
 }

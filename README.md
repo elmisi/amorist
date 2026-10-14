@@ -31,7 +31,7 @@ The standalone app uses a system webview (Tauri 2) with a Rust backend — singl
 
 - Opens `.md`, `.markdown`, and `.mdown` files from the command line or File menu.
 - Saves to the current file with `Ctrl+S` or Save; Save As changes its destination after a successful write.
-- Keeps existing `LF` or `CRLF` line endings when saving.
+- Keeps existing `LF`, `CRLF`, `CR`, and mixed line endings when saving.
 - Undo and redo with full history that survives mode switches.
 - In-editor find bar with real-time match highlighting and navigation.
 - Warns before closing with unsaved changes; detects external file modifications.
@@ -45,16 +45,32 @@ The standalone app uses a system webview (Tauri 2) with a Rust backend — singl
 
 ## Keyboard Shortcuts
 
-For local problem reporting, launch `amorist --debug file.md`. The **Segnala
-problema** button opens a note dialog and appends a report to
+For local problem reporting, launch `amorist --debug file.md`. The **Bug**
+button opens a note dialog and appends a report to
 `problem-reports.jsonl` in the application's local data directory (the saved
 path is shown in the status bar). Each report captures the original editor
 state before the dialog opens: current and last-saved Markdown, rendered HTML,
 visible blocks, selection, viewport, scroll position, app version and platform.
 Reports stay on your computer and do not save or modify the document.
 
-To review the collected file list with reporting enabled, run
-`python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/release/amorist`.
+To review the collected file list with reporting enabled, run:
+
+```bash
+python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/release/amorist
+```
+
+The runner verifies the executable against `review-release.json` in the app's
+local data directory before each file. A delivery must install this reference
+with the expected build identity; an executable override does not bypass it.
+Each build has its own review round, and earlier rounds remain in the state
+file. Ctrl+C stops the sequence after the current window closes normally;
+restarting reopens the interrupted file. A build change during a round stops
+the runner before the next file.
+
+**Settings** provides a document preview, a shared base font size, separate
+table/code scales, and an optional highlight of the current visual line.
+Save applies preferences without changing Markdown; Cancel keeps the saved
+preferences. Each window reloads saved preferences when it regains focus.
 
 | Shortcut | Action |
 |----------|--------|
@@ -118,6 +134,12 @@ For the portable **AppImage** (no system install), register it at user level onc
 ```
 
 This writes a `.desktop` entry and icon under `~/.local/share/icons` and `~/.local/share/applications`, so amorist appears under **Open with** for `.md` files. Undo it with `--uninstall-desktop`. To build the AppImage from source, run `./build-appimage.sh`.
+
+Use this helper for local AppImage builds: it includes the native AV1 decoder
+and license notices required for AVIF images. Packaging requires Python 3 and
+an installed libheif AOM or dav1d decoder plugin; the helper stops if either
+the decoder or its dependencies are missing. The CI AppImage build uses the
+same decoder preparation.
 
 On **macOS**, the `.app`/`.dmg` registers the Markdown association and icon with Launch Services automatically when installed — no extra step is needed.
 
