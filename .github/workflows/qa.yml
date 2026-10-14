@@ -32,10 +32,22 @@ jobs:
           - os: macos-latest
             platform: macos
             shipping_engine: Safari
+          - os: windows-latest
+            platform: windows
+            shipping_engine: WebView2
+    defaults:
+      run:
+        shell: bash
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.platform }} (ships on ${{ matrix.shipping_engine }})
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
 
       - name: Install the shipping engine's driver and the build dependencies
         if: matrix.platform == 'linux'
@@ -53,6 +65,22 @@ jobs:
             libwebkit2gtk-4.1-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
+      - name: Prepare matching Windows WebView2 driver
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $amoristBase=[Environment]::GetFolderPath('ProgramFilesX86')
+          $amoristRuntime=Get-ChildItem "$amoristBase/Microsoft/EdgeWebView/Application/*/msedgewebview2.exe" -ErrorAction SilentlyContinue | Sort-Object { [Version]$_.VersionInfo.FileVersion } -Descending | Select-Object -First 1
+          if(-not $amoristRuntime){throw 'The required WebView2 runtime was not found'}
+          $amoristVersion=$amoristRuntime.VersionInfo.FileVersion
+          $amoristDriver=Join-Path $env:RUNNER_TEMP 'amorist-edge-driver'
+          New-Item -ItemType Directory $amoristDriver -Force | Out-Null
+          Invoke-WebRequest "https://msedgedriver.microsoft.com/$amoristVersion/edgedriver_win64.zip" -OutFile "$amoristDriver/driver.zip"
+          Expand-Archive "$amoristDriver/driver.zip" $amoristDriver -Force
+          Add-Content $env:GITHUB_ENV "AMORIST_QA_EDGE_DRIVER=$amoristDriver/msedgedriver.exe"
+          Add-Content $env:GITHUB_ENV "AMORIST_QA_APPLICATION=$env:GITHUB_WORKSPACE/src-tauri/target/debug/amorist.exe"
+          Write-Output "WebView2 runtime: $amoristVersion"
+
       - name: Turn on remote automation for the shipping engine
         if: matrix.platform == 'macos'
         # The driver ships with the system but refuses every session until an
@@ -68,6 +96,8 @@ jobs:
             echo "WebKitGTK: $(dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0 2>/dev/null || echo absent)"
             echo "driver:    $(command -v WebKitWebDriver || echo absent)"
             echo "stand-in:  $(google-chrome --version 2>/dev/null || echo absent)"
+          elif [ "${{ matrix.platform }}" = "windows" ]; then
+            powershell.exe -NoProfile -Command '(Get-Item -LiteralPath $env:AMORIST_QA_EDGE_DRIVER).VersionInfo.FileVersion'
           else
             echo "Safari:    $(defaults read /Applications/Safari.app/Contents/Info CFBundleShortVersionString 2>/dev/null || echo absent)"
             echo "driver:    $(command -v safaridriver || echo absent)"
@@ -82,11 +112,15 @@ jobs:
           key: qa-${{ matrix.platform }}
 
       - name: Install the Tauri application WebDriver intermediary
-        if: matrix.platform == 'linux'
+        if: matrix.platform != 'macos'
         # WebKitWebDriver covers the engine in a browser. tauri-driver starts
         # the compiled executable, which is required to verify the recovery
         # timer, invoke boundary, app-data and restart behavior in E1/E2.
         run: cargo install tauri-driver --locked
+
+      - name: Build native Windows application for WebView2 checks
+        if: matrix.platform == 'windows'
+        run: cargo build --manifest-path src-tauri/Cargo.toml
 
       - name: Check the contract and its generated projection agree
         if: matrix.platform == 'linux'
@@ -117,7 +151,7 @@ jobs:
 
       - name: Run codec, toolbar and code-context regressions
         run: |
-          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
+          checks="tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/qa-windows-discovery.test.js tests/editor-code-context.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
           if [ "${{ matrix.platform }}" = "linux" ]; then
             GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
           else
