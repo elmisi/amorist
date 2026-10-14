@@ -118,6 +118,17 @@ async function main(options={}){
    })()`);
    assert.equal(orderedFallback,'5. First\n12. Second\n13. Third');
    exercised.push(entry.id);
+   const partialCuts=await engine.evaluate(`(() => {
+    const editor=window.__clip,event={clipboardData:{setData(){}},preventDefault(){}};
+    const source='before **bold** after',out=[];
+    for(const [start,end] of [[10,source.length],[0,11]]) {
+      editor.setMarkdown(source);editor.setSurfaceSelection(start,end);editor.handleCopy(event,true);
+      out.push({source:editor.getMarkdown(),strong:editor.surface.querySelector('strong')?.textContent});editor.undo();
+      out.push({undo:editor.getMarkdown(),selection:editor.selectionRaw()});
+    }return out;
+   })()`);
+   assert.deepEqual(partialCuts,[{source:'before **b**',strong:'b'},{undo:'before **bold** after',selection:{start:10,end:21}},
+    {source:'**ld** after',strong:'ld'},{undo:'before **bold** after',selection:{start:0,end:11}}]);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

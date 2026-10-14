@@ -1161,6 +1161,17 @@
         "exitCode": 0,
         "report": "clipboard-k1-qa-linux.json",
         "scope": "Real editor handlers with controlled clipboard formats, both applicable Linux browser engines; native transport is not certified"
+      },
+      "partialCutFollowup": {
+        "status": "passed on both Linux browser engines",
+        "report": "clipboard-partial-cut-linux.log",
+        "scope": [
+          "cut beginning inside bold and ending outside its closing delimiter",
+          "cut beginning before bold and ending within its content",
+          "remaining rendered strong content retains formatting",
+          "undo restores exact source and original selected interval"
+        ],
+        "remaining": "Mixed-format joins, cross-container cuts and full native multi-window acceptance remain pending"
       }
     },
     "externalHtmlStructureDevelopment": {

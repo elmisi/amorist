@@ -1454,6 +1454,28 @@
       return result;
     }
 
+    clipboardCutReplacement(selection) {
+      if(this.mode!=="wysiwyg") return "";
+      let closing="", opening="";
+      const first=this.descriptorAtRaw(selection.start), last=this.descriptorAtRaw(Math.max(selection.start,selection.end-1));
+      const edge=(descriptor,startEdge)=> {
+        if(!descriptor || descriptor.unitType!=="line" || descriptor.projection.referenceDefinition) return;
+        const text=descriptor.projection.text,base=descriptor.start+descriptor.projection.prefix;
+        const visit=tokens=>tokens.forEach(token=> {
+          if(["em","strong","strong-em","delete","code","link"].includes(token.type)) {
+            if(startEdge && selection.start>base+token.contentStart && selection.start<base+token.contentEnd
+                && selection.end>=base+token.end) closing=text.slice(token.contentEnd,token.end)+closing;
+            if(!startEdge && selection.end>base+token.contentStart && selection.end<base+token.contentEnd
+                && selection.start<=base+token.start) opening+=text.slice(token.start,token.contentStart);
+          }
+          if(token.children) visit(token.children);
+        });
+        visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,this.lineDescriptors.references));
+      };
+      edge(first,true);edge(last,false);
+      return closing+opening;
+    }
+
     handleCopy(event,cut) {
       const clipboard=event.clipboardData, selection=this.selectionRaw();
       if(!clipboard || selection.start===selection.end) return;
@@ -1469,7 +1491,10 @@
       const publicSource=projected.filter(row=>!row.projection.referenceDefinition).map(row=>row.raw+row.ending).join("");
       try {clipboard.setData("text/html",MarkdownCodec.renderMarkdown(publicSource,projected.references,true));} catch(error) { /* Plain Markdown remains available. */ }
       try {clipboard.setData(CLIPBOARD_TYPE,JSON.stringify({schemaVersion:1,markdown}));} catch(error) { /* Some native clipboards reject custom types. */ }
-      if(cut) this.finishClipboardEdit(this.clipboardCutSelection(selection),"","cut");
+      if(cut) {
+        const span=this.clipboardCutSelection(selection);
+        this.finishClipboardEdit(span,this.clipboardCutReplacement(span),"cut");
+      }
     }
 
     handlePaste(event) {
