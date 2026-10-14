@@ -1651,27 +1651,37 @@
         this.restoreRawSelection(entry.selectionAfter); return;
       }
       let firstIndex = first.index, lastIndex = last.index;
+      const quoteDepths=new Map();
       for (let index = first.index; index <= last.index; index += 1) {
         const ownerIndex = ownerAt(descriptors[index]);
         if (ownerIndex === undefined) continue;
         firstIndex = Math.min(firstIndex, ownerIndex);
         const owner = descriptors[ownerIndex];
+        const depth=owner.projection.quoteList?owner.projection.quoteDepth:0;
         let end = ownerIndex;
         for (let next = ownerIndex + 1; next < descriptors.length; next += 1) {
           const row = descriptors[next];
           if (!row.raw.trim()) continue;
-          const columns = indentationColumns((row.raw.match(/^[ \t]*/) || [""])[0]);
+          const prefix=depth?quotePrefix(row.raw,depth):"";
+          if(prefix===null)break;
+          const inner=row.raw.slice(prefix.length);
+          if(!inner.trim())continue;
+          const columns = indentationColumns((inner.match(/^[ \t]*/) || [""])[0]);
           if (columns < owner.projection.contentIndent) break;
           end = next;
         }
         lastIndex = Math.max(lastIndex, end);
+        if(depth)for(let row=ownerIndex;row<=end;row++)quoteDepths.set(row,Math.min(quoteDepths.get(row)??Infinity,depth));
       }
       const edits = [];
       for (let index = firstIndex; index <= lastIndex; index += 1) {
         const row = descriptors[index];
-        const removed = outdent ? (row.raw.match(/^(?:\t| {1,2})/) || [""])[0].length : 0;
+        const depth=quoteDepths.get(index);
+        const outer=depth?quotePrefix(row.raw,depth):row.projection.quoteContainerPrefix||"";
+        const prefix=outer?.length||0;
+        const removed = outdent ? (row.raw.slice(prefix).match(/^(?:\t| {1,2})/) || [""])[0].length : 0;
         const inserted = outdent ? "" : "  ";
-        if (removed || inserted) edits.push({ start: row.start, removed, inserted });
+        if (removed || inserted) edits.push({ start: row.start+prefix, removed, inserted });
       }
       if (!edits.length) return;
       const start = descriptors[firstIndex].start, end = descriptors[lastIndex].end;

@@ -68,6 +68,18 @@ async function main() {
           await sendKeys([{key:"Tab",shift:true}]);assert.equal((await state()).source,list);
           await engine.evaluate("(() => {window.__indent.undo();window.__indent.undo();return true;})()");
           assert.equal((await state()).source,list);
+          const quoted="> - parent\r\n>   continuation\n>   1. child\r>      > quote\r\n> - sibling";
+          const quotedIndented=">   - parent\r\n>     continuation\n>     1. child\r>        > quote\r\n> - sibling";
+          const quotedAt=quoted.indexOf('parent')+2;
+          await mount(quoted,quotedAt);await sendKeys([{key:"Tab"}]);
+          assert.equal((await state()).source,quotedIndented,`${entry.id}/${mode}: quoted list subtree indents inside outer quote`);
+          assert.deepEqual((await state()).selection,{start:quotedAt+2,end:quotedAt+2});
+          await sendKeys([{key:"Tab",shift:true}]);assert.equal((await state()).source,quoted);
+          await engine.evaluate("(() => {window.__indent.undo();window.__indent.undo();return true;})()");assert.equal((await state()).source,quoted);
+          const quotedEnd=quoted.indexOf('child')+5;
+          await mount(quoted,quotedAt,quotedEnd,true);await sendKeys([{key:"Tab"}]);
+          assert.deepEqual(await state(),{source:quotedIndented,selection:{start:quotedAt+2,end:quotedEnd+6},direction:"backward"},`${entry.id}/${mode}: quoted subtree preserves oriented selection`);
+          await engine.evaluate("(() => {window.__indent.undo();return true;})()");assert.deepEqual(await state(),{source:quoted,selection:{start:quotedAt,end:quotedEnd},direction:"backward"});
           const code="before\r```\r    literal\r```\rafter";
           const codeAt=code.indexOf('literal')+3;
           await mount(code,codeAt);await sendKeys([{key:"Tab"}]);

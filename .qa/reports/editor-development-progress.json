@@ -2839,6 +2839,11 @@
       "quoted-list-performance-warmup-barrier-linux.log B9 pass GTK/Chromium"
     ],
     "qaBarrier": "B9 now acknowledges exactly three warmup input frames and corresponding source before resetting batch; additionally checks exactly20 measured characters inserted. Count20 and p95 thresholds unchanged. Original21-sample failure preserved in quoted-list-performance-failed-linux.json.",
-    "remaining": "Quoted nested block code, Tab/subtree gestures, arbitrary mixed containers and final full native/package/platform acceptance remain pending."
+    "remaining": "Quoted nested block code, arbitrary mixed containers and final full native/package/platform acceptance remain pending.",
+    "subtreeIndentation": {
+      "implemented": "Quoted list subtree extent uses indentation after the outer quote prefix. Tab/ShiftTab edits that inner indentation, including descendant quote rows, while preserving outer quote markers and source terminators. Explicit selection mapping retains direction and undo.",
+      "verified": "Actual native Tab/ShiftTab in visual and source modes on GTK/Chromium: parent, continuation, ordered child, nested quote, untouched sibling, backward selection and undo. Code/inline/history regressions pass.",
+      "evidence": "quoted-list-subtree-indentation-linux.log pass4 fail0 skip0"
+    }
   }
 }
