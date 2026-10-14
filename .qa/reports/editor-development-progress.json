@@ -2186,7 +2186,7 @@
     "test": "tests/editor-recovery-changed-base-native.test.js",
     "evidence": "recovery-changed-base-reproducer-linux.log in private execution evidence",
     "observed": "Compiled app silently ignores an inactive same-document recovery copy when saved base differs; original updated document and recovery record remain byte exact",
-    "required": "Startup cancellation/race and Windows/macOS native package coverage remain pending",
+    "required": "Windows/macOS native package coverage remains pending; full current Linux regression rerun required",
     "startupEvidence": "recovery-changed-base-fixed-linux.log: native explicit selection, changed-base warning, recovered text and unchanged external file pass",
     "rustEvidence": "recovery-open-rust-linux.log: 35 passed, 1 ignored helper, exit 0",
     "openEvidence": "recovery-open-native-linux.log: startup and Open explicit recovery; cancellation and file race preserve previous editor root and original/recovery bytes; exit 0",
@@ -2206,7 +2206,9 @@
         "evidence": "recovery-open-rust-windows.log; native cargo exit 0"
       },
       "limitation": "Backend compile/unit evidence only; native GUI recovery acceptance remains Linux only"
-    }
+    },
+    "startupRaceEvidence": "recovery-changed-base-startup-races-linux.log: startup cancel/external race and full Open/Save/restart checks pass; exit 0",
+    "ci": "Explicit Linux native test step added to qa.yml; workflow parsed locally, no CI execution or publication"
   },
   "subscriptionStop": {
     "remainingPercentThreshold": 60,

@@ -25,6 +25,20 @@ async function main() {
   fs.writeFileSync(recordPath, record);
   let engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
     ['--', file], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+  async function waitFor(expression) {
+    const deadline = Date.now() + 6000;
+    while (!await engine.evaluate(expression)) {
+      assert.ok(Date.now() < deadline, 'Timed out: ' + expression);
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+  async function restartAtFile() {
+    await engine.close();
+    engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
+      ['--', file], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
+    await engine.start();
+    await waitFor(`!!document.querySelector('#recovery-dialog[open]')`);
+  }
   try {
     await engine.start();
     const deadline = Date.now() + 8000;
@@ -38,6 +52,20 @@ async function main() {
     assert.equal(fs.readFileSync(recordPath, 'utf8'), record, 'The old recovery copy must remain intact');
     assert.equal(ready.dialog, true, 'A recovery copy with a changed saved base must be offered explicitly instead of silently ignored');
     assert.match(await engine.evaluate(`document.querySelector('#recovery-dialog p').textContent`), /saved file changed.*does not merge/i);
+    await engine.evaluate(`document.getElementById('recovery-dialog').dispatchEvent(new Event('cancel',{cancelable:true}))`);
+    await waitFor(`!document.getElementById('editor').inert && !!document.querySelector('.amorist-source-line')`);
+    assert.match(await engine.evaluate(`document.querySelector('.amorist-editor-surface').textContent`), /Externally updated document/);
+    assert.equal(fs.readFileSync(file, 'utf8'), disk);
+    assert.equal(fs.readFileSync(recordPath, 'utf8'), record);
+    await restartAtFile();
+    fs.writeFileSync(file, 'Changed during startup choice\r\n');
+    await engine.evaluate(`document.getElementById('recover-selected').click()`);
+    await waitFor(`document.getElementById('notice').textContent.includes('saved file changed')`);
+    assert.equal(fs.readFileSync(file, 'utf8'), 'Changed during startup choice\r\n');
+    assert.equal(fs.readFileSync(recordPath, 'utf8'), record);
+    fs.writeFileSync(file, disk);
+    await restartAtFile();
+    console.log('Changed-base startup recovery: cancel preserves disk and copy; a new external change refuses recovery');
     await engine.evaluate(`document.getElementById('recover-selected').click()`);
     const adoptedDeadline = Date.now() + 5000;
     while (!await engine.evaluate(`!!document.querySelector('.amorist-source-line')`)) {
@@ -52,13 +80,6 @@ async function main() {
     engine = new TauriEngine(discoverDriver(), path.join(root, 'src-tauri/target/debug/amorist'),
       ['--new-document'], { ...process.env, XDG_DATA_HOME: path.join(scratch, 'data') });
     await engine.start();
-    async function waitFor(expression) {
-      const deadline = Date.now() + 6000;
-      while (!await engine.evaluate(expression)) {
-        assert.ok(Date.now() < deadline, 'Timed out: ' + expression);
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-    }
     await waitFor(`!document.getElementById('editor').inert && !!document.querySelector('.amorist-editor-surface')`);
     await engine.evaluate(`window.__previousRecoveryEditor=document.querySelector('.amorist-editor-surface')`);
     async function openChoice() {

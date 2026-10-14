@@ -158,6 +158,10 @@ jobs:
             node --test --test-concurrency=1 $checks
           fi
 
+      - name: Verify native changed-base recovery decisions
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-changed-base-native.test.js
+
       - name: Run the QA suite on every engine applicable to this platform
         id: suite
         run: |
