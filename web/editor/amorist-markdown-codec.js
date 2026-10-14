@@ -141,11 +141,12 @@
   // is what makes nesting work — it is the only thing distinguishing a sublist
   // from a sibling item, so it must be captured rather than anchored away.
   function matchListItem(line) {
-    const match = line.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+    const match = line.match(/^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/);
     if (!match) return null;
     const bullet = match[2] !== "" && !/\d/.test(match[2]);
     const task = bullet ? match[3].match(/^\[([ xX])\]\s+(.*)$/) : null;
     return {
+      number: bullet ? null : Number.parseInt(match[2],10),
       indent: match[1].length,
       type: task ? "taskList" : (bullet ? "bulletList" : "orderedList"),
       checked: Boolean(task) && task[1].toLowerCase() === "x",
@@ -188,9 +189,12 @@
   }
 
   function makeListItem(type, item) {
-    return type === "taskList"
+    const result=type === "taskList"
       ? { checked: item.checked, text: item.text, children: [] }
       : { text: item.text, children: [] };
+    // Presentation metadata leaves the existing serializable block shape intact.
+    if(type==="orderedList") Object.defineProperty(result,"number",{value:item.number});
+    return result;
   }
 
   function isBlockStart(lines, index) {
@@ -236,6 +240,7 @@
       case "bulletList":
         return `<ul${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ul>`;
       case "orderedList":
+        if(clipboard) return `<ol start="${block.items[0]?.number ?? 1}">`+block.items.map(item=>`<li value="${item.number}">${renderInline(item.text,references)}${renderSublists(item,references,clipboard)}</li>`).join("")+"</ol>";
         return `<ol${attrs}>${block.items.map(item=>renderListItem(item,references,clipboard)).join("")}</ol>`;
       default:
         return `<p${attrs}>${renderInline(block.text,references)}</p>`;

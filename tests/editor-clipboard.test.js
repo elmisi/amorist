@@ -109,6 +109,13 @@ async function main(){
     editor.handlePaste({clipboardData:{getData:type=>data.get(type)||''},preventDefault(){}});return editor.getMarkdown();
    })()`);
    assert.equal(taskFallback,'- [x] Done\n- [ ] Todo');
+   const orderedFallback=await engine.evaluate(`(() => {
+    const editor=window.__clip,source=${JSON.stringify('5. First\n12. Second\n13. Third')},data=new Map();
+    editor.setMarkdown(source);editor.selectSurfaceContents();editor.handleCopy({clipboardData:{setData:(type,value)=>data.set(type,value)},preventDefault(){}},false);
+    data.delete('application/x-amorist-markdown+json');editor.setMarkdown('');editor.setSurfaceSelection(0,0);
+    editor.handlePaste({clipboardData:{getData:type=>data.get(type)||''},preventDefault(){}});return editor.getMarkdown();
+   })()`);
+   assert.equal(orderedFallback,'5. First\n12. Second\n13. Third');
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}
