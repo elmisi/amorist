@@ -337,6 +337,21 @@ async fn save_as_document(app: tauri::AppHandle, token: u64, context_id: u64, ma
 }
 
 #[tauri::command]
+async fn resolve_link(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<links::Destination, String> {
+    run_io(app, move |_app, state| {
+        let document = {
+            let path = state.file_path.lock().unwrap();
+            require_context(state, context_id)?;
+            path.clone()
+        };
+        let destination = links::resolve(&reference, document.as_deref())?;
+        let _guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        Ok(destination)
+    }).await
+}
+
+#[tauri::command]
 async fn register_image(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<String, String> {
     run_io(app, move |_app,state| {
         let path={
@@ -1105,6 +1120,7 @@ pub fn run() {
             discard_working_copy,
             select_recovery,
             register_image,
+            resolve_link,
             load_settings,
             save_settings,
             get_version,

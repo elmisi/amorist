@@ -1,7 +1,8 @@
 //! Classify destinations before any external application is invoked.
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize)]
+#[serde(tag = "kind", content = "value", rename_all = "camelCase")]
 pub enum Destination {
     Anchor(String),
     Url(String),
