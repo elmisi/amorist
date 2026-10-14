@@ -3366,7 +3366,7 @@
       "linux-candidate-b9b3ddc-raw-loop.log exit0"
     ],
     "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
-    "remaining": "Installed-environment GUI/desktop activation and unexplained earlier B2 intermittency remain; macOS/Windows acceptance pending. Administrative install/upgrade prerequisite resolved using local Docker; no personal host upgrade required for this proof.",
+    "remaining": "Real native file chooser/opener coverage and original intermittent B2 anomaly still require closure; macOS/Windows acceptance pending.",
     "rollbackPreparation": {
       "package": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-0.10.8-backup/amorist_0.10.8_restore.deb",
       "sha256": "cadd31d72d0d3768b635368c3bcd0ee178e71f6bf40047ee0c711631d10f82f3",
@@ -3405,11 +3405,37 @@
       "dirty": false
     },
     "userdataFixturesUnchanged": 3,
-    "scope": "Actual package installation and upgrade; installed executable headless identity and exact byte match to native-tested extracted deb. GUI tests inside the installed environment and desktop activation not yet performed. Personal installed0.10.8 and its app data untouched.",
+    "scope": "Actual installation and upgrade; installed executable identity/bytes match candidate; installed GUI settings/recovery/images/clipboard/review-loop passed and normal desktop launch visually verified. Personal installed0.10.8 and app data untouched.",
     "evidence": [
       "linux-isolated-upgrade.log (installation/upgrade passed; initial identity invocation used wrong CLI syntax)",
       "linux-isolated-upgrade-completion.log (corrected headless invocation and hash verification passed)"
     ],
     "containerState": "Stopped after completed proof; retained for installed-environment GUI follow-up"
+  },
+  "linuxInstalledGuiAcceptance": {
+    "status": "passed",
+    "environment": "nonroot amoristqa user in isolated Ubuntu26.04 after actual0.10.8->0.10.10 upgrade; native WebKitGTK, Xvfb",
+    "executable": "/usr/bin/amorist",
+    "candidateCommit": "b9b3ddcbf76da7e7df1f053c0006d00f4b6537f1",
+    "evidence": [
+      "linux-installed-gui-clipboard.log exit0",
+      "linux-installed-gui-editor-settings-native.log exit0",
+      "linux-installed-gui-editor-recovery-startup-documents-native.log exit0",
+      "linux-installed-gui-editor-local-image-native.log exit0",
+      "linux-installed-gui-editor-recovery-boundaries-native.log exit0",
+      "linux-installed-gui-review-loop.log exit0"
+    ],
+    "desktop": {
+      "launcher": "installed amorist.desktop via gio",
+      "pid": 260,
+      "file": "/tmp/amorist-desktop-t9xgz5g4/desktop activation λ.md",
+      "sourceSha256": "4faa752cfa20537d57fdefe11bd359000301ea84ea52cff720ec855af2824019",
+      "originalUnchanged": true,
+      "defaultMarkdownHandler": "amorist.desktop",
+      "screenshot": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-desktop.png",
+      "visualInspection": "Screenshot shows v0.10.10, desktop activation λ.md, Installed desktop launch, DESKTOP_OPEN_OK λ and Original bytes untouched.",
+      "evidence": "linux-installed-desktop-visual-proof.log exit0; installed .desktop launched with gio; source unchanged"
+    },
+    "remaining": "Real native file chooser/opener coverage and original intermittent B2 anomaly still require closure; macOS/Windows acceptance pending."
   }
 }
