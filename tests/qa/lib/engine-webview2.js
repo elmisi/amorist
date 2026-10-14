@@ -11,7 +11,7 @@ function find(name){
 
 class WebView2Engine extends TauriEngine {
  constructor(driver,options){
-  super(driver,options.application,['--new-document'],process.env);
+  super(driver,options.application,options.arguments||['--new-document'],options.environment||process.env);
   this.id='webview2';this.nativeDriver=options.nativeDriver;
  }
  static discover(){

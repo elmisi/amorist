@@ -1993,6 +1993,23 @@
       "result": "green; task and Node exit code 0",
       "scope": "All applicable declared browser checks passed on WebView2 and Chromium; F2/E1/E2/H1/H2/H3 native scenarios delegated to current Linux automation; H4 requires macOS Finder/Dock package acceptance",
       "notProved": "Windows native File/recovery/new-instance behavior and setup.exe lifecycle"
+    },
+    "nativeFileProof": {
+      "evidence": "windows-native-file-passed.log; windows-native-file-passed-status.json",
+      "scope": "compiled native Windows application, actual keyboard input, controlled Open/SaveAs picker responses",
+      "proved": [
+        "Open adopts a Unicode-path temporary Markdown file",
+        "cancelled SaveAs leaves original file unchanged",
+        "Save writes exact CRLF source",
+        "SaveAs writes exact CRLF source and changes path",
+        "same editor root retained"
+      ],
+      "remaining": [
+        "native system picker acceptance",
+        "CLI filename transport through driver and direct launch",
+        "New/Open dirty decisions, recovery and concurrent-save acceptance"
+      ],
+      "driverDiagnostic": "standalone -- rejected by Edge driver; positional filename run did not adopt file and recovered previous untitled QA source; failures preserved, not counted as Save acceptance"
     }
   },
   "ciWindowsDevelopment": {
