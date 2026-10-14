@@ -472,3 +472,15 @@ mark.amorist-find-current {
   background: #f0a020;
   color: #fff;
 }
+
+/* Global preferences affect document text, never toolbar controls. */
+.amorist-editor .amorist-source-line { font-size: var(--amorist-base-font-size, 16px); }
+.amorist-editor .amorist-wysiwyg-h1, .amorist-editor-surface h1 { font-size: calc(var(--amorist-base-font-size, 16px) * 2); }
+.amorist-editor .amorist-wysiwyg-h2, .amorist-editor-surface h2 { font-size: calc(var(--amorist-base-font-size, 16px) * 1.5); }
+.amorist-editor .amorist-wysiwyg-h3, .amorist-editor-surface h3 { font-size: calc(var(--amorist-base-font-size, 16px) * 1.1875); }
+.amorist-editor .amorist-wysiwyg-h4, .amorist-editor-surface h4 { font-size: var(--amorist-base-font-size, 16px); }
+.amorist-editor .amorist-wysiwyg-h5, .amorist-editor-surface h5 { font-size: calc(var(--amorist-base-font-size, 16px) * .875); }
+.amorist-editor .amorist-wysiwyg-h6, .amorist-editor-surface h6 { font-size: calc(var(--amorist-base-font-size, 16px) * .8125); }
+.amorist-editor .amorist-wysiwyg-code { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-code-scale, 1)); }
+.amorist-editor .amorist-wysiwyg-table { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-table-scale, .875)); }
+.amorist-editor .amorist-editor-source { font: var(--amorist-base-font-size, 16px)/1.6 "SFMono-Regular", Consolas, "Liberation Mono", monospace; }

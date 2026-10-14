@@ -28,6 +28,11 @@
   let fileChanging = false;
   let fileActions = null;
   let nativeOpen = null;
+  const settings = window.__TAURI__ && window.AmoristSettings ? window.AmoristSettings.create({
+    invoke: (...args) => window.__TAURI__.core.invoke(...args),
+    getEditor: () => state.editor,
+    warning: message => showWarning(message, "settings"),
+  }) : null;
 
   function errorMessage(error, fallback) {
     if (typeof error === "string") return error;
@@ -578,6 +583,7 @@
       },
     });
     state.editor = editor;
+    if (settings) settings.applyTo(editor);
   }
 
   function handleKeyDown(event) {

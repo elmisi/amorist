@@ -53,7 +53,7 @@
       "id": 8,
       "name": "settings-and-active-line",
       "status": "partial",
-      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending."
+      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending."
     },
     {
       "id": 9,
@@ -983,6 +983,48 @@
         "focus reload across processes",
         "effective settings in Bug reports",
         "native package acceptance on Linux/macOS/Windows"
+      ]
+    },
+    "settingsUiDevelopment": {
+      "status": "dialog and typography implemented; directed browser probes pass, native/overlay gates pending",
+      "directedLinux": {
+        "exitCode": 0,
+        "report": "settings-ui-verified-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ]
+      },
+      "classicLinux": {
+        "pass": 11,
+        "fail": 1,
+        "report": "settings-classic-linux.log",
+        "failure": "WebKit continuation Enter read before final input callback; no source change visible yet"
+      },
+      "unchangedFollowup": {
+        "exitCode": 0,
+        "report": "settings-block-layout-followup-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": "Only failed block-layout regression; unchanged code and expectations. No final single all-green twelve-test run claimed."
+      },
+      "scope": [
+        "separate Settings entry and modal dialog",
+        "isolated editor preview and defaults",
+        "cancel without preference writes",
+        "failed save keeps dialog, saved preferences and main typography",
+        "retry applies only successfully persisted values",
+        "reload on window focus with stale-response guards",
+        "common source/WYSIWYG base size, heading ratios, table/code factors",
+        "unchanged document and selection, table padding remeasured and viewport anchoring"
+      ],
+      "remaining": [
+        "active visual-line overlay and preview",
+        "effective settings in Bug reports",
+        "dedicated QA contract gate and native package preference acceptance",
+        "actual cross-process focus reload acceptance"
       ]
     }
   }

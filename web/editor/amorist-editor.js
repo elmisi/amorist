@@ -211,6 +211,24 @@
       this.findInput.addEventListener("keydown", (event) => this.handleFindKeyDown(event));
     }
 
+    applySettings(settings) {
+      if (JSON.stringify(this.settings) === JSON.stringify(settings)) return;
+      const anchor = this.mode === "source" ? this.sourceViewportAnchor() : this.wysiwygViewportAnchor();
+      const scrolls = Array.from(this.surface.querySelectorAll('.amorist-wysiwyg-table-block')).map(block => ({
+        block, left:block.scrollLeft, pinned:block.scrollWidth-block.clientWidth-block.scrollLeft<=1,
+      }));
+      this.settings = {...settings};
+      this.root.style.setProperty('--amorist-base-font-size', settings.baseFontSize + 'px');
+      this.root.style.setProperty('--amorist-table-scale', String(settings.tableScale));
+      this.root.style.setProperty('--amorist-code-scale', String(settings.codeScale));
+      this.root.style.setProperty('--amorist-current-line-color', settings.highlightColor);
+      scrolls.forEach(({block})=>block.querySelectorAll(".amorist-wysiwyg-table-cell").forEach(cell=>{cell.style.paddingInlineEnd="0px";}));
+      this.layoutTableBlocks(scrolls.map(item=>item.block));
+      scrolls.forEach(({block,left,pinned})=> { const maximum=Math.max(0,block.scrollWidth-block.clientWidth); block.scrollLeft=pinned?maximum:Math.min(left,maximum); });
+      if (this.mode === "source") this.restoreSourceViewportAnchor(anchor);
+      else this.restoreWysiwygViewportAnchor(anchor);
+    }
+
     destroy() { this.container.replaceChildren(); }
     focus() { (this.mode === "source" ? this.source : this.surface).focus(); }
     getMarkdown() { return this.model.source; }

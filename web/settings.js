@@ -1,0 +1,79 @@
+(function () {
+  "use strict";
+  const defaults = Object.freeze({highlightCurrentLine:false, highlightColor:'#eef1f4', baseFontSize:16, tableScale:0.875, codeScale:1});
+  const colors = [['Grigio','#eef1f4'],['Azzurro','#e8f2ff'],['Verde','#e9f5ed'],['Giallo','#fff6d8'],['Rosa','#faedf2']];
+  const scales = [0.75,0.875,1,1.125,1.25,1.5];
+  function valid(value) {
+    return value && typeof value.highlightCurrentLine === 'boolean'
+      && colors.some(([,color])=>color===value.highlightColor)
+      && Number.isInteger(value.baseFontSize) && value.baseFontSize>=12 && value.baseFontSize<=24
+      && scales.includes(value.tableScale) && scales.includes(value.codeScale);
+  }
+  function create({invoke, getEditor, warning}) {
+    let current = {...defaults}, generation = 0, saving = false, preview = null;
+    const button = document.getElementById('settings-button');
+    const dialog = document.createElement('dialog');
+    dialog.id = 'settings-dialog'; dialog.setAttribute('aria-labelledby','settings-title');
+    dialog.innerHTML = `<form id="settings-form"><h2 id="settings-title">Settings</h2>
+      <label><input name="highlightCurrentLine" type="checkbox"> Evidenzia la riga attiva</label>
+      <label>Colore <select name="highlightColor">${colors.map(([name,color])=>`<option value="${color}">${name}</option>`).join('')}</select></label>
+      <label>Dimensione testo <input name="baseFontSize" type="number" min="12" max="24" step="1" required></label>
+      <label>Tabelle <select name="tableScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
+      <label>Codice <select name="codeScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
+      <div id="settings-preview" aria-label="Anteprima"></div><p id="settings-error" role="alert"></p>
+      <div class="actions"><button type="button" data-settings="defaults">Default</button><button type="button" data-settings="cancel">Annulla</button><button type="submit">Salva</button></div></form>`;
+    document.body.append(dialog);
+    const form = dialog.querySelector('form'), error = dialog.querySelector('#settings-error');
+    const read = () => ({highlightCurrentLine:form.elements.highlightCurrentLine.checked,
+      highlightColor:form.elements.highlightColor.value, baseFontSize:Number(form.elements.baseFontSize.value),
+      tableScale:Number(form.elements.tableScale.value), codeScale:Number(form.elements.codeScale.value)});
+    function fill(value) {
+      form.elements.highlightCurrentLine.checked = value.highlightCurrentLine;
+      for (const name of ['highlightColor','baseFontSize','tableScale','codeScale']) form.elements[name].value = value[name];
+      if (preview) preview.applySettings(value);
+    }
+    function apply(value) {
+      if (!valid(value)) throw new Error('Preferenze non valide.');
+      current = {...value};
+      const editor = getEditor(); if (editor) editor.applySettings(current);
+    }
+    async function refresh() {
+      if (saving || dialog.open) return;
+      const token = ++generation;
+      try {
+        const loaded = await invoke('load_settings');
+        if (token !== generation || saving || dialog.open) return;
+        if (JSON.stringify(current)!==JSON.stringify(loaded.settings)) apply(loaded.settings);
+        else { const editor=getEditor(); if(editor) editor.applySettings(current); }
+        if (loaded.warning) warning(loaded.warning);
+      } catch (e) { if (token===generation) warning(String(e.message||e)); }
+    }
+    button.hidden = false;
+    button.addEventListener('click',()=> {
+      if (saving || dialog.open) return;
+      generation++; error.textContent=''; dialog.showModal();
+      preview = window.AmoristEditor.create(dialog.querySelector('#settings-preview'), {
+        value:'# Titolo\nTesto di esempio\n\n| Voce | Nota |\n| --- | --- |\n| A | B |\n\n```\ncodice di esempio\n```', spellcheck:false});
+      preview.toolbar.hidden=true; preview.surface.contentEditable='false'; preview.source.readOnly=true;
+      fill(current);
+    });
+    form.addEventListener('input',()=> { const value=read(); if(valid(value)&&preview) preview.applySettings(value); });
+    dialog.querySelector('[data-settings="defaults"]').addEventListener('click',()=>fill(defaults));
+    dialog.querySelector('[data-settings="cancel"]').addEventListener('click',()=> { if(!saving) dialog.close(); });
+    dialog.addEventListener('cancel',event=> { if(saving) event.preventDefault(); });
+    dialog.addEventListener('close',()=> { if(preview) preview.destroy(); preview=null; refresh(); });
+    form.addEventListener('submit',async event=> {
+      event.preventDefault(); if(saving) return;
+      const value=read(); if(!valid(value)) { error.textContent='Scegli valori validi.'; return; }
+      saving=true; generation++; error.textContent='';
+      Array.from(form.elements).forEach(element=>element.disabled=true);
+      try { const saved=await invoke('save_settings',{settings:value}); apply(saved); dialog.close(); }
+      catch(e) { error.textContent=String(e.message||e); }
+      finally { saving=false; Array.from(form.elements).forEach(element=>element.disabled=false); }
+    });
+    window.addEventListener('focus',refresh);
+    refresh();
+    return {refresh, applyTo:editor=>editor.applySettings(current), effective:()=>({...current})};
+  }
+  window.AmoristSettings = {create, defaults, valid};
+})();
