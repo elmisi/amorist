@@ -113,7 +113,18 @@
     if (tag === "LI") return `- ${children().trim()}\n`;
     if (tag === "TD" || tag === "TH") return children().trim();
     if (tag === "TR") return Array.from(node.children).map(nodeToSource).join(" | ") + "\n";
-    if (tag === "TABLE") return Array.from(node.querySelectorAll("tr")).map(nodeToSource).join("");
+    if (tag === "TABLE") {
+      const rows=Array.from(node.querySelectorAll("tr")).filter(row=>row.closest("table")===node);
+      const cells=rows.map(row=>Array.from(row.children).filter(cell=>cell.tagName==="TD" || cell.tagName==="TH")
+        .map(cell=>nodeToSource(cell).replace(/\n/g,"<br>").replace(/\|/g,"\\|")));
+      const width=Math.max(0,...cells.map(row=>row.length));
+      if(!width) return "";
+      const line=row=>"| "+Array.from({length:width},(_,index)=>row[index]||"").join(" | ")+" |";
+      const header=rows[0] && Array.from(rows[0].children).some(cell=>cell.tagName==="TH");
+      const output=header?[line(cells.shift())]:[line(Array(width).fill(""))];
+      output.push(line(Array(width).fill("---")),...cells.map(line));
+      return output.join("\n")+"\n\n";
+    }
     const block = new Set(["P", "DIV", "SECTION", "ARTICLE", "HEADER", "FOOTER", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "UL", "OL", "PRE"]);
     const text = children();
     return block.has(tag) ? text + "\n\n" : text;

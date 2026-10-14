@@ -55,4 +55,8 @@ const nested=el("OL",[
 assert.equal(H._cleanupMarkdown(H._nodeToSource(nested)),"5. parent\n   - nested\n12. explicit\n13. next");
 assert.equal(H._cleanupMarkdown(H._nodeToSource(el("H2",[text("Title"),el("EM",[text(" styled")])]))),"## Title* styled*");
 assert.equal(H._cleanupMarkdown(H._nodeToSource(el("BLOCKQUOTE",[el("P",[text("first")]),el("BLOCKQUOTE",[el("P",[text("nested")])])]))),"> first\n>\n> > nested");
+const table=el("TABLE",[]);
+const rows=[el("TR",[el("TH",[text("Name")]),el("TH",[text("Note")])]),el("TR",[el("TD",[text("A|B")]),el("TD",[text("value")])])];
+rows.forEach(row=>{row.closest=()=>table;});table.querySelectorAll=()=>rows;
+assert.equal(H._cleanupMarkdown(H._nodeToSource(table)),"| Name | Note |\n| --- | --- |\n| A\\|B | value |");
 console.log("html-to-markdown pure helpers OK");
