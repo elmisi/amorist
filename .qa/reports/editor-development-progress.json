@@ -2515,5 +2515,20 @@
       "clipboard-block-boundary-list-regressions-linux.log exit0 pass3 fail0 skip0"
     ],
     "remaining": "Boundaries within existing formatted inline spans, headings, lists/quotes/tables and cross-unit cuts/joins need complete gesture planning; full current suite and native package/platform acceptance remain pending."
+  },
+  "listQuoteContainersLinux": {
+    "status": "partial",
+    "implemented": "Nested prose quote projection uses the owning list content column, retains list ownership across quote rows and subsequent continuation, and aligns quote container to list content. Keyboard quote context comes from classified raw intervals, including wider ordered markers.",
+    "verified": [
+      "GTK/Chromium bullet and 123. ordered list quote ownership and following continuation",
+      "Exact CRLF source, Unicode edit, undo and mode round-trip",
+      "Enter retains list indentation and quote markers; related code, prose Enter and indentation checks pass"
+    ],
+    "evidence": [
+      "list-quote-owner-before-linux.log reproduces owner loss",
+      "list-quote-owner-keybarrier-linux.log exit0 pass4 fail0 skip0"
+    ],
+    "qaCorrection": "list-quote-owner-enter-linux.log retained failed Escape focus read; test now waits for actual native Escape keydown using the existing Tab event barrier.",
+    "remaining": "Code and lists within arbitrary mixed container depth, semantic clipboard full subtree and final package/platform acceptance remain pending."
   }
 }

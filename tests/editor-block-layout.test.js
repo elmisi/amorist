@@ -140,6 +140,19 @@ async function main() {
         assert.equal(metadata.definitions, 4);
         assert.deepEqual(metadata.links, [{href:'docs/λ.md',title:'first\r\nsecond'}]);
         assert.equal(metadata.roundtrip, metadata.source);
+        for(const [marker,indent] of [['- ','  '],['123. ','     ']]) {
+          const source=marker+'parent\r\n'+indent+'> note λ\r\n'+indent+'> next\r\n'+indent+'continuation\r\n- sibling';
+          const mixed=await engine.evaluate(`(() => {const editor=window.__blocks;editor.setMarkdown(${JSON.stringify(source)});return {source:editor.getMarkdown(),owners:editor.lineDescriptors.map(row=>row.listOwner?.index??null),quotes:editor.surface.querySelectorAll('.amorist-wysiwyg-quote').length,continuation:editor.lineDescriptors[3].projection.listContinuation};})()`);
+          assert.equal(mixed.source,source);assert.deepEqual(mixed.owners,[0,0,0,0,4],`${entry.id}: quote container retains owning list item`);assert.equal(mixed.quotes,2);assert.equal(mixed.continuation,true);
+          const at=source.indexOf('note λ')+5;
+          await engine.evaluate(`(() => {const editor=window.__blocks;editor.focus();editor.setSurfaceSelection(${at},${at});return true;})()`);await sendKeys(['X']);
+          assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'),source.slice(0,at)+'X'+source.slice(at));
+          await engine.evaluate('(() => {const editor=window.__blocks;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'),source);
+          const end=source.indexOf('note λ')+'note λ'.length;
+          await engine.evaluate(`(() => {const editor=window.__blocks;editor.focus();editor.setSurfaceSelection(${end},${end});return true;})()`);await sendKeys([{key:'Enter'}]);
+          assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'),source.slice(0,end)+'\r\n'+indent+'> '+source.slice(end),`${entry.id}: Enter retains nested quote container`);
+          await engine.evaluate('(() => {window.__blocks.undo();return true;})()');assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'),source);
+        }
         console.log(`block-layout: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

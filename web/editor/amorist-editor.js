@@ -118,6 +118,7 @@
     return a.tag === b.tag && a.prefix === b.prefix && a.list === b.list
       && a.indent === b.indent && a.quoteDepth === b.quoteDepth
       && a.listContinuation === b.listContinuation && a.layoutPadding === b.layoutPadding
+      && a.containerListPadding === b.containerListPadding
       && a.markerWidth === b.markerWidth && a.marker === b.marker
       && a.referenceDefinition === b.referenceDefinition
       && a.setextLevel === b.setextLevel
@@ -572,7 +573,14 @@
           continue;
         }
         const ownerIndex = items.findLastIndex((owner) => columns >= owner.contentIndent);
-        if (ownerIndex >= 0 && projection.tag === "div" && !projection.rule && !projection.fence) {
+        const nestedQuote = ownerIndex >= 0 ? projectionLine(descriptor.raw.slice(leading.length)) : null;
+        if (nestedQuote?.tag === "blockquote") {
+          items.length = ownerIndex + 1;
+          const owner = items[ownerIndex];
+          descriptor.listOwner = owner;
+          descriptor.projection = {...nestedQuote, prefix: leading.length + nestedQuote.prefix,
+            containerListPadding: owner.layoutPadding};
+        } else if (ownerIndex >= 0 && projection.tag === "div" && !projection.rule && !projection.fence) {
           items.length = ownerIndex + 1;
           const owner = items[ownerIndex];
           descriptor.listOwner = owner;
@@ -672,6 +680,12 @@
             indent:(descriptor.raw.match(/^[ \t]*/)||[""])[0]};
         }
       }
+      if (descriptor?.projection.tag === "blockquote") {
+        const indent=(descriptor.raw.match(/^[ \t]*/)||[""])[0];
+        return {kind:"quote",start:descriptor.start,end:descriptor.end,indent,
+          marker:descriptor.raw.slice(indent.length,descriptor.projection.prefix),spacing:"",
+          markerStart:descriptor.start+indent.length,contentStart:descriptor.start+descriptor.projection.prefix};
+      }
       if (descriptor && /^h[1-6]$/.test(descriptor.projection.tag)
           && !/^ {0,3}#{1,6}[ \t]+/.test(descriptor.raw)) {
         return { kind: "heading", start: descriptor.start, end: descriptor.end,
@@ -734,6 +748,7 @@
         } else if (projection.tag === "blockquote") {
           row.classList.add("amorist-wysiwyg-quote");
           row.style.setProperty("--quote-depth", String(projection.quoteDepth || 1));
+          if(projection.containerListPadding) row.style.marginInlineStart=projection.containerListPadding;
         } else if (projection.fence) {
           row.classList.add("amorist-wysiwyg-fence");
         } else if (projection.rule) {

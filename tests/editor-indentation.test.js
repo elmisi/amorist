@@ -23,14 +23,15 @@ async function main() {
         const sendKeys=async sequence=>{
           const before=await engine.evaluate('window.__indentKeyEvents.length');
           await engine.sendKeys(sequence);
-          const tabs=sequence.filter(item=>item.key==='Tab');
+          const keys=sequence.filter(item=>item.key);
+          const relevant=item=>item.type==='keydown'&&keys.some(expected=>item.key===expected.key||item.code===expected.key);
           const deadline=Date.now()+3000;
-          while(await engine.evaluate(`window.__indentKeyEvents.slice(${before}).filter(item=>item.type==='keydown'&&(item.key==='Tab'||item.code==='Tab')).length`)<tabs.length){
-            assert.ok(Date.now()<deadline,`${entry.id}: native Tab keydown was not delivered ${JSON.stringify(await engine.evaluate(`({events:window.__indentKeyEvents.slice(${before}),active:document.activeElement.outerHTML.slice(0,300)})`))}`);
+          while((await engine.evaluate(`window.__indentKeyEvents.slice(${before})`)).filter(relevant).length<keys.length){
+            assert.ok(Date.now()<deadline,`${entry.id}: native keydown was not delivered ${JSON.stringify(await engine.evaluate(`({events:window.__indentKeyEvents.slice(${before}),active:document.activeElement.outerHTML.slice(0,300)})`))}`);
             await new Promise(resolve=>setTimeout(resolve,20));
           }
           const delivered=await engine.evaluate(`window.__indentKeyEvents.slice(${before})`);
-          assert.deepEqual(delivered.filter(item=>item.type==='keydown'&&(item.key==='Tab'||item.code==='Tab')).map(item=>({shift:item.shift})),tabs.map(item=>({shift:!!item.shift})),`${entry.id}: delivered Tab modifiers ${JSON.stringify(delivered)}`);
+          assert.deepEqual(delivered.filter(relevant).map(item=>({shift:item.shift})),keys.map(item=>({shift:!!item.shift})),`${entry.id}: delivered key modifiers ${JSON.stringify(delivered)}`);
           await engine.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
         };
         for (const mode of ["wysiwyg","source"]) {
@@ -72,7 +73,7 @@ async function main() {
           await mount(code,codeAt);await sendKeys([{key:"Tab"}]);
           assert.equal((await state()).source,code.slice(0,codeAt)+"  "+code.slice(codeAt));
           assert.deepEqual((await state()).selection,{start:codeAt+2,end:codeAt+2});
-          await engine.sendKeys([{key:"Escape"}]);
+          await sendKeys([{key:"Escape"}]);
           assert.equal(await engine.evaluate("window.__indent.toolbar.contains(document.activeElement)"),true);
         }
         console.log(`indentation: ${entry.id} passed`);
