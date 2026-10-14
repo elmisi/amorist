@@ -1960,7 +1960,7 @@
     ]
   },
   "windowsWebView2Development": {
-    "status": "native interactive VM A-family passed; full matrix and packages pending",
+    "status": "Windows full declared QA run green on WebView2 and Chromium; native scenarios and package gates pending",
     "sourceSnapshot": "1f3ab84",
     "sourceSha256": "ac9cf2ac01cbf5ddc1bebe6b5b713f6bad127c6bc7f250495191901dfd86dbdc",
     "qaPatch": "c1388b9 browser-version discovery copied separately; does not enter application runtime fingerprint",
@@ -1975,11 +1975,18 @@
     ],
     "proved": "All ten REQ-A checks passed on native WebView2; task result and Node exit code 0",
     "remaining": [
-      "remaining deterministic families on WebView2",
-      "Chromium stand-in and full Windows matrix",
-      "native File/Settings/Bug/clipboard/new-instance acceptance",
+      "Windows native File/recovery/new-instance scenarios currently delegated",
+      "native Settings/Bug/clipboard package acceptance",
       "setup.exe install/upgrade/uninstall",
       "packaged performance and unchanged-file proofs"
-    ]
+    ],
+    "fullMatrix": {
+      "report": "windows-full-qa.json",
+      "log": "windows-full-qa.log",
+      "taskStatus": "windows-full-status.json",
+      "result": "green; task and Node exit code 0",
+      "scope": "All applicable declared browser checks passed on WebView2 and Chromium; F2/E1/E2/H1/H2/H3 native scenarios delegated to current Linux automation; H4 requires macOS Finder/Dock package acceptance",
+      "notProved": "Windows native File/recovery/new-instance behavior and setup.exe lifecycle"
+    }
   }
 }
