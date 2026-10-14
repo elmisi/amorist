@@ -79,6 +79,20 @@
   // This converter owns its source output.  It must not route through the
   // editor renderer/serializer: a paste is a local replacement transaction,
   // not a temporary DOM document that can reformat the open file.
+  function tableCellSource(cell) {
+    const source=nodeToSource(cell).replace(/\n/g,"<br>");
+    let output="";
+    for(let cursor=0;cursor<source.length;) {
+      if(source[cursor]==="\\" && cursor+1<source.length) {
+        output+=source.slice(cursor,cursor+2);cursor+=2;continue;
+      }
+      const code=source[cursor]==="`" && Internals.TextUtils.codeSpanAt(source,cursor);
+      if(code) {output+=source.slice(cursor,code.end);cursor=code.end;continue;}
+      output+=(source[cursor]==="|"?"\\":"")+source[cursor++];
+    }
+    return output;
+  }
+
   function nodeToSource(node) {
     if (node.nodeType === 3) return (node.textContent || "")
       .replace(/[\\`*_\[\]~#>!&]/g,char=>"\\"+char)
@@ -127,7 +141,7 @@
     if (tag === "TABLE") {
       const rows=Array.from(node.querySelectorAll("tr")).filter(row=>row.closest("table")===node);
       const cells=rows.map(row=>Array.from(row.children).filter(cell=>cell.tagName==="TD" || cell.tagName==="TH")
-        .map(cell=>nodeToSource(cell).replace(/\n/g,"<br>").replace(/\|/g,"\\|")));
+        .map(tableCellSource));
       const width=Math.max(0,...cells.map(row=>row.length));
       if(!width) return "";
       const line=row=>"| "+Array.from({length:width},(_,index)=>row[index]||"").join(" | ")+" |";
