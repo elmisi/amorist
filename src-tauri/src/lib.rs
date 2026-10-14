@@ -15,6 +15,7 @@ mod native_open;
 mod settings;
 mod image_resources;
 mod links;
+pub mod build_info;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
@@ -132,6 +133,8 @@ fn report_problem_inner(app: &tauri::AppHandle, state: &AppState, mut report: se
     }
     report["filePath"] = serde_json::json!(state.file_path.lock().unwrap().as_ref().map(|p| p.display().to_string()));
     report["appVersion"] = serde_json::json!(env!("AMORIST_VERSION"));
+    report["buildId"] = serde_json::json!(build_info::current().build_id);
+    report["buildInfo"] = serde_json::to_value(build_info::current()).map_err(|e|e.to_string())?;
     report["platform"] = serde_json::json!(std::env::consts::OS);
     let directory = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
