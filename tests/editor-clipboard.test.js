@@ -102,6 +102,13 @@ async function main(){
     return {html,table,numbered};
    })()`);
    assert.match(semanticTable.html,/<table>/);assert.equal(semanticTable.table,'| A | B |\n| --- | --- |\n| one | two |');assert.equal(semanticTable.numbered,'5. first\n12. second');
+   const taskFallback=await engine.evaluate(`(() => {
+    const editor=window.__clip,source=${JSON.stringify('- [x] Done\n- [ ] Todo')},data=new Map();
+    editor.setMarkdown(source);editor.selectSurfaceContents();editor.handleCopy({clipboardData:{setData:(type,value)=>data.set(type,value)},preventDefault(){}},false);
+    data.delete('application/x-amorist-markdown+json');editor.setMarkdown('');editor.setSurfaceSelection(0,0);
+    editor.handlePaste({clipboardData:{getData:type=>data.get(type)||''},preventDefault(){}});return editor.getMarkdown();
+   })()`);
+   assert.equal(taskFallback,'- [x] Done\n- [ ] Todo');
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

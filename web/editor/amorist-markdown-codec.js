@@ -229,6 +229,7 @@
         }
         return `<pre class="amorist-markdown-table" data-block-type="table"${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "taskList":
+        if(clipboard) return "<ul>"+block.items.map(item=>'<li><input type="checkbox" disabled'+(item.checked?' checked':'')+'>'+renderInline(item.text,references)+renderSublists(item,references,clipboard)+'</li>').join("")+"</ul>";
         return `<ul class="amorist-task-list"${attrs}>${block.items.map((item) =>
           `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text,references)}</span>${renderSublists(item,references,clipboard)}</li>`,
         ).join("")}</ul>`;

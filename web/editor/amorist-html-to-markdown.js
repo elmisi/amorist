@@ -70,7 +70,8 @@
         const allowed = (tag === "A" && (attr.name === "href" || attr.name === "title"))
           || (tag === "IMG" && (attr.name === "src" || attr.name === "alt" || attr.name === "title"))
           || (tag === "OL" && attr.name === "start")
-          || (tag === "LI" && attr.name === "value");
+          || (tag === "LI" && attr.name === "value")
+          || (tag === "INPUT" && node.getAttribute("type") === "checkbox" && (attr.name === "type" || attr.name === "checked"));
         if (!allowed) {
           node.removeAttribute(attr.name);
         }
@@ -110,6 +111,7 @@
     const children = () => Array.from(node.childNodes).map(nodeToSource).join("");
     if (/^H[1-6]$/.test(tag)) return "#".repeat(Number(tag.slice(1)))+" "+children().trim().replace(/\n/g," ")+"\n\n";
     if (tag === "BLOCKQUOTE") return children().trim().split("\n").map(line=>">"+(line?" "+line:"")).join("\n")+"\n\n";
+    if (tag === "INPUT" && node.getAttribute("type") === "checkbox") return node.hasAttribute("checked")?"[x] ":"[ ] ";
     if (tag === "BR") return "\n";
     if (tag === "STRONG" || tag === "B") return `**${children()}**`;
     if (tag === "EM" || tag === "I") return `*${children()}*`;
