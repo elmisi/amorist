@@ -2769,6 +2769,12 @@
         "list-html-code-backslash-performance-linux.log exit0"
       ],
       "remaining": "Arbitrary mixed/nested container block conversion, tab-width continuation semantics, cross-row image/link editing and full final contract/native package/platform acceptance remain pending."
+    },
+    "htmlWhitespacePreservation": {
+      "implemented": "Cleanup recognizes complete inline code spans before stripping trailing whitespace or collapsing blank lines, while retaining existing fenced block handling and prose cleanup.",
+      "verified": "HTML paste retains literal trailing spaces, tabs and repeated empty physical lines; Undo restores destination. Pure converter, multiline, controlled clipboard and system clipboard regression files pass on GTK/Chromium.",
+      "evidence": "html-inline-code-whitespace-linux.log pass4 fail0 skip0",
+      "scope": "Exact converted/pasted source preservation, not a claim that inline code with paragraph-separating blank lines renders as one Markdown code span."
     }
   },
   "linuxFullQaAfterMultilineClipboard": {
@@ -2814,6 +2820,7 @@
       ]
     },
     "scope": "Actual updated packages, isolated app-data/document fixtures. Recovery includes simultaneous lease exclusion and unavailable originals; preferences include Save/Cancel/restart/retry/focus/corrupt file preservation; images include all formats and resource lifetime. AppImage AVIF passed with host plugin directories hidden.",
-    "remaining": "Unimplemented Markdown/clipboard cases, complete File/Bug/link/system clipboard package acceptance, install/upgrade and all-platform final delivery gates remain open. No personal install or review manifest written."
+    "remaining": "Unimplemented Markdown/clipboard cases, complete File/Bug/link/system clipboard package acceptance, install/upgrade and all-platform final delivery gates remain open. No personal install or review manifest written.",
+    "sourceUpdatedSinceBuild": "HTML inline whitespace cleanup changed after build a27dfff; recorded package proofs certify that build. Final rebuild and affected packaged checks still required."
   }
 }

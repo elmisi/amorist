@@ -27,15 +27,30 @@
     const output = [];
     let closing = null;
     let blanks = 0;
+    let offset = 0;
+    let inlineEnd = 0;
     for (const line of md.split("\n")) {
+      const lineStart = offset, lineEnd = offset + line.length;
+      offset = lineEnd + 1;
       if (closing) {
         output.push(line);
         if (closing.test(line)) closing = null;
         continue;
       }
-      const fence = line.match(/^ {0,3}(`{3,}|~{3,})/);
+      const fence = inlineEnd <= lineStart && line.match(/^ {0,3}(`{3,}|~{3,})/);
       if (fence) {
         closing = new RegExp(`^ {0,3}${fence[1][0]}{${fence[1].length},}[ \\t]*$`);
+        output.push(line);
+        blanks = 0;
+        continue;
+      }
+      for (let cursor = Math.max(lineStart,inlineEnd); cursor < lineEnd;) {
+        if (md[cursor] === "\\") { cursor += 2; continue; }
+        const code = md[cursor] === "`" && Internals.TextUtils.codeSpanAt(md,cursor);
+        if (code) { inlineEnd = code.end; cursor = code.end; }
+        else cursor += 1;
+      }
+      if (inlineEnd > lineEnd) {
         output.push(line);
         blanks = 0;
         continue;

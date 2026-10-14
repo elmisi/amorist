@@ -68,6 +68,9 @@ for(const newline of ["\n","\r\n","\r"]){
 }
 inlineCode.textContent="\nedge\n";
 assert.equal(H._nodeToSource(inlineCode),"` \nedge\n `");
+inlineCode.textContent="first   \n\t\n\n\nlast";
+assert.equal(H._cleanupMarkdown(H._nodeToSource(inlineCode)),"`first   \n\t\n\n\nlast`");
+assert.equal(H._cleanupMarkdown("before \n`first   \n\t\nlast`   \nafter "),"before\n`first   \n\t\nlast`  \nafter");
 assert.equal(H._nodeToSource(el("A",[text("Read")],{href:"docs/my (notes).md"})),"[Read](<docs/my (notes).md>)");
 assert.equal(H._nodeToSource(text("*literal* [name]")),"\\*literal\\* \\[name\\]");
 assert.equal(H._nodeToSource(text("1. literal")),"1\\. literal");

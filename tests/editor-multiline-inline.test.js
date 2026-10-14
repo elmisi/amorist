@@ -37,6 +37,8 @@ async function main(){const server=await startStaticServer(path.resolve(__dirnam
  }
  const htmlCode=await engine.evaluate(`(()=>{const source=window.AmoristInternals.HtmlToMarkdown.convert('<p><code>first\\nsecond</code></p>');window.__multi.setMarkdown(source);return {source,code:Array.from(window.__multi.surface.querySelectorAll('code')).map(node=>node.textContent)};})()`);
  assert.deepEqual(htmlCode,{source:'`first\nsecond`',code:['first','second']},entry.id+': external HTML code keeps physical rows');
+ const whitespaceCode=await engine.evaluate(`(()=>{const html='<p><code>first   \\n\\t\\n\\n\\nlast</code></p>',editor=window.__multi;editor.setMarkdown('');editor.setSurfaceSelection(0,0);editor.handlePaste({clipboardData:{getData:type=>type==='text/html'?html:''},preventDefault(){}});const pasted=editor.getMarkdown();editor.undo();return {pasted,undo:editor.getMarkdown()};})()`);
+ assert.deepEqual(whitespaceCode,{pasted:'`first   \n\t\n\n\nlast`',undo:''},entry.id+': HTML code preserves whitespace and undo');
  const literalSlash='`first\\\r\nsecond`';
  const slashView=await engine.evaluate(`(()=>{window.__multi.setMarkdown(${JSON.stringify(literalSlash)});return {source:window.__multi.getMarkdown(),code:Array.from(window.__multi.surface.querySelectorAll('code')).map(node=>node.textContent)};})()`);
  assert.deepEqual(slashView,{source:literalSlash,code:['first\\','second']},entry.id+': code keeps literal trailing backslash');
