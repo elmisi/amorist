@@ -709,12 +709,20 @@
           projection.text = projection.text.slice(0,-1);
         }
       }
-      const eligible=descriptor=>descriptor.unitType==="line"&&descriptor.projection.tag==="div"
-        &&!descriptor.projection.list&&!descriptor.projection.listContinuation&&!descriptor.projection.referenceDefinition
-        &&!descriptor.projection.rule&&!descriptor.projection.setextDelimiter&&!!descriptor.projection.text.trim();
+      const eligible=descriptor=>{
+        const projection=descriptor.projection;
+        if(descriptor.unitType!=="line"||projection.referenceDefinition||projection.rule||projection.setextDelimiter||!projection.text.trim())return false;
+        if(/^h[1-6]$/.test(projection.tag))return projection.prefix===0;
+        if(projection.tag==="blockquote"){
+          const inner=projectionLine(projection.text);
+          return inner.tag==="div"&&!inner.list&&!inner.fence&&!inner.rule;
+        }
+        return projection.tag==="div";
+      };
+      const scope=descriptor=>descriptor.projection.tag+":"+(descriptor.projection.quoteDepth||0)+":"+(descriptor.listOwner?.index??"root");
       for(let first=0;first<descriptors.length;first++) {
         if(!eligible(descriptors[first]))continue;
-        let last=first;while(last+1<descriptors.length&&eligible(descriptors[last+1]))last++;
+        let last=first;while(last+1<descriptors.length&&eligible(descriptors[last+1])&&scope(descriptors[last+1])===scope(descriptors[first]))last++;
         if(last>first) {
           const rows=descriptors.slice(first,last+1),starts=[];let text="";
           for(const row of rows){starts.push(text.length);text+=row.projection.text+"\n";}
@@ -755,8 +763,11 @@
           ? offset>=base+token.contentStart && offset<=base+token.contentEnd
           : token.children && containsCode(token.children));
         if(containsCode(descriptor.projection.inlineTokens||MarkdownCodec.tokenizeInline(descriptor.projection.text, 0, descriptor.projection.text.length, 0, false, false, this.lineDescriptors.references))) {
+          const leading=(descriptor.raw.match(/^[ \t]*/)||[""])[0],projection=descriptor.projection;
+          const indent=projection.tag==="blockquote" ? descriptor.raw.slice(0,projection.prefix)+(projection.text.match(/^[ \t]*/)||[""])[0]
+            : projection.list ? leading+" ".repeat(Math.max(0,projection.contentIndent-indentationColumns(leading))) : leading;
           return {kind:"code",start:descriptor.start,end:descriptor.end,contentStart:offset,fence:false,
-            indent:(descriptor.raw.match(/^[ \t]*/)||[""])[0]};
+            indent};
         }
       }
       if (descriptor?.projection.tag === "blockquote") {
@@ -847,7 +858,7 @@
           row.classList.add("amorist-wysiwyg-task");
           row.dataset.checked = String(projection.checked);
           row.innerHTML = '<span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content"></span>';
-          this.renderInlineProjection(row.querySelector(".amorist-task-content"), projection.text, projection.prefix);
+          this.renderInlineProjection(row.querySelector(".amorist-task-content"), projection.text, projection.prefix,projection.inlineTokens);
           if (!projection.text) {
             const content = row.querySelector(".amorist-task-content");
             content.classList.add("amorist-empty-caret");
