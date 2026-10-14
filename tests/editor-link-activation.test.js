@@ -10,13 +10,14 @@ async function main(){
   try {await engine.start();await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
    const result=await engine.evaluate(`(async()=>{
     const calls=[],warnings=[];const editor=window.AmoristEditor.create(document.getElementById('host'),{value:'[Label](../other.md#Heading)',onActivateLink:async href=>{calls.push(href);if(calls.length===3)throw new Error('Missing file');},onWarning:message=>warnings.push(message)});
-    const link=editor.surface.querySelector('a');const prevented=[];
+    const link=editor.surface.querySelector('a');const prevented=[];let clickedDestination=null;
     for(const modifiers of [{},{ctrlKey:true},{metaKey:true},{ctrlKey:true}]){
      const event=new MouseEvent('click',{bubbles:true,cancelable:true,...modifiers});link.dispatchEvent(event);prevented.push(event.defaultPrevented);await new Promise(resolve=>setTimeout(resolve,0));
+     if(!modifiers.ctrlKey&&!modifiers.metaKey){const dialog=document.querySelector('.amorist-link-dialog');clickedDestination=dialog.querySelector('input').value;dialog.dispatchEvent(new Event('cancel',{cancelable:true}));await new Promise(resolve=>setTimeout(resolve,0));}
     }
-    return {calls,warnings,prevented,source:editor.getMarkdown(),history:editor.history.undoStack?.length};
+    return {calls,warnings,prevented,clickedDestination,source:editor.getMarkdown(),history:editor.history.undoStack?.length};
    })()`);
-   assert.deepEqual(result.calls,Array(3).fill('../other.md#Heading'));assert.deepEqual(result.warnings,['Missing file']);assert.deepEqual(result.prevented,[true,true,true,true]);assert.equal(result.source,'[Label](../other.md#Heading)');
+   assert.deepEqual(result.calls,Array(3).fill('../other.md#Heading'));assert.deepEqual(result.warnings,['Missing file']);assert.deepEqual(result.prevented,[true,true,true,true]);assert.equal(result.clickedDestination,'../other.md#Heading');assert.equal(result.source,'[Label](../other.md#Heading)');
    const headings=await engine.evaluate(`(() => {
     const editor=window.AmoristEditor.create(document.getElementById('host'),{value:'# **Hello** λ\\r\\n\\r\\nHello λ\\r\\n---\\r\\n'});
     const before=editor.getMarkdown();const first=editor.navigateHeading('hello-λ'),one=editor.selectionRaw();
@@ -72,6 +73,10 @@ async function main(){
     return {source,destinations,undo:editor.getMarkdown()};
    })()`);
    assert.deepEqual(reference,{source:'[One][shared] and [Two][shared]\r\n\r\n[shared]: <../changed.md> "Title"\r\n',destinations:['../changed.md','../changed.md'],undo:'[One][shared] and [Two][shared]\r\n\r\n[shared]: <old path.md> "Title"\r\n'});
+   for(const action of ['toolbar','click'])for(const raw of ['[first\r\nsecond](<old path.md> "Title")\r\nuntouched','> [first\r\n> second](<old path.md> "Title")\r\nuntouched','> - [first\r\n>   second](<old path.md> "Title")\r\nuntouched','[first\r\nsecond][shared]\r\n\r\n[shared]: <old path.md> "Title"\r\n']){
+    const multiline=await engine.evaluate(`(async()=>{const raw=${JSON.stringify(raw)},host=document.getElementById('host');host.replaceChildren();const editor=window.AmoristEditor.create(host,{value:raw});editor.setSurfaceSelection(raw.indexOf('second')+2,raw.indexOf('second')+2);let pending;if(${JSON.stringify(action)}==='click'){editor.surface.querySelectorAll('a')[1].dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));pending=Promise.resolve();}else pending=editor.runAction('link');const form=document.querySelector('.amorist-link-dialog form'),initial=form.querySelector('input').value;form.querySelector('input').value='../multiline.md#λ';form.dispatchEvent(new Event('submit',{cancelable:true}));await pending;await new Promise(resolve=>setTimeout(resolve,0));const source=editor.getMarkdown(),labels=Array.from(editor.surface.querySelectorAll('a')).map(node=>node.textContent);editor.undo();return {initial,source,labels,undo:editor.getMarkdown()};})()`);
+    assert.deepEqual(multiline,{initial:'old path.md',source:raw.replace('old path.md','../multiline.md#λ'),labels:['first','second'],undo:raw},entry.id+'/'+action+': editing cross-row link changes only complete destination');
+   }
    for(const [automatic,label,href,escapedLabel] of [['https://example.test/path','https://example.test/path','https://example.test/path'],['<https://example.test/path>','https://example.test/path','https://example.test/path'],['<alice@example.test>','alice@example.test','mailto:alice@example.test'],['https://example.test/?q=&copy;value','https://example.test/?q=&copy;value','https://example.test/?q=&copy;value']]) {
     const source='before '+automatic+' after\r\n';
     const edited=await engine.evaluate(`(async()=>{

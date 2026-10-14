@@ -2775,6 +2775,21 @@
       "verified": "HTML paste retains literal trailing spaces, tabs and repeated empty physical lines; Undo restores destination. Pure converter, multiline, controlled clipboard and system clipboard regression files pass on GTK/Chromium.",
       "evidence": "html-inline-code-whitespace-linux.log pass4 fail0 skip0",
       "scope": "Exact converted/pasted source preservation, not a claim that inline code with paragraph-separating blank lines renders as one Markdown code span."
+    },
+    "linkDestinationEditing": {
+      "implemented": "Original logical paragraph link tokens carry non-enumerable complete raw source intervals mapped by binary search across physical rows, terminators and container prefixes. Toolbar and ordinary click use these intervals to edit inline or reference destinations. Ordinary click opens the destination dialog; Ctrl/Cmd activation remains distinct.",
+      "verified": [
+        "GTK/Chromium toolbar and click on second label row: inline, quote, quoted list and reference links preserve label, title, angle delimiters, CRLF and untouched text; Undo restores source",
+        "Ordinary single-line click pre-fills destination; cancellation preserves source; modifier activation and failure warning remain green",
+        "Four affected regression files pass; B9 exact count and budgets pass"
+      ],
+      "evidence": [
+        "multiline-link-edit-before-linux.log reproduces missing cross-row destination dialog",
+        "multiline-link-pointer-raw-offset-linux.log pass4 fail0 skip0",
+        "multiline-link-performance-linux.log exit0 B9 GTK/Chromium"
+      ],
+      "diagnostics": "First pointer probe exposed row-relative DOM offset being used as document offset; corrected with source row start. Original failing pointer log retained.",
+      "remaining": "Multiline image atoms, arbitrary mixed container gestures, complete clipboard origin/subtree rules and final full native/package/platform acceptance remain pending."
     }
   },
   "linuxFullQaAfterMultilineClipboard": {

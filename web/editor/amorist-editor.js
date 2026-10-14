@@ -806,7 +806,25 @@
           for(const row of rows){starts.push(text.length);text+=row.projection.text+(row.projection.suffix?row.raw.slice(-row.projection.suffix):"")+"\n";}
           const tokens=MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,references);
           const crosses=items=>items.some(token=>(token.type!=="text"&&token.type!=="break"&&starts.some(boundary=>boundary>token.start&&boundary<token.end))||(token.children&&crosses(token.children)));
-          if(crosses(tokens))rows.forEach((row,index)=>{
+          if(crosses(tokens)){
+            const rawAt=offset=>{
+              let low=0,high=rows.length;
+              while(low<high){const mid=(low+high)>>>1;if(starts[mid]<=offset)low=mid+1;else high=mid;}
+              const row=Math.max(0,low-1);
+              return rows[row].start+rows[row].projection.prefix+offset-starts[row];
+            };
+            const links=items=>items.forEach(token=>{
+              if(token.type==="link"&&!token.autolink){
+                const destination=token.referenceKey?references.get(token.referenceKey):MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
+                if(destination)Object.defineProperty(token,"sourceLink",{value:{
+                  contentStart:rawAt(token.contentStart),contentEnd:rawAt(token.contentEnd),
+                  destination:{...destination,destinationStart:token.referenceKey?destination.destinationStart:rawAt(destination.destinationStart),
+                    destinationEnd:token.referenceKey?destination.destinationEnd:rawAt(destination.destinationEnd)}}});
+              }
+              if(token.children)links(token.children);
+            });
+            links(tokens);
+            rows.forEach((row,index)=>{
             const trailing = starts[index]+row.projection.text.length;
             const inCode=items=>items.some(token=>(token.type==="code"&&token.contentStart<=trailing&&token.contentEnd>trailing)||(token.children&&inCode(token.children)));
             if(row.projection.suffix&&inCode(tokens)){
@@ -815,7 +833,8 @@
             }
             row.projection.inlineTokens=inlineRowTokens(tokens,text,starts[index],starts[index]+row.projection.text.length);
             row.projection.inlineSignature=JSON.stringify(row.projection.inlineTokens);
-          });
+            });
+          }
         }
         first=last;
       }
@@ -1138,6 +1157,7 @@
             const href = MarkdownCodec.safeLinkHref(token.href);
             if (href != null) wrapper.setAttribute("href", href);
             wrapper.dataset.linkDestination = token.href;
+            wrapper.dataset.linkContentStart = String(rawStart+token.contentStart);
             if (token.title != null) wrapper.setAttribute("title", token.title);
             wrapper.setAttribute("target", "_blank");
             wrapper.setAttribute("rel", "noopener noreferrer");
@@ -2025,6 +2045,27 @@
     }
 
     editExistingLink(selection) {
+      const request=found=>{
+        const before=this.model.source,{destination}=found;
+        return window.AmoristInternals.EditingPolicy.requestLink(destination.href).then(href=> {
+          if(!href || !this.root.isConnected || this.model.source!==before) return;
+          const escaped=href.replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[()<>]/g,"\\$&").replace(/[ \t\r\n]/g,encodeURIComponent);
+          if(found.automatic){
+            const label=found.label.replace(/[\\`*_\[\]~<>!]/g,"\\$&");
+            this.apply(found.base+found.automatic.start,found.base+found.automatic.end,`[${label}](${escaped})`,"link-destination");
+          }else this.apply(found.base+destination.destinationStart,found.base+destination.destinationEnd,escaped,"link-destination");
+        });
+      };
+      for(const descriptor of this.lineDescriptors){
+        let found=null;
+        const visit=tokens=>tokens.forEach(token=>{
+          const link=token.originalToken?.sourceLink;
+          if(token.type==="link"&&link&&selection.start>=link.contentStart&&selection.end<=link.contentEnd)found={destination:link.destination,base:0};
+          if(token.children)visit(token.children);
+        });
+        visit(descriptor.projection.inlineTokens||[]);
+        if(found)return request(found);
+      }
       for(const descriptor of this.lineDescriptors) {
         for(const {text,base} of this.clipboardInlineChunks(descriptor)) {
           let found=null;
@@ -2043,18 +2084,7 @@
           });
           visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,this.lineDescriptors.references));
           if(!found) continue;
-          const before=this.model.source,{destination}=found;
-          return window.AmoristInternals.EditingPolicy.requestLink(destination.href).then(href=> {
-            if(!href || !this.root.isConnected || this.model.source!==before) return;
-            const escaped=href.replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[()<>]/g,"\\$&").replace(/[ \t\r\n]/g,encodeURIComponent);
-            if(found.automatic) {
-              const label=found.label.replace(/[\\`*_\[\]~<>!]/g,"\\$&");
-              this.apply(found.base+found.automatic.start,found.base+found.automatic.end,
-                `[${label}](${escaped})`,"link-destination");
-              return;
-            }
-            this.apply(found.base+destination.destinationStart,found.base+destination.destinationEnd,escaped,"link-destination");
-          });
+          return request(found);
         }
       }
       return null;
@@ -2164,6 +2194,13 @@
         if ((event.ctrlKey || event.metaKey) && typeof this.options.onActivateLink === "function") {
           Promise.resolve().then(() => this.options.onActivateLink(link.dataset.linkDestination))
             .catch(error => this.options.onWarning?.(String(error.message || error)));
+        }else if(!event.ctrlKey&&!event.metaKey){
+          const descriptor=this.lineDescriptors[Number(link.closest('.amorist-source-line')?.dataset.line)];
+          if(!descriptor)return;
+          const at=descriptor.start+Number(link.dataset.linkContentStart);
+          this.setSurfaceSelection(at,at);
+          Promise.resolve(this.editExistingLink({start:at,end:at}))
+            .catch(error=>this.options.onWarning?.(String(error.message||error)));
         }
         return;
       }
