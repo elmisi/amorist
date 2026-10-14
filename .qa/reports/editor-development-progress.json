@@ -64,14 +64,14 @@
     {
       "id": 10,
       "name": "images-and-links",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "Inline/reference local and remote images, scoped resources and link editing/activation implemented. Actual Linux packages a27dfff pass required image formats including AVIF; current Linux source passes multiline link editing and activation regressions. Multiline image atoms, native opener/package lifecycle and final all-platform acceptance remain pending; see detailed sections."
     },
     {
       "id": 11,
       "name": "bug-build-identity-and-review-runner",
       "status": "partial",
-      "evidence": "Concurrent Bug append uses the shared filesystem lock and preserves truncated original tails before the next full record. Build identity, immutable Bug capture enhancements and the per-version review runner remain pending."
+      "evidence": "Build identity, immutable schema2 Bug snapshots, retained diagnostic records and per-build review runner implemented and directed checks recorded. Final installed candidate identity, review manifest and two-file Bug/interruption/resumption flow remain pending; no user handover."
     },
     {
       "id": 12,
@@ -82,8 +82,8 @@
     {
       "id": 13,
       "name": "final-regression-performance-package-and-loop-validation",
-      "status": "pending",
-      "evidence": ""
+      "status": "partial",
+      "evidence": "All17 current Linux classic regression files and full declared contract suite pass at1173ba9; package recovery/preferences/images pass for earlier builda27dfff. Current final packages, install/upgrade, macOS/Windows native acceptance, complete remaining feature requirements and personal-loop handover still block delivery."
     }
   ],
   "codeContextRegressionEngines": [
@@ -2836,7 +2836,7 @@
     },
     "scope": "Actual updated packages, isolated app-data/document fixtures. Recovery includes simultaneous lease exclusion and unavailable originals; preferences include Save/Cancel/restart/retry/focus/corrupt file preservation; images include all formats and resource lifetime. AppImage AVIF passed with host plugin directories hidden.",
     "remaining": "Unimplemented Markdown/clipboard cases, complete File/Bug/link/system clipboard package acceptance, install/upgrade and all-platform final delivery gates remain open. No personal install or review manifest written.",
-    "sourceUpdatedSinceBuild": "HTML inline whitespace cleanup changed after build a27dfff; recorded package proofs certify that build. Final rebuild and affected packaged checks still required."
+    "sourceUpdatedSinceBuild": "After build a27dfff, HTML whitespace cleanup, quoted list/code gestures and multiline link/click editing changed runtime. Recorded package proofs certify a27dfff; final rebuild and package acceptance required."
   },
   "quotedListContextsLinux": {
     "status": "partial",
@@ -2875,6 +2875,29 @@
       ],
       "diagnostics": "Original geometry failures preserved: generic block background shorthand and smaller inherited wrapper font caused absent bars and indentation drift. Separate fixture-precondition failure (settings defaults module not loaded) preserved; final fixture loads actual settings.js.",
       "remaining": "Code beginning directly on a list marker, arbitrary alternating nested containers, literal tab overshoot semantics and final full native/package/platform acceptance remain pending."
+    }
+  },
+  "linuxRegressionAfterQuotedContainersAndLinks": {
+    "sourceCommit": "1173ba9",
+    "classic": {
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "evidence": "current-quoted-link-classic-linux.log exit0"
+    },
+    "fullContract": {
+      "result": "pass",
+      "evidence": [
+        "current-quoted-link-full-qa-linux.log exit0",
+        "current-quoted-link-full-qa-linux.json"
+      ],
+      "limit": "REQ-H4 actual Finder/Dock delegated to native macOS package acceptance. Existing declared suite does not prove remaining unimplemented requirements or complete current packaged delivery."
+    },
+    "originalDiagnostics": {
+      "validRecords": 7,
+      "invalidRecords": 0,
+      "sha256": "84af7ebdb58cdbebad52cfb4e5934bcb9577b4e3c6b1bf41ddde04bd6719f83f",
+      "result": "unchanged"
     }
   }
 }
