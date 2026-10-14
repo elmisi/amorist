@@ -19,11 +19,14 @@ async function main() {
     await engine.start();
     await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
 
-    const link = await evaluate(engine, `(() => {
+    const link = await evaluate(engine, `(async () => {
       window.__qa.open("alpha bravo");
       window.__qa.selectTextRange(0, 5);
-      window.prompt = () => "https://example.test/a)";
       window.__qa.toolbarAction("link");
+      const form = document.querySelector(".amorist-link-dialog form");
+      form.querySelector("input").value = "https://example.test/a)";
+      form.dispatchEvent(new Event("submit", {cancelable:true}));
+      await new Promise(resolve => setTimeout(resolve, 0));
       return window.__qa.markdown();
     })()`);
     assert.equal(link, "[alpha](https://example.test/a%29) bravo");
