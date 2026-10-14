@@ -2942,5 +2942,15 @@
     "futureBuildPolicy": "Use current release binary directly. Refresh this preview reference to exact successfully built/tested Linux binary identity after subsequent preview updates; retain preview flags while final gates are incomplete. Runner detects identity changes before each file and begins a new build-specific run on restart.",
     "preservedWip": "/home/alessandro/.local/state/amorist/execution-20261013-1932/direct-list-fence-in-progress.patch",
     "remaining": "Final delivery remains blocked; no push/publication. Direct list-marker fence correction is preserved separately and excluded from this tested preview. Final all-platform requirements and complete end-to-end review proof remain pending."
+  },
+  "directListFencesLinux": {
+    "status": "partial",
+    "implemented": "Fence beginning directly after bullet, wide ordered or task marker, optionally quoted. Literal block retains container marker/checkbox; continuation ownership survives closing fence. Task toggle refreshes containing block metadata and retains horizontal scroll.",
+    "verified": "GTK/Chromium root/quoted/double-quoted bullet and ordered cases; root/quoted tasks; literal content, blank row, shorter inner ticks, continuation owner, CRLF Enter, mode round-trip, toggle and Undo.",
+    "evidence": [
+      "direct-list-fence-relative-continuation-linux.log pass3 fail0 skip0",
+      "direct-list-fence-task-wrapper-linux.log exit0 GTK/Chromium"
+    ],
+    "remaining": "Performance and broader final regression/package/platform acceptance pending. Current user preview remains build0400352 until next successful preview rebuild."
   }
 }

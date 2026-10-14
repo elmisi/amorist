@@ -304,6 +304,18 @@ async function main() {
             await engine.evaluate('(()=>{window.__codeRegression.applySettings(window.AmoristSettings.defaults);return true;})()');
           }
         }
+        for(const [quote,marker,indent] of [['','- ','  '],['','123. ','     '],['> ','- ','  '],['> > ','123. ','     '],['','- [x] ','  '],['> ','- [x] ','  ']]){
+          const source=[quote+marker+'````js',quote+indent+'# literal **bold**',quote+indent,quote+indent+'```',quote+indent+'````',quote+indent+'continuation',quote+marker+'sibling'].join('\r\n');
+          const view=await engine.evaluate(`(()=>{const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(source)});return {source:editor.getMarkdown(),code:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>row.textContent.replace(/\\n$/,'')),owner:editor.lineDescriptors.find(row=>row.raw.endsWith('continuation')).listOwner?.index};})()`);
+          assert.equal(view.source,source);assert.equal(view.code.length,3,entry.id+': fence directly in list item '+JSON.stringify({quote,marker,view}));assert.equal(view.code[0],'# literal **bold**');assert.equal(view.code[2],'```');assert.equal(view.owner,0);
+          const at=source.indexOf('literal')+3;
+          await engine.evaluate(`(()=>{window.__codeRegression.setSurfaceSelection(${at},${at});return true;})()`);await sendKeys([{key:'Enter'}]);assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),source.slice(0,at)+'\r\n'+quote+indent+source.slice(at));
+          await engine.evaluate('(()=>{window.__codeRegression.undo();window.__codeRegression.showSourceMode();window.__codeRegression.showWysiwygMode();return true;})()');assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),source);
+          if(marker.includes('[x]')){
+            const toggled=await engine.evaluate(`(()=>{const editor=window.__codeRegression;editor.surface.querySelector('.amorist-task-checkbox').click();const result={source:editor.getMarkdown(),checked:editor.surface.querySelector('.amorist-wysiwyg-task').dataset.checked};editor.undo();result.undo=editor.getMarkdown();return result;})()`);
+            assert.deepEqual(toggled,{source:source.replace('[x]','[ ]'),checked:'false',undo:source});
+          }
+        }
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

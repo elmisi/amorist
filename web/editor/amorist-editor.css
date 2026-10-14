@@ -232,6 +232,24 @@
   background-repeat: no-repeat;
 }
 
+.amorist-editor-surface .amorist-wysiwyg-direct-list-code {
+  position: relative;
+  font-size: var(--amorist-base-font-size, 16px);
+  font-family: inherit;
+  padding-inline-start: var(--list-content-indent);
+}
+.amorist-wysiwyg-direct-list-code::before {
+  content: attr(data-marker);
+  position: absolute;
+  inset-inline-start: calc(var(--list-content-indent) - var(--list-marker-width));
+  top: 16px;
+  width: calc(var(--list-marker-width) - .25em);
+  text-align: right;
+  color: var(--muted, #68717d);
+}
+.amorist-wysiwyg-direct-list-code.amorist-wysiwyg-task::before { content: none; }
+.amorist-wysiwyg-direct-list-code > .amorist-task-checkbox { top: 16px; }
+
 .amorist-wysiwyg-code {
   white-space: pre;
 }

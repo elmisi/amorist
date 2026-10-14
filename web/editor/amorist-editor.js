@@ -120,6 +120,7 @@
       && a.listContinuation === b.listContinuation && a.layoutPadding === b.layoutPadding
       && a.containerListPadding === b.containerListPadding
       && a.quoteList === b.quoteList
+      && a.directListSignature === b.directListSignature
       && a.inlineSignature === b.inlineSignature
       && a.markerWidth === b.markerWidth && a.marker === b.marker
       && a.referenceDefinition === b.referenceDefinition
@@ -458,6 +459,42 @@
       while (index < descriptors.length) {
         if (descriptors[index].unitType === "literal") { index += 1; continue; }
         const descriptor=descriptors[index],columns=indentationColumns((descriptor.raw.match(/^[ \t]*/)||[""])[0]);
+        const directQuote=descriptor.projection.tag==="blockquote"?descriptor.projection.quoteDepth:0;
+        const directOuter=directQuote?quotePrefix(descriptor.raw,directQuote):"";
+        const directList=directQuote?projectionLine(descriptor.raw.slice(directOuter.length)):descriptor.projection;
+        const directFence=directList.list&&directList.text.match(/^ {0,3}(`{3,}|~{3,}).*$/);
+        if(directFence){
+          const markerWidth=typeof directList.checked==="boolean"?"max(1.4em, 24px)":`max(1.4em, ${directList.marker.length+1}ch)`;
+          const owner={index,indent:directList.indent,contentIndent:directList.contentIndent,markerWidth,
+            layoutPadding:`calc(${directQuote*11}px + ${directList.indent}ch + ${markerWidth})`,
+            marker:directList.marker,list:directList.list,checked:directList.checked,quoteDepth:directQuote};
+          const prefixFor=(raw,first=false)=>{
+            const quote=directQuote?quotePrefix(raw,directQuote):"";if(quote===null)return null;
+            const list=first?raw.slice(quote.length,quote.length+directList.prefix):listContainerPrefix(raw.slice(quote.length),owner.contentIndent);
+            return list===null?null:quote+list;
+          };
+          const closing=new RegExp(`^ {0,3}\\${directFence[1][0]}{${directFence[1].length},}[ \\t]*$`);
+          let end=index,closed=false;
+          for(let next=index+1;next<descriptors.length;next++){
+            const prefix=prefixFor(descriptors[next].raw);if(prefix===null)break;
+            end=next;if(closing.test(descriptors[next].raw.slice(prefix.length))){closed=true;break;}
+          }
+          for(let row=index;row<=end;row++){
+            const item=descriptors[row],prefix=prefixFor(item.raw,row===index)||"",content=row>index&&(!closed||row<end);
+            Object.assign(item,{unitType:"code",unitStart:index,unitEnd:end,codeContent:content,listOwner:owner,
+              containerPrefix:prefix,containerQuoteDepth:directQuote,containerQuoteBeforeList:!!directQuote,
+              containerQuotePrefix:directQuote?quotePrefix(item.raw,directQuote):"",
+              projection:content?{prefix:prefix.length,text:item.raw.slice(prefix.length),tag:"pre"}
+                :{prefix:item.raw.length,text:"",tag:"pre",fence:true}});
+          }
+          descriptor.directListOwner=owner;
+          descriptor.projection.directListSignature=JSON.stringify({marker:owner.marker,checked:owner.checked});
+          if(!directQuote){
+            while(listContainers.length&&listContainers.at(-1).indent>=directList.indent)listContainers.pop();
+            listContainers.push(directList);
+          }
+          index=end+1;continue;
+        }
         if(descriptor.projection.list) {
           while(listContainers.length&&listContainers.at(-1).indent>=descriptor.projection.indent) listContainers.pop();
           listContainers.push(descriptor.projection);
@@ -519,7 +556,7 @@
         const followsBlank = !previous || !previous.raw.trim()
           || (previousPrefix !== null && !previous.raw.slice(previousPrefix.length).trim());
         if (quoteDepth && indentationColumns((logicalRaw.match(/^[ \t]*/) || [""])[0]) >= 4
-            && (followsBlank || previous.unitType === "code")) {
+            && (followsBlank || previous.unitType === "code"&&!previous.listOwner?.quoteDepth)) {
           let end = index;
           for (let next = index + 1; next < descriptors.length; next += 1) {
             const prefix = prefixFor(descriptors[next].raw);
@@ -563,8 +600,12 @@
         const leading = (descriptor.raw.match(/^[ \t]*/) || [""])[0];
         const columns = indentationColumns(leading);
         if (descriptor.unitType !== "line") {
+          if(descriptor.directListOwner&&!descriptor.directListOwner.quoteDepth){
+            while(items.length&&items.at(-1).indent>=descriptor.directListOwner.indent)items.pop();
+            items.push(descriptor.directListOwner);continue;
+          }
           const owner=items.findLast(item=>columns>=item.contentIndent);
-          if(owner)descriptor.listOwner=owner;
+          if(owner&&!descriptor.listOwner)descriptor.listOwner=owner;
           if (descriptor.index === descriptor.unitStart && items.length
               && columns < items[items.length - 1].contentIndent) items.length = 0;
           continue;
@@ -661,6 +702,13 @@
       let quotedDepth=0;
       for(let quotedAt=0;quotedAt<descriptors.length;quotedAt++){
         const descriptor=descriptors[quotedAt];
+        if(descriptor.directListOwner?.quoteDepth){
+          const owner=descriptor.directListOwner;
+          if(quotedDepth!==owner.quoteDepth)quotedItems.length=0;
+          quotedDepth=owner.quoteDepth;
+          while(quotedItems.length&&quotedItems.at(-1).indent>=owner.indent)quotedItems.pop();
+          quotedItems.push(owner);quotedAt=descriptor.unitEnd;continue;
+        }
         if(quotedItems.length){
           const outerPrefix=quotePrefix(descriptor.raw,quotedDepth);
           const inner=outerPrefix===null?null:descriptor.raw.slice(outerPrefix.length);
@@ -1046,6 +1094,18 @@
         block.style.marginInlineStart="0";
         block.style.setProperty("--list-content-indent",this.lineDescriptors[start].listOwner.layoutPadding);
       }
+      const direct=this.lineDescriptors[start].directListOwner;
+      if(direct){
+        block.classList.add("amorist-wysiwyg-direct-list-code");
+        block.dataset.marker=direct.list==="ordered"?direct.marker:"•";
+        block.style.marginInlineStart="0";
+        block.style.setProperty("--list-content-indent",direct.layoutPadding);
+        block.style.setProperty("--list-marker-width",direct.markerWidth);
+        if(typeof direct.checked==="boolean"){
+          block.classList.add("amorist-wysiwyg-task");block.dataset.checked=String(direct.checked);
+          const checkbox=document.createElement('span');checkbox.className='amorist-task-checkbox';checkbox.contentEditable='false';checkbox.dataset.taskLine=String(start);block.append(checkbox);
+        }
+      }
       block.dataset.unitStart = String(start);
       block.dataset.unitEnd = String(end);
       for (let index = start; index <= end; index += 1) {
@@ -1274,6 +1334,10 @@
         oldBlock.replaceWith(block);
         this.layoutTableBlocks([block]);
         tableScroll.block = block;
+      } else if(after.unitType==="code"&&before.projection.directListSignature!==after.projection.directListSignature){
+        const oldBlock=this.rowNodes[after.index].closest('.amorist-wysiwyg-code-block');
+        const left=oldBlock.scrollLeft,block=this.renderCodeBlock(after.unitStart,after.unitEnd);
+        oldBlock.replaceWith(block);block.scrollLeft=left;
       } else {
         const oldRow = this.rowNodes[after.index];
         const row = this.renderSourceLine(after);
@@ -2210,7 +2274,7 @@
       }
       const checkbox = event.target.closest(".amorist-task-checkbox");
       if (!checkbox) return;
-      const block = checkbox.closest(".amorist-source-line"); if (!block) return;
+      const block = checkbox.closest(".amorist-source-line")||this.rowNodes[Number(checkbox.dataset.taskLine)]; if (!block) return;
       const descriptor = this.lineDescriptors[Number(block.dataset.line)];
       if (!descriptor) return;
       const start = descriptor.start;
