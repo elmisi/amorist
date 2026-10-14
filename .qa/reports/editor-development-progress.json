@@ -65,7 +65,7 @@
       "id": 10,
       "name": "images-and-links",
       "status": "partial",
-      "evidence": "Inline/reference local/remote images, scoped protocol and link editing/activation implemented. Multiline image atoms now load and preserve whole raw spans through selection/copy/delete/undo/mode changes in prose, quotes and lists, verified on both Linux engines. Native current-release multiline resource/clipboard acceptance, opener/package lifecycle and final macOS/Windows proofs pending; detailed sections authoritative."
+      "evidence": "Inline/reference local/remote images, scoped protocol and link editing/activation implemented. Multiline image atoms now load and preserve whole raw spans through selection/copy/delete/undo/mode changes in prose, quotes and lists, verified on both Linux engines. Native clean76f012d multiline local resource, cross-directory/process clipboard and HTML-only fallback passed. Opener/package lifecycle and final macOS/Windows proofs pending; detailed sections authoritative."
     },
     {
       "id": 11,
@@ -2920,9 +2920,9 @@
     "identity": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:8feb98e1b811b645518f48b5de34a6da47e4bf69",
-      "fingerprint": "8feb98e1b811b645518f48b5de34a6da47e4bf69",
-      "commit": "0afe06610131bc2814fe2098c6ad7c9f17121a38",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:0fa985e2997b65e07b64dd809f8bd80388ca38ce",
+      "fingerprint": "0fa985e2997b65e07b64dd809f8bd80388ca38ce",
+      "commit": "76f012d9ea92bc596fba5df4bbd692477d2ff314",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
@@ -2987,13 +2987,22 @@
         "commit": "923d65b95186440702fc00835c5c8ab4e5e0a486",
         "target": "x86_64-unknown-linux-gnu",
         "dirty": false
+      },
+      {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:8feb98e1b811b645518f48b5de34a6da47e4bf69",
+        "fingerprint": "8feb98e1b811b645518f48b5de34a6da47e4bf69",
+        "commit": "0afe06610131bc2814fe2098c6ad7c9f17121a38",
+        "target": "x86_64-unknown-linux-gnu",
+        "dirty": false
       }
     ],
     "preservedWipStatus": "Direct-list-fence archival patch retained; completed correction now part of preview726ecd3.",
     "latestVerifiedEvidence": [
-      "linux-preview-clipboard-and-reports-build.log exit0: clean0afe066",
-      "linux-preview-clipboard-and-reports-native-clipboard.log exit0: actual cross-process local-image transfer and HTML fallback",
-      "linux-preview-clipboard-and-reports-loop.log exit0: actual Bug, interruption/resume; user documents/state untouched"
+      "linux-preview-multiline-images-build.log exit0: clean76f012d",
+      "linux-preview-multiline-images-native-clipboard.log exit0: multiline image local protocol, cross-directory/process and HTML-only fallback",
+      "linux-preview-multiline-images-loop.log exit0: actual Bug/interruption/resume; original documents and personal review state untouched"
     ]
   },
   "directListFencesLinux": {
@@ -3271,14 +3280,26 @@
     }
   },
   "multilineImageAtomsLinux": {
-    "status": "implemented; GTK/Chromium directed and full Linux contract passed; release/native proof pending",
+    "status": "implemented; full Linux contract and clean release-native multiline-image clipboard and review loop passed",
     "behavior": "One native noneditable image atom covers the full multiline raw span; continuation rows keep mapped caret positions, raw source and physical endings. Plain/reference images in prose, quote and list containers load, select/copy/delete as a whole, undo exactly and survive mode switches.",
     "evidence": [
       "multiline-image-atoms-linux.log exit0: GTK/Chromium",
       "multiline-image-atoms-classic-linux.log:16 pass1 failed (detached table-cell image container); diagnosed and fixed",
       "multiline-image-atoms-table-regression-linux.log: clipboard and multiline checks both passed after fix",
-      "multiline-image-atoms-contract-linux.json/log: final full contract green; Finder/Dock delegated to macOS"
+      "multiline-image-atoms-contract-linux.json/log: final full contract green; Finder/Dock delegated to macOS",
+      "linux-preview-multiline-images-build.log exit0: clean76f012d",
+      "linux-preview-multiline-images-native-clipboard.log exit0: multiline image local protocol, cross-directory/process and HTML-only fallback",
+      "linux-preview-multiline-images-loop.log exit0: actual Bug/interruption/resume; original documents and personal review state untouched"
     ],
-    "remaining": "Integrated contract, current release/native image acceptance and macOS/Windows pending"
+    "remaining": "Final installed Linux package/upgrade and macOS/Windows acceptance pending",
+    "releaseIdentity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:0fa985e2997b65e07b64dd809f8bd80388ca38ce",
+      "fingerprint": "0fa985e2997b65e07b64dd809f8bd80388ca38ce",
+      "commit": "76f012d9ea92bc596fba5df4bbd692477d2ff314",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    }
   }
 }
