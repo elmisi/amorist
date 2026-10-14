@@ -100,7 +100,7 @@ pub fn read_resource(store: &std::sync::Mutex<Store>, id: &str) -> Option<(Vec<u
     Some((bytes, mime))
 }
 
-fn decode_path(value: &str) -> Result<String, String> {
+pub(crate) fn decode_path(value: &str) -> Result<String, String> {
     let input = value.as_bytes();
     let mut output = Vec::with_capacity(input.len());
     let mut cursor = 0;
