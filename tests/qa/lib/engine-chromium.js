@@ -82,7 +82,10 @@ class ChromiumEngine {
   }
 
   async start() {
-    const version = childProcess.spawnSync(this.binary, ["--version"], { encoding: "utf8" });
+    const version = process.platform === "win32"
+      ? childProcess.spawnSync("powershell.exe",["-NoProfile","-Command","(Get-Item -LiteralPath $env:AMORIST_QA_VERSION_BINARY).VersionInfo.FileVersion"],
+        {encoding:"utf8",timeout:10000,env:{...process.env,AMORIST_QA_VERSION_BINARY:this.binary}})
+      : childProcess.spawnSync(this.binary, ["--version"], { encoding: "utf8" });
     this.label = (version.stdout || "").trim() || path.basename(this.binary);
 
     this.profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-qa-chromium-"));
