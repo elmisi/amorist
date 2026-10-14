@@ -572,6 +572,12 @@
     var editor = window.AmoristEditor.create(elements.editor, {
       value: markdown,
       spellcheck: true,
+      resolveImage: window.__TAURI__ ? async function(reference) {
+        const contextId=state.contextId;
+        const id=await window.__TAURI__.core.invoke("register_image",{reference:reference,contextId:contextId});
+        if(state.contextId!==contextId) return null;
+        return window.__TAURI__.core.convertFileSrc(id,"amorist-image");
+      } : undefined,
       onChange: function (value) {
         if (state.editor !== editor) return;
         if (nativeOpen) nativeOpen.claim();

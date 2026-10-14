@@ -1563,6 +1563,32 @@
           "store rechecked after read to reject expired context"
         ],
         "remaining": "No local resource is registered from frontend yet; actual protocol decoding and platform acceptance remain unverified"
+      },
+      "registrationIntegration": {
+        "status": "local image registration and renderer connected; directed native Linux load passed",
+        "fullRustLinux": {
+          "pass": 32,
+          "fail": 0,
+          "ignored": 1,
+          "report": "image-registration-rust-linux.log"
+        },
+        "nativeLinux": {
+          "exitCode": 0,
+          "report": "local-image-native-linux.log",
+          "scope": [
+            "compiled Tauri app opens SVG via opaque custom protocol",
+            "relative ../ path and percent-encoded space/Unicode",
+            "decoded intrinsic width, alt and title",
+            "original Markdown file byte-identical"
+          ]
+        },
+        "guard": "context id checked before resolving path and after filesystem read; stale frontend results ignored",
+        "remaining": [
+          "SaveAs refresh of already rendered image atoms",
+          "native expired-URI and New/Open acceptance",
+          "all local image formats and Windows/macOS transport",
+          "runtime scoped-registration/source provenance audit"
+        ]
       }
     }
   }

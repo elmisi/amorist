@@ -336,6 +336,19 @@ async fn save_as_document(app: tauri::AppHandle, token: u64, context_id: u64, ma
 }
 
 #[tauri::command]
+async fn register_image(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<String, String> {
+    run_io(app, move |_app,state| {
+        let path={
+            let _guard=state.file_path.lock().unwrap();require_context(state,context_id)?;
+            state.image_resources.lock().unwrap().resolve_reference(&reference)?
+        };
+        let bytes=fs::read(&path).map_err(|_| "Cannot read the referenced image.".to_string())?;
+        let _guard=state.file_path.lock().unwrap();require_context(state,context_id)?;
+        state.image_resources.lock().unwrap().register(&path,&bytes)
+    }).await
+}
+
+#[tauri::command]
 async fn load_settings(app: tauri::AppHandle) -> Result<settings::Loaded, String> {
     run_io(app, |app, _state| {
         Ok(settings::load(&app.path().app_local_data_dir().map_err(|e| e.to_string())?))
@@ -1089,6 +1102,7 @@ pub fn run() {
             persist_working_copy,
             discard_working_copy,
             select_recovery,
+            register_image,
             load_settings,
             save_settings,
             get_version,

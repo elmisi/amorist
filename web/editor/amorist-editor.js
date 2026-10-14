@@ -725,10 +725,19 @@
       return block;
     }
 
-    loadRemoteImage(atom,fallback,token) {
+    async loadRemoteImage(atom,fallback,token) {
       let url;
-      try {url=new URL(token.href);} catch(error) {return;}
-      if(!["http:","https:"].includes(url.protocol)) return;
+      try {url=new URL(token.href);} catch(error) {url=null;}
+      if(!url || !["http:","https:"].includes(url.protocol)) {
+        if(typeof this.options.resolveImage!=="function") return;
+        atom.dataset.imageState="loading";
+        try {
+          const resolved=await this.options.resolveImage(token.href);
+          if(!resolved || !atom.isConnected) {if(atom.isConnected) atom.dataset.imageState="failed";return;}
+          url=new URL(resolved);
+          if(!["amorist-image:","http:","https:"].includes(url.protocol)) throw new Error("Invalid image transport.");
+        }catch(error) {if(atom.isConnected) atom.dataset.imageState="failed";return;}
+      }
       const image=document.createElement("img");image.className="amorist-image";image.hidden=true;
       image.alt=token.alt;image.referrerPolicy="no-referrer";image.decoding="async";
       if(token.title!==null && token.title!==undefined) image.title=token.title;
