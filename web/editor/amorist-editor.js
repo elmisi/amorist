@@ -161,6 +161,12 @@
       const result={...token,start:point(token.start),end:point(token.end)};
       if(token.contentStart!==undefined)result.contentStart=point(token.contentStart);
       if(token.contentEnd!==undefined)result.contentEnd=point(token.contentEnd);
+      if(token.contentStart!==undefined&&token.contentEnd!==undefined) {
+        result.openingMarkup=source.slice(token.start,token.contentStart);
+        result.closingMarkup=source.slice(token.contentEnd,token.end);
+        result.continuesBefore=token.contentStart<start;
+        result.continuesAfter=token.contentEnd>end;
+      }
       if(token.children)result.children=inlineRowTokens(token.children,source,start,end);
       if((token.type==="text"||token.type==="code")&&(token.start<start||token.end>end)) {
         result.text=source.slice(Math.max(start,token.contentStart??token.start),Math.min(end,token.contentEnd??token.end));
@@ -1707,11 +1713,11 @@
         const visit=tokens=>tokens.forEach(token=> {
           if(!token.children && token.type!=="code") return;
           if(opening ? point<token.contentStart || point>=token.contentEnd : point<=token.contentStart || point>token.contentEnd) return;
-          if(opening && offset>base+token.start) prefix+=projection.text.slice(token.start,token.contentStart);
-          if(!opening && offset<base+token.end) suffix=projection.text.slice(token.contentEnd,token.end)+suffix;
+          if(opening && (offset>base+token.start||token.continuesBefore)) prefix+=token.openingMarkup??projection.text.slice(token.start,token.contentStart);
+          if(!opening && (offset<base+token.end||token.continuesAfter)) suffix=(token.closingMarkup??projection.text.slice(token.contentEnd,token.end))+suffix;
           if(token.children) visit(token.children);
         });
-        visit(MarkdownCodec.tokenizeInline(projection.text,0,projection.text.length,0,false,false,this.lineDescriptors.references));
+        visit(projection.inlineTokens||MarkdownCodec.tokenizeInline(projection.text,0,projection.text.length,0,false,false,this.lineDescriptors.references));
       };
       edge(first,selection.start,true); edge(last,selection.end,false);
       const fragment=prefix+raw.slice(selection.start,selection.end)+suffix;

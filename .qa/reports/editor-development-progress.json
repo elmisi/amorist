@@ -2701,7 +2701,7 @@
       "multiline-inline-complete-performance-linux.log exit0 B9 GTK/Chromium"
     ],
     "qaFix": "B9 latency read waits boundedly for 20 actual measured frames; budgets unchanged, no sample truncation. Earlier19-sample report retained in multiline-inline-performance-incomplete-frame-linux.json.",
-    "remaining": "Cross-row images/link editing, clipboard wrapper/cut behavior and complete mixed-container integration plus final current native/package/platform acceptance remain pending.",
+    "remaining": "Safe partial inline-code delimiters, cross-row cut/merge, cross-row image/link editing and final full current native/package/platform acceptance remain pending.",
     "containerIntegration": {
       "implemented": "Inline paragraph scopes include quote depth and owning list item; Setext title rows share their heading context. Task content uses the same projected tokens. Siblings, empty paragraphs, explicit ATX headings and quoted block starts break the scope. Inline-code Enter preserves quote prefix or list continuation indentation.",
       "verified": [
@@ -2715,6 +2715,15 @@
         "multiline-container-code-enter-before-linux.log reproduces dropped quote prefix",
         "multiline-container-code-enter-linux.log pass4 fail0 skip0",
         "multiline-container-performance-linux.log exit0 B9 GTK/Chromium"
+      ]
+    },
+    "clipboardInheritedMarkup": {
+      "implemented": "Projected inline row tokens retain full opening/closing source markup and continuation flags. Visual clipboard edge wrapping uses those intervals even when both endpoints are in middle rows of one formatted span.",
+      "verified": "GTK/Chromium actual copy/paste handlers: partial middle-row strong selection produces exact CRLF fragment with required wrappers, leaves source untouched, preserves two styled physical rows on paste, and undo restores destination.",
+      "evidence": [
+        "multiline-clipboard-before-linux.log reproduces style loss",
+        "multiline-clipboard-inherited-markup-linux.log exit0 GTK/Chromium",
+        "multiline-clipboard-regressions-linux.log pass3 fail0 skip0: clipboard, system clipboard, history"
       ]
     }
   }
