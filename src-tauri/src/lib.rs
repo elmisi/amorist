@@ -33,6 +33,7 @@ struct AppState {
     save_target: Mutex<Option<PendingSaveTarget>>,
     save_target_serial: AtomicU64,
     native_open: Mutex<native_open::Queue>,
+    image_resources: Mutex<image_resources::Store>,
 }
 
 struct PendingSaveTarget { token: u64, context_id: u64, target: document::SaveTarget }
@@ -63,7 +64,8 @@ fn require_context(state: &AppState, context_id: u64) -> Result<(), String> {
 }
 
 // Called only with file_path held, after the read has succeeded.
-fn install_read_context(state: &AppState, saved: &str, recovered: bool) -> u64 {
+fn install_read_context(state: &AppState, saved: &str, recovered: bool, path: Option<PathBuf>) -> u64 {
+    state.image_resources.lock().unwrap().replace_document(path);
     *state.saved_source.lock().unwrap() = saved.into();
     *state.working_revision.lock().unwrap() = 0;
     let mut dirty = state.dirty.lock().unwrap();
@@ -172,7 +174,7 @@ fn read_document_inner(app: &tauri::AppHandle, state: &AppState) -> Result<Docum
     let Some(path) = guard.as_ref() else {
         let (record, candidates, warnings) = load_session_recovery(&app, &state, None, "")?;
         return Ok(DocumentResponse {
-            context_id: install_read_context(state, "", record.is_some()),
+            context_id: install_read_context(state, "", record.is_some(), None),
             path: String::new(), name: "Untitled".into(), exists: false,
             markdown: String::new(),
             recovery_markdown: record.as_ref().map(|r| r.unsaved_source.clone()),
@@ -198,7 +200,7 @@ fn read_document_inner(app: &tauri::AppHandle, state: &AppState) -> Result<Docum
         }
 
         Ok(DocumentResponse {
-            context_id: install_read_context(state, &text, recovery.is_some()),
+            context_id: install_read_context(state, &text, recovery.is_some(), Some(path.clone())),
             path: path.display().to_string(),
             name: path
                 .file_name()
@@ -217,7 +219,7 @@ fn read_document_inner(app: &tauri::AppHandle, state: &AppState) -> Result<Docum
         }
         let (recovery, candidates, warnings) = load_session_recovery(&app, &state, Some(path), "")?;
         Ok(DocumentResponse {
-            context_id: install_read_context(state, "", recovery.is_some()),
+            context_id: install_read_context(state, "", recovery.is_some(), Some(path.clone())),
             path: path.display().to_string(),
             name: path
                 .file_name()
@@ -319,6 +321,7 @@ async fn save_as_document(app: tauri::AppHandle, token: u64, context_id: u64, ma
                 recovery_warning: Some("The copy was saved, but the current document changed; its identity was preserved.".into()) });
         }
         *current_path = Some(path.clone());
+        state.image_resources.lock().unwrap().replace_document(Some(path.clone()));
         *state.last_modified.lock().unwrap() = fs::metadata(path).and_then(|m| m.modified()).ok();
         *state.saved_source.lock().unwrap() = markdown;
         *state.working_revision.lock().unwrap() = revision;
@@ -510,7 +513,7 @@ fn transition_document(app: &tauri::AppHandle, state: &AppState, prepared: docum
     *state.last_modified.lock().unwrap() = prepared.modified;
     *state.recovery_session.lock().unwrap() = Some(staged_owner);
     *state.recovery_checked.lock().unwrap() = true;
-    let id = install_read_context(state, &prepared.source, recovery.is_some());
+    let id = install_read_context(state, &prepared.source, recovery.is_some(), prepared.path.clone());
     Ok(DocumentResponse {
         context_id: id,
         path: prepared.path.as_ref().map(|p| p.display().to_string()).unwrap_or_default(),
@@ -985,6 +988,7 @@ pub fn run() {
             save_target: Mutex::new(None),
             save_target_serial: AtomicU64::new(0),
             native_open: Mutex::new(native_open::Queue::default()),
+            image_resources: Mutex::new(image_resources::Store::default()),
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

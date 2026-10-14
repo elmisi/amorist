@@ -1523,6 +1523,23 @@
           "nonlocal URI schemes and malformed/NUL/nonUTF8 relative escapes rejected"
         ],
         "remaining": "Windows drive/file-URL branch still requires live Windows execution; runtime protocol/hooks remain pending"
+      },
+      "lifecycleHooks": {
+        "status": "runtime context hooks connected; protocol acceptance still pending",
+        "fullRustLinux": {
+          "pass": 31,
+          "fail": 0,
+          "ignored": 1,
+          "report": "image-lifecycle-rust-linux.log"
+        },
+        "scope": [
+          "AppState owns one image store per process",
+          "successful document read/New/Open installs image base and clears old identifiers",
+          "successful SaveAs adopts new base and clears old identifiers",
+          "failed/stale SaveAs branch preserves current store",
+          "no nested file-path relock in context installation"
+        ],
+        "limit": "Rust regression and hook inspection do not prove native image transport; end-to-end expired-URI checks remain required"
       }
     }
   }
