@@ -249,7 +249,7 @@ async function runOnce() {
     const failure = {
       fixture: "the built Tauri application",
       detail: `The app-level recovery scenario could not complete: ${error.message}`,
-      actual: `page: ${page}\nrecovery: ${recovery}\ndriver: ${engine ? engine.output.slice(-800) : "unavailable"}`,
+      actual: `stack: ${error.stack || error.message}\npage: ${page}\nrecovery: ${recovery}\ndriver: ${engine ? engine.output.slice(-800) : "unavailable"}`,
     };
     results.E1.push(failure);
     results.E2.push(failure);
