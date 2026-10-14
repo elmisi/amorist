@@ -42,6 +42,20 @@ async function main(){
     const result=editor.getMarkdown();editor.undo();return {focused,unchanged,result,undo:editor.getMarkdown(),removed:!document.querySelector('.amorist-link-dialog')};
    })()`);
    assert.deepEqual(dialog,{focused:true,unchanged:'Label',result:'[Label](../note.md#title)',undo:'Label',removed:true});
+   await engine.evaluate(`(() => {
+    const host=document.getElementById('host');host.replaceChildren();const editor=window.__linkKeyboard=window.AmoristEditor.create(host,{value:'Label λ\\r\\nuntouched'});
+    editor.restoreRawSelection({start:0,end:5,direction:'backward'});editor.toolbar.querySelector('[data-action="link"]').focus();return true;
+   })()`);
+   await engine.sendKeys([{key:'Enter'}]);
+   async function waitKeyboard(expression){const deadline=Date.now()+4000;while(!await engine.evaluate(expression)){assert.ok(Date.now()<deadline,'Keyboard dialog transition: '+expression+' '+JSON.stringify(await engine.evaluate(`({active:document.activeElement.outerHTML.slice(0,400),source:window.__linkKeyboard.getMarkdown(),selection:window.__linkKeyboard.selectionRaw()})`)));await new Promise(resolve=>setTimeout(resolve,20));}}
+   await waitKeyboard(`!!document.querySelector('.amorist-link-dialog[open]')`);
+   const accessible=await engine.evaluate(`(() => {const dialog=document.querySelector('.amorist-link-dialog');return {name:document.getElementById(dialog.getAttribute('aria-labelledby'))?.textContent,focus:document.activeElement===dialog.querySelector('input')};})()`);
+   assert.deepEqual(accessible,{name:'Link',focus:true});
+   await engine.sendKeys([{key:'Escape'}]);await waitKeyboard(`!document.querySelector('.amorist-link-dialog')`);
+   assert.deepEqual(await engine.evaluate(`({source:window.__linkKeyboard.getMarkdown(),selection:window.__linkKeyboard.selectionRaw(),direction:window.__linkKeyboard.selectionDirection(),focus:document.activeElement===window.__linkKeyboard.toolbar.querySelector('[data-action="link"]')})`),{source:'Label λ\r\nuntouched',selection:{start:0,end:5},direction:'backward',focus:true});
+   await engine.sendKeys([{key:'Enter'}]);await waitKeyboard(`!!document.querySelector('.amorist-link-dialog[open]')`);
+   await engine.sendKeys(['../keyboard.md',{key:'Enter'}]);await waitKeyboard(`!document.querySelector('.amorist-link-dialog')&&window.__linkKeyboard.getMarkdown()==='[Label](../keyboard.md) λ\\r\\nuntouched'`);
+   await engine.evaluate('(() => {window.__linkKeyboard.undo();return true;})()');assert.equal(await engine.evaluate('window.__linkKeyboard.getMarkdown()'),'Label λ\r\nuntouched');
    const edited=await engine.evaluate(`(async()=>{
     const raw='Before [**Label**](<old path.md> "Title") after\\r\\n';
     const editor=window.AmoristEditor.create(document.getElementById('host'),{value:raw});editor.setSurfaceSelection(12,12);

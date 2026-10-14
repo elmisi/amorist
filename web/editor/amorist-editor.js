@@ -237,6 +237,17 @@
       this.root.append(this.currentLine);
       this.currentLineEvents = new AbortController();
       const signal = this.currentLineEvents.signal;
+      document.addEventListener("selectionchange", () => {
+        const selection=window.getSelection();
+        if(this.mode!=="wysiwyg"||!selection?.rangeCount) return;
+        const range=selection.getRangeAt(0);
+        if(this.surface.contains(range.startContainer)&&this.surface.contains(range.endContainer)) {
+          this.toolbarSelection={start:this.rawPoint(range.startContainer,range.startOffset),
+            end:this.rawPoint(range.endContainer,range.endOffset),
+            direction:!selection.isCollapsed&&selection.anchorNode===range.endContainer&&selection.anchorOffset===range.endOffset?"backward":"forward",
+            revision:this.model.revision};
+        }
+      }, {signal});
       this.windowFocused = true;
       this.scheduleCurrentLine = () => {
         if (this.currentLineFrame) return;
@@ -374,6 +385,7 @@
     getValue() { return this.model.source; }
 
     setMarkdown(markdown, options) {
+      this.toolbarSelection=null;
       this.sourceBeforeInput = null;
       this.model = new DocumentModel(markdown || "");
       this.history = new TransactionJournal(100);
@@ -1124,6 +1136,9 @@
 
     selectionRaw() {
       if (this.mode === "source") return { start: this.model.rawOffset(this.source.selectionStart), end: this.model.rawOffset(this.source.selectionEnd) };
+      if(this.toolbar.contains(document.activeElement)&&this.toolbarSelection?.revision===this.model.revision) {
+        return {start:this.toolbarSelection.start,end:this.toolbarSelection.end};
+      }
       const selection = window.getSelection();
       if (!selection || !selection.rangeCount) return { start: 0, end: 0 };
       const range = selection.getRangeAt(0);
@@ -1190,6 +1205,7 @@
     }
 
     setSurfaceSelection(start, end) {
+      this.toolbarSelection={start,end,direction:"forward",revision:this.model.revision};
       this.surface.focus();
       if (start === 0 && end === this.model.source.length && end > 0) {
         this.selectSurfaceContents();
@@ -1459,6 +1475,7 @@
 
     selectionDirection() {
       if (this.mode === "source") return this.source.selectionDirection;
+      if(this.toolbar.contains(document.activeElement)&&this.toolbarSelection?.revision===this.model.revision) return this.toolbarSelection.direction;
       const selection = window.getSelection();
       if (!selection || !selection.rangeCount || selection.isCollapsed) return "forward";
       const range = selection.getRangeAt(0);
@@ -1479,6 +1496,7 @@
           const endNode = range.endContainer, endOffset = range.endOffset;
           current.collapse(endNode, endOffset);
           current.extend(startNode, startOffset);
+          this.toolbarSelection={...selection,revision:this.model.revision};
         }
       }
     }

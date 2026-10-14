@@ -2545,5 +2545,22 @@
       "autolink-dialog-visible-label-fixed-linux.log exit0 GTK/Chromium; earlier incorrect ampersand-label encoding failure retained"
     ],
     "remaining": "Native external opener/package behavior, complete dialog accessibility and final full current suite acceptance remain pending."
+  },
+  "linkDialogKeyboardLinux": {
+    "status": "partial",
+    "implemented": "Named modal Link dialog and revision-scoped oriented editor selection retained while focus moves to toolbar. Selection cache is local to each editor, updated from raw DOM intervals and cleared when replacing document; listener uses existing abort lifecycle.",
+    "verified": [
+      "GTK/Chromium actual keyboard Enter opens Link from selected text via focused toolbar button",
+      "Modal has accessible Link name and initially focused destination input",
+      "Actual Escape cancels, restores invoking button focus and backward selection without changing CRLF document",
+      "Actual typing/Enter saves, undo restores original source",
+      "Toolbar/history/settings regression tests and B9 typing/locality budgets remain green"
+    ],
+    "evidence": [
+      "link-dialog-keyboard-diagnostic-linux.log reproduces lost selection and unopened dialog",
+      "link-dialog-keyboard-regressions-linux.log pass4 fail0 skip0",
+      "toolbar-selection-performance-linux.log exit0 B9 GTK/Chromium green"
+    ],
+    "remaining": "Complete native packaged flow/platform acceptance and final full suite remain pending."
   }
 }
