@@ -2464,6 +2464,7 @@
       "quote-code-before-linux.log reproduces missing classification",
       "quote-code-fence-rows-linux.log exit0 on GTK/Chromium: source preservation, literal syntax, genuine blank row, hidden delimiters, Enter, undo and mode round-trip"
     ],
-    "remaining": "Quoted indented code, mixed list/quote containers, complete clipboard subtree handling and full current package acceptance remain pending."
+    "remaining": "Quoted indented code, mixed list/quote containers, complete clipboard subtree handling and full current package acceptance remain pending.",
+    "relatedRegressionEvidence": "quote-code-related-regressions-linux.log exit0 pass3 fail0 skip0: block layout, clipboard and indentation"
   }
 }
