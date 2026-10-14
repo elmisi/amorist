@@ -65,7 +65,7 @@
       "id": 10,
       "name": "images-and-links",
       "status": "partial",
-      "evidence": "Inline/reference local and remote images, scoped resources and link editing/activation implemented. Actual Linux packages a27dfff pass required image formats including AVIF; current Linux source passes multiline link editing and activation regressions. Multiline image atoms, native opener/package lifecycle and final all-platform acceptance remain pending; see detailed sections."
+      "evidence": "Inline/reference local/remote images, scoped protocol and link editing/activation implemented. Multiline image atoms now load and preserve whole raw spans through selection/copy/delete/undo/mode changes in prose, quotes and lists, verified on both Linux engines. Native current-release multiline resource/clipboard acceptance, opener/package lifecycle and final macOS/Windows proofs pending; detailed sections authoritative."
     },
     {
       "id": 11,
@@ -3269,5 +3269,16 @@
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     }
+  },
+  "multilineImageAtomsLinux": {
+    "status": "implemented; GTK/Chromium directed and full Linux contract passed; release/native proof pending",
+    "behavior": "One native noneditable image atom covers the full multiline raw span; continuation rows keep mapped caret positions, raw source and physical endings. Plain/reference images in prose, quote and list containers load, select/copy/delete as a whole, undo exactly and survive mode switches.",
+    "evidence": [
+      "multiline-image-atoms-linux.log exit0: GTK/Chromium",
+      "multiline-image-atoms-classic-linux.log:16 pass1 failed (detached table-cell image container); diagnosed and fixed",
+      "multiline-image-atoms-table-regression-linux.log: clipboard and multiline checks both passed after fix",
+      "multiline-image-atoms-contract-linux.json/log: final full contract green; Finder/Dock delegated to macOS"
+    ],
+    "remaining": "Integrated contract, current release/native image acceptance and macOS/Windows pending"
   }
 }

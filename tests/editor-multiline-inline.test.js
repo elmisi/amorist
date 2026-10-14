@@ -53,6 +53,25 @@ async function main(){const server=await startStaticServer(path.resolve(__dirnam
   const geometry=await engine.evaluate(`(()=>{const editor=window.__multi;editor.setMarkdown(${JSON.stringify(source)});return {lefts:Array.from(editor.surface.querySelectorAll('strong')).map(node=>node.getBoundingClientRect().left),bars:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-quote-list')).map(node=>parseFloat(getComputedStyle(node,'::after').width))};})()`);
   assert.equal(geometry.lefts.length,2);assert.ok(Math.abs(geometry.lefts[0]-geometry.lefts[1])<1,entry.id+': quoted list continuation aligns');assert.ok(geometry.bars.every(width=>width>0),entry.id+': quoted list keeps quote bars');
  }
+ for(const source of ['before ![first\r\nsecond](image.svg) after','> ![first\n> second](image.svg) after','- ![first\n  second][pic] after\n\n[pic]: image.svg']){
+  const start=source.indexOf('!['),end=source.indexOf(' after');
+  const image=await engine.evaluate(`(async()=>{const editor=window.__multi;editor.options.resolveImage=async()=>location.origin+'/tests/qa/assets/image.svg';editor.setMarkdown(${JSON.stringify(source)});
+    const atom=editor.surface.querySelector('.amorist-image-atom');
+    if(!atom)return {count:0};
+    const deadline=Date.now()+3000;while(!atom.querySelector('img')?.naturalWidth&&Date.now()<deadline)await new Promise(r=>setTimeout(r,20));
+    const range=document.createRange();range.selectNode(atom);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+    const span=editor.selectionRaw(),data=new Map();editor.handleCopy({clipboardData:{setData:(t,v)=>data.set(t,v)},preventDefault(){}},false);
+    return {count:editor.surface.querySelectorAll('.amorist-image-atom').length,loaded:!!atom.querySelector('img')?.naturalWidth,span,
+      backward:editor.imageAtBoundary(${end},true),forward:editor.imageAtBoundary(${start},false),plain:data.get('text/plain'),source:editor.getMarkdown()};})()`);
+  assert.equal(image.count,1,entry.id+': multiline image is one atom');assert.equal(image.loaded,true);
+  assert.deepEqual(image.span,{start,end});assert.deepEqual(image.backward,{start,end});assert.deepEqual(image.forward,{start,end});assert.equal(image.source,source);
+  assert.ok(image.plain.includes(source.slice(start,end)),entry.id+': multiline image copy keeps complete raw syntax');
+  await engine.evaluate(`(()=>{const editor=window.__multi;editor.focus();editor.setSurfaceSelection(${end},${end});return true;})()`);
+  await engine.sendKeys([{key:'Backspace'}]);await engine.evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+  assert.equal(await engine.evaluate('window.__multi.getMarkdown()'),source.slice(0,start)+source.slice(end),entry.id+': Backspace deletes complete multiline image');
+  await engine.evaluate('(()=>{const editor=window.__multi;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');
+  assert.equal(await engine.evaluate('window.__multi.getMarkdown()'),source);assert.equal(await engine.evaluate("window.__multi.surface.querySelectorAll('.amorist-image-atom').length"),1);
+ }
  console.log('Multiline inline: '+entry.id+' passed');
  }finally{await engine.close();}}}finally{await server.stop();}}
 main().catch(error=>{console.error(error.stack);process.exitCode=1;});

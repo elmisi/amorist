@@ -16,7 +16,7 @@ async function main() {
   const directories = ['origin', 'destination'].map(name => path.join(scratch, name));
   directories.forEach(directory => fs.mkdirSync(directory));
   const files = ['copy λ.md', 'paste 🧪.md'].map((name,index) => path.join(directories[index], name));
-  const originals = ['before **bold** after\r\n\r\n![Picture](picture%20%CE%BB.svg)\r\n', 'target: '];
+  const originals = ['before **bold** after\r\n\r\n![Picture\r\nsecond physical line](picture%20%CE%BB.svg)\r\n', 'target: '];
   fs.writeFileSync(path.join(directories[0], 'picture λ.svg'), '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="24"><rect width="32" height="24" fill="red"/></svg>');
   files.forEach((file, index) => fs.writeFileSync(file, originals[index]));
   const environment = {...process.env, XDG_DATA_HOME: path.join(scratch, 'data'), XDG_CONFIG_HOME: path.join(scratch, 'config'), XDG_CACHE_HOME: path.join(scratch, 'cache')};

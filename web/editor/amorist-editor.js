@@ -158,7 +158,7 @@
     const point=value=>Math.max(0,Math.min(end,value)-start);
     return tokens.filter(token=>token.end>start&&token.start<end&&token.type!=="break").map(token=>{
       if(token.type==="image"&&(token.start<start||token.end>end)) {
-        const result={type:"text",start:point(token.start),end:point(token.end),text:source.slice(Math.max(start,token.start),Math.min(end,token.end))};
+        const result={...token,type:token.start<start?"image-continuation":"image",start:point(token.start),end:point(token.end)};
         Object.defineProperty(result,"originalToken",{value:token});
         return result;
       }
@@ -867,6 +867,7 @@
               return rows[row].start+rows[row].projection.prefix+offset-starts[row];
             };
             const links=items=>items.forEach(token=>{
+              if(token.type==="image")Object.defineProperty(token,"sourceSpan",{value:{start:rawAt(token.start),end:rawAt(token.end)}});
               if((token.type==="link"||token.type==="image")&&!token.autolink){
                 const destination=token.referenceKey?references.get(token.referenceKey):MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
                 if(destination)Object.defineProperty(token,"sourceLink",{value:{
@@ -1187,12 +1188,19 @@
       // after an earlier edit, so untouched DOM nodes keep valid mappings.
       const append = (parent, tokens) => {
         for (const token of tokens) {
+          if(token.type==="image-continuation") {
+            const caret=document.createElement("span");caret.className="amorist-empty-caret";
+            this.appendSourceText(caret,CARET_SENTINEL,rawStart+token.start,rawStart+token.end);
+            parent.append(caret);continue;
+          }
           if (token.type === "break") {
             parent.append(document.createElement("br"));
             continue;
           }
           if(token.type==="image") {
-            const start=rawStart+token.start,end=rawStart+token.end;
+            const span=token.originalToken?.sourceSpan;
+            const base=span?Number(container.closest('.amorist-source-line').dataset.sourceStart):0;
+            const start=span?span.start-base:rawStart+token.start,end=span?span.end-base:rawStart+token.end;
             const boundary=point=> {
               const span=document.createElement("span");span.className="amorist-empty-caret amorist-image-boundary";
               this.appendSourceText(span,CARET_SENTINEL,point,point);return span;
@@ -1569,6 +1577,12 @@
       if(this.mode!=="wysiwyg") return null;
       const descriptor=this.descriptorAtRaw(offset);if(!descriptor) return null;
       let found=null;
+      const projected=tokens=>tokens.forEach(token=>{
+        const span=token.originalToken?.sourceSpan;
+        if(span && offset===(backward?span.end:span.start))found={...span};
+        if(token.children)projected(token.children);
+      });
+      projected(descriptor.projection.inlineTokens||[]);
       for(const {text,base} of this.clipboardInlineChunks(descriptor)) {
         const visit=tokens=>tokens.forEach(token=> {
           if(token.type==="image" && offset===base+(backward?token.end:token.start)) found={start:base+token.start,end:base+token.end};
