@@ -1689,6 +1689,15 @@
     }
 
     handleClick(event) {
+      const link = event.target.closest("a[data-link-destination]");
+      if (link && this.surface.contains(link)) {
+        event.preventDefault();
+        if ((event.ctrlKey || event.metaKey) && typeof this.options.onActivateLink === "function") {
+          Promise.resolve().then(() => this.options.onActivateLink(link.dataset.linkDestination))
+            .catch(error => this.options.onWarning?.(String(error.message || error)));
+        }
+        return;
+      }
       const checkbox = event.target.closest(".amorist-task-checkbox");
       if (!checkbox) return;
       const block = checkbox.closest(".amorist-source-line"); if (!block) return;
