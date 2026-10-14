@@ -29,7 +29,9 @@
 #recovery-dialog { width: min(560px, calc(100vw - 32px)); }
 #recovery-choice { display: block; width: 100%; margin: 16px 0; font: inherit; }
 .file-menu { position: relative; }
-.file-menu summary { cursor: pointer; padding: 8px 12px; }
+.file-menu summary { display: flex; align-items: center; list-style: none; }
+.file-menu summary::marker { content: ""; }
+.file-menu summary::-webkit-details-marker { display: none; }
 .file-menu-items { position: absolute; right: 0; top: 100%; z-index: 40; min-width: 160px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); box-shadow: 0 4px 16px rgb(0 0 0 / 12%); }
 .file-menu-items button { display: block; width: 100%; text-align: left; margin: 2px 0; }
 #report-note { display: block; width: 100%; margin-top: 12px; font: inherit; }
@@ -46,7 +48,8 @@ body {
   color: var(--text);
 }
 
-button {
+button,
+.file-menu summary {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--panel);
@@ -57,7 +60,8 @@ button {
   padding: 0 12px;
 }
 
-button:hover:not(:disabled) {
+button:hover:not(:disabled),
+.file-menu summary:hover {
   border-color: var(--accent);
 }
 
