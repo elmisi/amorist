@@ -1618,5 +1618,29 @@
         ]
       }
     }
+  },
+  "imageCandidateVerification": {
+    "sourceCommit": "b15c8e2",
+    "sourceSha256": "aaa9e28d134af43ca6e6adad185488ff981be0083449bd26d8c54c3445ec2c2f",
+    "evidenceDirectory": "/home/alessandro/.local/state/amorist/execution-20261013-1932",
+    "linux": {
+      "fullQa": "image-save-as-full-qa-linux.json",
+      "scope": "all declared automated QA green before semantic-image export; Finder/Dock timing delegated",
+      "clipboard": "image-html-clipboard-linux.log",
+      "clipboardResult": "2 passed, 0 skipped; controlled and real system clipboard checks on both engines",
+      "imageResources": "image-file-url-validation-rust-linux.log",
+      "imageResourcesResult": "5 passed"
+    },
+    "macos": {
+      "log": "image-candidate-rust-macos.log",
+      "result": "33 passed, 1 internal worker ignored; parent invokes worker explicitly",
+      "scope": "Rust unit/process tests only; graphical package acceptance pending"
+    },
+    "windows": {
+      "log": "image-candidate-rust-windows.log",
+      "result": "31 passed, 1 internal worker ignored; parent invokes worker explicitly; cargo exit 0",
+      "scope": "Rust unit/process tests including drive-path branch; graphical package acceptance pending"
+    },
+    "deliveryBlocked": true
   }
 }
