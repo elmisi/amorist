@@ -2671,5 +2671,13 @@
       "appimage-noarg-owned-instance-linux.log exit0"
     ],
     "packageScope": "AppImage smoke used existing build67de561. It verifies harness/startup teardown, not latest recovery implementation. Runtime/package final rebuild remains required."
+  },
+  "linuxClassicAfterContainerAndOwnershipChanges": {
+    "result": "pass",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": "current-container-classic-linux.log exit0",
+    "scope": "All sixteen current Linux classic files, including nested/tab quoted code, link keyboard accessibility, clipboard, settings and geometry. Full native contract run must follow."
   }
 }
