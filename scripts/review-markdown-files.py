@@ -4,6 +4,7 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -52,18 +53,19 @@ def main():
         record(path, 'opened', executable=executable)
         process = None
         try:
-            process = subprocess.Popen([executable, *(['--debug'] if args.debug else []), path])
+            options = {'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == 'nt' else {'start_new_session': True}
+            process = subprocess.Popen([executable, *(['--debug'] if args.debug else []), '--', path], **options)
             code = process.wait()
         except KeyboardInterrupt:
-            if process is not None and process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait()
-            record(path, 'interrupted')
-            print('\nInterrotto. Al prossimo avvio ripartirò da questo file.')
+            print('\nSequenza interrotta. Chiudi normalmente Amorist dopo aver gestito il lavoro corrente.', flush=True)
+            if process is not None:
+                while process.poll() is None:
+                    try:
+                        process.wait()
+                    except KeyboardInterrupt:
+                        print('In attesa della chiusura normale di Amorist; nessuna finestra viene terminata.', flush=True)
+            record(path, 'interrupted', exit_code=process.returncode if process else None)
+            print('Al prossimo avvio ripartirò da questo file.')
             return 130
         except OSError as error:
             record(path, 'failed', error=str(error))
