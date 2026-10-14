@@ -47,7 +47,7 @@
       "id": 7,
       "name": "clipboard",
       "status": "partial",
-      "evidence": "Safe PRE conversion already implemented. Clipboard core now supports visual/source copy/cut/paste, validated internal payload, plain Markdown/semantic HTML, partial inline delimiters, transactional cut and exact source-mode edits. Directed controlled-clipboard tests pass both Linux engines and all thirteen classic checks pass. Structured fragments, external conversion completeness and real native/system clipboard acceptance remain pending."
+      "evidence": "Safe PRE conversion already implemented. Clipboard core now supports visual/source copy/cut/paste, validated internal payload, plain Markdown/semantic HTML, partial inline delimiters, transactional cut and exact source-mode edits. Directed controlled-clipboard tests pass both Linux engines and all thirteen classic checks pass. Structured fragments, external conversion completeness and real native/system clipboard acceptance remain pending. HTML lists retain nesting and ordered numbering, headings and recursive quotes retain markers, and tables acquire header/separator and escaped pipes. Directed helper tests, REQ-D1 on both Linux engines and all thirteen classic regressions pass. Conversion edge cases and actual system clipboard remain pending."
     },
     {
       "id": 8,
@@ -1148,6 +1148,34 @@
         "dedicated clipboard contract gate",
         "real clipboard MIME/fallback across windows and platforms",
         "native plain-paste shortcut acceptance"
+      ]
+    },
+    "externalHtmlStructureDevelopment": {
+      "status": "directed helpers, D1 and thirteen classic checks passed; native clipboard and remaining conversion edges pending",
+      "classicLinux": {
+        "pass": 13,
+        "fail": 0,
+        "report": "html-structure-classic-linux.log"
+      },
+      "D1Linux": {
+        "exitCode": 0,
+        "report": "html-structure-d1-qa-linux.json",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ]
+      },
+      "scope": [
+        "nested list indentation and ordered start/item values",
+        "heading levels and recursive quote prefixes",
+        "table header/separator, rectangular rows and escaped pipes",
+        "safe PRE fences retain literal content"
+      ],
+      "remaining": [
+        "inline-code delimiter safety and destination escaping",
+        "HTML table spans and nested-table degradation",
+        "unsupported content warning behavior",
+        "real system clipboard on published webviews"
       ]
     }
   }
