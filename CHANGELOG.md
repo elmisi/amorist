@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Recovery records are isolated per session, including untitled documents. Multiple
+  copies of the same file require a choice, and discard affects only the chosen copy.
+  Existing recovery files migrate with an exact receipt, retaining the original and
+  preventing discarded imported work from reappearing on the next launch.
+- Launching without a file opens an untitled document. Saving cancels pending recovery
+  timers, and a recovery cleanup failure is reported separately from a successful save.
 - Recovery copies retain explicit automatic line-break ownership alongside the
   matching source revision. Older copies remain readable without inferring ownership.
 - Fenced code keeps heading, list, task and quote syntax literal in rendering

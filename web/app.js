@@ -101,6 +101,7 @@
         return invoke("persist_working_copy", { savedSource: savedSource, unsavedSource: unsavedSource, revision: revision, boundaryState: boundaryState });
       },
       discardWorkingCopy() { return invoke("discard_working_copy"); },
+      selectRecovery(sessionId) { return invoke("select_recovery", { sessionId: sessionId }); },
       async setWindowTitle(name) {
         try {
           var appWindow = getAppWindow();
@@ -285,16 +286,28 @@
     setBusy("Loading");
     try {
       var doc = await backend.loadDocument();
+      if (doc.recoveryCandidates && doc.recoveryCandidates.length) {
+        var selected = await chooseRecovery(doc.recoveryCandidates);
+        if (selected) {
+          var recoveredCopy = await backend.selectRecovery(selected);
+          doc.recoveryMarkdown = recoveredCopy.unsavedSource;
+          doc.recoveryBoundaryState = recoveredCopy.boundaryState;
+        }
+      }
       state.savedMarkdown = doc.markdown || "";
       setDocumentLabel(doc);
-      mountEditor(doc.recoveryMarkdown || state.savedMarkdown);
+      mountEditor(doc.recoveryMarkdown == null ? state.savedMarkdown : doc.recoveryMarkdown);
       var recoveryMetadataRestored = doc.recoveryBoundaryState == null || state.editor.model.restoreBoundaryState(doc.recoveryBoundaryState);
       setDirty(false);
       hideNotice();
-      if (doc.recoveryMarkdown && doc.recoveryMarkdown !== state.savedMarkdown) {
+      if (doc.recoveryMarkdown != null && doc.recoveryMarkdown !== state.savedMarkdown) {
         setDirty(true);
         showWarning("Recovered unsaved work. Save to apply it to the file, or Reload to discard it."
           + (recoveryMetadataRestored ? "" : " Recovery metadata was invalid; text was recovered unchanged."));
+      }
+      if (doc.recoveryWarnings && doc.recoveryWarnings.length) {
+        showWarning((elements.notice.hidden ? "" : elements.notice.textContent + " ")
+          + doc.recoveryWarnings.join(" "));
       }
       setStatus(doc.exists ? "Loaded" : "New file");
       backend.setWindowTitle(doc.name || "");
@@ -305,6 +318,44 @@
         showError(errorMessage(error, "The document could not be loaded."), "reload");
       }
     }
+  }
+
+  function chooseRecovery(copies) {
+    return new Promise(function (resolve) {
+      var dialog = document.createElement("dialog");
+      dialog.id = "recovery-dialog";
+      dialog.setAttribute("aria-labelledby", "recovery-title");
+      var title = document.createElement("h2");
+      title.id = "recovery-title";
+      title.textContent = "Choose unsaved work to recover";
+      var description = document.createElement("p");
+      description.textContent = "Several copies are available. The other copies will be kept.";
+      var select = document.createElement("select");
+      select.id = "recovery-choice";
+      select.setAttribute("aria-label", "Available recovery copies");
+      copies.forEach(function (copy, index) {
+        var option = document.createElement("option");
+        option.value = copy.sessionId;
+        option.textContent = "Copy " + (index + 1) + ": " + copy.unsavedSource.slice(0, 120).replace(/\s+/g, " ");
+        select.appendChild(option);
+      });
+      var actions = document.createElement("div");
+      actions.className = "actions";
+      var recover = document.createElement("button");
+      recover.id = "recover-selected";
+      recover.textContent = "Recover selected copy";
+      var saved = document.createElement("button");
+      saved.textContent = "Open saved file";
+      actions.append(saved, recover);
+      dialog.append(title, description, select, actions);
+      function finish(id) { dialog.close(); dialog.remove(); resolve(id); }
+      recover.addEventListener("click", function () { finish(select.value); });
+      saved.addEventListener("click", function () { finish(null); });
+      dialog.addEventListener("cancel", function (event) { event.preventDefault(); finish(null); });
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      select.focus();
+    });
   }
 
   async function loadVersion() {
@@ -325,30 +376,35 @@
 
     setBusy("Saving");
     var markdown = state.editor.getValue();
+    clearTimeout(workingCopyTimer);
+    workingCopyTimer = null;
 
     try {
-      await backend.saveDocument(markdown);
+      var result = await backend.saveDocument(markdown);
       state.savedMarkdown = markdown;
       setDirty(false);
       setStatus("Saved");
       hideNotice();
-      backend.discardWorkingCopy();
+      if (result && result.recoveryWarning) showWarning("File saved, but its recovery copy could not be removed: " + result.recoveryWarning);
     } catch (error) {
       var msg = errorMessage(error, "The document could not be saved.");
       if (msg === "CONFLICT") {
         if (await confirmDialog("The file was modified outside amorist.\n\nOverwrite with your version?")) {
           try {
-            await backend.saveDocument(markdown, true);
+            var retryResult = await backend.saveDocument(markdown, true);
             state.savedMarkdown = markdown;
             setDirty(false);
             setStatus("Saved");
             hideNotice();
+            if (retryResult && retryResult.recoveryWarning) showWarning("File saved, but its recovery copy could not be removed: " + retryResult.recoveryWarning);
           } catch (retryError) {
             showError(errorMessage(retryError, "The document could not be saved."), "save");
             setDirty(true);
+            scheduleWorkingCopy(state.editor.getValue());
           }
         } else {
           setDirty(true);
+          scheduleWorkingCopy(state.editor.getValue());
           showWarning("File changed on disk. Use Reload to load the latest version.");
         }
         return;
@@ -359,6 +415,7 @@
         showError(msg, "save");
       }
       setDirty(true);
+      scheduleWorkingCopy(state.editor.getValue());
     }
   }
 
@@ -449,8 +506,12 @@
 
   let workingCopyTimer = null;
   function scheduleWorkingCopy(value) {
-    if (state.demo || value === state.savedMarkdown) return;
+    if (state.demo) return;
     clearTimeout(workingCopyTimer);
+    if (value === state.savedMarkdown) {
+      backend.discardWorkingCopy().catch(function () { showWarning("Could not remove the recovery copy."); });
+      return;
+    }
     var editor = state.editor;
     var savedSource = state.savedMarkdown;
     var revision = editor && editor.model ? editor.model.revision : 0;

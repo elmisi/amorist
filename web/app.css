@@ -15,14 +15,18 @@
 
 [hidden] { display: none !important; }
 
-#report-dialog {
+#report-dialog,
+#recovery-dialog {
   max-width: min(560px, calc(100vw - 32px));
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
   padding: 24px;
 }
-#report-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+#report-dialog::backdrop,
+#recovery-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+#recovery-dialog { width: min(560px, calc(100vw - 32px)); }
+#recovery-choice { display: block; width: 100%; margin: 16px 0; font: inherit; }
 #report-note { display: block; width: 100%; margin-top: 12px; font: inherit; }
 #report-dialog p { font-size: 14px; }
 #report-error { color: var(--danger); }

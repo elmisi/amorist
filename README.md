@@ -107,7 +107,8 @@ On **macOS**, the `.app`/`.dmg` registers the Markdown association and icon with
 
 #### Build from source
 
-Requires the Rust toolchain and the Tauri CLI:
+Requires Rust 1.89 or newer and the Tauri CLI. Recovery sessions use the standard
+filesystem locking API introduced in Rust 1.89.
 
 ```bash
 cargo install tauri-cli --version "^2"

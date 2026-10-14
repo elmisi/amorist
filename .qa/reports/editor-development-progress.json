@@ -59,7 +59,7 @@
       "id": 9,
       "name": "file-actions-recovery-and-windows",
       "status": "partial",
-      "evidence": "Recovery persists automatic boundary metadata with the matching source revision; legacy copies load without inferred ownership. Ten Rust checks on all three platforms, actual Linux SIGKILL/restart/cleanup, full Linux suite and eleven regressions passed. Per-document/session isolation, untitled recovery and File actions remain pending."
+      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending."
     },
     {
       "id": 10,
@@ -568,6 +568,60 @@
         "log": "recovery-metadata-classic-linux.log"
       },
       "windowsObservation": "Native tests completed with ten passing checks and no cargo/rustc/link processes; SSH observation stayed open and was terminated after retrieving terminal logs."
+    },
+    "sessionRecoveryDevelopment": {
+      "status": "Thirteen Rust checks on all platforms, final full Linux suite and eleven editor regressions passed",
+      "rustTests": {
+        "pass": 13,
+        "fail": 0,
+        "platforms": [
+          "Linux",
+          "macOS",
+          "Windows"
+        ],
+        "logs": [
+          "recovery-sessions-rust-final-linux.log",
+          "recovery-sessions-rust-final-macos.log",
+          "recovery-sessions-rust-final-windows.stdout.log"
+        ]
+      },
+      "minimumRust": "1.89",
+      "verifiedToolchains": {
+        "linux": "1.94.1",
+        "macos": "1.95.0",
+        "windows": "1.94.1"
+      },
+      "nativeReport": "recovery-sessions-qa-final-linux.json",
+      "scope": [
+        "same-path instances retain separate records",
+        "live-session lease blocks adoption",
+        "untitled crash/restart",
+        "explicit recovery choice and cancellation",
+        "discard/save removes only owned record",
+        "early Save cancels recovery timer",
+        "legacy import keeps exact original and durable receipt",
+        "discarded/imported work is not reintroduced",
+        "updated legacy source preserves previous open imported copy",
+        "malformed records retained with warnings",
+        "recovery dialog fits the viewport"
+      ],
+      "remaining": [
+        "File New/Open/Save As and new-window lifecycle",
+        "cross-document startup recovery chooser",
+        "recovery with changed saved base",
+        "native Windows and macOS acceptance"
+      ],
+      "fullSuite": {
+        "exitCode": 0,
+        "report": "recovery-sessions-qa-final-linux.json",
+        "environment": "GDK_BACKEND=x11; WEBKIT_DISABLE_DMABUF_RENDERER=1 under Xvfb"
+      },
+      "classicRegressionChecks": {
+        "pass": 11,
+        "fail": 0,
+        "log": "recovery-sessions-classic-linux.log",
+        "sourceScope": "Editor regression sources unchanged by the final legacy import receipt refinements; final app integration covered by the full Linux suite."
+      }
     }
   }
 }

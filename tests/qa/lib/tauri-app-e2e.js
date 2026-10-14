@@ -83,7 +83,7 @@ async function runOnce() {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-tauri-e2e-"));
   const dataHome = path.join(scratch, "data");
   const documentPath = path.join(scratch, "recovery.md");
-  const recoveryPath = path.join(dataHome, "amorist", "working-copy.json");
+  const recoveryPath = path.join(dataHome, "amorist", "recovery-sessions");
   const saved = "# Recovery fixture\n\nOriginal line with two spaces  \nUnicode: caffè λ\n";
   const crashSuffix = "\nUnsaved before crash  \nSecond line Ω\n";
   const saveSuffix = "\nExplicitly saved ✓\n";
@@ -188,7 +188,7 @@ async function runOnce() {
     await delay(60);
     const ownedSource = "alpha\\\nbeta";
     await waitForRecovery(recoveryPath, ownedSource, RECOVERY_INTERVAL_MS + TIMER_TOLERANCE_MS);
-    const persistedBoundary = JSON.parse(fs.readFileSync(recoveryPath, "utf8")).boundaryState;
+    const persistedBoundary = recoveryRecords(recoveryPath).find((r) => r.unsavedSource === ownedSource).boundaryState;
     if (!persistedBoundary || persistedBoundary.automaticBreaks.length !== 1
         || persistedBoundary.automaticBreaks[0].marker !== 5) {
       throw new Error("Generated boundary ownership was not persisted with its exact source.");
@@ -211,10 +211,12 @@ async function runOnce() {
       throw new Error("Recovery or boundary cleanup wrote the user document without Save.");
     }
     results.fixtures.push("built app: generated boundary provenance survives SIGKILL and controls cleanup after restart");
+    await verifyIndependentRecoverySessions(driver, scratch);
+    results.fixtures.push("built app: simultaneous same-path copies, explicit choice, own-copy discard, remaining-copy recovery and untitled restart");
   } catch (error) {
     let recovery = "missing";
     try {
-      recovery = fs.readFileSync(recoveryPath, "utf8");
+      recovery = JSON.stringify(recoveryRecords(recoveryPath));
     } catch {}
     let page = "unavailable";
     if (engine) {
@@ -238,6 +240,124 @@ async function runOnce() {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
   return results;
+}
+
+async function verifyIndependentRecoverySessions(driver, scratch) {
+  const data = path.join(scratch, "independent-data");
+  const document = path.join(scratch, "same path caffè.md");
+  const directory = path.join(data, "amorist", "recovery-sessions");
+  const environment = { ...process.env, XDG_DATA_HOME: data };
+  const saved = "Session baseline\n";
+  const firstText = saved + "first unique unsaved";
+  const secondText = saved + "second unique unsaved";
+  fs.writeFileSync(document, saved);
+  let first = null;
+  let second = null;
+  try {
+    first = new TauriEngine(driver, APPLICATION, [document], environment);
+    await first.start();
+    await waitForEditor(first, saved);
+    await appendInSource(first, "first unique unsaved");
+    await waitForRecovery(directory, firstText, 5000);
+    second = new TauriEngine(driver, APPLICATION, [document], environment);
+    await second.start();
+    await waitForEditor(second, saved);
+    await appendInSource(second, "second unique unsaved");
+    await waitForRecovery(directory, secondText, 5000);
+    if (recoveryRecords(directory).length !== 2) throw new Error("Live same-path sessions shared a recovery record.");
+    await first.crashApplication();
+    first = null;
+    await second.crashApplication();
+    second = null;
+
+    first = new TauriEngine(driver, APPLICATION, [document], environment);
+    await first.start();
+    await waitUntil(() => first.evaluate(`Boolean(document.querySelector('#recovery-dialog[open]'))`), 10000, "explicit recovery choice");
+    const fits = await first.evaluate(`(function () {
+      var dialog = document.getElementById('recovery-dialog');
+      var select = document.getElementById('recovery-choice');
+      return dialog.getBoundingClientRect().width <= window.innerWidth
+        && select.getBoundingClientRect().width <= dialog.clientWidth;
+    })()`);
+    if (!fits) throw new Error("The recovery dialog overflowed its viewport.");
+    await first.sendKeys([{ key: "Escape" }]);
+    await waitForEditor(first, saved);
+    if (recoveryRecords(directory).length !== 2) throw new Error("Cancelling recovery deleted a copy.");
+    await first.crashApplication();
+    first = null;
+    first = new TauriEngine(driver, APPLICATION, [document], environment);
+    await first.start();
+    await waitUntil(() => first.evaluate(`Boolean(document.querySelector('#recovery-dialog[open]'))`), 10000, "recovery choice after cancellation");
+    await first.evaluate(`(function () {
+      var select = document.getElementById('recovery-choice');
+      var option = Array.from(select.options).find(function (o) { return o.textContent.includes('second unique unsaved'); });
+      if (!option) throw new Error('Second independent copy is missing');
+      select.value = option.value;
+      document.getElementById('recover-selected').click();
+    })()`);
+    await waitForEditor(first, secondText);
+    if (recoveryRecords(directory).length !== 2) throw new Error("Choosing recovery deleted another copy.");
+    await first.evaluate(`window.__TAURI__.dialog.confirm = function () { return Promise.resolve(true); }`);
+    await reloadCleanDocument(first, saved);
+    await waitUntil(() => recoveryRecords(directory).length === 1, 5000, "own-copy discard");
+    if (recoveryRecords(directory)[0].unsavedSource !== firstText) throw new Error("Discard removed the other session's work.");
+    await first.crashApplication();
+    first = null;
+    first = new TauriEngine(driver, APPLICATION, [document], environment);
+    await first.start();
+    await waitForEditor(first, firstText);
+    if (fs.readFileSync(document, "utf8") !== saved) throw new Error("Recovery changed the document before Save.");
+    await first.evaluate(`document.getElementById('save-button').click()`);
+    await waitForFileContents(document, firstText);
+    await waitForMissing(directory);
+    await appendInSource(first, " saved before timer");
+    await delay(60);
+    await first.evaluate(`document.getElementById('save-button').click()`);
+    const earlySaved = firstText + " saved before timer";
+    await waitForFileContents(document, earlySaved);
+    await delay(RECOVERY_INTERVAL_MS + TIMER_TOLERANCE_MS);
+    if (recoveryRecords(directory).length) throw new Error("A stale timer recreated recovery after Save.");
+    await first.crashApplication();
+    first = null;
+
+    first = new TauriEngine(driver, APPLICATION, [], environment);
+    await first.start();
+    await waitForEditor(first, "");
+    await appendInSource(first, "Untitled recovery Ω");
+    await waitForRecovery(directory, "Untitled recovery Ω", 5000);
+    if (recoveryRecords(directory)[0].path !== null) throw new Error("Untitled recovery acquired a document path.");
+    await first.crashApplication();
+    first = null;
+    first = new TauriEngine(driver, APPLICATION, [], environment);
+    await first.start();
+    await waitForEditor(first, "Untitled recovery Ω");
+    if (fs.readFileSync(document, "utf8") !== earlySaved) throw new Error("Untitled recovery changed an unrelated file.");
+    await first.crashApplication();
+    first = null;
+    const legacyPath = path.join(data, "amorist", "working-copy.json");
+    const legacyText = earlySaved + " migrated legacy work";
+    fs.writeFileSync(legacyPath, JSON.stringify({ path: document, savedSource: earlySaved,
+      unsavedSource: legacyText, revision: 9 }));
+    first = new TauriEngine(driver, APPLICATION, [document], environment);
+    await first.start();
+    await waitForEditor(first, legacyText);
+    if (!fs.existsSync(legacyPath) || recoveryRecords(directory).length !== 2) {
+      throw new Error("Legacy migration did not preserve the imported and untitled copies independently.");
+    }
+    if (fs.readFileSync(document, "utf8") !== earlySaved) throw new Error("Legacy migration wrote the user document.");
+    await first.evaluate(`document.getElementById('save-button').click()`);
+    await waitForFileContents(document, legacyText);
+    await waitUntil(() => recoveryRecords(directory).length === 1, 5000, "imported own-copy removal");
+    await first.crashApplication();
+    first = null;
+    first = new TauriEngine(driver, APPLICATION, [document], environment);
+    await first.start();
+    await waitForEditor(first, legacyText, { noticeHidden: true });
+    if (recoveryRecords(directory).length !== 1) throw new Error("Already imported legacy work reappeared after Save.");
+  } finally {
+    if (first) await first.close().catch(() => {});
+    if (second) await second.close().catch(() => {});
+  }
 }
 
 async function verifyApplicationEditing(engine, documentPath) {
@@ -579,10 +699,19 @@ async function appendInSource(engine, text) {
   await engine.sendKeys(sequence);
 }
 
+function recoveryRecords(directory) {
+  if (!fs.existsSync(directory)) return [];
+  return fs.readdirSync(directory, { withFileTypes: true }).filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const file = path.join(directory, entry.name, "record.json");
+      return fs.existsSync(file) ? [JSON.parse(fs.readFileSync(file, "utf8"))] : [];
+    });
+}
+
 async function waitForRecovery(file, expected, timeout) {
   await waitUntil(() => {
     try {
-      return JSON.parse(fs.readFileSync(file, "utf8")).unsavedSource === expected;
+      return recoveryRecords(file).some((record) => record.unsavedSource === expected);
     } catch {
       return false;
     }
@@ -594,7 +723,7 @@ async function waitForFileContents(file, expected) {
 }
 
 async function waitForMissing(file) {
-  await waitUntil(() => !fs.existsSync(file), 8000, "the recovery copy to be discarded");
+  await waitUntil(() => recoveryRecords(file).length === 0, 8000, "the recovery copy to be discarded");
 }
 
 async function waitUntil(predicate, timeout, description) {

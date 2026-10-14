@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{App, Emitter, Manager, State};
 use tauri_plugin_cli::CliExt;
 
+mod recovery;
+
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
 
@@ -17,6 +19,8 @@ struct AppState {
     force_close: Mutex<bool>,
     debug: Mutex<bool>,
     debug_log: Mutex<()>,
+    recovery_session: Mutex<Option<recovery::Session>>,
+    recovery_checked: Mutex<bool>,
 }
 
 #[tauri::command]
@@ -70,12 +74,16 @@ struct DocumentResponse {
     markdown: String,
     recovery_markdown: Option<String>,
     recovery_boundary_state: Option<serde_json::Value>,
+    recovery_candidates: Vec<recovery::Record>,
+    recovery_warnings: Vec<String>,
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SaveResponse {
     saved: bool,
     path: String,
+    recovery_warning: Option<String>,
 }
 
 #[tauri::command]
@@ -84,7 +92,16 @@ fn read_document(
     state: State<AppState>,
 ) -> Result<DocumentResponse, String> {
     let guard = state.file_path.lock().unwrap();
-    let path = guard.as_ref().ok_or("No file open.")?;
+    let Some(path) = guard.as_ref() else {
+        let (record, candidates, warnings) = load_session_recovery(&app, &state, None, "")?;
+        return Ok(DocumentResponse {
+            path: String::new(), name: "Untitled".into(), exists: false,
+            markdown: String::new(),
+            recovery_markdown: record.as_ref().map(|r| r.unsaved_source.clone()),
+            recovery_boundary_state: record.and_then(|r| r.boundary_state),
+            recovery_candidates: candidates, recovery_warnings: warnings,
+        });
+    };
 
     if path.exists() {
         let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
@@ -96,7 +113,7 @@ fn read_document(
         let text = String::from_utf8(raw.clone())
             .map_err(|_| "Markdown files must be UTF-8 encoded.".to_string())?;
         let markdown = text.clone();
-        let recovery = load_recovery_record(&app, path, &text);
+        let (recovery, candidates, warnings) = load_session_recovery(&app, &state, Some(path), &text)?;
 
         if let Ok(mtime) = metadata.modified() {
             *state.last_modified.lock().unwrap() = Some(mtime);
@@ -112,9 +129,11 @@ fn read_document(
             markdown,
             recovery_markdown: recovery.as_ref().map(|record| record.unsaved_source.clone()),
             recovery_boundary_state: recovery.and_then(|record| record.boundary_state),
+            recovery_candidates: candidates,
+            recovery_warnings: warnings,
         })
     } else {
-        let recovery = load_recovery_record(&app, path, "");
+        let (recovery, candidates, warnings) = load_session_recovery(&app, &state, Some(path), "")?;
         Ok(DocumentResponse {
             path: path.display().to_string(),
             name: path
@@ -125,6 +144,8 @@ fn read_document(
             markdown: String::new(),
             recovery_markdown: recovery.as_ref().map(|record| record.unsaved_source.clone()),
             recovery_boundary_state: recovery.and_then(|record| record.boundary_state),
+            recovery_candidates: candidates,
+            recovery_warnings: warnings,
         })
     }
 }
@@ -148,11 +169,12 @@ fn save_document(
             *state.last_modified.lock().unwrap() = Some(mtime);
         }
     }
-    let _ = fs::remove_file(working_copy_path(&app)?);
+    let recovery_warning = discard_working_copy(app.clone(), state.clone()).err();
 
     Ok(SaveResponse {
         saved: true,
         path: path.display().to_string(),
+        recovery_warning,
     })
 }
 
@@ -250,17 +272,63 @@ fn app_data_home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-fn working_copy_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    Ok(app_data_home(app)?.join("working-copy.json"))
+fn recovery_store(app: &tauri::AppHandle) -> Result<recovery::Store, String> {
+    recovery::Store::new(app_data_home(app)?.join("recovery-sessions"))
 }
 
-fn load_recovery_record(
+fn load_session_recovery(
     app: &tauri::AppHandle,
-    path: &std::path::Path,
-    saved_source: &str,
-) -> Option<WorkingCopy> {
-    let file = working_copy_path(app).ok()?;
-    load_recovery_record_file(&file, path, saved_source)
+    state: &AppState,
+    path: Option<&std::path::Path>,
+    saved: &str,
+) -> Result<(Option<recovery::Record>, Vec<recovery::Record>, Vec<String>), String> {
+    let store = recovery_store(app)?;
+    let mut owner = state.recovery_session.lock().unwrap();
+    if owner.is_none() { *owner = Some(store.create()?); }
+    let path = path.map(|p| p.display().to_string());
+    if let Some(record) = store.read(owner.as_ref().unwrap().id())? {
+        if record.path == path && record.saved_source == saved && record.unsaved_source != saved {
+            return Ok((Some(record), Vec::new(), Vec::new()));
+        }
+    }
+    let mut checked = state.recovery_checked.lock().unwrap();
+    if *checked { return Ok((None, Vec::new(), Vec::new())); }
+    *checked = true;
+    let mut warnings = Vec::new();
+    if let Err(e) = store.import_legacy(&app_data_home(app)?.join("working-copy.json")) {
+        warnings.push(format!("Legacy recovery was preserved: {e}"));
+    }
+    let listing = store.list()?;
+    warnings.extend(listing.warnings);
+    let mut candidates: Vec<_> = listing.candidates.into_iter()
+        .filter(|c| !c.active && c.record.path == path && c.record.saved_source == saved
+            && c.record.unsaved_source != saved)
+        .map(|c| c.record).collect();
+    if candidates.len() == 1 {
+        let record = candidates.pop().unwrap();
+        *owner = Some(store.claim(&record.session_id)?);
+        return Ok((Some(record), Vec::new(), warnings));
+    }
+    Ok((None, candidates, warnings))
+}
+
+#[tauri::command]
+fn select_recovery(app: tauri::AppHandle, state: State<AppState>, session_id: String) -> Result<recovery::Record, String> {
+    if *state.dirty.lock().unwrap() { return Err("Cannot replace unsaved work with recovery.".into()); }
+    let path = state.file_path.lock().unwrap();
+    let expected_path = path.as_ref().map(|p| p.display().to_string());
+    let saved = match path.as_ref() {
+        Some(path) if path.exists() => fs::read_to_string(path).map_err(|e| e.to_string())?,
+        _ => String::new(),
+    };
+    let store = recovery_store(&app)?;
+    let session = store.claim(&session_id)?;
+    let record = store.read(&session_id)?.ok_or("Recovery copy is no longer available.")?;
+    if record.path != expected_path || record.saved_source != saved {
+        return Err("Recovery belongs to another document or the saved file changed.".into());
+    }
+    *state.recovery_session.lock().unwrap() = Some(session);
+    Ok(record)
 }
 
 #[cfg(test)]
@@ -272,6 +340,7 @@ fn load_recovery_file(
     load_recovery_record_file(file, path, saved_source).map(|record| record.unsaved_source)
 }
 
+#[cfg(test)]
 fn load_recovery_record_file(
     file: &std::path::Path,
     path: &std::path::Path,
@@ -303,17 +372,20 @@ fn persist_working_copy(
         return Err("File is too large (max 10 MB).".into());
     }
     let guard = state.file_path.lock().unwrap();
-    let path = guard.as_ref().ok_or("No file open.")?;
-    let record = WorkingCopy {
-        path: path.display().to_string(),
-        saved_source,
-        unsaved_source,
-        revision,
-        boundary_state,
+    let mut owner = state.recovery_session.lock().unwrap();
+    if owner.is_none() { *owner = Some(recovery_store(&app)?.create()?); }
+    let session = owner.as_ref().unwrap();
+    let record = recovery::Record {
+        schema_version: 1,
+        session_id: session.id().into(),
+        path: guard.as_ref().map(|p| p.display().to_string()),
+        saved_source, unsaved_source, revision, boundary_state,
+        legacy_import: false,
     };
-    persist_working_copy_file(&working_copy_path(&app)?, &record)
+    session.persist(&record)
 }
 
+#[cfg(test)]
 fn persist_working_copy_file(file: &std::path::Path, record: &WorkingCopy) -> Result<(), String> {
     let encoded = serde_json::to_string(record).map_err(|e| e.to_string())?;
     // Recovery must survive a crash during the recovery write itself. Reuse
@@ -323,10 +395,14 @@ fn persist_working_copy_file(file: &std::path::Path, record: &WorkingCopy) -> Re
 }
 
 #[tauri::command]
-fn discard_working_copy(app: tauri::AppHandle) -> Result<(), String> {
-    discard_working_copy_file(&working_copy_path(&app)?)
+fn discard_working_copy(_app: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
+    if let Some(session) = state.recovery_session.lock().unwrap().as_ref() {
+        session.discard()?;
+    }
+    Ok(())
 }
 
+#[cfg(test)]
 fn discard_working_copy_file(file: &std::path::Path) -> Result<(), String> {
     match fs::remove_file(file) {
         Ok(()) => Ok(()),
@@ -669,6 +745,8 @@ pub fn run() {
             force_close: Mutex::new(false),
             debug: Mutex::new(false),
             debug_log: Mutex::new(()),
+            recovery_session: Mutex::new(None),
+            recovery_checked: Mutex::new(false),
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -724,13 +802,7 @@ pub fn run() {
                         let _ = window.set_focus();
                     }
                 }
-                Ok(None) => {
-                    eprintln!("Usage: amorist <file.md>");
-                    eprintln!("       amorist --install-cli   (install shell command into ~/.local/bin)");
-                    #[cfg(target_os = "linux")]
-                    eprintln!("       amorist --install-desktop   (register in 'Open with' for .md files)");
-                    std::process::exit(1);
-                }
+                Ok(None) => {}
                 Err(error) => {
                     #[cfg(debug_assertions)]
                     eprintln!("{error}");
@@ -744,6 +816,7 @@ pub fn run() {
             save_document,
             persist_working_copy,
             discard_working_copy,
+            select_recovery,
             get_version,
             debug_enabled,
             report_problem,
@@ -782,7 +855,7 @@ mod tests {
     // cannot quietly regress while the save path is rewritten to preserve the
     // source. A regression check earns its keep before the change, not after.
 
-    fn scratch_dir(label: &str) -> PathBuf {
+    pub(super) fn scratch_dir(label: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
             "amorist-qa-{}-{}-{:?}",
             label,

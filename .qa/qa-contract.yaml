@@ -20,6 +20,22 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      Working copies are separate records owned by one session, including untitled
+      documents. Concurrent instances of the same path cannot overwrite or discard
+      each other's records. A live-session lease prevents recovery adoption by
+      another live editor. Multiple recoverable copies require an explicit choice;
+      choosing the saved file preserves every copy. Legacy working-copy.json is
+      retained with an exact import receipt after durable import, avoiding deletion
+      races with older writers and repeated recovery after discard. Corrupt copies
+      are retained with a warning.
+    why: >
+      Implements the approved recovery prerequisite for File actions and new windows.
+      REQ-E1 must prove isolation, explicit selection, own-record discard and untitled restart.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       A visual structural shortcut on the row after an automatically owned prose
       boundary removes the now-unnecessary marker in the same raw transaction.
       Undo restores the shortcut and provenance together; existing manual markers
@@ -1255,6 +1271,7 @@ requirements:
       evidence_required:
         - text typed, the process killed without a save, the recovered content
         - generated boundary metadata persisted with its source and cleanup after restart
+        - simultaneous same-path sessions, explicit recovery choice, own-copy discard and untitled restart
       success_condition: >
         The recovered text matches what was typed, verbatim, up to the last
         working-copy interval. That interval MUST be stated in the
