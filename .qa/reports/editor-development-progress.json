@@ -2235,6 +2235,12 @@
     },
     "evidence": "avif-native-decoder-images-linux.log: AVIF and other formats decode, Save As rebase, resource expiry, New and stale-context tests pass; native WebKit direct data AVIF still fails",
     "rust": "avif-native-decoder-rust-linux.log exit 0",
-    "remaining": "Declare and verify HEIF loader availability in .deb/AppImage, missing-loader failure handling, remote AVIF and packaged platform image acceptance; no delivery gate waived"
+    "remaining": "Build and inspect .deb; bundle and verify HEIF loader in AppImage; establish actual missing-loader environment and visible fallback; remote AVIF and packaged cross-platform images",
+    "debianDependency": "heif-gdk-pixbuf added; inferred GTK/WebKit dependencies retained by Tauri CLI dependency merge; actual .deb control verification pending",
+    "ci": "HEIF loader declared in Linux build/QA environment; native image lifecycle test explicitly added to Linux QA workflow",
+    "missingLoaderProbe": {
+      "result": "not-proved",
+      "evidence": "avif-missing-loader-linux.log: empty GDK_PIXBUF_MODULE_FILE does not disable AVIF in this app session; negative assertion fails as intended, no success claimed"
+    }
   }
 }

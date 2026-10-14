@@ -63,7 +63,7 @@ jobs:
           # works. Same list as the build workflow.
           sudo apt-get install -y webkit2gtk-driver xvfb \
             libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev heif-gdk-pixbuf
 
       - name: Prepare matching Windows WebView2 driver
         if: matrix.platform == 'windows'
@@ -166,6 +166,10 @@ jobs:
           else
             node tests/editor-recovery-changed-base-native.test.js
           fi
+
+      - name: Verify native local image formats and resource lifecycle
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-local-image-native.test.js
 
       - name: Run the QA suite on every engine applicable to this platform
         id: suite

@@ -87,7 +87,10 @@ async function main(){
     return results;
   })()`);
   console.log(JSON.stringify({formats,avifDataDecoded:await engine.evaluate("window.__avifDataDecoded")}));
-  assert.deepEqual(formats,formatFiles.map(file=>({extension:file.extension,loaded:true,width:32,height:24})));
+  const missingAvifLoader=process.argv.includes('--expect-no-avif-loader');
+  assert.deepEqual(formats,formatFiles.map(file=>file.extension==='avif'&&missingAvifLoader
+    ? {extension:file.extension,loaded:false,width:0,height:0}
+    : {extension:file.extension,loaded:true,width:32,height:24}));
   const lifecycle=await engine.evaluate(`(async () => {
     const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document');
     const id=await invoke('register_image',{reference:'../images/photo%20%CE%BB.svg',contextId:doc.contextId});
