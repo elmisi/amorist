@@ -971,6 +971,25 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .register_asynchronous_uri_scheme_protocol("amorist-image", |context, request, responder| {
+            let app=context.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let content=if request.method()==tauri::http::Method::GET {
+                    app.try_state::<AppState>().and_then(|state| image_resources::read_resource(
+                        &state.image_resources,request.uri().path().trim_start_matches('/')))
+                }else {None};
+                let (status,mime,body)=match content {
+                    Some((bytes,mime))=>(200,mime,bytes),
+                    None=>(404,"text/plain",b"Image resource not found.".to_vec()),
+                };
+                let response=tauri::http::Response::builder().status(status)
+                    .header("Content-Type",mime).header("X-Content-Type-Options","nosniff")
+                    .header("Cache-Control","no-store")
+                    .header("Content-Security-Policy","default-src 'none'; style-src 'unsafe-inline'")
+                    .body(body).expect("static image response headers");
+                responder.respond(response);
+            });
+        })
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState {

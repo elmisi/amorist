@@ -86,6 +86,17 @@ impl Store {
     }
 }
 
+pub fn read_resource(store: &std::sync::Mutex<Store>, id: &str) -> Option<(Vec<u8>, &'static str)> {
+    let resource = store.lock().ok()?.lookup(id)?;
+    let bytes = std::fs::read(&resource.path).ok()?;
+    let mime = image_mime(&bytes)?;
+    let current = store.lock().ok()?.lookup(id)?;
+    if current.path != resource.path {
+        return None;
+    }
+    Some((bytes, mime))
+}
+
 fn decode_path(value: &str) -> Result<String, String> {
     let input = value.as_bytes();
     let mut output = Vec::with_capacity(input.len());
@@ -228,6 +239,37 @@ mod tests {
             store.resolve_reference("C:/images/my%20photo.png").unwrap(),
             PathBuf::from("C:/images/my photo.png")
         );
+    }
+
+    #[test]
+    fn reads_only_current_resources_and_revalidates_content() {
+        let root = std::env::temp_dir().join(format!(
+            "amorist-image-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("photo.png");
+        let png = b"\x89PNG\r\n\x1a\n";
+        std::fs::write(&path, png).unwrap();
+        let mut value = Store::default();
+        value.replace_document(Some(root.join("notes.md")));
+        let id = value.register(&path, png).unwrap();
+        let store = std::sync::Mutex::new(value);
+        assert_eq!(
+            read_resource(&store, &id).unwrap(),
+            (png.to_vec(), "image/png")
+        );
+        assert!(read_resource(&store, "../photo.png").is_none());
+        std::fs::write(&path, b"<html>not an image</html>").unwrap();
+        assert!(read_resource(&store, &id).is_none());
+        std::fs::write(&path, png).unwrap();
+        store.lock().unwrap().replace_document(None);
+        assert!(read_resource(&store, &id).is_none());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

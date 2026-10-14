@@ -1540,6 +1540,29 @@
           "no nested file-path relock in context installation"
         ],
         "limit": "Rust regression and hook inspection do not prove native image transport; end-to-end expired-URI checks remain required"
+      },
+      "protocol": {
+        "status": "asynchronous Tauri scheme registered and compiled; frontend/resource registration pending",
+        "fullRustBeforeDirectedResourceTest": {
+          "pass": 31,
+          "fail": 0,
+          "ignored": 1,
+          "report": "image-protocol-rust-linux.log"
+        },
+        "directedResourceTests": {
+          "pass": 5,
+          "fail": 0,
+          "report": "image-protocol-resource-rust-linux.log"
+        },
+        "scope": [
+          "scheme callback moves filesystem IO to spawn_blocking",
+          "exact current-store identifier lookup only",
+          "unknown/expired identifiers and nonimage changed content produce not found",
+          "MIME rechecked from bytes at serving time",
+          "no-store, nosniff and restrictive image response CSP",
+          "store rechecked after read to reject expired context"
+        ],
+        "remaining": "No local resource is registered from frontend yet; actual protocol decoding and platform acceptance remain unverified"
       }
     }
   }
