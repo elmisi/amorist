@@ -1259,6 +1259,34 @@
           "real DOM sanitizer preserves ordered list start and item values"
         ]
       }
+    },
+    "systemClipboardDevelopment": {
+      "status": "partial: WebKitGTK passed, Chromium unresolved; not a delivery pass",
+      "scope": "Real trusted copy/paste keyboard events between two editors within one browser window on isolated Linux display",
+      "webkitgtk": {
+        "status": "pass",
+        "formats": [
+          "text/plain",
+          "text/html",
+          "application/x-amorist-markdown+json"
+        ],
+        "sourcePaste": "pass"
+      },
+      "chromium": {
+        "status": "fail",
+        "detail": "Ctrl+V did not emit a paste event or insert source; visible-window trial also failed"
+      },
+      "reports": [
+        "system-clipboard-linux.log",
+        "system-clipboard-followup-linux.log",
+        "system-clipboard-headful-linux.log"
+      ],
+      "remaining": [
+        "diagnose Chromium driver/browser native shortcut routing",
+        "separate application windows",
+        "compiled Tauri webview acceptance",
+        "macOS and Windows native clipboard acceptance"
+      ]
     }
   }
 }
