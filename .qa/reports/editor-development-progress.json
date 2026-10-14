@@ -53,7 +53,7 @@
       "id": 8,
       "name": "settings-and-active-line",
       "status": "partial",
-      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending. Current-line overlay and effective settings in Bug snapshots are implemented. Soft-wrap, backward active endpoint, source geometry, focus visibility and code viewport clipping pass both Linux engines; all twelve classic regressions pass. Container-boundary selection, isolated highlight preview and native acceptance remain pending. Container-boundary Select All in both directions, isolated palette preview and destroyed-preview viewport cleanup now pass both Linux engines. A single final twelve-test regression run passes after explicit final-input synchronization in prose/list probes. Dedicated Settings contract and native acceptance remain pending."
+      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending. Current-line overlay and effective settings in Bug snapshots are implemented. Soft-wrap, backward active endpoint, source geometry, focus visibility and code viewport clipping pass both Linux engines; all twelve classic regressions pass. Container-boundary selection, isolated highlight preview and native acceptance remain pending. Container-boundary Select All in both directions, isolated palette preview and destroyed-preview viewport cleanup now pass both Linux engines. A single final twelve-test regression run passes after explicit final-input synchronization in prose/list probes. Dedicated Settings contract and native acceptance remain pending. REQ-J1 is now a blocking QA gate. The full current Linux suite passes all 37 automated requirements (38 declared including one manual advisory). Updated full Rust tests also pass on macOS (28) and Windows (26), with identical source archive hashes verified. Native preference IPC/restart/concurrent-window/package acceptance remains pending."
     },
     {
       "id": 9,
@@ -983,7 +983,32 @@
         "focus reload across processes",
         "effective settings in Bug reports",
         "native package acceptance on Linux/macOS/Windows"
-      ]
+      ],
+      "fullRustMacos": {
+        "pass": 28,
+        "fail": 0,
+        "ignored": 1,
+        "report": "settings-full-rust-macos.log"
+      },
+      "fullRustWindows": {
+        "pass": 26,
+        "fail": 0,
+        "ignored": 1,
+        "exitCode": 0,
+        "report": "settings-full-rust-windows.log"
+      },
+      "sourceSnapshot": {
+        "kind": "isolated source-only candidate snapshot, not delivery manifest",
+        "sourceCommit": "ded6aba",
+        "archive": "settings-candidate-source.tar",
+        "sha256": "9eec55f07083df742edc046cc0b806601b76df10df7bcde3ff6467a81b00bea6",
+        "verifiedOn": [
+          "Linux",
+          "macOS isolated baseline",
+          "Windows isolated baseline"
+        ],
+        "deliveryBlocked": true
+      }
     },
     "settingsUiDevelopment": {
       "status": "dialog and typography implemented; directed browser probes pass, native/overlay gates pending",
@@ -1033,7 +1058,15 @@
         "scope": "Real frontend and measured geometry, controlled backend responses, both applicable Linux browser engines"
       },
       "fullLinuxSession": 96316,
-      "fullLinuxStatus": "running"
+      "fullLinuxStatus": "passed",
+      "fullLinux": {
+        "exitCode": 0,
+        "report": "settings-qa-linux.json",
+        "executedRequirements": 37,
+        "declaredRequirements": 38,
+        "manualAdvisory": 1,
+        "scope": "All current automated Linux checks including native app integration and REQ-I3/J1; Finder/Dock actual acceptance remains delegated and mandatory"
+      }
     },
     "currentLineDevelopment": {
       "status": "directed two-engine geometry and twelve classic checks passed; remaining edge/native gates pending",
