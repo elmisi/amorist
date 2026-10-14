@@ -2562,5 +2562,29 @@
       "toolbar-selection-performance-linux.log exit0 B9 GTK/Chromium green"
     ],
     "remaining": "Complete native packaged flow/platform acceptance and final full suite remain pending."
+  },
+  "linuxCurrentPackages": {
+    "status": "partial",
+    "build": "linux-current-package-build.log exit0; Debian and AppImage created",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:1366f0a83f0329782c97405c0d7030ad146b5262",
+      "fingerprint": "1366f0a83f0329782c97405c0d7030ad146b5262",
+      "commit": "67de5613929b80ea7705b86da0839caf0d02a621",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "debSha256": "7dce44a045da66bb60d15d3451bb3716558e1b0d55085189f21a8951176598ad",
+    "appimageSha256": "8a3165539d4934ddd8bb9b3f5d3a4359beffff70893075c244a2b90e59ea962d",
+    "priorAppImage": "Preserved private amorist-8f3ab2b-before-settings.AppImage; original ad7f1db5 hash confirmed",
+    "debianProofs": [
+      "Extracted actual Debian executable: deb-current-settings-native-linux.log exit0 full native preference lifecycle incl cross-process focus",
+      "deb-current-images-native-linux.log exit0 all required image formats/SaveAs/New/stale resource/source preservation",
+      "Control version0.10.10 amd64 dependencies heif-gdk-pixbuf WebKit GTK inspected"
+    ],
+    "appimageSettings": "FAILED appimage-current-settings-native-linux.log: prior restarted AppImage QA instances remained alive, duplicate exact window title makes native focus ambiguous. Investigate driver/launcher process cleanup before accepting package settings.",
+    "cleanup": "Only three owned QA processes stopped after verifying executable path, unique fixture argv and matching isolated XDG_DATA_HOME; evidence appimage-settings-owned-process-cleanup.json. Test handle then completed exit1.",
+    "remaining": "AppImage native settings after cleanup fix, current no-host AVIF proof, all other final package flows and clean install/upgrade/full final Linux acceptance remain pending. No user install/handover."
   }
 }
