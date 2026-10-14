@@ -2631,5 +2631,10 @@
       ],
       "scope": "One intentional multi-window native QA scenario, all app-data/documents isolated to owned scratch directory."
     }
+  },
+  "linuxFullQaAfterStartupRecovery": {
+    "result": "pass",
+    "evidence": "recovery-current-full-qa-linux.log exit0; recovery-current-full-qa-linux.json",
+    "scope": "Full current declared Linux contract suite on GTK/Chromium plus native application flows; H4 native Finder/Dock delegated, not certified by Linux. Missing CommonMark/gesture/package requirements still block delivery."
   }
 }
