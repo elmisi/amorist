@@ -1946,18 +1946,24 @@
     ]
   },
   "reviewRunnerDevelopment": {
-    "status": "implemented identity checks, version-scoped state, cross-process lock and safe interruption; integrated Linux tests passed",
-    "tests": "tests/review_runner_test.py: four integrated cases passed",
+    "status": "identity, per-build state, lock and safe interruption implemented; integrated runner and report-reader checks passed on Linux/macOS/Windows",
+    "tests": "tests/review_runner_test.py: seven integrated cases; tests/problem_report_reader_test.py: two cases",
     "identity": "machine interface with 10-second timeout; verify handover before startup and each file",
     "state": "per buildId rounds; legacy history preserved; malformed state untouched",
     "interruptEvidence": "runner-interruption-linux.json",
     "lockEvidence": "runner-lock-linux.json",
     "remaining": [
-      "Windows/macOS integrated runner checks",
       "delivery-reference writing after all release gates pass",
       "packaged installed-command verification",
-      "updated list and interruption-resume acceptance"
-    ]
+      "native Windows interrupt and restart acceptance"
+    ],
+    "platformEvidence": {
+      "windows": "review-runner-final-tests-windows.log: seven runner tests and two reader tests, both exit 0",
+      "macos": "review-runner-tests-macos.log: seven runner tests and two reader tests passed",
+      "linux": "review-runner-unicode-linux.log: seven runner tests passed; reader tests passed separately",
+      "evidenceDirectory": "/home/alessandro/.local/state/amorist/execution-20261013-1932",
+      "windowsQaPython": "3.14.0 embeddable, isolated tooling only; SHA256 8d4d3590c10449d78aa4375f534e6d5f3027d67fdc362dd1a882279db6f90fdf"
+    }
   },
   "windowsWebView2Development": {
     "status": "Windows full declared QA run green on WebView2 and Chromium; native scenarios and package gates pending",
@@ -1988,5 +1994,18 @@
       "scope": "All applicable declared browser checks passed on WebView2 and Chromium; F2/E1/E2/H1/H2/H3 native scenarios delegated to current Linux automation; H4 requires macOS Finder/Dock package acceptance",
       "notProved": "Windows native File/recovery/new-instance behavior and setup.exe lifecycle"
     }
+  },
+  "ciWindowsDevelopment": {
+    "status": "build and QA workflows amended locally; remote workflows not executed",
+    "buildCommit": "5431fea",
+    "qaCommit": "4d0f1cd",
+    "build": "windows-latest, native x86_64-pc-windows-msvc, NSIS setup.exe artifact",
+    "qa": "Windows native application built; matching WebView2 runtime driver; shipping and Chromium checks mandatory; Python and discovery tests included",
+    "validation": "workflow YAML parsed locally; pinned Tauri CLI 2.11.4 Windows asset existence verified",
+    "remaining": [
+      "remote CI execution after explicit push authorization",
+      "VM setup.exe install/upgrade/uninstall",
+      "delivery packaging manifest and per-package dependency byte deltas"
+    ]
   }
 }
