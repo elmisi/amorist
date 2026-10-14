@@ -1652,7 +1652,9 @@
       "GIF",
       "WebP",
       "BMP",
-      "SVG"
+      "SVG",
+      "SVG UTF-16 little endian",
+      "SVG UTF-16 big endian"
     ],
     "failed": [
       "AVIF"
@@ -1660,7 +1662,8 @@
     "evidence": [
       "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-formats-native-linux.log",
       "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-formats-420-native-linux.log",
-      "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-avif-data-native-linux.log"
+      "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-avif-data-native-linux.log",
+      "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-utf16-native-linux.log"
     ],
     "notes": "AVIF fails both RGB High and yuv420p fixtures; assertion remains required, no format skipped or fallback accepted as completion",
     "diagnosis": "Same AVIF bytes fail both scoped protocol and direct data URI in compiled Linux webview. Failure is not specific to custom protocol; decoder compatibility remains unresolved. Installed libwebkit2gtk 2.52.6 and libavif16 1.3.0.",

@@ -56,9 +56,10 @@ async function main(){
     image.src=${JSON.stringify(actual.src)}+'?save-as-expired=1';setTimeout(()=>finish({timeout:true}),3000);
   })`);
   assert.deepEqual(saveAsExpired,{loaded:false});
-  const formatFiles=['png','jpg','gif','webp','bmp','avif'].map(extension=> {
-    const target=path.join(scratch,'images','image-format.'+extension);
-    fs.copyFileSync(path.join(root,'tests/qa/assets','image-format.'+extension),target);
+  const formatFiles=['png','jpg','gif','webp','bmp','avif','utf16-le.svg','utf16-be.svg'].map(extension=> {
+    const filename=extension.startsWith('utf16')?'image-format-'+extension:'image-format.'+extension;
+    const target=path.join(scratch,'images',filename);
+    fs.copyFileSync(path.join(root,'tests/qa/assets',filename),target);
     return {extension,path:target,...(extension==='avif'?{dataUri:'data:image/avif;base64,'+fs.readFileSync(target).toString('base64')}:{})};
   });
   const formats=await engine.evaluate(`(async () => {
