@@ -71,7 +71,7 @@
       "id": 11,
       "name": "bug-build-identity-and-review-runner",
       "status": "partial",
-      "evidence": "Build identity, immutable schema2 Bug snapshots, retained diagnostic records and per-build review runner implemented and directed checks recorded. Final installed candidate identity, review manifest and two-file Bug/interruption/resumption flow remain pending; no user handover."
+      "evidence": "Build identity, immutable schema2 Bug snapshots, original schema1 preservation and per-build review runner implemented. Native Linux source57317aa passes two-file review, actual Bug capture, SIGINT leaving window alive, interrupted-file reopening, completed-round no-op and wrong-window PID close refusal. Earlier AppImage a27dfff passes the same positive flow. User explicitly authorized a Linux preview in the personal loop; final installed candidate identity/manifest and all-platform delivery acceptance remain pending."
     },
     {
       "id": 12,
@@ -3022,5 +3022,30 @@
     "appImageEvidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/appimage-review-loop-gate-fixed/native-review-loop-result.json",
     "appImageScope": "Older source a27dfff; current runtime package validation remains pending",
     "deliveryBlocked": true
+  },
+  "linuxContractAfterFileButton": {
+    "sourceCommit": "198f4c9",
+    "result": "pass",
+    "exitCode": 0,
+    "evidence": [
+      "file-button-current-full-linux.log",
+      "file-button-current-full-linux.json"
+    ],
+    "scope": "Entire currently declared Linux contract; Finder/Dock remains delegated to macOS native acceptance; remaining plan coverage and final all-platform packages still pending"
+  },
+  "nativeClipboardLinux": {
+    "runtimeSourceCommit": "57317aa",
+    "result": "pass",
+    "evidence": "current-native-clipboard-cut-linux.log",
+    "checks": [
+      "two real isolated Amorist processes",
+      "trusted system paste events",
+      "custom Markdown MIME, plain Markdown and semantic HTML present",
+      "visual copy to other process visual paste",
+      "plain paste in source",
+      "visual cut and Undo",
+      "original CRLF and UTF8 files unchanged"
+    ],
+    "remaining": "Structured fragment completeness, current packages and macOS/Windows native clipboard acceptance"
   }
 }

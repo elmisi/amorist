@@ -183,6 +183,10 @@ jobs:
         if: matrix.platform == 'linux'
         run: GDK_BACKEND=x11 xvfb-run -a python3 tests/editor-review-loop-native.test.py
 
+      - name: Verify native clipboard across application processes
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-clipboard-native.test.js
+
       - name: Verify graceful image resource failure without host AV1 decoder
         if: matrix.platform == 'linux'
         run: |
