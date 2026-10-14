@@ -93,9 +93,28 @@ pub fn read_resource(store: &std::sync::Mutex<Store>, id: &str) -> Option<(Vec<u
     let resource = store.lock().ok()?.lookup(id)?;
     let bytes = std::fs::read(&resource.path).ok()?;
     let mime = image_mime(&bytes)?;
+    let (bytes, mime) = display_bytes(bytes, mime)?;
     let current = store.lock().ok()?.lookup(id)?;
     if current.path != resource.path {
         return None;
+    }
+    Some((bytes, mime))
+}
+
+fn display_bytes(bytes: Vec<u8>, mime: &'static str) -> Option<(Vec<u8>, &'static str)> {
+    #[cfg(target_os = "linux")]
+    if mime == "image/avif" {
+        use gdk_pixbuf::prelude::PixbufLoaderExt;
+        // The protocol runs in spawn_blocking. Keep the native objects on that
+        // worker and return only encoded bytes; the original resource is never
+        // modified. WebKit builds without AVIF support can render this PNG.
+        let loader = gdk_pixbuf::PixbufLoader::new();
+        let written = loader.write(&bytes);
+        let closed = loader.close();
+        written.ok()?;
+        closed.ok()?;
+        let image = loader.pixbuf()?;
+        return Some((image.save_to_bufferv("png", &[]).ok()?, "image/png"));
     }
     Some((bytes, mime))
 }

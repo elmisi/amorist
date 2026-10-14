@@ -2223,5 +2223,18 @@
     "exitCode": 0,
     "result": "green",
     "evidence": "post-recovery-full-qa-linux.json/log; delegated Finder/Dock does not prove macOS package"
+  },
+  "linuxAvifNativeDisplay": {
+    "status": "development-native-pass",
+    "implementation": "Linux scoped image protocol converts AVIF bytes to PNG on its existing blocking worker using the already-transitive GdkPixbuf 0.18.5; original file and Markdown untouched; generation rechecked after decoding",
+    "dependencyChange": {
+      "newRustPackages": 0,
+      "removedRustPackages": 0,
+      "newDirectLinuxDependency": "gdk-pixbuf=0.18.5",
+      "loaderOnThisHost": "heif-gdk-pixbuf 1.21.2-3ubuntu0.6"
+    },
+    "evidence": "avif-native-decoder-images-linux.log: AVIF and other formats decode, Save As rebase, resource expiry, New and stale-context tests pass; native WebKit direct data AVIF still fails",
+    "rust": "avif-native-decoder-rust-linux.log exit 0",
+    "remaining": "Declare and verify HEIF loader availability in .deb/AppImage, missing-loader failure handling, remote AVIF and packaged platform image acceptance; no delivery gate waived"
   }
 }
