@@ -3409,6 +3409,7 @@
     "evidence": [
       "linux-isolated-upgrade.log (installation/upgrade passed; initial identity invocation used wrong CLI syntax)",
       "linux-isolated-upgrade-completion.log (corrected headless invocation and hash verification passed)"
-    ]
+    ],
+    "containerState": "Stopped after completed proof; retained for installed-environment GUI follow-up"
   }
 }
