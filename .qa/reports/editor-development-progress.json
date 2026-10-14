@@ -3366,7 +3366,14 @@
       "linux-candidate-b9b3ddc-raw-loop.log exit0"
     ],
     "scope": "deb extracted and run without installation; AppImage run, images additionally isolated from host AV1 plugins with bwrap; no host decoder files altered. All native GUI scenarios serialized.",
-    "remaining": "Actual installation/upgrade and desktop activation require an administrative Linux environment; owner question pending. Earlier B2 intermittency remains documented; macOS/Windows acceptance pending. Native owned-boundary recovery now passed on both Linux packages."
+    "remaining": "Actual installation/upgrade and desktop activation require an administrative Linux environment; owner question pending. Earlier B2 intermittency remains documented; macOS/Windows acceptance pending. Native owned-boundary recovery now passed on both Linux packages.",
+    "rollbackPreparation": {
+      "package": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-0.10.8-backup/amorist_0.10.8_restore.deb",
+      "sha256": "cadd31d72d0d3768b635368c3bcd0ee178e71f6bf40047ee0c711631d10f82f3",
+      "verifiedInstalledFiles": 6,
+      "version": "0.10.8",
+      "scope": "Reconstructed rollback package validated by extraction; not installed; host installed package and app data untouched"
+    }
   },
   "nativeOwnedBoundaryRecoveryLinux": {
     "status": "verified on current extracted deb and AppImage; CI gates added",
