@@ -1225,10 +1225,15 @@
       },
       "remaining": [
         "cross-row inline reference projection",
-        "semantic HTML fallback for copied references when custom clipboard types are unavailable",
         "cross-document relative resources",
-        "real native clipboard MIME and multi-window acceptance"
-      ]
+        "real native clipboard MIME and multi-window acceptance",
+        "complete semantic table/task/title clipboard fallback"
+      ],
+      "htmlFallback": {
+        "status": "controlled clipboard fallback passed in both Linux browser engines",
+        "report": "clipboard-reference-html-linux.log",
+        "scope": "Copied reference label resolves to a semantic anchor; required definition metadata omitted from HTML; paste resolves the destination without the custom payload"
+      }
     }
   }
 }

@@ -11,10 +11,10 @@
     throw new Error("AmoristTableCodec must be loaded before AmoristMarkdownCodec.");
   }
 
-  function renderMarkdown(markdown) {
+  function renderMarkdown(markdown, references = null) {
     const blocks = parseBlocks(markdown);
     if (blocks.length === 0) return "<p><br></p>";
-    return blocks.map(renderBlock).join("");
+    return blocks.map(block=>renderBlock(block,references)).join("");
   }
 
   function parseBlocks(markdown) {
@@ -203,13 +203,13 @@
       (Array.isArray(lines) && TableCodec.isTableStart(lines, index));
   }
 
-  function renderBlock(block) {
+  function renderBlock(block, references = null) {
     const attrs = sourceLineAttr(block);
     switch (block.type) {
       case "heading":
-        return `<h${block.level}${attrs}>${renderInline(block.text)}</h${block.level}>`;
+        return `<h${block.level}${attrs}>${renderInline(block.text,references)}</h${block.level}>`;
       case "quote":
-        return `<blockquote${attrs}>${renderInline(block.text)}</blockquote>`;
+        return `<blockquote${attrs}>${renderInline(block.text,references)}</blockquote>`;
       case "hr":
         return `<hr${attrs}>`;
       case "code":
@@ -218,23 +218,23 @@
         return `<pre class="amorist-markdown-table" data-block-type="table"${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "taskList":
         return `<ul class="amorist-task-list"${attrs}>${block.items.map((item) =>
-          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text)}</span>${renderSublists(item)}</li>`,
+          `<li class="amorist-task-item" data-checked="${item.checked}"><span class="amorist-task-checkbox" contenteditable="false"></span><span class="amorist-task-content">${renderInline(item.text,references)}</span>${renderSublists(item,references)}</li>`,
         ).join("")}</ul>`;
       case "bulletList":
-        return `<ul${attrs}>${block.items.map(renderListItem).join("")}</ul>`;
+        return `<ul${attrs}>${block.items.map(item=>renderListItem(item,references)).join("")}</ul>`;
       case "orderedList":
-        return `<ol${attrs}>${block.items.map(renderListItem).join("")}</ol>`;
+        return `<ol${attrs}>${block.items.map(item=>renderListItem(item,references)).join("")}</ol>`;
       default:
-        return `<p${attrs}>${renderInline(block.text)}</p>`;
+        return `<p${attrs}>${renderInline(block.text,references)}</p>`;
     }
   }
 
-  function renderListItem(item) {
-    return `<li>${renderInline(item.text)}${renderSublists(item)}</li>`;
+  function renderListItem(item, references = null) {
+    return `<li>${renderInline(item.text,references)}${renderSublists(item,references)}</li>`;
   }
 
-  function renderSublists(item) {
-    return (item.children || []).map(renderBlock).join("");
+  function renderSublists(item,references = null) {
+    return (item.children || []).map(block=>renderBlock(block,references)).join("");
   }
 
   function sourceLineAttr(block) {
@@ -574,8 +574,8 @@
     }).join("");
   }
 
-  function renderInline(text) {
-    return renderInlineTokens(tokenizeInline(text)) || "<br>";
+  function renderInline(text, references = null) {
+    return renderInlineTokens(tokenizeInline(text,0,String(text).length,0,false,false,references)) || "<br>";
   }
 
   function serializeBlocks(surface) {

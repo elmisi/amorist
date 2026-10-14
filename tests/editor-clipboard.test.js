@@ -84,6 +84,15 @@ async function main(){
     return Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination);
    })()`);
    assert.deepEqual(tableReferences,['old.md','notes.md']);
+   const fallback=await engine.evaluate(`(() => {
+    const editor=window.__clip,source=${JSON.stringify('[Read][name]\n\n[name]: notes.md "Title"')},data=new Map();
+    editor.setMarkdown(source);editor.setSurfaceSelection(1,5);
+    editor.handleCopy({clipboardData:{setData:(type,value)=>data.set(type,value)},preventDefault(){}},false);
+    const html=data.get('text/html');data.delete('application/x-amorist-markdown+json');editor.setMarkdown('');editor.setSurfaceSelection(0,0);
+    editor.handlePaste({clipboardData:{getData:type=>data.get(type)||''},preventDefault(){}});
+    return {html,links:Array.from(editor.surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination)};
+   })()`);
+   assert.match(fallback.html,/href="notes.md"/);assert.doesNotMatch(fallback.html,/name.*notes/);assert.deepEqual(fallback.links,['notes.md']);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}
