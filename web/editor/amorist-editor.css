@@ -492,3 +492,5 @@ mark.amorist-find-current {
 .amorist-highlight-current-line .amorist-editor-source { background: transparent; }
 .amorist-wysiwyg-block { isolation: isolate; }
 .amorist-wysiwyg-block > .amorist-source-line { position: relative; z-index: 1; }
+.amorist-image-atom { display: inline-block; max-width: 100%; vertical-align: middle; }
+.amorist-image-fallback { color: var(--muted, #68717d); overflow-wrap: anywhere; }

@@ -734,7 +734,20 @@
             parent.append(document.createElement("br"));
             continue;
           }
-          if (token.type === "text" || token.type === "code" || token.type === "image") {
+          if(token.type==="image") {
+            const start=rawStart+token.start,end=rawStart+token.end;
+            const boundary=point=> {
+              const span=document.createElement("span");span.className="amorist-empty-caret amorist-image-boundary";
+              this.appendSourceText(span,CARET_SENTINEL,point,point);return span;
+            };
+            const atom=document.createElement("span");atom.className="amorist-image-atom";atom.contentEditable="false";
+            atom.dataset.rawStart=String(start);atom.dataset.rawEnd=String(end);atom.dataset.imageDestination=token.href;
+            this.sourceNodeRanges.set(atom,{start,end});
+            const fallback=document.createElement("span");fallback.className="amorist-image-fallback";
+            this.appendSourceText(fallback,(token.alt?token.alt+" — ":"")+token.href,start,end);
+            atom.append(fallback);parent.append(boundary(start),atom,boundary(end));continue;
+          }
+          if (token.type === "text" || token.type === "code") {
             const leaf = document.createElement(token.type === "code" ? "code" : "span");
             leaf.classList.add("amorist-inline-text");
             leaf.dataset.inlineStart = String(rawStart + (token.type === "code" ? token.contentStart : token.start));
@@ -973,6 +986,12 @@
       }
       const descriptor = this.lineDescriptors[Number(row.dataset.line)];
       const base = descriptor.start;
+      const image=element.closest(".amorist-image-atom");
+      if(image) {
+        const range=this.sourceNodeRanges.get(image);
+        const length=node.nodeType===Node.TEXT_NODE?node.length:node.childNodes.length;
+        return base+(offset<=length/2?range.start:range.end);
+      }
       if (node.nodeType === Node.TEXT_NODE) {
         const range = this.sourceNodeRanges.get(node);
         if (!range) throw new Error("Editable text has no source range");
@@ -1007,6 +1026,7 @@
         const candidates = [];
         let node;
         while ((node = walker.nextNode())) {
+          if(node.parentElement.closest(".amorist-image-atom")) continue;
           const range = this.sourceNodeRanges.get(node);
           if (!range) throw new Error("Editable text has no source range");
           if (relative >= range.start && relative <= range.end) {
@@ -1077,10 +1097,28 @@
       return entry;
     }
 
+    imageAtBoundary(offset,backward) {
+      if(this.mode!=="wysiwyg") return null;
+      const descriptor=this.descriptorAtRaw(offset);if(!descriptor) return null;
+      let found=null;
+      for(const {text,base} of this.clipboardInlineChunks(descriptor)) {
+        const visit=tokens=>tokens.forEach(token=> {
+          if(token.type==="image" && offset===base+(backward?token.end:token.start)) found={start:base+token.start,end:base+token.end};
+          if(token.children) visit(token.children);
+        });
+        visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,this.lineDescriptors.references));
+      }
+      return found;
+    }
+
     handleBeforeInput(event) {
       if (this.isRendering || this.mode !== "wysiwyg") return;
       const selection = this.selectionRaw();
       const type = event.inputType;
+      if(selection.start===selection.end && ["deleteContentBackward","deleteContentForward"].includes(type)) {
+        const image=this.imageAtBoundary(selection.start,type==="deleteContentBackward");
+        if(image) {event.preventDefault();this.apply(image.start,image.end,"","delete-image");return;}
+      }
       if (type === "insertText" || type === "insertCompositionText") {
         event.preventDefault();
         const text = event.data || "";
@@ -1199,6 +1237,10 @@
       if (mod && !event.shiftKey && event.key.toLowerCase() === "z") { event.preventDefault(); this.undo(); return; }
       if (mod && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"))) { event.preventDefault(); this.redo(); return; }
       if (mod && event.key.toLowerCase() === "f") { event.preventDefault(); this.openFindBar(); return; }
+      if(this.mode==="wysiwyg" && !mod && !event.altKey && ["Backspace","Delete"].includes(event.key)) {
+        const selection=this.selectionRaw(),image=selection.start===selection.end?this.imageAtBoundary(selection.start,event.key==="Backspace"):null;
+        if(image) {event.preventDefault();this.apply(image.start,image.end,"","delete-image");return;}
+      }
       if (this.mode === "wysiwyg" && event.key === "Backspace") {
         const selection = this.selectionRaw();
         const context = selection.start === selection.end

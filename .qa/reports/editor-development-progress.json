@@ -1366,7 +1366,7 @@
       "scope": "Read-only readiness checks; no remote GUI acceptance claimed"
     },
     "imageTokenDevelopment": {
-      "status": "image grammar recognized; image loading and atom projection not implemented yet",
+      "status": "image grammar and atomic fallback projection implemented; loading/protocol remain pending",
       "scope": [
         "inline and reference image tokens carry exact raw UTF16 source boundaries",
         "formatted alt flattened to text, destination/title grammar shared with links",
@@ -1382,13 +1382,27 @@
         }
       },
       "remaining": [
-        "atomic image DOM mapping",
         "remote loading and alt/path fallback",
         "opaque scoped local-image protocol and resource invalidation",
         "image sizing and late-load caret stability",
         "image clipboard resource context",
         "native format/package acceptance across platforms"
-      ]
+      ],
+      "atomicProjection": {
+        "exitCode": 0,
+        "report": "image-atom-verified-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": [
+          "noneditable alt/path fallback with explicit before/after source boundaries",
+          "source positions inside reference snap to an atom boundary",
+          "whole-atom Backspace/Delete, actual keyboard Delete and undo",
+          "exact CRLF and mode round-trip",
+          "source bytes preserved until explicit deletion"
+        ]
+      }
     }
   }
 }

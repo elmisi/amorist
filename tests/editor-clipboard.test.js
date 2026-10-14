@@ -135,6 +135,20 @@ async function main(options={}){
     return {source:editor.getMarkdown(),em:editor.surface.querySelector('em')?.textContent,del:editor.surface.querySelector('del')?.textContent};
    })()`);
    assert.deepEqual(formattedHtml,{source:'## Title *styled*\n\n~~gone~~',em:'styled',del:'gone'});
+   const imageAtom=await engine.evaluate(`(() => {
+    const editor=window.__clip,source=${JSON.stringify('before ![Alt](image.png) after\r\n')};
+    editor.setMarkdown(source);editor.setSurfaceSelection(23,23);
+    const atom=editor.surface.querySelector('.amorist-image-atom');
+    const result={source:editor.getMarkdown(),editable:atom.contentEditable,caret:editor.selectionRaw(),text:atom.textContent};
+    editor.handleKeyDown({key:'Backspace',ctrlKey:false,metaKey:false,altKey:false,preventDefault(){}});
+    result.deleted=editor.getMarkdown();editor.undo();result.undo=editor.getMarkdown();editor.showSourceMode();editor.showWysiwygMode();result.roundtrip=editor.getMarkdown();return result;
+   })()`);
+   assert.deepEqual(imageAtom,{source:'before ![Alt](image.png) after\r\n',editable:'false',caret:{start:24,end:24},text:'Alt — image.png',deleted:'before  after\r\n',undo:'before ![Alt](image.png) after\r\n',roundtrip:'before ![Alt](image.png) after\r\n'});
+   await engine.evaluate(`(() => {const editor=window.__clip;editor.setMarkdown(${JSON.stringify('before ![Alt](image.png) after\r\n')});editor.focus();editor.setSurfaceSelection(7,7);return true;})()`);
+   await engine.sendKeys([{key:'Delete'}]);await new Promise(resolve=>setTimeout(resolve,100));
+   assert.equal(await engine.evaluate('window.__clip.getMarkdown()'),'before  after\r\n');
+   await engine.sendKeys([{key:'z',ctrl:true}]);await new Promise(resolve=>setTimeout(resolve,100));
+   assert.equal(await engine.evaluate('window.__clip.getMarkdown()'),'before ![Alt](image.png) after\r\n');
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}
