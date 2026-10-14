@@ -1,4 +1,5 @@
 """Version-scoped review progress with preserved history and atomic writes."""
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -40,3 +41,35 @@ def save(path, state):
     finally:
         if Path(temporary).exists():
             Path(temporary).unlink()
+
+
+@contextmanager
+def exclusive(path):
+    path = path.resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(path.name + '.lock')
+    with lock_path.open('a+b') as stream:
+        if os.name == 'nt':
+            import msvcrt
+            if stream.seek(0, os.SEEK_END) == 0:
+                stream.write(b'\0')
+                stream.flush()
+            stream.seek(0)
+            try:
+                msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError as error:
+                raise ValueError(f'Another review runner holds state {path}; no document was opened.') from error
+        else:
+            import fcntl
+            try:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as error:
+                raise ValueError(f'Another review runner holds state {path}; no document was opened.') from error
+        try:
+            yield
+        finally:
+            if os.name == 'nt':
+                stream.seek(0)
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)

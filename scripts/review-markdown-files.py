@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 from review_identity import release_reference_path, verify
-from review_state import load as load_state, save as save_state
+from review_state import load as load_state, save as save_state, exclusive
 
 
 def main():
@@ -25,6 +25,15 @@ def main():
         executable, release, identity = verify(args.release_reference, args.amorist)
     except ValueError as error:
         parser.error(str(error))
+    args.state = args.state.resolve()
+    try:
+        with exclusive(args.state):
+            return run_review(args, parser, executable, release, identity)
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
+
+
+def run_review(args, parser, executable, release, identity):
     paths = list(dict.fromkeys(line for line in args.list.read_text(encoding='utf-8').splitlines() if line))
     try:
         state, run = load_state(args.state, release)
