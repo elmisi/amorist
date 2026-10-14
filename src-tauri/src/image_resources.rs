@@ -5,6 +5,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[cfg(target_os = "linux")]
+pub fn configure_packaged_decoder() {
+    let Some(root) = std::env::var_os("APPDIR").and_then(|value| PathBuf::from(value).canonicalize().ok()) else { return; };
+    let Ok(executable) = std::env::current_exe().and_then(|value| value.canonicalize()) else { return; };
+    let plugins = root.join("usr/lib/amorist/heif/plugins");
+    if executable.starts_with(&root) && plugins.is_dir() {
+        // Called before Tauri initializes GTK or starts application workers.
+        std::env::set_var("LIBHEIF_PLUGIN_PATH", plugins);
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Resource {
     pub path: PathBuf,

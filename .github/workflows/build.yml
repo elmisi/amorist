@@ -102,7 +102,11 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           VERSION=$(tr -d '[:space:]' < VERSION)
-          if [ -n "${{ matrix.target }}" ]; then
+          if [ "${{ matrix.bundle }}" = "appimage" ]; then
+            amorist_bundle_config="$RUNNER_TEMP/amorist-appimage-decoders.json"
+            python3 src-tauri/linux/prepare-appimage.py "$amorist_bundle_config"
+            cargo tauri build --bundles appimage --config "$amorist_bundle_config" --config "{\"version\": \"$VERSION\"}"
+          elif [ -n "${{ matrix.target }}" ]; then
             cargo tauri build --bundles "${{ matrix.bundle }}" --target "${{ matrix.target }}" --config "{\"version\": \"$VERSION\"}"
           else
             cargo tauri build --bundles "${{ matrix.bundle }}" --config "{\"version\": \"$VERSION\"}"

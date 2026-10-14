@@ -1034,6 +1034,8 @@ fn resolve_file_arg(app: &App) -> Result<Option<PathBuf>, String> {
 }
 
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    image_resources::configure_packaged_decoder();
     // WebKitGTK tries to create a GL context for accelerated compositing and
     // prints a noisy "Disabled hardware acceleration ... Unable to create a GL
     // context" warning when that fails (headless/VM/remote-X machines without

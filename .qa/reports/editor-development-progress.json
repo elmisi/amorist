@@ -2297,6 +2297,14 @@
         "dirty": false
       },
       "evidence": "appimage-avif-headless.log and appimage-avif-build-info.json; self-extract-and-run path"
+    },
+    "correction": {
+      "generator": "src-tauri/linux/prepare-appimage.py",
+      "generatedFiles": 14,
+      "runtime": "Configure package-local LIBHEIF_PLUGIN_PATH before GTK initialization only when canonical executable lies inside canonical APPDIR",
+      "provenance": "Generator is within already-fingerprinted src-tauri/linux; no new fingerprint exclusions",
+      "evidence": "appimage-av1-config.json prepared against installed plugin/ldd; copyright notices included; appimage-av1-rust-linux.log full Rust tests exit0",
+      "remaining": "Release rebuild and AppImage bundling with generated config; inspect artifact and prove native AVIF without host codec; CI execution remains unproved"
     }
   }
 }
