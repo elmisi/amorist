@@ -1645,10 +1645,12 @@
       if (wraps[action] && selected) this.apply(sel.start, sel.end, wraps[action][0] + selected + wraps[action][1], action);
       else if (wraps[action]) this.toggleInlineMode(action, wraps[action], sel);
       else if (action === "link" && selected) {
-        const href = window.prompt("URL");
-        if (!href) return;
-        const label = selected.replace(/]/g, "\\]");
-        this.apply(sel.start, sel.end, `[${label}](${String(href).trim().replace(/\)/g, "%29")})`, action);
+        const before = this.model.source;
+        return window.AmoristInternals.EditingPolicy.requestLink().then(href => {
+          if (!href || !this.root.isConnected || this.model.source !== before) return;
+          const label = selected.replace(/]/g, "\\]");
+          this.apply(sel.start, sel.end, `[${label}](${String(href).trim().replace(/\)/g, "%29")})`, action);
+        });
       }
       else if (/^h[1-6]$/.test(action)) {
         const requested = "#".repeat(Number(action[1])) + " ";
