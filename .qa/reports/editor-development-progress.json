@@ -3573,14 +3573,22 @@
     ],
     "deliveryBlocked": true,
     "macosUniversalBuild": {
-      "status": "running",
+      "status": "pass",
       "host": "lestrade.local",
       "pid": 21442,
       "log": "current-universal-app.log",
       "exitReceipt": "current-universal-app.exit.txt",
       "target": "universal-apple-darwin",
       "bundle": "app",
-      "note": "No GUI acceptance or DMG success claimed; macOS screen still locked"
+      "note": "Universal app built, lipo both architectures and Intel headless identity verified; ARM runtime, DMG and native GUI acceptance not claimed.",
+      "exitCode": 0,
+      "architectures": [
+        "x86_64",
+        "arm64"
+      ],
+      "binaryBytes": 13769248,
+      "bundleBytes": 13920714,
+      "manifest": "macos-current-universal-app-manifest.json"
     },
     "windowsClassicRegression": {
       "initial": "9 of10 passed; plain paste duplicated by Edge WebDriver in WebView2",
