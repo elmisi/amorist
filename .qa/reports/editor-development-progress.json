@@ -2388,7 +2388,8 @@
       "settings-warning-regression-linux.log pass1 fail0 skip0",
       "settings-native-focus-netwm-linux.log exit0"
     ],
-    "remaining": "Package and performance acceptance remain pending."
+    "remaining": "Package and performance acceptance remain pending.",
+    "ci": "Mandatory Linux native preference lifecycle and cross-process focus refresh step added to qa.yml; YAML parsed locally; no remote workflow run."
   },
   "linuxFullQaAfterSettings": {
     "status": "failed",
@@ -2440,5 +2441,13 @@
       "clipboard-unsupported-system-regression-linux.log pass2 fail0 skip0"
     ],
     "remaining": "Full clipboard subtree/cut/relative-origin support and final native package/platform acceptance remain pending."
+  },
+  "linuxClassicAfterClipboardAndListCode": {
+    "result": "pass",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": "clipboard-list-current-classic-linux.log exit0",
+    "scope": "Current sixteen classic Linux regression files, including list-contained code, native key-delivery guarded indentation and unsupported HTML clipboard assertions."
   }
 }
