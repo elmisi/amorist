@@ -59,7 +59,7 @@ async function main(){
   const formatFiles=['png','jpg','gif','webp','bmp','avif'].map(extension=> {
     const target=path.join(scratch,'images','image-format.'+extension);
     fs.copyFileSync(path.join(root,'tests/qa/assets','image-format.'+extension),target);
-    return {extension,path:target};
+    return {extension,path:target,...(extension==='avif'?{dataUri:'data:image/avif;base64,'+fs.readFileSync(target).toString('base64')}:{})};
   });
   const formats=await engine.evaluate(`(async () => {
     const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document'),results=[];
@@ -72,10 +72,20 @@ async function main(){
         image.onerror=()=>finish({loaded:false});image.src=uri;
         setTimeout(()=>finish({timeout:true}),3000);
       });
+      if(file.dataUri) {
+        const dataDecoded=await new Promise(resolve=> {
+          const image=new Image();image.onload=()=>resolve({loaded:true,width:image.naturalWidth,height:image.naturalHeight});
+          image.onerror=()=>resolve({loaded:false});image.src=file.dataUri;
+          setTimeout(()=>resolve({timeout:true}),3000);
+        });
+        console.log('AVIF data URI decoding: '+JSON.stringify(dataDecoded));
+        window.__avifDataDecoded=dataDecoded;
+      }
       results.push({extension:file.extension,...decoded});
     }
     return results;
   })()`);
+  console.log(JSON.stringify({formats,avifDataDecoded:await engine.evaluate("window.__avifDataDecoded")}));
   assert.deepEqual(formats,formatFiles.map(file=>({extension:file.extension,loaded:true,width:32,height:24})));
   const lifecycle=await engine.evaluate(`(async () => {
     const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document');
