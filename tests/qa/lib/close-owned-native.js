@@ -6,7 +6,7 @@ const os = require("node:os");
 
 // AppImage's launcher can detach the editor from WebDriver's child process.
 // Close through the real application, then prove its owned process exited.
-async function closeOwnedNative(engine) {
+async function closeOwnedNative(engine, options = {}) {
   if (!engine.sessionId) return engine.close();
   assert.equal(process.platform, "linux");
   const data = engine.environment.XDG_DATA_HOME;
@@ -34,7 +34,13 @@ async function closeOwnedNative(engine) {
   }
   assert.equal(matches.length, 1, "Exactly one owned application must be identified before closing");
   const identity = matches[0];
-  await engine.evaluate(`(() => {setTimeout(()=>window.__TAURI__.core.invoke('force_close'),100);return true;})()`);
+  if(options.crash) {
+    const start=fs.readFileSync(`/proc/${identity.pid}/stat`,"utf8").split(") ")[1].split(" ")[19];
+    assert.equal(start,identity.stat,"Owned process identity must still match before crash");
+    process.kill(identity.pid,"SIGKILL");
+  } else {
+    await engine.evaluate(`(() => {setTimeout(()=>window.__TAURI__.core.invoke('force_close'),100);return true;})()`);
+  }
   const deadline = Date.now() + 5000;
   while (true) {
     try {
@@ -47,4 +53,4 @@ async function closeOwnedNative(engine) {
   engine.sessionId = "";
   await engine.close();
 }
-module.exports = {closeOwnedNative};
+module.exports = {closeOwnedNative,crashOwnedNative:engine=>closeOwnedNative(engine,{crash:true})};
