@@ -415,9 +415,11 @@
       var recoveryMetadataRestored = doc.recoveryBoundaryState == null || state.editor.model.restoreBoundaryState(doc.recoveryBoundaryState);
       setDirty(false);
       hideNotice();
+      if (settings) await settings.refresh();
       if (doc.recoveryMarkdown != null && doc.recoveryMarkdown !== state.savedMarkdown) {
         setDirty(true);
-        showWarning("Recovered unsaved work. Save to apply it to the file, or Reload to discard it."
+        showWarning((elements.notice.hidden ? "" : elements.notice.textContent + " ")
+          + "Recovered unsaved work. Save to apply it to the file, or Reload to discard it."
           + (recoveryMetadataRestored ? "" : " Recovery metadata was invalid; text was recovered unchanged."));
       }
       if (doc.recoveryWarnings && doc.recoveryWarnings.length) {

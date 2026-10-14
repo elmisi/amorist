@@ -2370,5 +2370,22 @@
         "dirty": false
       }
     }
+  },
+  "platformPriority": "Complete Linux implementation and all required Linux proofs before resuming Windows/macOS; final delivery remains blocked as requested.",
+  "nativeSettingsLinux": {
+    "status": "partial",
+    "verified": [
+      "Native Save and Cancel",
+      "Persisted settings after process restart",
+      "Exact CRLF document and backward selection preserved",
+      "Write failure keeps dialog open and preferences unchanged; retry succeeds",
+      "Corrupt settings retain original bytes, use defaults and show startup warning"
+    ],
+    "fix": "Refresh preferences after document notice reset, preserving simultaneous recovery warnings; Settings UI labels use English.",
+    "evidence": [
+      "settings-native-warning-fixed-linux.log exit0",
+      "settings-warning-regression-linux.log pass1 fail0 skip0"
+    ],
+    "remaining": "Cross-process focus refresh, package and performance acceptance remain pending."
   }
 }

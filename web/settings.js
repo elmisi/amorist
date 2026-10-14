@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const defaults = Object.freeze({highlightCurrentLine:false, highlightColor:'#eef1f4', baseFontSize:16, tableScale:0.875, codeScale:1});
-  const colors = [['Grigio','#eef1f4'],['Azzurro','#e8f2ff'],['Verde','#e9f5ed'],['Giallo','#fff6d8'],['Rosa','#faedf2']];
+  const colors = [['Gray','#eef1f4'],['Blue','#e8f2ff'],['Green','#e9f5ed'],['Yellow','#fff6d8'],['Pink','#faedf2']];
   const scales = [0.75,0.875,1,1.125,1.25,1.5];
   function valid(value) {
     return value && typeof value.highlightCurrentLine === 'boolean'
@@ -15,13 +15,13 @@
     const dialog = document.createElement('dialog');
     dialog.id = 'settings-dialog'; dialog.setAttribute('aria-labelledby','settings-title');
     dialog.innerHTML = `<form id="settings-form"><h2 id="settings-title">Settings</h2>
-      <label><input name="highlightCurrentLine" type="checkbox"> Evidenzia la riga attiva</label>
-      <label>Colore <select name="highlightColor">${colors.map(([name,color])=>`<option value="${color}">${name}</option>`).join('')}</select></label>
-      <label>Dimensione testo <input name="baseFontSize" type="number" min="12" max="24" step="1" required></label>
-      <label>Tabelle <select name="tableScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
-      <label>Codice <select name="codeScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
-      <div id="settings-line-preview" aria-label="Anteprima riga attiva">Riga attiva — anteprima</div><div id="settings-preview" aria-label="Anteprima"></div><p id="settings-error" role="alert"></p>
-      <div class="actions"><button type="button" data-settings="defaults">Default</button><button type="button" data-settings="cancel">Annulla</button><button type="submit">Salva</button></div></form>`;
+      <label><input name="highlightCurrentLine" type="checkbox"> Highlight current line</label>
+      <label>Color <select name="highlightColor">${colors.map(([name,color])=>`<option value="${color}">${name}</option>`).join('')}</select></label>
+      <label>Text size <input name="baseFontSize" type="number" min="12" max="24" step="1" required></label>
+      <label>Tables <select name="tableScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
+      <label>Code <select name="codeScale">${scales.map(value=>`<option value="${value}">${value*100}%</option>`).join('')}</select></label>
+      <div id="settings-line-preview" aria-label="Active line preview">Active line preview</div><div id="settings-preview" aria-label="Preview"></div><p id="settings-error" role="alert"></p>
+      <div class="actions"><button type="button" data-settings="defaults">Defaults</button><button type="button" data-settings="cancel">Cancel</button><button type="submit">Save</button></div></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector('form'), error = dialog.querySelector('#settings-error');
     const read = () => ({highlightCurrentLine:form.elements.highlightCurrentLine.checked,
@@ -39,7 +39,7 @@
       updatePreview(value);
     }
     function apply(value) {
-      if (!valid(value)) throw new Error('Preferenze non valide.');
+      if (!valid(value)) throw new Error('Invalid settings.');
       current = {...value};
       const editor = getEditor(); if (editor) editor.applySettings(current);
     }
@@ -59,7 +59,7 @@
       if (saving || dialog.open) return;
       generation++; error.textContent=''; dialog.showModal();
       preview = window.AmoristEditor.create(dialog.querySelector('#settings-preview'), {
-        value:'# Titolo\nTesto di esempio\n\n| Voce | Nota |\n| --- | --- |\n| A | B |\n\n```\ncodice di esempio\n```', spellcheck:false});
+        value:'# Heading\nExample text\n\n| Item | Note |\n| --- | --- |\n| A | B |\n\n```\nexample code\n```', spellcheck:false});
       preview.toolbar.hidden=true; preview.surface.contentEditable='false'; preview.source.readOnly=true;
       fill(current);
     });
@@ -70,7 +70,7 @@
     dialog.addEventListener('close',()=> { if(preview) preview.destroy(); preview=null; refresh(); });
     form.addEventListener('submit',async event=> {
       event.preventDefault(); if(saving) return;
-      const value=read(); if(!valid(value)) { error.textContent='Scegli valori validi.'; return; }
+      const value=read(); if(!valid(value)) { error.textContent='Choose valid settings.'; return; }
       saving=true; generation++; error.textContent='';
       Array.from(form.elements).forEach(element=>element.disabled=true);
       try { const saved=await invoke('save_settings',{settings:value}); apply(saved); dialog.close(); }
