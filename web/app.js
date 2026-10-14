@@ -27,6 +27,7 @@
   let saving = false;
   let fileChanging = false;
   let fileActions = null;
+  let nativeOpen = null;
 
   function errorMessage(error, fallback) {
     if (typeof error === "string") return error;
@@ -79,6 +80,8 @@
       },
       async inspectOpen(path) { return invoke("inspect_open_document", { path: path, contextId: contextId }); },
       spawnInstance(path) { return invoke("spawn_document_instance", { path: path || null }); },
+      takeNativeOpenRequests() { return invoke("take_native_open_requests"); },
+      listenNativeOpen(handler) { return window.__TAURI__.event.listen("native-open-available", handler); },
       async openDocument(path, discard, recovery) {
         var doc = await invoke("open_document", { path: path, discard: discard, recoveryChoice: recovery, contextId: contextId });
         contextId = doc.contextId;
@@ -300,6 +303,7 @@
     }
 
     if (window.__TAURI__) fileActions = window.AmoristFileActions.install({
+      claimDocument: function () { if (nativeOpen) nativeOpen.claim(); },
       backend: backend, isSaving: function () { return saving || !state.editor || elements.editor.inert; }, isDirty: function () { return state.dirty; },
       getName: function () { return state.documentName; }, getPath: function () { return state.documentPath; },
       save: function () { return saveDocument(true); }, reload: reloadDocument, adopt: adoptDocument, chooseRecovery: chooseRecovery,
@@ -331,7 +335,21 @@
       }
     });
     backend.startHeartbeat();
-    reloadDocument();
+    if (window.__TAURI__) {
+      window.AmoristNativeOpen.install({
+        listen: backend.listenNativeOpen, take: backend.takeNativeOpenRequests, spawn: backend.spawnInstance,
+        isBusy: function () { return saving || fileChanging || elements.editor.inert || fileActions.isBusy() || !!document.querySelector('dialog[open]'); },
+        canUseInitial: function () { return !!state.editor && !state.documentPath && !state.dirty && state.editor.model.revision === 0; },
+        openInitial: function (path) { return fileActions.run("open", path); },
+        error: function (error) { showError(errorMessage(error, "Finder could not open the document."), "native-open"); },
+      }).then(async function (controller) {
+        nativeOpen = controller;
+        await reloadDocument();
+        await nativeOpen.ready();
+      }).catch(function (error) {
+        reloadDocument().then(function () { showError(errorMessage(error, "Finder event handling could not start."), "native-open"); });
+      });
+    } else reloadDocument();
   });
 
   async function reloadDocument() {
@@ -371,6 +389,7 @@
   }
 
   async function adoptDocument(doc) {
+      if (nativeOpen && (doc.path || doc.recoveryMarkdown != null || (doc.recoveryCandidates || []).length)) nativeOpen.claim();
       if (doc.recoveryCandidates && doc.recoveryCandidates.length) {
         var selected = await chooseRecovery(doc.recoveryCandidates);
         if (selected) {
@@ -550,6 +569,7 @@
       spellcheck: true,
       onChange: function (value) {
         if (state.editor !== editor) return;
+        if (nativeOpen) nativeOpen.claim();
         setDirty(value !== state.savedMarkdown);
         scheduleWorkingCopy(value);
       },

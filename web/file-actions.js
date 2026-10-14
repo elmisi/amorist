@@ -51,9 +51,10 @@
         if (committed) options.savedStatus();
       }
     }
-    async function run(action) {
+    async function run(action, suppliedPath) {
       if (busy || options.isSaving() || document.querySelector("dialog[open]")) return false;
       if (action === "reload") { menu.open = false; await options.reload(); return true; }
+      if (options.claimDocument) options.claimDocument();
       busy = true;
       menu.open = false;
       buttons.forEach(function (button) { button.disabled = true; });
@@ -67,7 +68,7 @@
         }
         var path = null;
         if (action === "open") {
-          path = await options.backend.chooseOpen(options.getPath());
+          path = suppliedPath || await options.backend.chooseOpen(options.getPath());
           if (!path) return false;
         }
         var discard = false;

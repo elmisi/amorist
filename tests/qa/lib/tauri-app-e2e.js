@@ -332,8 +332,23 @@ async function verifyIndependentInstances(driver, scratch) {
     if (!args.includes("--debug") || args[args.length - 1] !== target || args[args.length - 2] !== "--") {
       throw new Error("New instance changed filename arguments or debug mode: " + JSON.stringify(args));
     }
+    const unrelated = path.join(directory, "older-untitled-for-new-window");
+    fs.mkdirSync(unrelated);
+    const unrelatedRecord = JSON.stringify({schemaVersion: 1, sessionId: "older-untitled-for-new-window",
+      path: null, savedSource: "", unsavedSource: "other untitled work", revision: 1, boundaryState: null, legacyImport: false});
+    fs.writeFileSync(path.join(unrelated, "record.json"), unrelatedRecord);
     const emptyArgs = await launched("new-window");
-    if (emptyArgs.length !== 2 || emptyArgs[1] !== "--debug") throw new Error("New window inherited a file unexpectedly.");
+    if (emptyArgs.length !== 3 || emptyArgs[1] !== "--debug" || emptyArgs[2] !== "--new-document") throw new Error("New window did not request a fresh untitled session.");
+    const newPid = Array.from(children).at(-1);
+    function childLeases() {
+      try { return fs.readdirSync(`/proc/${newPid}/fd`).flatMap((fd) => {
+        try { const target = fs.readlinkSync(`/proc/${newPid}/fd/${fd}`); return target.endsWith("/session.lock") ? [target] : []; }
+        catch { return []; }
+      }); } catch { return []; }
+    }
+    await waitUntil(() => childLeases().length > 0, 5000, "fresh untitled child lease");
+    if (childLeases().includes(path.join(unrelated, "session.lock"))) throw new Error("New window adopted an unrelated untitled recovery copy.");
+    if (fs.readFileSync(path.join(unrelated, "record.json"), "utf8") !== unrelatedRecord) throw new Error("New window changed another untitled copy.");
     const unchanged = await engine.evaluate(`({same: window.__qaInstanceSource === document.querySelector('.amorist-editor-source'),
       dialog: !!document.querySelector('dialog[open]'), path: document.getElementById('file-path').textContent})`);
     if (!unchanged.same || unchanged.dialog || unchanged.path !== original || (await editorSnapshot(engine)).source !== "original unsaved"

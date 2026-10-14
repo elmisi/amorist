@@ -21,7 +21,7 @@ pub enum Expected {
 #[derive(Debug)]
 pub struct ResolvedPath {
     pub path: PathBuf,
-    identity: String,
+    pub(super) identity: String,
 }
 
 pub struct Lock {

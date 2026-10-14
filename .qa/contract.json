@@ -530,6 +530,19 @@
       "risks": [
         "R-009"
       ]
+    },
+    {
+      "id": "REQ-H4",
+      "statement": "macOS Finder events survive frontend startup. Initial file arguments and duplicate initial events open once; the first event can fill an unused initial window. Further events launch independent instances and preserve the current document. Missing Finder targets report an error without creation.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "partial",
+      "family": "H",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-009"
+      ]
     }
   ]
 }

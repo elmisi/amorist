@@ -49,6 +49,11 @@
           "description": "Enable local problem reporting."
         },
         {
+          "name": "new-document",
+          "takesValue": false,
+          "description": "Start a fresh untitled session without adopting older recovery copies."
+        },
+        {
           "name": "file",
           "index": 1,
           "takesValue": true,

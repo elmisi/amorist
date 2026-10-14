@@ -11,6 +11,7 @@ mod recovery;
 mod file_io;
 mod document;
 mod instances;
+mod native_open;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
@@ -29,6 +30,7 @@ struct AppState {
     working_revision: Mutex<u64>,
     save_target: Mutex<Option<PendingSaveTarget>>,
     save_target_serial: AtomicU64,
+    native_open: Mutex<native_open::Queue>,
 }
 
 struct PendingSaveTarget { token: u64, context_id: u64, target: document::SaveTarget }
@@ -87,6 +89,14 @@ async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>) ->
         #[cfg(target_os = "linux")]
         let executable = PathBuf::from(exec_path()?);
         instances::Launch::prepare(executable, bundle, file.as_deref(), *state.debug.lock().unwrap()).spawn()
+    }).await
+}
+
+#[tauri::command]
+async fn take_native_open_requests(app: tauri::AppHandle) -> Result<Vec<native_open::Request>, String> {
+    run_io(app, |_app, state| {
+        let batch = state.native_open.lock().unwrap().drain();
+        Ok(batch.resolve())
     }).await
 }
 
@@ -958,6 +968,7 @@ pub fn run() {
             working_revision: Mutex::new(0),
             save_target: Mutex::new(None),
             save_target_serial: AtomicU64::new(0),
+            native_open: Mutex::new(native_open::Queue::default()),
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -981,6 +992,8 @@ pub fn run() {
             let matches = app.cli().matches()?;
             *app.state::<AppState>().debug.lock().unwrap() = matches.args.get("debug")
                 .map(|arg| arg.value.as_bool().unwrap_or(false)).unwrap_or(false);
+            let fresh_document = matches.args.get("new-document").is_some_and(|arg| arg.occurrences > 0);
+            if fresh_document { *app.state::<AppState>().recovery_checked.lock().unwrap() = true; }
             match check_install_cli(app) {
                 Ok(true) => std::process::exit(0),
                 Ok(false) => {}
@@ -999,8 +1012,10 @@ pub fn run() {
             }
             match resolve_file_arg(app) {
                 Ok(Some(path)) => {
+                    if fresh_document { return Err("--new-document cannot be combined with a file.".into()); }
                     let state: State<AppState> = app.state();
                     *state.file_path.lock().unwrap() = Some(path.clone());
+                    state.native_open.lock().unwrap().set_startup_file(path.clone());
                     if let Some(window) = app.get_webview_window("main") {
                         let name = path
                             .file_name()
@@ -1025,6 +1040,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_document,
             spawn_document_instance,
+            take_native_open_requests,
             create_document,
             open_document,
             inspect_open_document,
@@ -1040,8 +1056,24 @@ pub fn run() {
             set_dirty,
             force_close,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = event {
+                let requests = urls.into_iter().map(|url| match url.to_file_path() {
+                    Ok(path) => match path.into_os_string().into_string() {
+                        Ok(path) => native_open::Request { path: Some(path), error: None },
+                        Err(_) => native_open::Request { path: None, error: Some("The Finder filename is not valid Unicode.".into()) },
+                    },
+                    Err(_) => native_open::Request { path: None, error: Some("Finder can only open local Markdown files.".into()) },
+                });
+                let ready = app.state::<AppState>().native_open.lock().unwrap().enqueue(requests);
+                if ready { let _ = app.emit("native-open-available", ()); }
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
 
 #[cfg(test)]

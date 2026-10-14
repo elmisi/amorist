@@ -1649,9 +1649,11 @@ requirements:
         - native launch from a dirty editor with original source and recovery retained
         - separate process arguments for Unicode/spaces and inherited debug mode
         - child remains alive after the launching window closes
+        - New window creates a fresh untitled lease without adopting an older untitled copy
       success_condition: >
         Launch cancellation or failure preserves the original session. Successful
         launch uses an independent process and does not require a dirty-document decision.
+        Explicit New window retains unrelated recovery copies and starts empty.
     severity: blocking
     false_positive_risk: low
     automation: full
@@ -1662,3 +1664,34 @@ requirements:
       Linux native automation checks process isolation and launch arguments.
       AppImage, Windows and macOS bundle launch, Finder events and rendered
       child-document acceptance remain separate mandatory package gates.
+
+  - id: REQ-H4
+    statement: >
+      macOS Finder events survive frontend startup. Initial file arguments and
+      duplicate initial events open once; the first event can fill an unused
+      initial window. Further events launch independent instances and preserve
+      the current document. Missing Finder targets report an error without creation.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Finder may deliver files before the webview exists or after a document is already in use.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - queued initial events, canonical alias deduplication and retained request order
+        - first unused window filled, subsequent events launched independently
+        - events deferred during dialogs and file actions without replacing unsaved work
+        - actual macOS bundle Finder/Dock startup and later-open acceptance
+      success_condition: >
+        No initial event is lost or opened twice. A document in use is never
+        replaced by Finder. Invalid requests show an error and preserve originals.
+    severity: blocking
+    false_positive_risk: medium
+    automation: partial
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Rust queue and frontend routing tests cover deterministic event order and
+      document preservation. Actual Finder event timing, Dock behavior and bundle
+      launch require the mandatory macOS package acceptance gate.

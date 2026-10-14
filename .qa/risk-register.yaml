@@ -139,7 +139,7 @@ risks:
     impact: high
     unacceptable: true
     mitigation: Periodic working copy outside the user's file, offered on restart.
-    verification_ids: [REQ-E1, REQ-F1, REQ-F2, REQ-H1, REQ-H2, REQ-H3]
+    verification_ids: [REQ-E1, REQ-F1, REQ-F2, REQ-H1, REQ-H2, REQ-H3, REQ-H4]
     status: open
 
   - id: R-010

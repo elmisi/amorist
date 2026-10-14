@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- macOS Finder opens are queued until the frontend is ready. Initial file aliases
+  are deduplicated; an unused initial window accepts the first request and later
+  requests launch independent instances. Invalid targets report an error.
+- Explicit New window starts a fresh untitled lease and preserves older untitled
+  recovery copies. macOS launcher failures now propagate to the originating window.
 - New window and Open in new window launch another process with inherited debug
   mode and structured filename arguments, preserving the original dirty session.
   Launches use the original AppImage or executable, and `open -n` for macOS bundles.
