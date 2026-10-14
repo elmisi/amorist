@@ -2108,7 +2108,19 @@
       "existingDataFilesPreserved": 20,
       "installedBuildIdentityMatches": true,
       "binaryHashMatchesPreBundle": false,
-      "remaining": "Explain PE binary hash difference; upgrade, uninstall, native installed app flows remain unproved; snapshot predates empty anchor fix"
+      "remaining": "Upgrade, uninstall and native installed app flows remain unproved; snapshot predates empty anchor fix",
+      "binaryHashDifferenceExplained": {
+        "differenceCount": 3,
+        "offsets": [
+          8033856,
+          8033857,
+          8033858
+        ],
+        "before": "UNK",
+        "after": "NSS",
+        "meaning": "Tauri bundle-type marker: __TAURI_BUNDLE_TYPE_VAR_UNK becomes __TAURI_BUNDLE_TYPE_VAR_NSS; local tauri-utils 2.9.2 platform.rs maps NSS to BundleType::Nsis",
+        "evidence": "windows-installer-binary-comparison.json in private execution evidence and exact byte windows observed in VM"
+      }
     }
   },
   "currentClassicLinux": {
