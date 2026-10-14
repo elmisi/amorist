@@ -119,7 +119,10 @@ fn display_bytes(bytes: Vec<u8>, mime: &'static str) -> Option<(Vec<u8>, &'stati
         // The protocol runs in spawn_blocking. Keep the native objects on that
         // worker and return only encoded bytes; the original resource is never
         // modified. WebKit builds without AVIF support can render this PNG.
-        let loader = gdk_pixbuf::PixbufLoader::new();
+        // Select the bundled HEIF module explicitly. Recent GdkPixbuf versions
+        // otherwise delegate to Glycin, whose subprocess does not use our
+        // package-local libheif plugin directory.
+        let loader = gdk_pixbuf::PixbufLoader::with_type("heif/avif").ok()?;
         let written = loader.write(&bytes);
         let closed = loader.close();
         written.ok()?;

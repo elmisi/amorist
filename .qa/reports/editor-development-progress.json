@@ -2320,6 +2320,13 @@
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
-    "nativeEvidence": "appimage-av1-no-host-native-linux.log exit1: all formats except AVIF pass; package codec loading still fails when host AV1 plugin directory is hidden"
+    "nativeEvidence": "appimage-av1-no-host-native-linux.log exit1: all formats except AVIF pass; package codec loading still fails when host AV1 plugin directory is hidden",
+    "loadingDiagnosis": {
+      "cause": "GdkPixbuf automatic AVIF decoding delegates to Glycin subprocess; it does not find package-local AV1 plugin",
+      "evidence": "appimage-avif-native-error.log captures Glycin plugin-loading error; appimage-avif-explicit-loader-error.log proves explicit HEIF module loads/decode succeeds with host AV1 directory hidden",
+      "fix": "Use PixbufLoader::with_type(\"heif/avif\") for Linux AVIF bytes",
+      "checks": "avif-explicit-loader-native-linux.log pass; avif-explicit-loader-negative-linux.log pass with actual host codec hidden; avif-explicit-loader-rust-linux.log full tests exit0",
+      "remaining": "Final AppImage rebuild and actual no-host native image acceptance remain required"
+    }
   }
 }
