@@ -2426,5 +2426,19 @@
       "diagnosis": "GTK emits Shift+Tab with key Unidentified, physical code Tab and keyCode9; editor already handles physical code. Test now waits for actual native Tab keydown (including physical code), verifies Shift modifier, then reads source/selection after rendering. Duplicate native keyups are not treated as multiple keydowns.",
       "verified": "list-code-native-key-barrier-linux.log exit0 pass5 fail0 skip0; GTK/Chromium indentation, block layout, prose Enter, history and clipboard"
     }
+  },
+  "clipboardUnsupportedHtmlLinux": {
+    "status": "partial",
+    "implemented": "External structured HTML paste reports unsupported elements and merged table cells. Available text stays escaped Markdown; non-checkbox input values are preserved as literal text before attributes are removed. Source/code/plain paste avoids HTML conversion and warning; supported HTML remains unchanged.",
+    "verified": [
+      "GTK and Chromium paste/undo/exact CRLF suffix, unsupported text and input value retention, script stripping, literal Markdown characters",
+      "Supported HTML and plain paste do not generate unsupported warnings",
+      "Existing HTML converter and real system clipboard regression tests pass"
+    ],
+    "evidence": [
+      "clipboard-unsupported-html-linux.log exit0 both engines",
+      "clipboard-unsupported-system-regression-linux.log pass2 fail0 skip0"
+    ],
+    "remaining": "Full clipboard subtree/cut/relative-origin support and final native package/platform acceptance remain pending."
   }
 }

@@ -5,6 +5,13 @@
   const STRIPPED = new Set(["SCRIPT", "STYLE", "HEAD", "META", "LINK", "TITLE", "NOSCRIPT"]);
   // Inline wrappers with no Markdown meaning: replace with their children.
   const UNWRAPPED = new Set(["SPAN", "FONT", "U", "SMALL", "ABBR", "TIME", "MARK"]);
+  const REPRESENTABLE = new Set([
+    "BODY", "P", "DIV", "SECTION", "ARTICLE", "HEADER", "FOOTER",
+    "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "UL", "OL", "LI",
+    "PRE", "CODE", "A", "IMG", "BR", "STRONG", "B", "EM", "I", "DEL", "STRIKE", "S",
+    "TABLE", "THEAD", "TBODY", "TFOOT", "TR", "TD", "TH",
+    "SPAN", "FONT", "SMALL", "ABBR", "TIME",
+  ]);
 
   function isStripped(tag) {
     return STRIPPED.has(tag);
@@ -58,6 +65,10 @@
         return;
       }
       sanitize(node); // recurse first so children are clean before we unwrap
+      if (tag === "INPUT" && node.getAttribute("type") !== "checkbox") {
+        node.replaceWith(node.ownerDocument.createTextNode(node.getAttribute("value") || ""));
+        return;
+      }
 
       if (isUnwrapped(tag)) {
         node.replaceWith(...node.childNodes);
@@ -168,12 +179,22 @@
     return block.has(tag) ? text + "\n\n" : text;
   }
 
-  function convert(html) {
+  function convert(html, options = {}) {
     if (!html) return "";
     const doc = new DOMParser().parseFromString(html, "text/html");
     const body = doc.body;
+    const unsupported = Array.from(body.querySelectorAll("*")).some(node => {
+      if (STRIPPED.has(node.tagName)) return false;
+      if (node.tagName === "INPUT" && node.getAttribute("type") === "checkbox") return false;
+      return !REPRESENTABLE.has(node.tagName)
+        || ((node.tagName === "TD" || node.tagName === "TH")
+          && (Number(node.getAttribute("rowspan") || 1) > 1 || Number(node.getAttribute("colspan") || 1) > 1));
+    });
     sanitize(body);
     const md = Array.from(body.childNodes).map(nodeToSource).join("");
+    if (unsupported && typeof options.onWarning === "function") {
+      options.onWarning("Some pasted HTML structure is unsupported. Available text was kept; unsupported formatting was omitted.");
+    }
     return cleanupMarkdown(md);
   }
 

@@ -213,6 +213,22 @@ async function main(options={}){
    })`);
    assert.equal(tableAfter.state,'loaded',JSON.stringify(tableAfter));assert.equal(tableAfter.error,null);assert.ok(Math.abs(tableAfter.left-tableBefore.left)<=1);assert.equal(tableAfter.source,tableImageSource);
    for(const columns of tableAfter.columns) for(let index=0;index<columns.length;index++) assert.ok(Math.abs(columns[index]-tableAfter.columns[0][index])<=1,`${entry.id}: image-loaded table column ${index} aligned`);
+   const unsupported=await engine.evaluate(`(() => {
+    const editor=window.__clip,warnings=[];editor.options.onWarning=message=>warnings.push(message);
+    const html='<p>Before <sup>2</sup></p><custom-panel>raw *literal* λ</custom-panel><input value="field value"><script>discard executable</script>';
+    const clipboard={getData:type=>type==='text/html'?html:type==='text/plain'?'plain fallback':''};
+    editor.setMarkdown('outside\\r\\n');editor.showWysiwygMode();editor.setSurfaceSelection(0,0);
+    editor.handlePaste({clipboardData:clipboard,preventDefault(){}});
+    const source=editor.getMarkdown(),rendered=editor.surface.textContent;editor.undo();const undo=editor.getMarkdown();
+    const count=warnings.length;editor.setMarkdown('');editor.showSourceMode();editor.source.setSelectionRange(0,0);
+    editor.handlePaste({clipboardData:clipboard,preventDefault(){}});const plain=editor.getMarkdown();
+    const afterPlain=warnings.length;editor.showWysiwygMode();editor.setMarkdown('');editor.setSurfaceSelection(0,0);
+    editor.handlePaste({clipboardData:{getData:type=>type==='text/html'?'<p><strong>Supported</strong></p>':''},preventDefault(){}});
+    return {source,rendered,undo,plain,warnings,count,afterPlain,supported:editor.getMarkdown()};
+   })()`);
+   assert.ok(unsupported.source.endsWith('outside\r\n'));assert.match(unsupported.source,/Before 2\r\n\r\nraw \\\*literal\\\* λfield value/);
+   assert.doesNotMatch(unsupported.source,/discard executable|custom-panel|<sup/);assert.match(unsupported.rendered,/raw \*literal\* λfield value/);
+   assert.equal(unsupported.undo,'outside\r\n');assert.equal(unsupported.plain,'plain fallback');assert.equal(unsupported.count,1);assert.equal(unsupported.afterPlain,1);assert.equal(unsupported.warnings.length,1);assert.match(unsupported.warnings[0],/unsupported/);assert.equal(unsupported.supported,'**Supported**');
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

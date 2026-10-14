@@ -1677,7 +1677,8 @@
       if(replacement===null) {
         const html=clipboard.getData("text/html"), plain=clipboard.getData("text/plain");
         replacement=plainOnly ? (plain || html) : html
-          ? HtmlToMarkdown.convert(html).replace(/\r\n|\r|\n/g,this.model.lineEndingAt(selection.start)) : plain;
+          ? HtmlToMarkdown.convert(html, {onWarning: message => this.options.onWarning?.(message)})
+            .replace(/\r\n|\r|\n/g,this.model.lineEndingAt(selection.start)) : plain;
       }
       if(!replacement) return;
       this.finishClipboardEdit(selection,String(replacement),plainOnly?"paste-plain":"paste");
