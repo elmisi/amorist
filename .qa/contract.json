@@ -582,6 +582,19 @@
       "risks": [
         "R-006"
       ]
+    },
+    {
+      "id": "REQ-J1",
+      "statement": "Settings provides an isolated preview, approved font sizes/scales/palette, defaults and transactional Save/Cancel. Failed writes retain the dialog and applied preferences; successful writes and focus reload update typography without changing Markdown or selection. Only the active visual line is highlighted.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "J",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-022"
+      ]
     }
   ]
 }

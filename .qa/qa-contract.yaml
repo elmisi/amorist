@@ -1801,3 +1801,37 @@ requirements:
     coverage_note: >
       Cross-row inline projection, complete nested containers and native external
       activation remain additional mandatory work under the approved plan.
+
+  - id: REQ-J1
+    statement: >
+      Settings provides an isolated preview, approved font sizes/scales/palette,
+      defaults and transactional Save/Cancel. Failed writes retain the dialog and
+      applied preferences; successful writes and focus reload update typography
+      without changing Markdown or selection. Only the active visual line is highlighted.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Global preferences must change presentation without damaging the document.
+    risk_id: R-022
+    verification:
+      type: deterministic
+      evidence_required:
+        - isolated preview, cancel, failed save, retry and focus reload with controlled backend responses
+        - common source/visual font size, proportional headings and separate table/code factors
+        - unchanged source and selection while preferences change
+        - soft-wrap, backward selection, source rows and container-boundary Select All
+        - hidden overlay without focus or in dialogs, invisible markers and horizontal clipping
+        - destroyed preview cannot change the main viewport
+      success_condition: >
+        Every applicable browser engine passes preference interaction and measured
+        geometry probes. Preview/cancellation never writes preferences. Only successful
+        Save applies new values. The overlay follows one active line and source stays exact.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      This gate tests the real frontend with controlled backend responses. Atomic
+      persistence has separate Rust tests. Actual native IPC, concurrent instances,
+      restart and package acceptance remain mandatory delivery gates on all platforms.

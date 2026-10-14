@@ -3,11 +3,14 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const {resolveEngines} = require('./qa/lib/engines');
 const {startStaticServer} = require('./qa/lib/server');
-async function main() {
+async function main(options = {}) {
+  const entries = resolveEngines(options.engineIds).filter(entry=>entry.applicable);
+  assert.ok(entries.length, "No applicable engine declared for Settings checks");
+  const exercised = [];
   const server = await startStaticServer(path.resolve(__dirname,'..'));
   const source='# Heading\r\nText 😀 repeat\r\n\r\n| A | B |\r\n| --- | --- |\r\n| left | right |\r\n\r\n```\r\ncode\r\n```';
   try {
-    for(const entry of resolveEngines().filter(entry=>entry.applicable)) {
+    for(const entry of entries) {
       assert.ok(entry.available,entry.reason);
       const engine=entry.create();
       try {
@@ -155,9 +158,12 @@ async function main() {
         })()`);
         await new Promise(resolve=>setTimeout(resolve,80));
         assert.equal(await engine.evaluate('window.scrollY'),0,`${entry.id}: destroyed preview cannot move main viewport`);
+        exercised.push(entry.id);
         console.log(`settings: ${entry.id} passed`);
       } finally { await engine.close(); }
     }
   } finally { await server.stop(); }
+  return {engines: exercised};
 }
-main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
+module.exports = {run: main};
+if (require.main === module) main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

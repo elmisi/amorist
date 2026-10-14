@@ -335,3 +335,18 @@ risks:
     note: >
       Verified by the audit phase rather than by a requirement, since it is a
       process risk rather than a product property.
+
+  - id: R-022
+    title: Preferences alter document content or misrepresent successful persistence
+    source: approved-editor-development-plan
+    consequence: >
+      Preview or a failed save changes the active editor, font changes lose the
+      editing point, or highlighting covers an entire wrapped paragraph.
+    likelihood: medium
+    impact: medium
+    unacceptable: true
+    mitigation: >
+      Isolate preview, apply only persisted settings, validate the finite values,
+      write atomically under a shared lock and measure active-line geometry.
+    verification_ids: [REQ-J1]
+    status: open

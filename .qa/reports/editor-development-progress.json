@@ -1023,9 +1023,17 @@
       "remaining": [
         "active visual-line overlay and preview",
         "effective settings in Bug reports",
-        "dedicated QA contract gate and native package preference acceptance",
-        "actual cross-process focus reload acceptance"
-      ]
+        "actual cross-process focus reload acceptance",
+        "native package preference acceptance"
+      ],
+      "contractGate": {
+        "id": "REQ-J1",
+        "exitCode": 0,
+        "report": "settings-j1-qa-linux.json",
+        "scope": "Real frontend and measured geometry, controlled backend responses, both applicable Linux browser engines"
+      },
+      "fullLinuxSession": 96316,
+      "fullLinuxStatus": "running"
     },
     "currentLineDevelopment": {
       "status": "directed two-engine geometry and twelve classic checks passed; remaining edge/native gates pending",
@@ -1055,7 +1063,6 @@
         "effective preference snapshot in new Bug records"
       ],
       "remaining": [
-        "dedicated blocking Settings contract gate",
         "native package preference/dialog/clipboard acceptance across all platforms"
       ],
       "boundaryFollowup": {
