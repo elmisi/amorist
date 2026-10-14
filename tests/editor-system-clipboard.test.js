@@ -4,6 +4,8 @@ const path=require('node:path');
 const {resolveEngines}=require('./qa/lib/engines');
 const {startStaticServer}=require('./qa/lib/server');
 async function main(){
+ const previousHeadful=process.env.AMORIST_QA_CHROMIUM_HEADFUL;
+ process.env.AMORIST_QA_CHROMIUM_HEADFUL="1";
 
  const entries=resolveEngines().filter(entry=>entry.applicable);assert.ok(entries.length);
  const server=await startStaticServer(path.resolve(__dirname,'..'));
@@ -31,6 +33,19 @@ async function main(){
    await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.showSourceMode();editor.focus();editor.source.setSelectionRange(0,0);return true;})()`);
    await send([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**');
+   const secondEngine=entry.create();
+   try {
+    await secondEngine.start();await secondEngine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+    await secondEngine.evaluate(`(() => {
+      const editor=window.__secondWindow=window.AmoristEditor.create(document.getElementById('host'),{value:'window: '});
+      window.__windowPaste=[];editor.surface.addEventListener('paste',event=>window.__windowPaste.push({trusted:event.isTrusted,types:Array.from(event.clipboardData.types)}),true);
+      editor.focus();editor.setSurfaceSelection(8,8);return true;
+    })()`);
+    await secondEngine.sendKeys([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+    await new Promise(resolve=>setTimeout(resolve,100));
+    const transferred=await secondEngine.evaluate('({source:window.__secondWindow.getMarkdown(),events:window.__windowPaste})');
+    assert.equal(transferred.source,'window: **bold**',JSON.stringify(transferred));assert.equal(transferred.events[0].trusted,true);
+   } finally {await secondEngine.close();}
    await engine.evaluate(`(() => {window.__copyEditor.focus();window.__copyEditor.setSurfaceSelection(9,13);return true;})()`);
    await send([{key:'x',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    assert.equal(await engine.evaluate('window.__copyEditor.getMarkdown()'),'before  after');
@@ -42,6 +57,6 @@ async function main(){
    assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**');
    console.log(`system clipboard: ${entry.id} passed; types=${visual.paste[0].types.join(',')}`);
   } finally {await engine.close();}
- }} finally {await server.stop();}
+ }} finally {await server.stop();if(previousHeadful===undefined) delete process.env.AMORIST_QA_CHROMIUM_HEADFUL;else process.env.AMORIST_QA_CHROMIUM_HEADFUL=previousHeadful;}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

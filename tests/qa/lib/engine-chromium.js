@@ -81,7 +81,8 @@ class ChromiumEngine {
     this.profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-qa-chromium-"));
     const debuggingUrl = await new Promise((resolve, reject) => {
       const proc = childProcess.spawn(this.binary, [
-        "--headless=new",
+        ...(process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1" ? [] : ["--headless=new"]),
+        ...(process.platform === "linux" && process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1" ? ["--ozone-platform=x11"] : []),
         "--disable-gpu",
         "--no-sandbox",
         "--no-first-run",
@@ -162,6 +163,10 @@ class ChromiumEngine {
   }
 
   async sendKeys(sequence) {
+    if(process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1") {
+      await this.socket.send("Page.bringToFront", {});
+      await this.socket.send("Emulation.setFocusEmulationEnabled", {enabled:true});
+    }
     for (const item of keys.normalizeSequence(sequence)) {
       if (item.text !== undefined) {
         await this.dispatchChar(item.text);

@@ -1300,9 +1300,9 @@
         "system-clipboard-native-key-linux.log"
       ],
       "remaining": [
-        "separate application windows",
         "compiled Tauri webview acceptance",
-        "macOS and Windows native clipboard acceptance"
+        "macOS and Windows native clipboard acceptance",
+        "separate compiled application windows on all platforms"
       ],
       "classicLinux": {
         "pass": 14,
@@ -1323,6 +1323,17 @@
           "report": "clipboard-cut-k1-qa-linux.json"
         },
         "remaining": "Partial-format cuts crossing containers and full native package/window acceptance remain pending"
+      },
+      "twoProcessFollowup": {
+        "status": "passed on WebKitGTK and Chromium",
+        "report": "system-clipboard-x11-window-linux.log",
+        "scope": "Trusted clipboard paste from first browser process into a second independently started browser window/profile; cut, undo selection and plain-paste remain verified",
+        "environment": "Visible Chrome explicitly uses isolated X11 DISPLAY; default QA remains headless",
+        "priorFailures": [
+          "system-clipboard-two-process-linux.log",
+          "system-clipboard-two-window-linux.log",
+          "system-clipboard-focused-window-linux.log"
+        ]
       }
     }
   }
