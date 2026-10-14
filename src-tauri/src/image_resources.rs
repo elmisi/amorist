@@ -33,7 +33,8 @@ impl Store {
             // Apply the same path-byte validation as ordinary references before
             // the platform URL conversion can construct a filesystem path.
             decode_path(url.path())?;
-            return url.to_file_path()
+            return url
+                .to_file_path()
                 .map_err(|_| "Invalid local file URL.".to_string());
         }
         let value = reference.split(['?', '#']).next().unwrap_or("");
@@ -157,7 +158,29 @@ pub fn image_mime(bytes: &[u8]) -> Option<&'static str> {
             }
         }
     }
-    let text = std::str::from_utf8(bytes).ok()?;
+    let decoded;
+    let text = if bytes.starts_with(&[0xff, 0xfe]) || bytes.starts_with(&[0xfe, 0xff]) {
+        let little_endian = bytes[0] == 0xff;
+        let payload = &bytes[2..];
+        if payload.len() % 2 != 0 {
+            return None;
+        }
+        let units: Vec<u16> = payload
+            .chunks_exact(2)
+            .map(|pair| {
+                let pair = [pair[0], pair[1]];
+                if little_endian {
+                    u16::from_le_bytes(pair)
+                } else {
+                    u16::from_be_bytes(pair)
+                }
+            })
+            .collect();
+        decoded = String::from_utf16(&units).ok()?;
+        decoded.as_str()
+    } else {
+        std::str::from_utf8(bytes).ok()?
+    };
     let mut text = text.trim_start_matches('\u{feff}').trim_start();
     loop {
         if text.starts_with("<?xml") {
@@ -288,6 +311,34 @@ mod tests {
             (b"<?xml version=\"1.0\"?><!-- comment --><svg xmlns=\"http://www.w3.org/2000/svg\"/>", "image/svg+xml"),
         ] { assert_eq!(image_mime(bytes), Some(mime)); }
     }
+    #[test]
+    fn recognizes_utf16_svg_without_accepting_html_or_invalid_encoding() {
+        for little_endian in [true, false] {
+            let encode = |text: &str| {
+                let mut bytes = if little_endian {
+                    vec![0xff, 0xfe]
+                } else {
+                    vec![0xfe, 0xff]
+                };
+                for unit in text.encode_utf16() {
+                    bytes.extend(if little_endian {
+                        unit.to_le_bytes()
+                    } else {
+                        unit.to_be_bytes()
+                    });
+                }
+                bytes
+            };
+            let svg = encode("<?xml version=\"1.0\" encoding=\"UTF-16\"?><!-- λ --><svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+            assert_eq!(image_mime(&svg), Some("image/svg+xml"));
+            assert_eq!(image_mime(&encode("<html><svg/></html>")), None);
+            let mut truncated = svg.clone();
+            truncated.pop();
+            assert_eq!(image_mime(&truncated), None);
+        }
+        assert_eq!(image_mime(&[0xff, 0xfe, 0x00, 0xd8]), None);
+    }
+
     #[test]
     fn rejects_html_unknown_or_malformed_headers() {
         for bytes in [
