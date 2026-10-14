@@ -80,7 +80,10 @@
   // editor renderer/serializer: a paste is a local replacement transaction,
   // not a temporary DOM document that can reformat the open file.
   function nodeToSource(node) {
-    if (node.nodeType === 3) return node.textContent || "";
+    if (node.nodeType === 3) return (node.textContent || "")
+      .replace(/[\\`*_\[\]~#>!&]/g,char=>"\\"+char)
+      .replace(/^([ \t]*)([-+])(?=[ \t])/gm,"$1\\$2")
+      .replace(/^([ \t]*\d{1,9})([.)])(?=[ \t])/gm,"$1\\$2");
     if (node.nodeType !== 1) return "";
     const tag = node.tagName;
     if (tag === "PRE") {

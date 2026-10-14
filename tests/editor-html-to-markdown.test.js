@@ -63,4 +63,7 @@ const inlineCode=el("CODE",[]);inlineCode.textContent="a``b";
 assert.equal(H._nodeToSource(inlineCode),"```a``b```");
 inlineCode.textContent="`edge`";assert.equal(H._nodeToSource(inlineCode),"`` `edge` ``");
 assert.equal(H._nodeToSource(el("A",[text("Read")],{href:"docs/my (notes).md"})),"[Read](<docs/my (notes).md>)");
+assert.equal(H._nodeToSource(text("*literal* [name]")),"\\*literal\\* \\[name\\]");
+assert.equal(H._nodeToSource(text("1. literal")),"1\\. literal");
+assert.equal(H._nodeToSource(text("- literal")),"\\- literal");
 console.log("html-to-markdown pure helpers OK");
