@@ -37,6 +37,7 @@ The standalone app uses a system webview (Tauri 2) with a Rust backend — singl
 - Warns before closing with unsaved changes; detects external file modifications.
 - Supports headings, emphasis, links, code, lists, blockquotes, fenced code blocks, task lists, and readable Markdown tables.
 - Recognizes URI/email autolinks and plain URLs while preserving their original Markdown text.
+- Reads inline-link titles, escaped destinations and paths enclosed in angle brackets without rewriting them.
 - Converts common Markdown shortcuts while typing (see below).
 - Keeps wide tables and fenced code blocks inside horizontally scrollable blocks.
 - Rejects files larger than 10 MB before reading.

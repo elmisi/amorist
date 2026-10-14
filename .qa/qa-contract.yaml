@@ -1737,3 +1737,35 @@ requirements:
     currently_holds: false
     status: confirmed
     coverage_note: Native external activation is a separate approved feature and package gate.
+
+  - id: REQ-I2
+    statement: >
+      Inline-link grammar separates destinations and titles, honors escaped and
+      balanced parentheses, angle destinations with spaces and character references.
+      Row-local projection preserves raw intervals, including styled or empty labels.
+      Nested links and angle autolinks take precedence over an enclosing link.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Correct destination grammar and source spans are needed for common inline and reference links.
+    risk_id: R-006
+    verification:
+      type: deterministic
+      evidence_required:
+        - destination/title grammar with escapes, named/numeric character references and invalid syntax
+        - nested inline links and angle autolinks without nested DOM anchors
+        - native editing, undo and mode round-trip of styled and empty labels with CRLF
+        - source and inert metadata retained without executable attributes
+      success_condition: >
+        Grammar yields the declared destination and title without rewriting source.
+        Projected labels remain editable at their exact raw intervals. Malformed
+        syntax remains readable; metadata cannot create executable HTML attributes.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      This gate verifies grammar and row-local projection. Cross-row inline
+      projection, reference definitions and native activation remain required
+      separate work in the approved plan.

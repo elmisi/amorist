@@ -572,6 +572,7 @@
             const href = MarkdownCodec.safeLinkHref(token.href);
             if (href != null) wrapper.setAttribute("href", href);
             wrapper.dataset.linkDestination = token.href;
+            if (token.title != null) wrapper.setAttribute("title", token.title);
             wrapper.setAttribute("target", "_blank");
             wrapper.setAttribute("rel", "noopener noreferrer");
           }
@@ -579,6 +580,14 @@
             const strong = document.createElement("strong");
             append(strong, token.children); wrapper.append(strong);
           } else append(wrapper, token.children);
+          if (token.type === "link" && !token.children.length) {
+            const caret = document.createElement("span");
+            caret.className = "amorist-empty-caret";
+            const point = rawStart + token.contentStart;
+            this.sourceNodeRanges.set(caret, {start: point, end: point});
+            this.appendSourceText(caret, CARET_SENTINEL, point, point);
+            wrapper.append(caret);
+          }
           parent.append(wrapper);
         }
       };

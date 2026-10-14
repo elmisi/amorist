@@ -420,4 +420,27 @@ assert.equal(codec.safeLinkHref("\tjava\nscript:alert(1)"), null);
 const automatic = codec.tokenizeInline("repeat <https://repeat.example> repeat").find(token => token.type === "link");
 assert.equal(automatic.start, 7); assert.equal(automatic.contentStart, 8);
 assert.equal(automatic.end, 31); assert.equal(automatic.contentEnd, 30);
+
+for (const [source, href, title] of [
+  ['[read](<docs/caffè λ (v2).md> "Résumé &copy;")', 'docs/caffè λ (v2).md', 'Résumé ©'],
+  ['[read](docs/a\\(b\\).md \'A "title"\')', 'docs/a(b).md', 'A "title"'],
+  ['[read](notes_(v2).md (Parenthesized title))', 'notes_(v2).md', 'Parenthesized title'],
+  ['[read](?a=1&amp;b=2 "&NotEqualTilde; &#x80;")', '?a=1&b=2', '≂̸ €'],
+  ['[read](<> "")', '', ''],
+  ['[read](notes%20v2.md)', 'notes%20v2.md', null],
+  ['[read](a\\&copy;.md "\\&copy; &amp;copy; &#92;*")', 'a&copy;.md', '&copy; &copy; \\*'],
+]) {
+  const link = codec.tokenizeInline(source).find(token => token.type === "link");
+  assert.ok(link, source); assert.equal(link.href, href); assert.equal(link.title, title);
+  assert.equal(link.end, source.length);
+}
+for (const source of ['[read](docs/my notes.md)', '[read](<missing.md)', '[read](notes.md "unclosed)', '[read](notes.md (nested (title)))']) {
+  assert.equal(codec.tokenizeInline(source).filter(token => token.type === "link").length, 0, source);
+}
+assert.equal(codec.renderInline('[outer [inner](inside.md)](outside.md)'), '[outer <a href="inside.md" target="_blank" rel="noopener noreferrer">inner</a>](outside.md)');
+assert.equal(codec.renderInline('[outer <https://inside.example>](outside.md)'), '[outer <a href="https://inside.example" target="_blank" rel="noopener noreferrer">https://inside.example</a>](outside.md)');
+assert.equal(codec.linkDestinationAt('(notes.md "first\r\nsecond")', 0).title, 'first\r\nsecond');
+assert.equal(codec.linkDestinationAt('(notes.md "first\r\n   \r\nsecond")', 0), null);
+assert.equal(codec.linkDestinationAt('(notes.md\n\n"title")', 0), null);
+assert.equal(codec.renderInline('[unsafe](javascr&#x69;pt:alert(1))'), '<a target="_blank" rel="noopener noreferrer">unsafe</a>');
 console.log("editor-markdown-codec.test.js passed");

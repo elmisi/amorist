@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Inline links separate destinations from titles, support escaped/balanced
+  parentheses and angle destinations with spaces, and decode character references
+  once. Nested links and angle autolinks take precedence over an enclosing link;
+  empty labels now retain an editable source position.
 - URI/email autolinks and plain URLs use explicit source intervals, preserve
   surrounding delimiters and punctuation, and remain literal inside code.
   Unsupported executable schemes are kept readable without an active browser href.
