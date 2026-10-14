@@ -2478,5 +2478,20 @@
         "Related block layout, clipboard and indentation regressions green"
       ]
     }
+  },
+  "clipboardQuotedCodeLinux": {
+    "status": "partial",
+    "implemented": "Selected quoted code strips only outer container prefixes from body, chooses a safe fence from literal content, retains language and original terminators and reconstructs quote context on all fragment rows. Source-mode raw copy remains unchanged.",
+    "verified": [
+      "GTK/Chromium copy and dedicated payload paste into a prepared paragraph boundary preserve nested quote structure, Unicode, literal inner quote marker and longer safe code fence",
+      "Copy leaves source unchanged; undo preserves adjacent destination content",
+      "Code-context and real system clipboard regression suites pass"
+    ],
+    "evidence": [
+      "clipboard-quoted-code-before-linux.log reproduces language/context loss",
+      "clipboard-quoted-code-fixed-linux.log exit0 both engines",
+      "clipboard-quoted-code-system-regressions-linux.log exit0 pass2 fail0 skip0"
+    ],
+    "remaining": "Semantic HTML fallback for quoted code, arbitrary paste boundary planning, whole subtree/mixed-unit clipboard behavior and final package/platform acceptance remain pending."
   }
 }

@@ -1566,10 +1566,23 @@
       const body=raw.slice(selection.start,selection.end);
       if(first?.unitType==="code" && first.codeContent && last?.codeContent
           && first.unitStart===last.unitStart && first.unitEnd===last.unitEnd) {
-        const ending=this.model.lineEndingAt(selection.start), fence=Internals.TextUtils.codeFenceFor(body);
+        let codeBody=body;
+        if(first.containerQuoteDepth) {
+          codeBody="";
+          for(let index=first.index;index<=last.index;index+=1) {
+            const descriptor=this.lineDescriptors[index];
+            const start=Math.max(selection.start,descriptor.start+(descriptor.containerPrefix||"").length);
+            const end=Math.min(selection.end,descriptor.end);
+            if(end>start) codeBody+=raw.slice(start,end);
+            if(selection.end>descriptor.end) codeBody+=raw.slice(descriptor.end,Math.min(selection.end,descriptor.end+descriptor.ending.length));
+          }
+        }
+        const ending=this.model.lineEndingAt(selection.start), fence=Internals.TextUtils.codeFenceFor(codeBody);
         const opening=this.lineDescriptors[first.unitStart];
-        const info=opening.projection.fence ? (opening.raw.match(/^ {0,3}(?:`{3,}|~{3,})(.*)$/)?.[1] || "") : "";
-        return fence+info+ending+body+(/(?:\r\n|\r|\n)$/.test(body)?"":ending)+fence;
+        const info=opening.projection.fence ? (opening.raw.slice((opening.containerPrefix||"").length).match(/^ {0,3}(?:`{3,}|~{3,})(.*)$/)?.[1] || "") : "";
+        const fragment=fence+info+ending+codeBody+(/(?:\r\n|\r|\n)$/.test(codeBody)?"":ending)+fence;
+        return first.containerQuoteDepth ? fragment.split(/(\r\n|\r|\n)/)
+          .map((part,index)=>index%2===0 ? (first.containerPrefix||"")+part : part).join("") : fragment;
       }
       if(first?.unitType==="line" && selection.start>=first.start+first.projection.prefix
           && first.projection.prefix && (first.projection.list || first.projection.tag==="blockquote" || /^h[1-6]$/.test(first.projection.tag))) {
