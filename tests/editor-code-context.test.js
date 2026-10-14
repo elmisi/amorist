@@ -226,6 +226,28 @@ async function main() {
           await engine.evaluate("(() => {window.__codeRegression.undo();return true;})()");
           assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source);
         }
+        for (const nested of [
+          '123. item\r\n     ````js\r\n     # literal **bold**\r\n     ```\r\n     ````\r\n124. next',
+          '- item\r\n\r\n      # literal **bold**\r\n\r\n      - literal task\r\n- next',
+        ]) {
+          const view=await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(nested)});return {source:editor.getMarkdown(),code:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>({text:row.textContent,classes:row.className,bold:!!row.querySelector('strong')})),fences:editor.surface.querySelectorAll('.amorist-wysiwyg-fence').length};})()`);
+          assert.equal(view.source,nested);
+          assert.ok(view.code.some(row=>row.text.includes('# literal **bold**')),`${entry.id}: code inside list item is literal`);
+          assert.ok(view.code.every(row=>!row.text.includes('next')),`${entry.id}: code does not consume the neighboring item`);
+          for(const row of view.code){assert.equal(row.bold,false);assert.doesNotMatch(row.classes,/wysiwyg-(h[1-6]|list|quote|task|fence)/);}
+          assert.equal(view.fences,nested.includes('````')?2:0);
+          const end=nested.indexOf('# literal **bold**')+'# literal **bold**'.length;
+          await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${end},${end});return true;})()`);
+          await sendKeys(['X']);assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),nested.slice(0,end)+'X'+nested.slice(end));
+          await engine.evaluate('(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');
+          assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),nested);
+          await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${end},${end});return true;})()`);
+          await sendKeys([{key:'Enter'}]);
+          const indentation=nested.slice(nested.lastIndexOf('\n',end)+1,end).match(/^ */)[0];
+          assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),nested.slice(0,end)+'\r\n'+indentation+nested.slice(end),`${entry.id}: code Enter retains container indentation without inline markers`);
+          await engine.evaluate('(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');
+          assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),nested);
+        }
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

@@ -2399,6 +2399,30 @@
       "result": "pass",
       "evidence": "recovery-editor-ready-linux.log exit0 REQ-F2 green",
       "scope": "Native app recovery lifecycle; full suite must be rerun with enabled-editor readiness guard."
+    },
+    "rerun": {
+      "result": "pass",
+      "evidence": "settings-ready-full-qa-linux.log exit0; settings-ready-full-qa-linux.json",
+      "scope": "Full existing Linux contract suite; H4 native Finder/Dock remains delegated, new missing-feature regressions not included."
+    }
+  },
+  "listContainedCodeLinux": {
+    "status": "partial",
+    "implemented": "Recognize fenced and blank-separated indented code relative to containing list content indentation; code precedes inline formatting, retains exact source and does not consume neighboring items.",
+    "verified": [
+      "GTK and Chromium opening/edit/undo/mode round-trip",
+      "CRLF Enter preserves container indentation and literal inline markers",
+      "Longer fence preserves shorter literal ticks; original blank rows retained"
+    ],
+    "evidence": [
+      "list-container-code-before-linux.log reproduces failure",
+      "list-container-code-enter-linux.log exit0 both engines"
+    ],
+    "remaining": "Quotes around code, mixed nested containers and full current suite/package acceptance remain pending.",
+    "relatedRegressionChecks": {
+      "combined": "list-code-related-regressions-linux.log: pass4 fail1; Shift+Tab indentation mismatch",
+      "isolated": "list-code-indentation-diagnostic-linux.log exit0 on GTK and Chromium",
+      "assessment": "Intermittent input/readiness issue suspected but not established; keep failing evidence and investigate before final acceptance."
     }
   }
 }

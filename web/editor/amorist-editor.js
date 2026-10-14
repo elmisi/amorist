@@ -451,6 +451,46 @@
         }
         const parent = items.findLast((owner) => columns >= owner.contentIndent);
         const previous = descriptors[at - 1];
+        // A list's marker indentation belongs to the container. Code is
+        // recognized relative to its content column, before inline styling.
+        const nestedFence = parent && columns - parent.contentIndent <= 3
+          ? descriptor.raw.slice(leading.length).match(/^(`{3,}|~{3,}).*$/) : null;
+        const nestedIndented = parent && columns >= parent.contentIndent + 4
+          && previous && !previous.raw.trim();
+        if (nestedFence || nestedIndented) {
+          let end = at, closed = false;
+          const closing = nestedFence
+            ? new RegExp(`^\\${nestedFence[1][0]}{${nestedFence[1].length},}[ \\t]*$`) : null;
+          for (let next = at + 1; next < descriptors.length; next += 1) {
+            const candidate = descriptors[next];
+            const whitespace = (candidate.raw.match(/^[ \t]*/) || [""])[0];
+            const indent = indentationColumns(whitespace);
+            if (candidate.raw.trim() && indent < parent.contentIndent) break;
+            if (nestedFence) {
+              end = next;
+              if (indent - parent.contentIndent <= 3 && closing.test(candidate.raw.slice(whitespace.length))) {
+                closed = true;
+                break;
+              }
+            } else {
+              if (!candidate.raw.trim()) continue;
+              if (indent < parent.contentIndent + 4) break;
+              end = next;
+            }
+          }
+          for (let line = at; line <= end; line += 1) {
+            const content = !nestedFence || (line > at && (!closed || line < end));
+            Object.assign(descriptors[line], {
+              unitType: "code", unitStart: at, unitEnd: end,
+              codeContent: content, indentedCode: !nestedFence,
+              projection: content
+                ? {prefix: 0, text: descriptors[line].raw, tag: "pre"}
+                : {prefix: descriptors[line].raw.length, text: "", tag: "pre", fence: true},
+            });
+          }
+          at = end;
+          continue;
+        }
         if (columns >= 4 && !parent && (!previous || !previous.raw.trim() || previous.unitType === "code")) {
           let end = at;
           let next = at + 1;
