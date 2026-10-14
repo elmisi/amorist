@@ -59,4 +59,8 @@ const table=el("TABLE",[]);
 const rows=[el("TR",[el("TH",[text("Name")]),el("TH",[text("Note")])]),el("TR",[el("TD",[text("A|B")]),el("TD",[text("value")])])];
 rows.forEach(row=>{row.closest=()=>table;});table.querySelectorAll=()=>rows;
 assert.equal(H._cleanupMarkdown(H._nodeToSource(table)),"| Name | Note |\n| --- | --- |\n| A\\|B | value |");
+const inlineCode=el("CODE",[]);inlineCode.textContent="a``b";
+assert.equal(H._nodeToSource(inlineCode),"```a``b```");
+inlineCode.textContent="`edge`";assert.equal(H._nodeToSource(inlineCode),"`` `edge` ``");
+assert.equal(H._nodeToSource(el("A",[text("Read")],{href:"docs/my (notes).md"})),"[Read](<docs/my (notes).md>)");
 console.log("html-to-markdown pure helpers OK");

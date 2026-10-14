@@ -94,9 +94,17 @@
     if (tag === "BR") return "\n";
     if (tag === "STRONG" || tag === "B") return `**${children()}**`;
     if (tag === "EM" || tag === "I") return `*${children()}*`;
-    if (tag === "CODE") return `\`${children()}\``;
-    if (tag === "A") return `[${children()}](${node.getAttribute("href") || ""})`;
-    if (tag === "IMG") return `![${node.getAttribute("alt") || ""}](${node.getAttribute("src") || ""})`;
+    if (tag === "CODE") {
+      const text=(node.textContent || "").replace(/\r\n|\r|\n/g," ");
+      if(!text) return "";
+      const width=Math.max(0,...Array.from(text.matchAll(/`+/g),match=>match[0].length))+1;
+      const fence="`".repeat(width);
+      const padded=text.startsWith("`") || text.endsWith("`") || (text.startsWith(" ") && text.endsWith(" ") && /[^ ]/.test(text));
+      return fence+(padded?" ":"")+text+(padded?" ":"")+fence;
+    }
+    const destination=value=>"<"+String(value).replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[<>]/g,char=>"\\"+char).replace(/\r\n|\r|\n/g,"%0A")+">";
+    if (tag === "A") return `[${children()}](${destination(node.getAttribute("href") || "")})`;
+    if (tag === "IMG") return `![${String(node.getAttribute("alt") || "").replace(/[\\[\]]/g,char=>"\\"+char)}](${destination(node.getAttribute("src") || "")})`;
     if (tag === "UL" || tag === "OL") {
       let number=Number.parseInt(node.getAttribute("start") || "1",10);
       if(!Number.isFinite(number)) number=1;
