@@ -26,6 +26,15 @@ async function main(){const server=await startStaticServer(path.resolve(__dirnam
  }
  const copied=await engine.evaluate(`(()=>{const editor=window.__multi,source='**first\\r\\nmiddle\\r\\nthird\\r\\nlast**',data=new Map();editor.setMarkdown(source);editor.setSurfaceSelection(source.indexOf('middle')+1,source.indexOf('third')+3);const event={clipboardData:{setData:(type,value)=>data.set(type,value),getData:type=>data.get(type)||''},preventDefault(){}};editor.handleCopy(event,false);const unchanged=editor.getMarkdown(),fragment=data.get('text/plain');editor.setMarkdown('target: ');editor.setSurfaceSelection(8,8);editor.handlePaste(event);const result={fragment,unchanged,pasted:editor.getMarkdown(),styled:Array.from(editor.surface.querySelectorAll('strong')).map(node=>node.textContent)};editor.undo();result.undo=editor.getMarkdown();return result;})()`);
  assert.deepEqual(copied,{fragment:'**iddle\r\nthi**',unchanged:'**first\r\nmiddle\r\nthird\r\nlast**',pasted:'target: **iddle\r\nthi**',styled:['iddle','thi'],undo:'target: '},entry.id+': middle-row clipboard retains inherited formatting');
+ for(const source of ['``ab `cd ef gh``','``ab `cd\r\nef gh``']){
+  const start=source.indexOf('`cd'),end=source.indexOf('gh')+2;
+  const value=await engine.evaluate(`(()=>{const editor=window.__multi;editor.setMarkdown(${JSON.stringify(source)});const fragment=editor.clipboardFragment({start:${start},end:${end}});editor.setMarkdown(fragment);return {fragment,code:Array.from(editor.surface.querySelectorAll('code')).map(node=>node.textContent)};})()`);
+  assert.equal(value.fragment,'`` '+source.slice(start,end)+' ``',entry.id+': partial inline code uses safe padding');assert.deepEqual(value.code,source.slice(start,end).split('\r\n'));
+ }
+ for(const [source,expected] of [['**``ab `cd\r\nef gh``**','**`` `cd\r\nef gh ``**'],['> ``ab `cd\r\n> ef gh``','> `` `cd\r\n> ef gh ``']]){
+  const start=source.indexOf('`cd'),end=source.indexOf('gh')+2;
+  const fragment=await engine.evaluate(`(()=>{window.__multi.setMarkdown(${JSON.stringify(source)});return window.__multi.clipboardFragment({start:${start},end:${end}});})()`);assert.equal(fragment,expected,entry.id+': safe inline code retains enclosing context');
+ }
  console.log('Multiline inline: '+entry.id+' passed');
  }finally{await engine.close();}}}finally{await server.stop();}}
 main().catch(error=>{console.error(error.stack);process.exitCode=1;});

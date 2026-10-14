@@ -159,6 +159,7 @@
         return {type:"text",start:point(token.start),end:point(token.end),text:source.slice(Math.max(start,token.start),Math.min(end,token.end))};
       }
       const result={...token,start:point(token.start),end:point(token.end)};
+      Object.defineProperty(result,"originalToken",{value:token});
       if(token.contentStart!==undefined)result.contentStart=point(token.contentStart);
       if(token.contentEnd!==undefined)result.contentEnd=point(token.contentEnd);
       if(token.contentStart!==undefined&&token.contentEnd!==undefined) {
@@ -1681,7 +1682,7 @@
       if(this.mode==="source") return raw.slice(selection.start,selection.end);
       const first=this.descriptorAtRaw(selection.start), last=this.descriptorAtRaw(Math.max(selection.start,selection.end-1));
       let prefix="", suffix="";
-      const body=raw.slice(selection.start,selection.end);
+      let body=raw.slice(selection.start,selection.end);
       if(first?.unitType==="code" && first.codeContent && last?.codeContent
           && first.unitStart===last.unitStart && first.unitEnd===last.unitEnd) {
         let codeBody=body;
@@ -1702,6 +1703,28 @@
         return first.containerQuoteDepth ? fragment.split(/(\r\n|\r|\n)/)
           .map((part,index)=>index%2===0 ? (first.containerQuotePrefix??first.containerPrefix??"")+part : part).join("") : fragment;
       }
+      const codeAt=(descriptor,offset)=>{
+        if(descriptor?.unitType!=="line")return null;
+        const projection=descriptor.projection,point=offset-descriptor.start-projection.prefix;
+        let found=null;
+        const visit=tokens=>tokens.forEach(token=>{if(token.type==="code"&&point>=token.contentStart&&point<=token.contentEnd)found=token;if(token.children)visit(token.children);});
+        visit(projection.inlineTokens||MarkdownCodec.tokenizeInline(projection.text,0,projection.text.length,0,false,false,this.lineDescriptors.references));return found;
+      };
+      const endDescriptor=this.descriptorAtRaw(selection.end),firstCode=codeAt(first,selection.start),lastCode=codeAt(endDescriptor,selection.end);
+      const sameCode=firstCode&&lastCode&&((first===endDescriptor&&firstCode.start===lastCode.start&&firstCode.end===lastCode.end)
+        ||(firstCode.originalToken&&firstCode.originalToken===lastCode.originalToken));
+      if(sameCode) {
+        let visible="";
+        for(let index=first.index;index<=endDescriptor.index;index++){
+          const row=this.lineDescriptors[index],start=Math.max(selection.start,row.start+row.projection.prefix),end=Math.min(selection.end,row.end);
+          if(end>start)visible+=raw.slice(start,end);
+          if(selection.end>row.end)visible+=raw.slice(row.end,Math.min(selection.end,row.end+row.ending.length));
+        }
+        const normalized=visible.replace(/\r\n|\r|\n/g," ");
+        const width=Math.max(0,...Array.from(visible.matchAll(/`+/g),match=>match[0].length))+1,fence="`".repeat(width);
+        const padded=normalized.startsWith('`')||normalized.endsWith('`')||(normalized.startsWith(' ')&&normalized.endsWith(' ')&&/[^ ]/.test(normalized));
+        body=fence+(padded?' ':'')+body+(padded?' ':'')+fence;
+      }
       if(first?.unitType==="line" && selection.start>=first.start+first.projection.prefix
           && first.projection.prefix && (first.projection.list || first.projection.tag==="blockquote" || /^h[1-6]$/.test(first.projection.tag))) {
         prefix=first.raw.slice(0,first.projection.prefix);
@@ -1712,6 +1735,7 @@
         const point=offset-base;
         const visit=tokens=>tokens.forEach(token=> {
           if(!token.children && token.type!=="code") return;
+          if(sameCode&&token.type==="code")return;
           if(opening ? point<token.contentStart || point>=token.contentEnd : point<=token.contentStart || point>token.contentEnd) return;
           if(opening && (offset>base+token.start||token.continuesBefore)) prefix+=token.openingMarkup??projection.text.slice(token.start,token.contentStart);
           if(!opening && (offset<base+token.end||token.continuesAfter)) suffix=(token.closingMarkup??projection.text.slice(token.contentEnd,token.end))+suffix;
@@ -1720,7 +1744,7 @@
         visit(projection.inlineTokens||MarkdownCodec.tokenizeInline(projection.text,0,projection.text.length,0,false,false,this.lineDescriptors.references));
       };
       edge(first,selection.start,true); edge(last,selection.end,false);
-      const fragment=prefix+raw.slice(selection.start,selection.end)+suffix;
+      const fragment=prefix+body+suffix;
       const descriptors=this.buildProjection(fragment), needed=new Set();
       const references=this.lineDescriptors.references;
       const visit=tokens=>tokens.forEach(token=> {
