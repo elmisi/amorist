@@ -1663,6 +1663,12 @@
       "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-avif-data-native-linux.log"
     ],
     "notes": "AVIF fails both RGB High and yuv420p fixtures; assertion remains required, no format skipped or fallback accepted as completion",
-    "diagnosis": "Same AVIF bytes fail both scoped protocol and direct data URI in compiled Linux webview. Failure is not specific to custom protocol; decoder compatibility remains unresolved. Installed libwebkit2gtk 2.52.6 and libavif16 1.3.0."
+    "diagnosis": "Same AVIF bytes fail both scoped protocol and direct data URI in compiled Linux webview. Failure is not specific to custom protocol; decoder compatibility remains unresolved. Installed libwebkit2gtk 2.52.6 and libavif16 1.3.0.",
+    "systemDecoderProbe": {
+      "gdkPixbuf": "same AVIF fixture decoded successfully at 32x24 via system GdkPixbuf",
+      "installedLoader": "heif-gdk-pixbuf 1.21.2",
+      "conclusion": "Failure reproduced in WebKit image decoding despite working system pixbuf decoder; not explained by missing system HEIF loader",
+      "next": "Inspect exact installed WebKit build image-decoder support before selecting compatible transport or packaging fix"
+    }
   }
 }
