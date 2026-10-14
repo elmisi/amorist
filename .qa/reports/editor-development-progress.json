@@ -2246,9 +2246,23 @@
   },
   "linuxDebianBuild": {
     "snapshot": "eb90871",
-    "state": "running",
+    "state": "complete",
     "handle": 76760,
-    "evidence": "avif-debian-build-linux.log and live rustc compiling amorist; no artifact acceptance yet",
-    "deliveryBlocked": true
+    "evidence": "avif-debian-build-linux.log exit0; dpkg-deb control and deb-avif-build-info.json inspected",
+    "deliveryBlocked": true,
+    "exitCode": 0,
+    "sha256": "ffc3a7594951ee432797a6340d6aee86de16f96f212cc842937d136757f760e7",
+    "depends": [
+      "heif-gdk-pixbuf",
+      "libwebkit2gtk-4.1-0",
+      "libgtk-3-0"
+    ],
+    "identity": {
+      "commit": "eb9087161729bbed2d9d25d9913af28fff25d08b",
+      "fingerprint": "0274da05d8e6ace3de06e654ca4949015376a103",
+      "dirty": false
+    },
+    "nativeImageEvidence": "deb-avif-images-native-linux.log: executable extracted from actual .deb passes all image formats, Save As rebase, expiry and unchanged source; no installed package update",
+    "remaining": "Clean package installation/upgrade, AppImage self-contained loader, absent decoder simulation and full package acceptance remain pending"
   }
 }
