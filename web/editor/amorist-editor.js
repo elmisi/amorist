@@ -225,9 +225,9 @@
       if (!options || !options.silent) this.emitChange();
     }
 
-    buildProjection() {
-      const lines = sourceLines(this.model.source);
-      const rawLines = lines.map((line) => this.model.source.slice(line.start, line.end));
+    buildProjection(source = this.model.source) {
+      const lines = sourceLines(source);
+      const rawLines = lines.map((line) => source.slice(line.start, line.end));
       const descriptors = lines.map((line, index) => ({
         ...line,
         index,
@@ -345,7 +345,7 @@
       }
       for (let at = 1; at < descriptors.length; at += 1) {
         const delimiter = descriptors[at];
-        if (delimiter.unitType !== "line" || !/^ {0,3}(?:=+|-+)[ \t]*$/.test(delimiter.raw)) continue;
+        if (delimiter.unitType !== "line" || delimiter.projection.list || !/^ {0,3}(?:=+|-+)[ \t]*$/.test(delimiter.raw)) continue;
         let first = at - 1;
         const eligible = (line) => line && line.unitType === "line" && line.raw.trim()
           && line.projection.tag === "div" && !line.projection.list && !line.projection.listContinuation;
@@ -503,6 +503,9 @@
         }
         // Keep the editable text stream aligned with physical source lines.
         // Block layout alone is invisible to TreeWalker-based selection APIs.
+        if (!descriptor.ending && (projection.setextDelimiter || projection.fence || projection.rule)) {
+          this.appendSourceText(row, CARET_SENTINEL, raw.length, raw.length);
+        }
         if (descriptor.ending) this.appendSourceText(row, "\n", raw.length, raw.length + descriptor.ending.length);
         return row;
     }
@@ -821,6 +824,23 @@
     apply(start, end, replacement, gesture, boundaryState) {
       const beforeSource = this.model.source;
       const beforeDescriptors = this.lineDescriptors;
+      if(this.mode==="wysiwyg" && this.model.automaticBreaks.length) {
+        const nextSource=beforeSource.slice(0,start)+replacement+beforeSource.slice(end);
+        const descriptors=this.buildProjection(nextSource);
+        const row=this.descriptorAtRaw(start,descriptors);
+        const projection=row.projection;
+        const structural=row.unitType!=="line" || projection.list || projection.tag!=="div" || projection.rule || projection.setextDelimiter;
+        const state=boundaryState || this.model.boundaryStateAfterEdit(start,end,replacement);
+        const record=state.automaticBreaks.find(record=>record.marker<start
+          && record.marker+1+(nextSource.slice(record.marker+1,record.marker+3)==="\r\n"?2:1)===row.start);
+        if(structural && record) {
+          const marker=record.marker;
+          replacement=beforeSource.slice(marker+1,start)+replacement;
+          start=marker;
+          boundaryState={...state,automaticBreaks:state.automaticBreaks.filter(item=>item!==record)
+            .map(item=>({marker:item.marker>marker?item.marker-1:item.marker,escapes:item.escapes.map(at=>at>marker?at-1:at)}))};
+        }
+      }
       const entry = this.model.transaction(start, end, replacement, gesture, boundaryState);
       this.history.push(entry);
       const caret = start + replacement.length;

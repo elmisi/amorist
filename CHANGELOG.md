@@ -41,6 +41,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   protected; code, source and table Enter stay literal.
 - Forward Delete joins a generated hard-break boundary in one gesture, retaining
   intentional escaping and restoring source and provenance together on undo.
+- Creating a list, heading, quote or fence after a generated prose boundary
+  removes its redundant marker in the same transaction. Existing manual markers
+  remain unchanged; undo restores the structural transition and provenance.
 
 ### Quality
 - The source model tracks validated automatic-boundary provenance separately

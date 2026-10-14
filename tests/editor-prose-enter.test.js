@@ -25,7 +25,7 @@ async function main(){
         await engine.evaluate("(()=>{window.__prose.undo();return true})()");assert.equal((await state()).source,expected);assert.equal((await state()).boundaries.length,1);
         await engine.evaluate("(()=>{window.__prose.undo();return true})()");assert.equal((await state()).source,source);assert.equal((await state()).boundaries.length,0);
       }
-      await mount("alpha",5);await engine.sendKeys([{key:"Enter"},{key:"Enter"}]);
+      await mount("alpha",5);await engine.sendKeys([{key:"Enter"}]);await engine.evaluate("new Promise(resolve=>requestAnimationFrame(resolve))");await engine.sendKeys([{key:"Enter"}]);
       assert.equal((await state()).source,"alpha\n\n",`${entry.id}: second Enter creates paragraph and removes generated marker`);
       assert.equal((await state()).boundaries.length,0);
       await engine.evaluate("(()=>{window.__prose.undo();return true})()");assert.equal((await state()).source,"alpha\\\n");assert.equal((await state()).boundaries.length,1);
@@ -53,6 +53,26 @@ async function main(){
       assert.equal((await state()).source,"  alpha \\\n  beta");
       assert.deepEqual((await state()).boundaries,[{marker:8,escapes:[]}],`${entry.id}: indenting rows preserves generated-boundary ownership`);
       const inline="before `alpha beta` after",codeAt=inline.indexOf("beta");
+      for(const shortcut of ["- ","# ","> "]) {
+        await mount("alpha",5);await engine.sendKeys([{key:"Enter"}]);
+        await engine.sendKeys([shortcut]);
+        await engine.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+        assert.equal((await state()).source,"alpha\n"+shortcut,`${entry.id}: structural shortcut removes only the previous generated marker`);
+        assert.equal((await state()).boundaries.length,0);
+        if(shortcut[0]!=="#") await engine.evaluate("(()=>{window.__prose.undo();return true})()");
+        await engine.evaluate("(()=>{window.__prose.undo();return true})()");
+        assert.equal((await state()).source,"alpha\\\n"+(shortcut[0]==="#"?"#":""),`${entry.id}: undo restores structural change and marker together`);
+        assert.equal((await state()).boundaries.length,1);
+      }
+      await mount("alpha\\\n",7);await engine.sendKeys(["- "]);
+      assert.equal((await state()).source,"alpha\\\n- ",`${entry.id}: an existing manual marker survives structural typing`);
+      await mount("alpha",5);await engine.sendKeys([{key:"Enter"}]);
+      await engine.sendKeys(["```"]);
+      await engine.evaluate("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+      assert.equal((await state()).source,"alpha\n```",`${entry.id}: code-fence creation removes the preceding owned marker`);
+      assert.equal((await state()).boundaries.length,0);
+      await engine.evaluate("(()=>{window.__prose.undo();return true})()");
+      assert.equal((await state()).source,"alpha\\\n``");assert.equal((await state()).boundaries.length,1);
       await mount(inline,codeAt);await engine.sendKeys([{key:"Enter"}]);
       assert.equal((await state()).source,inline.slice(0,codeAt)+"\n"+inline.slice(codeAt),`${entry.id}: inline code Enter stays literal`);
       assert.equal((await state()).boundaries.length,0);

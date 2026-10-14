@@ -20,6 +20,19 @@ amendments:
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
+      A visual structural shortcut on the row after an automatically owned prose
+      boundary removes the now-unnecessary marker in the same raw transaction.
+      Undo restores the shortcut and provenance together; existing manual markers
+      remain untouched. The permitted edit envelope includes the owned preceding
+      boundary as part of the affected structure.
+    why: >
+      Implements the approved local reevaluation when prose becomes a list, heading
+      or quote, without rewriting unrelated original boundaries.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
       Forward Delete at a generated visual hard-break boundary joins both physical
       rows in one transaction, removing the owned marker and full LF/CRLF/CR
       terminator. Undo restores source and provenance. Generated escaping is
