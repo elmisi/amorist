@@ -1642,5 +1642,25 @@
       "scope": "Rust unit/process tests including drive-path branch; graphical package acceptance pending"
     },
     "deliveryBlocked": true
+  },
+  "nativeImageFormatsVerification": {
+    "status": "failed; delivery blocked",
+    "scope": "Linux compiled app, scoped custom image protocol, real generated 32x24 fixtures",
+    "passed": [
+      "PNG",
+      "JPEG",
+      "GIF",
+      "WebP",
+      "BMP",
+      "SVG"
+    ],
+    "failed": [
+      "AVIF"
+    ],
+    "evidence": [
+      "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-formats-native-linux.log",
+      "/home/alessandro/.local/state/amorist/execution-20261013-1932/local-image-formats-420-native-linux.log"
+    ],
+    "notes": "AVIF fails both RGB High and yuv420p fixtures; assertion remains required, no format skipped or fallback accepted as completion"
   }
 }

@@ -56,6 +56,27 @@ async function main(){
     image.src=${JSON.stringify(actual.src)}+'?save-as-expired=1';setTimeout(()=>finish({timeout:true}),3000);
   })`);
   assert.deepEqual(saveAsExpired,{loaded:false});
+  const formatFiles=['png','jpg','gif','webp','bmp','avif'].map(extension=> {
+    const target=path.join(scratch,'images','image-format.'+extension);
+    fs.copyFileSync(path.join(root,'tests/qa/assets','image-format.'+extension),target);
+    return {extension,path:target};
+  });
+  const formats=await engine.evaluate(`(async () => {
+    const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document'),results=[];
+    for(const file of ${JSON.stringify(formatFiles)}) {
+      const id=await invoke('register_image',{reference:file.path,contextId:doc.contextId});
+      const uri=window.__TAURI__.core.convertFileSrc(id,'amorist-image');
+      const decoded=await new Promise(resolve=> {
+        const image=new Image();let done=false;const finish=value=>{if(!done){done=true;resolve(value);}};
+        image.onload=()=>finish({loaded:true,width:image.naturalWidth,height:image.naturalHeight});
+        image.onerror=()=>finish({loaded:false});image.src=uri;
+        setTimeout(()=>finish({timeout:true}),3000);
+      });
+      results.push({extension:file.extension,...decoded});
+    }
+    return results;
+  })()`);
+  assert.deepEqual(formats,formatFiles.map(file=>({extension:file.extension,loaded:true,width:32,height:24})));
   const lifecycle=await engine.evaluate(`(async () => {
     const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document');
     const id=await invoke('register_image',{reference:'../images/photo%20%CE%BB.svg',contextId:doc.contextId});
@@ -75,7 +96,7 @@ async function main(){
   })()`);
   assert.deepEqual(lifecycle,{active:{loaded:true,width:320},expired:{loaded:false},staleRejected:true,nextUntitled:true});
   assert.equal(fs.readFileSync(file,'utf8'),source);
-  console.log(JSON.stringify({status:'pass',image:actual,rebased,saveAsExpired,lifecycle,sourceUnchanged:true}));
+  console.log(JSON.stringify({status:'pass',image:actual,rebased,saveAsExpired,formats,lifecycle,sourceUnchanged:true}));
  }finally {await engine.close();fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
