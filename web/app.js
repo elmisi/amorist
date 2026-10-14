@@ -84,6 +84,11 @@
         return doc;
       },
       async inspectOpen(path) { return invoke("inspect_open_document", { path: path, contextId: contextId }); },
+      async recoverStartupDocument(sessionId) {
+        var doc=await invoke("recover_startup_document", {sessionId:sessionId,contextId:contextId});
+        contextId=doc.contextId;
+        return doc;
+      },
       spawnInstance(path) { return invoke("spawn_document_instance", { path: path || null }); },
       takeNativeOpenRequests() { return invoke("take_native_open_requests"); },
       listenNativeOpen(handler) { return window.__TAURI__.event.listen("native-open-available", handler); },
@@ -401,18 +406,17 @@
         if (selected) {
           var selectedCopy=doc.recoveryCandidates.find(function(copy){return copy.sessionId===selected;});
           if(selectedCopy && selectedCopy.path && selectedCopy.path!==doc.path) {
-            var inspection=await backend.inspectOpen(selectedCopy.path);
-            doc=await backend.openDocument(selectedCopy.path,false,selected,inspection.savedSource);
+            doc=await backend.recoverStartupDocument(selected);
             if(selectedCopy.savedSource!==doc.markdown) doc.recoveryWarnings=(doc.recoveryWarnings||[]).concat(
               "The saved file changed since this recovery copy was made. Recovery does not merge those changes. Use Save As to keep both versions.");
           } else {
-          var recoveredCopy = await backend.selectRecovery(selected);
-          doc.recoveryMarkdown = recoveredCopy.unsavedSource;
-          doc.recoveryBoundaryState = recoveredCopy.boundaryState;
-          if (recoveredCopy.savedSource !== (doc.markdown || "")) {
-            doc.recoveryWarnings = (doc.recoveryWarnings || []).concat(
-              "The saved file changed since this recovery copy was made. Recovery does not merge those changes. Use Save As to keep both versions.");
-          }
+            var recoveredCopy = await backend.selectRecovery(selected);
+            doc.recoveryMarkdown = recoveredCopy.unsavedSource;
+            doc.recoveryBoundaryState = recoveredCopy.boundaryState;
+            if (recoveredCopy.savedSource !== (doc.markdown || "")) {
+              doc.recoveryWarnings = (doc.recoveryWarnings || []).concat(
+                "The saved file changed since this recovery copy was made. Recovery does not merge those changes. Use Save As to keep both versions.");
+            }
           }
         }
       }

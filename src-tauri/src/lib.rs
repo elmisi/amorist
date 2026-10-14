@@ -546,7 +546,7 @@ async fn inspect_open_document(app: tauri::AppHandle, path: String, context_id: 
 
 #[tauri::command]
 async fn create_document(app: tauri::AppHandle, context_id: u64, discard: bool) -> Result<DocumentResponse, String> {
-    run_io(app, move |app, state| transition_document(app, state, document::Prepared::untitled(), context_id, discard, None)).await
+    run_io(app, move |app, state| transition_document(app, state, document::Prepared::untitled(), context_id, discard, None, false)).await
 }
 
 #[tauri::command]
@@ -557,12 +557,12 @@ async fn open_document(app: tauri::AppHandle, path: String, context_id: u64, dis
         if recovery_choice.is_some() && expected_saved_source.as_deref() != Some(prepared.source.as_str()) {
             return Err("The saved file changed during recovery selection. Try again.".into());
         }
-        transition_document(app, state, prepared, context_id, discard, recovery_choice)
+        transition_document(app, state, prepared, context_id, discard, recovery_choice, false)
     }).await
 }
 
 fn transition_document(app: &tauri::AppHandle, state: &AppState, prepared: document::Prepared,
-    context_id: u64, discard: bool, recovery_choice: Option<String>) -> Result<DocumentResponse, String> {
+    context_id: u64, discard: bool, recovery_choice: Option<String>, recovery_as_untitled: bool) -> Result<DocumentResponse, String> {
     require_context(state, context_id)?;
     // Stage recovery separately: failed preparation must not touch the old lease.
     let store = recovery_store(app)?;
@@ -572,7 +572,7 @@ fn transition_document(app: &tauri::AppHandle, state: &AppState, prepared: docum
         let claimed = store.claim(&id)?;
         let record = store.read(&id)?.ok_or("The recovery copy is no longer available.")?;
         let expected_path = prepared.path.as_ref().map(|p| p.display().to_string());
-        if record.path != expected_path {
+        if record.path != expected_path && !(recovery_as_untitled && prepared.path.is_none()) {
             return Err("The file or recovery copy changed during selection. Try again.".into());
         }
         staged_owner = claimed;
@@ -599,6 +599,29 @@ fn transition_document(app: &tauri::AppHandle, state: &AppState, prepared: docum
         recovery_boundary_state: recovery.and_then(|r| r.boundary_state),
         recovery_candidates: Vec::new(), recovery_warnings: Vec::new(),
     })
+}
+
+#[tauri::command]
+async fn recover_startup_document(app: tauri::AppHandle, session_id: String, context_id: u64) -> Result<DocumentResponse, String> {
+    run_io(app, move |app, state| {
+        require_context(state, context_id)?;
+        if state.file_path.lock().unwrap().is_some() || *state.dirty.lock().unwrap() {
+            return Err("Startup recovery requires an unused untitled document.".into());
+        }
+        let record = recovery_store(app)?.read(&session_id)?.ok_or("The recovery copy is no longer available.")?;
+        let prepared = record.path.as_ref().ok_or_else(|| "Choose an untitled recovery copy in the current document.".to_string())
+            .and_then(|path| document::Prepared::open(std::path::Path::new(path)));
+        match prepared {
+            Ok(prepared) => transition_document(app, state, prepared, context_id, false, Some(session_id), false),
+            Err(error) => {
+                let mut prepared = document::Prepared::untitled();
+                prepared.source = record.saved_source;
+                let mut document = transition_document(app, state, prepared, context_id, false, Some(session_id), true)?;
+                document.recovery_warnings.push(format!("The original file could not be opened: {error}. Recovered into an untitled document; use Save As. The original file and other recovery copies are kept."));
+                Ok(document)
+            }
+        }
+    }).await
 }
 
 #[tauri::command]
@@ -1160,6 +1183,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             read_document,
+            recover_startup_document,
             spawn_document_instance,
             take_native_open_requests,
             create_document,

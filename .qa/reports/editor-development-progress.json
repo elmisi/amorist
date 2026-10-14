@@ -2609,6 +2609,14 @@
       "recovery-startup-documents-rust-linux.log pass35 fail0 ignored1 (child worker invoked by parent)"
     ],
     "ci": "Mandatory Linux native startup recovery gate added and YAML parsed; no remote run.",
-    "remaining": "Recovery when original path is missing/unreadable, full startup interaction and final native package/platform acceptance remain pending."
+    "remaining": "Permission-denied original and startup race/lease interactions need additional native coverage; final current packaged/platform acceptance remains pending.",
+    "unavailableOriginal": {
+      "implemented": "Guarded startup recovery can adopt a named copy into an untitled context when its original cannot be opened. The former saved source remains the comparison baseline; recovered text remains dirty and Save routes to Save As. Original path is never written by recovery. Existing named-context or dirty-document startup replacement is rejected.",
+      "evidence": [
+        "recovery-unavailable-originals-fixed-linux.log exit0: missing and invalid UTF-8 originals unchanged after controlled-picker Save As; other records unchanged",
+        "recovery-unavailable-samepath-linux.log exit0: same-path Cancel/external-race/Open/Save/restart regressions",
+        "recovery-unavailable-rust-linux.log pass35 fail0 ignored1 (child worker)"
+      ]
+    }
   }
 }

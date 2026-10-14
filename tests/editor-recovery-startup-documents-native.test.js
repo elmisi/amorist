@@ -22,7 +22,21 @@ async function main(){
   assert.equal(await engine.evaluate(`document.getElementById('file-path').textContent`),files[0]);assert.equal(await engine.evaluate(`document.querySelector('.amorist-editor-source').value`),'');unchanged();
   await engine.evaluate(`document.getElementById('save-button').click()`);await waitFor(`!document.body.classList.contains('is-dirty')`);
   assert.equal(fs.readFileSync(files[0],'utf8'),'');assert.equal(fs.readFileSync(files[1],'utf8'),saved[1]);assert.equal(fs.existsSync(path.join(recovery,ids[0],'record.json')),false);assert.equal(fs.readFileSync(path.join(recovery,ids[1],'record.json'),'utf8'),records[1]);
-  console.log('Native startup recovery: documents listed, continue preserves all copies, selected empty recovery adopts correct path, explicit Save removes only own record');
+  for(const unavailable of ['missing','invalid-utf8']) {
+   const original=path.join(scratch,unavailable+'.md'),id='s-startup-'+unavailable+'-'+process.pid;
+   const originalBytes=Buffer.from([255,0,254]);if(unavailable==='invalid-utf8')fs.writeFileSync(original,originalBytes);
+   const directory=path.join(recovery,id);fs.mkdirSync(directory);const source='Recovered '+unavailable+' λ\r\n';
+   const bytes=JSON.stringify({schemaVersion:1,sessionId:id,path:original,savedSource:'Former saved document\r\n',unsavedSource:source,revision:1,boundaryState:null,legacyImport:false});fs.writeFileSync(path.join(directory,'record.json'),bytes);
+   await engine.close();engine=create();await engine.start();await waitFor(`!!document.querySelector('#recovery-dialog[open]')`);
+   await engine.evaluate(`(()=>{document.getElementById('recovery-choice').value=${JSON.stringify(id)};document.getElementById('recover-selected').click();return true;})()`);
+   await waitFor(`!document.querySelector('#recovery-dialog')&&!document.getElementById('editor').inert&&document.body.classList.contains('is-dirty')`);
+   assert.equal(await engine.evaluate(`document.getElementById('file-path').textContent`),'');assert.equal(await engine.evaluate(`document.querySelector('.amorist-editor-source').value`),source.replace(/\r\n/g,'\n'));
+   assert.match(await engine.evaluate(`document.getElementById('notice').textContent`),/untitled document; use Save As/);assert.equal(fs.readFileSync(path.join(directory,'record.json'),'utf8'),bytes);
+   const target=path.join(scratch,'saved-'+unavailable+'.md');await engine.evaluate(`window.__TAURI__.dialog.save=()=>Promise.resolve(${JSON.stringify(target)})`);await engine.evaluate(`document.getElementById('save-button').click()`);await waitFor(`!document.body.classList.contains('is-dirty')`);
+   assert.equal(fs.readFileSync(target,'utf8'),source);assert.equal(fs.existsSync(path.join(directory,'record.json')),false);assert.equal(fs.readFileSync(path.join(recovery,ids[1],'record.json'),'utf8'),records[1]);
+   if(unavailable==='missing')assert.equal(fs.existsSync(original),false);else assert.deepEqual(fs.readFileSync(original),originalBytes);
+  }
+  console.log('Native startup recovery: documents listed, continue preserves copies, empty recovery saves only own record; missing and invalid UTF-8 originals recover untitled and remain untouched after Save As');
  }finally{await engine.close();fs.rmSync(scratch,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
