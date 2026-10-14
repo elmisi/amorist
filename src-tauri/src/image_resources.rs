@@ -29,9 +29,11 @@ impl Store {
 
     pub fn resolve_reference(&self, reference: &str) -> Result<PathBuf, String> {
         if reference.to_ascii_lowercase().starts_with("file:") {
-            return tauri::Url::parse(reference)
-                .map_err(|e| e.to_string())?
-                .to_file_path()
+            let url = tauri::Url::parse(reference).map_err(|e| e.to_string())?;
+            // Apply the same path-byte validation as ordinary references before
+            // the platform URL conversion can construct a filesystem path.
+            decode_path(url.path())?;
+            return url.to_file_path()
                 .map_err(|_| "Invalid local file URL.".to_string());
         }
         let value = reference.split(['?', '#']).next().unwrap_or("");
@@ -223,6 +225,8 @@ mod tests {
         assert!(store.resolve_reference("image%ZZ.png").is_err());
         assert!(store.resolve_reference("image%00.png").is_err());
         assert!(store.resolve_reference("image%FF.png").is_err());
+        assert!(store.resolve_reference("file:///tmp/image%00.png").is_err());
+        assert!(store.resolve_reference("file:///tmp/image%FF.png").is_err());
         assert_eq!(
             store.resolve_reference("images/my%3Aphoto.png").unwrap(),
             PathBuf::from("project/images/my:photo.png")
