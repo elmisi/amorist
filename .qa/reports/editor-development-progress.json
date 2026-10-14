@@ -2636,5 +2636,23 @@
     "result": "pass",
     "evidence": "recovery-current-full-qa-linux.log exit0; recovery-current-full-qa-linux.json",
     "scope": "Full current declared Linux contract suite on GTK/Chromium plus native application flows; H4 native Finder/Dock delegated, not certified by Linux. Missing CommonMark/gesture/package requirements still block delivery."
+  },
+  "listQuotedCodeContainersLinux": {
+    "status": "partial",
+    "implemented": "Block classification tracks list content columns before quote/fence recognition; raw container prefixes map into literal code text and keyboard context. Code blocks retain their owning list layout; source clipboard removes outer indentation before reconstructing standalone quote syntax.",
+    "verified": [
+      "GTK/Chromium bullet and wide ordered list with quoted fenced code: literal content, original blank row and shorter inner ticks",
+      "Nested wide ordered child with two quote levels: continuation remains owned by correct item",
+      "Enter preserves full physical list+quote prefix and CRLF; undo/mode preserve exact source",
+      "Block layout, clipboard, indentation regressions remain green",
+      "B9 typing/locality budgets remain green on both Linux engines"
+    ],
+    "evidence": [
+      "list-quoted-code-before-linux.log reproduces missing code classification",
+      "list-quoted-code-relative-context-linux.log pass4 fail0 skip0",
+      "list-nested-quoted-code-linux.log exit0 GTK/Chromium",
+      "list-container-code-performance-linux.log exit0 B9 GTK/Chromium"
+    ],
+    "remaining": "Tabs crossing container columns, quote->list combinations and complete mixed-container clipboard/gesture semantics need further coverage; final full current package/platform acceptance remains pending."
   }
 }

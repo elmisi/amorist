@@ -142,6 +142,15 @@
     return raw.slice(0, offset);
   }
 
+  function listContainerPrefix(raw, columns) {
+    if (!columns) return "";
+    const whitespace=(raw.match(/^[ \t]*/)||[""])[0];
+    if(indentationColumns(whitespace)<columns) return raw.trim()?null:"";
+    let consumed=0,offset=0;
+    while(consumed<columns) {const char=whitespace[offset++];consumed+=char==='\t'?4-consumed%4:1;}
+    return whitespace.slice(0,offset);
+  }
+
   class AmoristEditor {
     constructor(container, options) {
       if (!DocumentModel || !TransactionJournal) {
@@ -419,11 +428,28 @@
           }
         }
       }
+      const listContainers=[];
       while (index < descriptors.length) {
         if (descriptors[index].unitType === "literal") { index += 1; continue; }
-        const quoteDepth = descriptors[index].projection.quoteDepth || 0;
-        const outerPrefix = quoteDepth ? quotePrefix(descriptors[index].raw, quoteDepth) : "";
-        const opening = descriptors[index].raw.slice(outerPrefix.length).match(/^ {0,3}(`{3,}|~{3,}).*$/);
+        const descriptor=descriptors[index],columns=indentationColumns((descriptor.raw.match(/^[ \t]*/)||[""])[0]);
+        if(descriptor.projection.list) {
+          while(listContainers.length&&listContainers.at(-1).indent>=descriptor.projection.indent) listContainers.pop();
+          listContainers.push(descriptor.projection);
+        } else if(descriptor.raw.trim()) {
+          while(listContainers.length&&columns<listContainers.at(-1).contentIndent) listContainers.pop();
+        }
+        const owner=listContainers.findLast(item=>columns>=item.contentIndent),listIndent=owner?.contentIndent||0;
+        const listPrefix=listContainerPrefix(descriptor.raw,listIndent)||"";
+        const relative=descriptor.raw.slice(listPrefix.length);
+        const quoteDepth=(!owner||columns-listIndent<=3)?projectionLine(relative).quoteDepth||0:0;
+        const prefixFor=raw=>{
+          const prefix=listContainerPrefix(raw,listIndent);if(prefix===null)return null;
+          if(quoteDepth&&owner&&raw.trim()&&indentationColumns((raw.match(/^[ \t]*/)||[""])[0])-listIndent>3)return null;
+          const quote=quoteDepth?quotePrefix(raw.slice(prefix.length),quoteDepth):"";
+          return quote===null?null:prefix+quote;
+        };
+        const outerPrefix=prefixFor(descriptor.raw)||"";
+        const opening=(!owner||columns-listIndent<=3)?descriptor.raw.slice(outerPrefix.length).match(/^ {0,3}(`{3,}|~{3,}).*$/):null;
         if (opening) {
           const marker = opening[1][0];
           const length = opening[1].length;
@@ -431,10 +457,11 @@
           const closing = new RegExp(`^ {0,3}\\${marker}{${length},}\\s*$`);
           let hasClosingFence = false;
           for (let next = index + 1; next < descriptors.length; next += 1) {
-            const prefix = quoteDepth ? quotePrefix(descriptors[next].raw, quoteDepth) : "";
+            const prefix = prefixFor(descriptors[next].raw);
             if (prefix === null && descriptors[next].raw.trim()) break;
             end = next;
-            if (closing.test(descriptors[next].raw.slice((prefix || "").length))) {
+            if ((quoteDepth||!owner||indentationColumns((descriptors[next].raw.match(/^[ \t]*/)||[""])[0])-listIndent<=3)
+                && closing.test(descriptors[next].raw.slice((prefix || "").length))) {
               hasClosingFence = true;
               break;
             }
@@ -445,8 +472,9 @@
               unitStart: index,
               unitEnd: end,
               codeContent: at > index && (!hasClosingFence || at < end),
-              containerPrefix: quoteDepth ? quotePrefix(descriptors[at].raw, quoteDepth) || "" : "",
+              containerPrefix: prefixFor(descriptors[at].raw)||"",
               containerQuoteDepth: quoteDepth,
+              containerQuotePrefix: (prefixFor(descriptors[at].raw)||"").slice((listContainerPrefix(descriptors[at].raw,listIndent)||"").length),
             });
             // Classify the containing block before interpreting its contents.
             // Markdown-looking text inside code is literal, including fences
@@ -461,14 +489,14 @@
         }
         const logicalRaw = descriptors[index].raw.slice(outerPrefix.length);
         const previous = descriptors[index - 1];
-        const previousPrefix = quoteDepth && previous ? quotePrefix(previous.raw, quoteDepth) : null;
+        const previousPrefix = quoteDepth && previous ? prefixFor(previous.raw) : null;
         const followsBlank = !previous || !previous.raw.trim()
           || (previousPrefix !== null && !previous.raw.slice(previousPrefix.length).trim());
         if (quoteDepth && indentationColumns((logicalRaw.match(/^[ \t]*/) || [""])[0]) >= 4
             && (followsBlank || previous.unitType === "code")) {
           let end = index;
           for (let next = index + 1; next < descriptors.length; next += 1) {
-            const prefix = quotePrefix(descriptors[next].raw, quoteDepth);
+            const prefix = prefixFor(descriptors[next].raw);
             if (prefix === null && descriptors[next].raw.trim()) break;
             const content = descriptors[next].raw.slice((prefix || "").length);
             if (!content.trim()) continue;
@@ -476,11 +504,12 @@
             end = next;
           }
           for (let at = index; at <= end; at += 1) {
-            const prefix = quotePrefix(descriptors[at].raw, quoteDepth) || "";
+            const prefix = prefixFor(descriptors[at].raw)||"";
             Object.assign(descriptors[at], {
               unitType: "code", unitStart: index, unitEnd: end,
               codeContent: true, indentedCode: true,
               containerPrefix: prefix, containerQuoteDepth: quoteDepth,
+              containerQuotePrefix: prefix.slice((listContainerPrefix(descriptors[at].raw,listIndent)||"").length),
               projection: {prefix: prefix.length, text: descriptors[at].raw.slice(prefix.length), tag: "pre"},
             });
           }
@@ -508,6 +537,8 @@
         const leading = (descriptor.raw.match(/^[ \t]*/) || [""])[0];
         const columns = indentationColumns(leading);
         if (descriptor.unitType !== "line") {
+          const owner=items.findLast(item=>columns>=item.contentIndent);
+          if(owner)descriptor.listOwner=owner;
           if (descriptor.index === descriptor.unitStart && items.length
               && columns < items[items.length - 1].contentIndent) items.length = 0;
           continue;
@@ -841,6 +872,7 @@
     renderCodeBlock(start, end) {
       const block = document.createElement("div");
       block.className = "amorist-wysiwyg-block amorist-wysiwyg-code-block";
+      if(this.lineDescriptors[start].listOwner) block.style.marginInlineStart=this.lineDescriptors[start].listOwner.layoutPadding;
       if (this.lineDescriptors[start].containerQuoteDepth) {
         block.classList.add("amorist-wysiwyg-quoted-code");
         block.style.setProperty("--quote-depth", String(this.lineDescriptors[start].containerQuoteDepth));
@@ -1600,7 +1632,7 @@
       if(first?.unitType==="code" && first.codeContent && last?.codeContent
           && first.unitStart===last.unitStart && first.unitEnd===last.unitEnd) {
         let codeBody=body;
-        if(first.containerQuoteDepth) {
+        if(first.containerPrefix) {
           codeBody="";
           for(let index=first.index;index<=last.index;index+=1) {
             const descriptor=this.lineDescriptors[index];
@@ -1615,7 +1647,7 @@
         const info=opening.projection.fence ? (opening.raw.slice((opening.containerPrefix||"").length).match(/^ {0,3}(?:`{3,}|~{3,})(.*)$/)?.[1] || "") : "";
         const fragment=fence+info+ending+codeBody+(/(?:\r\n|\r|\n)$/.test(codeBody)?"":ending)+fence;
         return first.containerQuoteDepth ? fragment.split(/(\r\n|\r|\n)/)
-          .map((part,index)=>index%2===0 ? (first.containerPrefix||"")+part : part).join("") : fragment;
+          .map((part,index)=>index%2===0 ? (first.containerQuotePrefix??first.containerPrefix??"")+part : part).join("") : fragment;
       }
       if(first?.unitType==="line" && selection.start>=first.start+first.projection.prefix
           && first.projection.prefix && (first.projection.list || first.projection.tag==="blockquote" || /^h[1-6]$/.test(first.projection.tag))) {
