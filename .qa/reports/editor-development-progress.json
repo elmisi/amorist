@@ -2920,9 +2920,9 @@
     "identity": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
-      "fingerprint": "1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
-      "commit": "726ecd34d68d5448f352911a78364a1b325de3e7",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+      "fingerprint": "5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+      "commit": "57317aa147e4804f976e52e3b7605364eb334844",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
@@ -2940,7 +2940,9 @@
       "direct-list-fence-classic-linux.log pass17 fail0 skip0",
       "direct-list-fence-performance-linux.log exit0 B9 GTK/Chromium",
       "linux-user-preview-direct-fence-build.log exit0; clean726ecd3 metadata",
-      "Updated preview reference atomically; actual review runner empty-list/isolated-state smoke exit0"
+      "Updated preview reference atomically; actual review runner empty-list/isolated-state smoke exit0",
+      "file-button-secondary-style-linux.log GTK/Chromium: identical secondary button style, height34, no marker and click open/close",
+      "linux-preview-file-button-build.log exit0; clean57317aa identity matches updated preview reference"
     ],
     "command": "python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/release/amorist",
     "futureBuildPolicy": "Use current release binary directly. Refresh this preview reference to exact successfully built/tested Linux binary identity after subsequent preview updates; retain preview flags while final gates are incomplete. Runner detects identity changes before each file and begins a new build-specific run on restart.",
@@ -2953,6 +2955,15 @@
         "buildId": "0.10.10:x86_64-unknown-linux-gnu:ef207b913d662d91d2d95a8e78ef5627bf2974fb",
         "fingerprint": "ef207b913d662d91d2d95a8e78ef5627bf2974fb",
         "commit": "0400352b1cb6ad42e0adaf43adc4f4dc98d4e58a",
+        "target": "x86_64-unknown-linux-gnu",
+        "dirty": false
+      },
+      {
+        "schemaVersion": 1,
+        "version": "0.10.10",
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
+        "fingerprint": "1e80d0ebc9921e2323d3215a4cb67d69398b6e48",
+        "commit": "726ecd34d68d5448f352911a78364a1b325de3e7",
         "target": "x86_64-unknown-linux-gnu",
         "dirty": false
       }
@@ -2978,5 +2989,11 @@
       "original-reports-current-linux.json"
     ],
     "remaining": "Final current all-platform/native/package and complete review-loop end-to-end acceptance remain pending."
+  },
+  "fileMenuButtonAppearance": {
+    "requestedByUser": true,
+    "implemented": "File summary uses the same secondary button styles as other actions; disclosure glyph hidden in GTK/Chromium; native details toggle and keyboard semantics retained.",
+    "evidence": "file-button-secondary-style-linux.log; file-button-preview.png; linux-preview-file-button-build.log",
+    "previewSourceCommit": "57317aa147e4804f976e52e3b7605364eb334844"
   }
 }
