@@ -58,6 +58,17 @@ async function main(){
     return {source,destinations,undo:editor.getMarkdown()};
    })()`);
    assert.deepEqual(reference,{source:'[One][shared] and [Two][shared]\r\n\r\n[shared]: <../changed.md> "Title"\r\n',destinations:['../changed.md','../changed.md'],undo:'[One][shared] and [Two][shared]\r\n\r\n[shared]: <old path.md> "Title"\r\n'});
+   for(const [automatic,label,href,escapedLabel] of [['https://example.test/path','https://example.test/path','https://example.test/path'],['<https://example.test/path>','https://example.test/path','https://example.test/path'],['<alice@example.test>','alice@example.test','mailto:alice@example.test'],['https://example.test/?q=&copy;value','https://example.test/?q=&copy;value','https://example.test/?q=&copy;value']]) {
+    const source='before '+automatic+' after\r\n';
+    const edited=await engine.evaluate(`(async()=>{
+      const host=document.getElementById('host');host.replaceChildren();const editor=window.AmoristEditor.create(host,{value:${JSON.stringify(source)}});
+      const at=${source.indexOf(label)+2};editor.setSurfaceSelection(at,at);const pending=editor.runAction('link');const form=document.querySelector('.amorist-link-dialog form');
+      const initial=form?.querySelector('input').value;if(!form)return {initial};form.querySelector('input').value='../changed.md#λ';form.dispatchEvent(new Event('submit',{cancelable:true}));await pending;
+      const result=editor.getMarkdown(),visible=editor.surface.querySelector('a').textContent;editor.undo();return {initial,result,visible,undo:editor.getMarkdown()};
+    })()`);
+    assert.equal(edited.initial,href,`${entry.id}: automatic link dialog starts with existing destination`);assert.equal(edited.result,'before ['+(escapedLabel||label)+'](../changed.md#λ) after\r\n');assert.equal(edited.undo,source);
+    assert.equal(edited.visible,label,`${entry.id}: converting an automatic link retains its visible label`);
+   }
    console.log(`link activation: ${entry.id} passed`);
   }finally{await engine.close();}
  }}finally{await server.stop();}

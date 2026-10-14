@@ -1797,6 +1797,11 @@
           let found=null;
           const visit=tokens=>tokens.forEach(token=> {
             if(token.type==="link" && selection.start>=base+token.contentStart && selection.end<=base+token.contentEnd) {
+              if(token.autolink) {
+                found={destination:{href:token.href},base,automatic:token,
+                  label:text.slice(token.contentStart,token.contentEnd)};
+                return;
+              }
               const destination=token.referenceKey ? this.lineDescriptors.references.get(token.referenceKey)
                 : MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
               if(destination) found={destination,base:token.referenceKey?0:base};
@@ -1809,6 +1814,12 @@
           return window.AmoristInternals.EditingPolicy.requestLink(destination.href).then(href=> {
             if(!href || !this.root.isConnected || this.model.source!==before) return;
             const escaped=href.replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[()<>]/g,"\\$&").replace(/[ \t\r\n]/g,encodeURIComponent);
+            if(found.automatic) {
+              const label=found.label.replace(/[\\`*_\[\]~<>!]/g,"\\$&");
+              this.apply(found.base+found.automatic.start,found.base+found.automatic.end,
+                `[${label}](${escaped})`,"link-destination");
+              return;
+            }
             this.apply(found.base+destination.destinationStart,found.base+destination.destinationEnd,escaped,"link-destination");
           });
         }

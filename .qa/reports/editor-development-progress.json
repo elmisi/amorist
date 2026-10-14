@@ -2530,5 +2530,20 @@
     ],
     "qaCorrection": "list-quote-owner-enter-linux.log retained failed Escape focus read; test now waits for actual native Escape keydown using the existing Tab event barrier.",
     "remaining": "Code and lists within arbitrary mixed container depth, semantic clipboard full subtree and final package/platform acceptance remain pending."
+  },
+  "automaticLinkEditingLinux": {
+    "status": "partial",
+    "implemented": "Link dialog recognizes automatic URL and email tokens, starts from actual destination and changes their destination by generating an explicit Markdown link with the original visible label. Only token source interval changes; existing inline/reference edit behavior remains.",
+    "verified": [
+      "GTK/Chromium plain URL, angle URL and angle email destination editing",
+      "Exact CRLF surroundings and undo restore original automatic syntax",
+      "Visible URL label containing an entity-like ampersand sequence remains literal after conversion"
+    ],
+    "evidence": [
+      "autolink-dialog-before-linux.log reproduces missing existing-destination dialog",
+      "autolink-dialog-label-regressions-linux.log pass3 fail0 skip0: link actions, codec and history",
+      "autolink-dialog-visible-label-fixed-linux.log exit0 GTK/Chromium; earlier incorrect ampersand-label encoding failure retained"
+    ],
+    "remaining": "Native external opener/package behavior, complete dialog accessibility and final full current suite acceptance remain pending."
   }
 }
