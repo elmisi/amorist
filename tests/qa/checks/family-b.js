@@ -563,6 +563,16 @@ module.exports = [
           await ctx.page.setRawSelection(offset);
           await ctx.page.sendKeys(["w", "w", "w"]);
           await ctx.page.settle(40);
+          let warmupSamples=await ctx.page.latencies();
+          const warmupDeadline=Date.now()+1000;
+          while(warmupSamples.length<3&&Date.now()<warmupDeadline){
+            await ctx.page.settle(20);warmupSamples=await ctx.page.latencies();
+          }
+          const warmupSource=fixture.markdown.slice(0,offset)+"www"+fixture.markdown.slice(offset);
+          if(warmupSamples.length!==3||await ctx.page.markdown()!==warmupSource){
+            failures.push({fixture:`${size} lines / ${target}`,detail:"Warmup input was not acknowledged exactly before starting the measured batch.",expected:"3 samples and exactly three inserted warmup characters",actual:String(warmupSamples.length)+" samples"});
+            continue;
+          }
           const identity = await ctx.page.projectionIdentity();
           await ctx.page.resetLatencies();
           for (let sample = 0; sample < 20; sample += 1) {
@@ -576,6 +586,10 @@ module.exports = [
             samples = await ctx.page.latencies();
           }
           const afterIdentity = await ctx.page.projectionIdentity();
+          const measuredSource=fixture.markdown.slice(0,offset)+"www"+"x".repeat(20)+fixture.markdown.slice(offset);
+          if(await ctx.page.markdown()!==measuredSource){
+            failures.push({fixture:`${size} lines / ${target}`,detail:"Measured keyboard input changed the source by more or fewer than the twenty requested characters.",expected:measuredSource,actual:await ctx.page.markdown()});
+          }
           const p95 = samples.length === 20 ? nearestRankP95(samples) : null;
           const limit = size === 500 ? 50 : 100;
           timing.push({ engine: ctx.engine, lines: size, target, warmups: 3, samples, p95, limit });

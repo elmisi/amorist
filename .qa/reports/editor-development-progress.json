@@ -2822,5 +2822,23 @@
     "scope": "Actual updated packages, isolated app-data/document fixtures. Recovery includes simultaneous lease exclusion and unavailable originals; preferences include Save/Cancel/restart/retry/focus/corrupt file preservation; images include all formats and resource lifetime. AppImage AVIF passed with host plugin directories hidden.",
     "remaining": "Unimplemented Markdown/clipboard cases, complete File/Bug/link/system clipboard package acceptance, install/upgrade and all-platform final delivery gates remain open. No personal install or review manifest written.",
     "sourceUpdatedSinceBuild": "HTML inline whitespace cleanup changed after build a27dfff; recorded package proofs certify that build. Final rebuild and affected packaged checks still required."
+  },
+  "quotedListContextsLinux": {
+    "status": "partial",
+    "implemented": "Quoted bullet/task/ordered list items and indented continuations retain inner list ownership and outer quote depth, raw interval mapping, separate quote bars and list markers. Enter continues lists and increments ordered markers; inline-code Enter keeps quote plus continuation prefix.",
+    "verified": [
+      "GTK/Chromium multiline emphasis edit/undo/mode in quoted bullet/task and double-quote wide ordered lists",
+      "Actual quoted list Enter and inline-code Enter preserve expected prefixes",
+      "Physical continuation alignment and nonzero quote bars",
+      "Generated semantic HTML-only inline-code clipboard round-trip in quoted bullet/task lists",
+      "Related block/code/prose/clipboard/indentation regressions pass"
+    ],
+    "evidence": [
+      "quoted-list-context-linux.log pass4 fail0 skip0",
+      "quoted-list-layout-clipboard-linux.log pass3 fail0 skip0",
+      "quoted-list-performance-warmup-barrier-linux.log B9 pass GTK/Chromium"
+    ],
+    "qaBarrier": "B9 now acknowledges exactly three warmup input frames and corresponding source before resetting batch; additionally checks exactly20 measured characters inserted. Count20 and p95 thresholds unchanged. Original21-sample failure preserved in quoted-list-performance-failed-linux.json.",
+    "remaining": "Quoted nested block code, Tab/subtree gestures, arbitrary mixed containers and final full native/package/platform acceptance remain pending."
   }
 }

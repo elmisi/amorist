@@ -148,6 +148,16 @@
   text-align: right;
 }
 
+.amorist-wysiwyg-quote-list::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: calc(var(--quote-depth, 1) * 11px);
+  background: repeating-linear-gradient(to right, var(--accent, #246b54) 0 3px, transparent 3px 11px);
+  pointer-events: none;
+}
+
 .amorist-wysiwyg-list-item.amorist-wysiwyg-ordered::before {
   content: attr(data-marker);
 }
