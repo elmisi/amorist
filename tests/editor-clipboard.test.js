@@ -129,6 +129,12 @@ async function main(options={}){
    })()`);
    assert.deepEqual(partialCuts,[{source:'before **b**',strong:'b'},{undo:'before **bold** after',selection:{start:10,end:21}},
     {source:'**ld** after',strong:'ld'},{undo:'before **bold** after',selection:{start:0,end:11}}]);
+   const formattedHtml=await engine.evaluate(`(() => {
+    const editor=window.__clip;editor.setMarkdown('');editor.setSurfaceSelection(0,0);
+    editor.handlePaste({clipboardData:{getData:type=>type==='text/html'?'<h2>Title<em> styled</em></h2><p><s>gone</s></p>':''},preventDefault(){}});
+    return {source:editor.getMarkdown(),em:editor.surface.querySelector('em')?.textContent,del:editor.surface.querySelector('del')?.textContent};
+   })()`);
+   assert.deepEqual(formattedHtml,{source:'## Title *styled*\n\n~~gone~~',em:'styled',del:'gone'});
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

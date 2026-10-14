@@ -1211,6 +1211,15 @@
           "ampersands decoded exactly once",
           "escaped image alt brackets"
         ]
+      },
+      "formatWhitespace": {
+        "status": "passed in pure helpers and both Linux browser engines",
+        "report": "html-format-whitespace-linux.log",
+        "scope": [
+          "leading/trailing whitespace moved outside emphasis delimiters without losing text",
+          "HTML DEL/STRIKE/S converted to Markdown strikethrough",
+          "actual editor DOM renders copied emphasis and deletion"
+        ]
       }
     },
     "clipboardReferenceDevelopment": {

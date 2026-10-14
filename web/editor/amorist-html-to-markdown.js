@@ -4,7 +4,7 @@
   // Elements removed entirely (content discarded).
   const STRIPPED = new Set(["SCRIPT", "STYLE", "HEAD", "META", "LINK", "TITLE", "NOSCRIPT"]);
   // Inline wrappers with no Markdown meaning: replace with their children.
-  const UNWRAPPED = new Set(["SPAN", "FONT", "U", "S", "SMALL", "ABBR", "TIME", "MARK"]);
+  const UNWRAPPED = new Set(["SPAN", "FONT", "U", "SMALL", "ABBR", "TIME", "MARK"]);
 
   function isStripped(tag) {
     return STRIPPED.has(tag);
@@ -113,8 +113,15 @@
     if (tag === "BLOCKQUOTE") return children().trim().split("\n").map(line=>">"+(line?" "+line:"")).join("\n")+"\n\n";
     if (tag === "INPUT" && node.getAttribute("type") === "checkbox") return node.hasAttribute("checked")?"[x] ":"[ ] ";
     if (tag === "BR") return "\n";
-    if (tag === "STRONG" || tag === "B") return `**${children()}**`;
-    if (tag === "EM" || tag === "I") return `*${children()}*`;
+    const format=marks=> {
+      const content=children(), body=content.trim();
+      if(!body) return content;
+      const leading=(content.match(/^\s*/)||[""])[0], trailing=(content.match(/\s*$/)||[""])[0];
+      return leading+marks+body+marks+trailing;
+    };
+    if (tag === "STRONG" || tag === "B") return format("**");
+    if (tag === "EM" || tag === "I") return format("*");
+    if (tag === "DEL" || tag === "STRIKE" || tag === "S") return format("~~");
     if (tag === "CODE") {
       const text=(node.textContent || "").replace(/\r\n|\r|\n/g," ");
       if(!text) return "";
