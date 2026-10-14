@@ -2492,6 +2492,14 @@
       "clipboard-quoted-code-fixed-linux.log exit0 both engines",
       "clipboard-quoted-code-system-regressions-linux.log exit0 pass2 fail0 skip0"
     ],
-    "remaining": "Semantic HTML fallback for quoted code, arbitrary paste boundary planning, whole subtree/mixed-unit clipboard behavior and final package/platform acceptance remain pending."
+    "remaining": "Arbitrary paste boundary planning, whole subtree/mixed-unit clipboard behavior and final package/platform acceptance remain pending.",
+    "htmlFallback": {
+      "implemented": "Clipboard HTML recursively renders quote contents as blocks, including nested blockquotes and literal PRE/CODE. Valid conventional language classes preserve code language through HTML conversion; unsafe arbitrary classes remain stripped. Quote recognition accepts up to three leading spaces.",
+      "verified": "GTK/Chromium copy and paste with dedicated MIME removed preserve quoted code, language, literal markers and Unicode, including leading-indented quote; standard codec behavior and system clipboard regressions pass.",
+      "evidence": [
+        "quoted-code-html-fallback-linux.log pass4 fail0 skip0",
+        "quoted-code-html-indented-fallback-linux.log pass3 fail0 skip0"
+      ]
+    }
   }
 }

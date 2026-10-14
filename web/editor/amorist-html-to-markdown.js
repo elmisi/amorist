@@ -82,6 +82,7 @@
           || (tag === "IMG" && (attr.name === "src" || attr.name === "alt" || attr.name === "title"))
           || (tag === "OL" && attr.name === "start")
           || (tag === "LI" && attr.name === "value")
+          || (tag === "CODE" && attr.name === "class" && /^language-[A-Za-z0-9_+-]+$/.test(attr.value))
           || (tag === "INPUT" && node.getAttribute("type") === "checkbox" && (attr.name === "type" || attr.name === "checked"));
         if (!allowed) {
           node.removeAttribute(attr.name);
@@ -117,7 +118,8 @@
     if (tag === "PRE") {
       const text = Internals.TextUtils.normalize(node.textContent || "");
       const fence = Internals.TextUtils.codeFenceFor(text);
-      return `${fence}\n${text}${text.endsWith("\n") ? "" : "\n"}${fence}\n\n`;
+      const language = node.querySelector?.('code')?.getAttribute('class')?.match(/^language-([A-Za-z0-9_+-]+)$/)?.[1] || "";
+      return `${fence}${language}\n${text}${text.endsWith("\n") ? "" : "\n"}${fence}\n\n`;
     }
     const children = () => Array.from(node.childNodes).map(nodeToSource).join("");
     if (/^H[1-6]$/.test(tag)) return "#".repeat(Number(tag.slice(1)))+" "+children().trim().replace(/\n/g," ")+"\n\n";

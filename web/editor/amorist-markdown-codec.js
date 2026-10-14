@@ -42,7 +42,7 @@
           index += 1;
         }
         if (index < lines.length) index += 1;
-        blocks.push({ type: "code", text: code.join("\n"), sourceLine });
+        blocks.push({ type: "code", text: code.join("\n"), sourceLine, info: line.slice(line.indexOf(fence[1])+fence[1].length).trim() });
         continue;
       }
 
@@ -78,13 +78,13 @@
         continue;
       }
 
-      if (/^>\s?/.test(line)) {
+      if (/^ {0,3}>[ \t]?/.test(line)) {
         const quote = [];
-        while (index < lines.length && /^>\s?/.test(lines[index])) {
-          quote.push(lines[index].replace(/^>\s?/, ""));
+        while (index < lines.length && /^ {0,3}>[ \t]?/.test(lines[index])) {
+          quote.push(lines[index].replace(/^ {0,3}>[ \t]?/, ""));
           index += 1;
         }
-        blocks.push({ type: "quote", text: joinTextLines(quote), sourceLine });
+        blocks.push({ type: "quote", text: joinTextLines(quote), sourceLine, quotedSource: quote.join("\n") });
         continue;
       }
 
@@ -213,11 +213,11 @@
       case "heading":
         return `<h${block.level}${attrs}>${renderInline(block.text,references,clipboard)}</h${block.level}>`;
       case "quote":
-        return `<blockquote${attrs}>${renderInline(block.text,references,clipboard)}</blockquote>`;
+        return `<blockquote${attrs}>${clipboard ? renderMarkdown(block.quotedSource || block.text,references,true) : renderInline(block.text,references,clipboard)}</blockquote>`;
       case "hr":
         return `<hr${attrs}>`;
       case "code":
-        return `<pre${attrs}><code>${TextUtils.escapeHtml(block.text)}</code></pre>`;
+        return `<pre${attrs}><code${clipboard && /^[A-Za-z0-9_+-]+$/.test(block.info || "") ? ' class="language-'+TextUtils.escapeHtml(block.info)+'"' : ''}>${TextUtils.escapeHtml(block.text)}</code></pre>`;
       case "table":
         if(clipboard) {
           const cells=line=> {

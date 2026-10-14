@@ -63,7 +63,7 @@ async function main(options={}){
    })()`);
    assert.equal(structured[0].fragment,'# adi');assert.equal(structured[1].fragment,'- [x] ask');assert.equal(structured[2].fragment,'> uot');
    assert.match(structured[3].fragment,/^`{3,}js\r\node \r\n`{3,}$/);
-   for(const quote of ['> ', '> > ']) {
+   for(const quote of ['> ', '> > ', '  > ']) {
     const codeSource=[quote+'~~~~js',quote+'# literal ``` λ',quote+'> literal **bold**',quote+'~~~~'].join('\r\n');
     const start=codeSource.indexOf('# literal'),end=codeSource.indexOf('> literal **bold**')+'> literal **bold**'.length;
     const copiedCode=await engine.evaluate(`(() => {
@@ -71,11 +71,15 @@ async function main(options={}){
       const event={clipboardData:{setData:(type,value)=>data.set(type,value),getData:type=>data.get(type)||''},preventDefault(){}};
       editor.handleCopy(event,false);const before=editor.getMarkdown(),fragment=data.get('text/plain');
       editor.setMarkdown('\\r\\noutside\\r\\n');editor.setSurfaceSelection(0,0);editor.handlePaste(event);
-      const result={before,fragment,pasted:editor.getMarkdown(),code:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>row.textContent.replace(/\\n$/,''))};editor.undo();result.undo=editor.getMarkdown();return result;
+      const result={before,fragment,html:data.get('text/html'),pasted:editor.getMarkdown(),code:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>row.textContent.replace(/\\n$/,''))};editor.undo();result.undo=editor.getMarkdown();
+      data.delete('application/x-amorist-markdown+json');editor.setSurfaceSelection(0,0);editor.handlePaste(event);
+      result.fallback=editor.getMarkdown();result.fallbackCode=Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>row.textContent.replace(/\\n$/,''));return result;
     })()`);
     const fragment=[quote+'````js',quote+'# literal ``` λ',quote+'> literal **bold**',quote+'````'].join('\r\n');
     assert.equal(copiedCode.before,codeSource);assert.equal(copiedCode.fragment,fragment,`${entry.id}: quoted code copy preserves context and literal inner quote marker`);
     assert.equal(copiedCode.pasted,fragment+'\r\noutside\r\n');assert.equal(copiedCode.undo,'\r\noutside\r\n');assert.deepEqual(copiedCode.code,['# literal ``` λ','> literal **bold**']);
+    assert.match(copiedCode.html,/<blockquote/);assert.match(copiedCode.html,/<pre[^>]*><code class="language-js">/);assert.doesNotMatch(copiedCode.html,/<strong>/);
+    assert.deepEqual(copiedCode.fallbackCode,copiedCode.code,`${entry.id}: HTML-only fallback retains quoted literal code`);assert.ok(copiedCode.fallback.startsWith(quote.trimStart()+'````js\r\n'));
    }
    const reference=await engine.evaluate(`(() => {
     const editor=window.__clip,source=${JSON.stringify('[Read][name]\r\n\r\n[name]: notes.md "Title"')};
