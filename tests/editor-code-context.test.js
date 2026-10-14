@@ -17,6 +17,11 @@ async function main() {
       try {
         await engine.start();
         await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+        // The driver may finish before WebKit delivers its final input event.
+        const sendKeys = async sequence => {
+          await engine.sendKeys(sequence);
+          await new Promise(resolve => setTimeout(resolve, 60));
+        };
         const opening = await engine.evaluate(`(() => {
           const host = document.getElementById("host");
           const editor = window.__codeRegression = window.AmoristEditor.create(host, {value: ${JSON.stringify(original)}});
@@ -39,14 +44,14 @@ async function main() {
 
         const at = original.indexOf("# literal heading");
         await engine.evaluate(`(() => { window.__codeRegression.focus(); window.__codeRegression.setSurfaceSelection(${at}, ${at}); return true; })()`);
-        await engine.sendKeys([{ key: "Backspace" }]);
+        await sendKeys([{ key: "Backspace" }]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), original.slice(0, at - 2) + original.slice(at), `${entry.id}: code Backspace joins physical lines without stripping markers`);
         await engine.evaluate("(() => { window.__codeRegression.undo(); return true; })()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), original);
 
         const end = at + "# literal heading".length;
         await engine.evaluate(`(() => { window.__codeRegression.focus(); window.__codeRegression.setSurfaceSelection(${end}, ${end}); return true; })()`);
-        await engine.sendKeys([{ key: "Enter" }]);
+        await sendKeys([{ key: "Enter" }]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), original.slice(0, end) + "\r\n" + original.slice(end));
         await engine.evaluate("(() => { window.__codeRegression.undo(); window.__codeRegression.showSourceMode(); window.__codeRegression.showWysiwygMode(); return true; })()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), original);
@@ -94,7 +99,7 @@ async function main() {
           `${entry.id}: code and escaped pipes stay inside their cells`);
         const codeAt = table.indexOf("a|b") + 2;
         await engine.evaluate(`(() => {window.__codeRegression.focus();window.__codeRegression.setSurfaceSelection(${codeAt},${codeAt});return true;})()`);
-        await engine.sendKeys(["x"]);
+        await sendKeys(["x"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), table.slice(0,codeAt)+"x"+table.slice(codeAt),
           `${entry.id}: editing code in a table preserves surrounding delimiters and bytes`);
         await engine.evaluate("(() => {window.__codeRegression.undo();window.__codeRegression.showSourceMode();window.__codeRegression.showWysiwygMode();return true;})()");
@@ -114,7 +119,7 @@ async function main() {
             editor.focus();const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
             return true;
           })()`);
-          await engine.sendKeys(["X"]);
+          await sendKeys(["X"]);
           assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source.slice(0,rawCaret)+"X"+source.slice(rawCaret),
             `${entry.id}: DOM caret uses exact source span for ${source}`);
           await engine.evaluate("(() => {window.__codeRegression.undo();return true;})()");
@@ -122,11 +127,11 @@ async function main() {
         }
         const terminal = "same ``same`same``";
         await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(terminal)});editor.focus();editor.setSurfaceSelection(${terminal.length},${terminal.length});return true;})()`);
-        await engine.sendKeys(["X"]);
+        await sendKeys(["X"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),terminal+"X", `${entry.id}: end-of-row caret stays outside closing code delimiter`);
         const shifted = "first\r\nsame **same** same";
         await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(shifted)});window.__mappedRow=editor.surface.querySelectorAll('.amorist-source-line')[1];editor.focus();editor.setSurfaceSelection(3,3);return true;})()`);
-        await engine.sendKeys(["X"]);
+        await sendKeys(["X"]);
         const shiftedCaret = await engine.evaluate(`(() => {
           const editor=window.__codeRegression;
           const row=editor.surface.querySelectorAll('.amorist-source-line')[1];
@@ -136,7 +141,7 @@ async function main() {
           return row===window.__mappedRow;
         })()`);
         assert.equal(shiftedCaret,true,`${entry.id}: earlier typing preserves later row DOM`);
-        await engine.sendKeys(["Y"]);
+        await sendKeys(["Y"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"), "firXst\r\nsame **saYme** same",
           `${entry.id}: preserved later row uses updated source base`);
         const boundaries = "prefix\r\n| Left | Right |\r\n| --- | --- |\r\n| same | `same|same` |\r\n\r\n```\r\nsame **same**\r\n```\r\n# \r\n- [ ] \r\nlast **same**";
@@ -158,15 +163,15 @@ async function main() {
             range.${side === "before" ? "setStartBefore" : "setStartAfter"}(strong);range.collapse(true);
             const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);return true;
           })()`);
-          await engine.sendKeys(["X"]);
+          await sendKeys(["X"]);
           assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source.slice(0,at)+"X"+source.slice(at),
             `${entry.id}: element boundary ${side} emphasis is outside its delimiters`);
         }
         await engine.evaluate("(() => {const editor=window.__codeRegression;editor.setMarkdown('# title\\n- item');editor.focus();return true;})()");
-        await engine.sendKeys([{key:"a",ctrl:process.platform!=="darwin",meta:process.platform==="darwin"}]);
+        await sendKeys([{key:"a",ctrl:process.platform!=="darwin",meta:process.platform==="darwin"}]);
         assert.deepEqual(await engine.evaluate("window.__codeRegression.selectionRaw()"),{start:0,end:14},
           `${entry.id}: native Select All reaches both document boundaries`);
-        await engine.sendKeys(["Z"]);
+        await sendKeys(["Z"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),"Z",
           `${entry.id}: native Select All includes the first hidden structural prefix`);
         const blocks = "First title\r\n===\r\n\r\nSecond title\r\n---\r\n\r\n    # literal\r\n    1. literal\r\n\r\n    **literal**\r\n\r\nparagraph\r\n    continuation\r\n\r\n- list\r\n  continuation";
@@ -193,13 +198,13 @@ async function main() {
           assert.doesNotMatch(row.classes,/wysiwyg-(h[1-6]|list|quote|task|fence)/);
         }
         await engine.evaluate("(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(5,5);return true;})()");
-        await engine.sendKeys(["X"]);
+        await sendKeys(["X"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks.slice(0,5)+"X"+blocks.slice(5),`${entry.id}: editing setext title preserves its underline and other blocks`);
         await engine.evaluate("(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks);
         const indentedEnd=blocks.indexOf("# literal")+"# literal".length;
         await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${indentedEnd},${indentedEnd});return true;})()`);
-        await engine.sendKeys([{key:"Enter"}]);
+        await sendKeys([{key:"Enter"}]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks.slice(0,indentedEnd)+"\r\n    "+blocks.slice(indentedEnd),`${entry.id}: indented code Enter keeps indentation and CRLF`);
         await engine.evaluate("(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),blocks);
@@ -208,14 +213,14 @@ async function main() {
         assert.deepEqual(metadataView,{source:metadata,text:metadata.replace(/\r\n/g,"\n"),heading:false,list:false,bold:false},`${entry.id}: metadata stays visible literal source`);
         const metadataEnd=metadata.indexOf("- literal list")+"- literal list".length;
         await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${metadataEnd},${metadataEnd});return true;})()`);
-        await engine.sendKeys([{key:"Enter"}]);
+        await sendKeys([{key:"Enter"}]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),metadata.slice(0,metadataEnd)+"\r\n"+metadata.slice(metadataEnd),`${entry.id}: metadata Enter never continues a Markdown list marker`);
         await engine.evaluate("(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()");
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),metadata);
         for (const ending of ["\r\n","\r"]) {
           const source="```"+ending+"literal";
           await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(source)});editor.focus();editor.setSurfaceSelection(${source.length},${source.length});return true;})()`);
-          await engine.sendKeys([{key:"Enter"}]);
+          await sendKeys([{key:"Enter"}]);
           assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source+ending,
             `${entry.id}: code Enter at unterminated EOF inherits the last physical terminator`);
           await engine.evaluate("(() => {window.__codeRegression.undo();return true;})()");

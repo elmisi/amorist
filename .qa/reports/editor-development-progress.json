@@ -1227,12 +1227,32 @@
         "cross-row inline reference projection",
         "cross-document relative resources",
         "real native clipboard MIME and multi-window acceptance",
-        "complete semantic table/task/title clipboard fallback"
+        "complete semantic fallback for nested containers and ordered list starting numbers"
       ],
       "htmlFallback": {
         "status": "controlled clipboard fallback passed in both Linux browser engines",
         "report": "clipboard-reference-html-linux.log",
         "scope": "Copied reference label resolves to a semantic anchor; required definition metadata omitted from HTML; paste resolves the destination without the custom payload"
+      },
+      "semanticFallbackFollowup": {
+        "status": "thirteen classic regressions and D1 passed",
+        "classicLinux": {
+          "pass": 13,
+          "fail": 0,
+          "report": "clipboard-fallback-settled-classic-linux.log",
+          "priorFailedReport": "clipboard-fallback-classic-linux.log",
+          "timingAdjustment": "Code-context key probes wait 60ms for final WebKit input; source/caret expectations unchanged"
+        },
+        "D1Linux": {
+          "exitCode": 0,
+          "report": "clipboard-fallback-d1-qa-linux.json"
+        },
+        "scope": [
+          "semantic clipboard table round-trip without custom payload",
+          "checked/unchecked task round-trip without custom payload",
+          "link titles survive conversion",
+          "real DOM sanitizer preserves ordered list start and item values"
+        ]
       }
     }
   }
