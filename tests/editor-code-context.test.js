@@ -248,6 +248,19 @@ async function main() {
           await engine.evaluate('(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');
           assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),nested);
         }
+        for(const prefix of ['> ', '> > ']) {
+          const quoted=[prefix+'````js',prefix+'# literal **bold**',prefix,prefix+'```',prefix+'````','outside'].join('\r\n');
+          const view=await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.setMarkdown(${JSON.stringify(quoted)});return {source:editor.getMarkdown(),rows:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-code')).map(row=>({text:row.textContent,styled:!!row.querySelector('strong,h1'),classes:row.className})),fences:Array.from(editor.surface.querySelectorAll('.amorist-wysiwyg-fence')).map(row=>row.getBoundingClientRect().height)};})()`);
+          assert.equal(view.source,quoted);assert.equal(view.rows.length,3,`${entry.id}: quoted code physical rows`);
+          assert.equal(view.rows[0].text.replace(/\n$/, ''),'# literal **bold**');assert.equal(view.rows[2].text.replace(/\n$/, ''),'```');
+          assert.ok(view.rows.every(row=>!row.styled&&!/wysiwyg-(h[1-6]|list|quote|task)/.test(row.classes)));
+          assert.deepEqual(view.fences,[0,0]);
+          const at=quoted.indexOf('# literal **bold**')+'# literal **bold**'.length;
+          await engine.evaluate(`(() => {const editor=window.__codeRegression;editor.focus();editor.setSurfaceSelection(${at},${at});return true;})()`);
+          await sendKeys([{key:'Enter'}]);assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),quoted.slice(0,at)+'\r\n'+prefix+quoted.slice(at));
+          await engine.evaluate('(() => {const editor=window.__codeRegression;editor.undo();editor.showSourceMode();editor.showWysiwygMode();return true;})()');
+          assert.equal(await engine.evaluate('window.__codeRegression.getMarkdown()'),quoted);
+        }
         console.log(`code-context: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

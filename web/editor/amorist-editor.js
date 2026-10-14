@@ -131,6 +131,16 @@
     return columns;
   }
 
+  function quotePrefix(raw, depth) {
+    let offset = 0;
+    for (let level = 0; level < depth; level += 1) {
+      const marker = raw.slice(offset).match(/^ {0,3}>[ \t]?/);
+      if (!marker) return null;
+      offset += marker[0].length;
+    }
+    return raw.slice(0, offset);
+  }
+
   class AmoristEditor {
     constructor(container, options) {
       if (!DocumentModel || !TransactionJournal) {
@@ -398,27 +408,39 @@
       }
       while (index < descriptors.length) {
         if (descriptors[index].unitType === "literal") { index += 1; continue; }
-        const opening = descriptors[index].raw.match(/^ {0,3}(`{3,}|~{3,}).*$/);
+        const quoteDepth = descriptors[index].projection.quoteDepth || 0;
+        const outerPrefix = quoteDepth ? quotePrefix(descriptors[index].raw, quoteDepth) : "";
+        const opening = descriptors[index].raw.slice(outerPrefix.length).match(/^ {0,3}(`{3,}|~{3,}).*$/);
         if (opening) {
           const marker = opening[1][0];
           const length = opening[1].length;
-          let end = index + 1;
+          let end = index;
           const closing = new RegExp(`^ {0,3}\\${marker}{${length},}\\s*$`);
-          while (end < descriptors.length && !closing.test(descriptors[end].raw)) end += 1;
-          const hasClosingFence = end < descriptors.length;
-          if (!hasClosingFence) end = descriptors.length - 1;
+          let hasClosingFence = false;
+          for (let next = index + 1; next < descriptors.length; next += 1) {
+            const prefix = quoteDepth ? quotePrefix(descriptors[next].raw, quoteDepth) : "";
+            if (prefix === null && descriptors[next].raw.trim()) break;
+            end = next;
+            if (closing.test(descriptors[next].raw.slice((prefix || "").length))) {
+              hasClosingFence = true;
+              break;
+            }
+          }
           for (let at = index; at <= end; at += 1) {
             Object.assign(descriptors[at], {
               unitType: "code",
               unitStart: index,
               unitEnd: end,
               codeContent: at > index && (!hasClosingFence || at < end),
+              containerPrefix: quoteDepth ? quotePrefix(descriptors[at].raw, quoteDepth) || "" : "",
+              containerQuoteDepth: quoteDepth,
             });
             // Classify the containing block before interpreting its contents.
             // Markdown-looking text inside code is literal, including fences
             // shorter than the opening delimiter.
             descriptors[at].projection = descriptors[at].codeContent
-              ? { prefix: 0, text: descriptors[at].raw, tag: "pre" }
+              ? { prefix: descriptors[at].containerPrefix.length,
+                  text: descriptors[at].raw.slice(descriptors[at].containerPrefix.length), tag: "pre" }
               : { prefix: descriptors[at].raw.length, text: "", tag: "pre", fence: true };
           }
           index = end + 1;
@@ -608,7 +630,9 @@
       if (descriptor && (descriptor.unitType === "code" || descriptor.unitType === "literal" || descriptor.projection.referenceDefinition)) {
         return { kind: "code", start: descriptor.start, end: descriptor.end,
           contentStart: descriptor.start, fence: descriptor.projection.fence,
-          indent: (descriptor.raw.match(/^[ \t]*/) || [""])[0] };
+          containerPrefix: descriptor.containerPrefix || "",
+          indent: (descriptor.containerPrefix || "")
+            + (descriptor.raw.slice((descriptor.containerPrefix || "").length).match(/^[ \t]*/) || [""])[0] };
       }
       if (descriptor) {
         const base=descriptor.start+descriptor.projection.prefix;
@@ -694,7 +718,7 @@
           this.appendSourceText(row, projection.text, projection.prefix, raw.length);
         } else if (descriptor.codeContent) {
           row.classList.add("amorist-wysiwyg-code");
-          this.appendSourceText(row, raw || CARET_SENTINEL, 0, raw.length);
+          this.appendSourceText(row, projection.text || CARET_SENTINEL, projection.prefix, raw.length);
         } else if (descriptor.unitType === "table") {
           this.renderTableRow(row, raw);
         } else if (typeof projection.checked === "boolean") {
@@ -762,6 +786,10 @@
     renderCodeBlock(start, end) {
       const block = document.createElement("div");
       block.className = "amorist-wysiwyg-block amorist-wysiwyg-code-block";
+      if (this.lineDescriptors[start].containerQuoteDepth) {
+        block.classList.add("amorist-wysiwyg-quoted-code");
+        block.style.setProperty("--quote-depth", String(this.lineDescriptors[start].containerQuoteDepth));
+      }
       block.dataset.unitStart = String(start);
       block.dataset.unitEnd = String(end);
       for (let index = start; index <= end; index += 1) {
@@ -1246,7 +1274,7 @@
         if (context && context.kind === "code") {
           event.preventDefault();
           this.apply(selection.start, selection.end,
-            this.model.lineEndingAt(selection.start) + (context.fence ? "" : context.indent), "code-enter");
+            this.model.lineEndingAt(selection.start) + (context.fence ? context.containerPrefix || "" : context.indent), "code-enter");
           return;
         }
         if (context && (context.kind === "table" || context.kind === "separator")) {

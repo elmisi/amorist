@@ -326,8 +326,11 @@
             latencySamples = [];
             surface().addEventListener("beforeinput", function () {
               var started = performance.now();
+              var samples = latencySamples;
               requestAnimationFrame(function () {
-                latencySamples.push(Math.round((performance.now() - started) * 100) / 100);
+                // A warmup frame can finish after resetLatencies. Keep it in
+                // the batch that received the input, rather than the new batch.
+                samples.push(Math.round((performance.now() - started) * 100) / 100);
               });
             }, true);
             return true;

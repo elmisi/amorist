@@ -2449,5 +2449,21 @@
     "skipped": 0,
     "evidence": "clipboard-list-current-classic-linux.log exit0",
     "scope": "Current sixteen classic Linux regression files, including list-contained code, native key-delivery guarded indentation and unsupported HTML clipboard assertions."
+  },
+  "linuxFullQaAfterClipboardAndList": {
+    "result": "failed",
+    "evidence": "clipboard-list-current-full-qa-linux.log/json exit1",
+    "failedRequirement": "B9 GTK recorded21 samples instead of20; G2 engine disagreement consequent to B9",
+    "nativeFlows": "F1/F2/E1/E2/H1/H2/H3 passed; H4 delegated",
+    "focusedFix": "Frame callbacks keep their original input sample array across reset, so pending warmup frames cannot enter the measured batch. performance-batch-isolation-linux.log exit0 B9 GTK/Chromium green; full suite still requires rerun."
+  },
+  "quotedFencedCodeLinux": {
+    "status": "partial",
+    "implemented": "Container-aware fenced code classification and raw/DOM mapping. Outer quote markers belong to the container; inner code stays literal with no heading/list/quote/task styling. Quote depth decorates the block, hidden fences add no height, Enter preserves exact quote prefix and CRLF.",
+    "evidence": [
+      "quote-code-before-linux.log reproduces missing classification",
+      "quote-code-fence-rows-linux.log exit0 on GTK/Chromium: source preservation, literal syntax, genuine blank row, hidden delimiters, Enter, undo and mode round-trip"
+    ],
+    "remaining": "Quoted indented code, mixed list/quote containers, complete clipboard subtree handling and full current package acceptance remain pending."
   }
 }

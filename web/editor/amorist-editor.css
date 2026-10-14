@@ -207,6 +207,11 @@
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
+.amorist-wysiwyg-quoted-code {
+  border-left: 3px solid var(--muted, #68717d);
+  padding-left: calc(var(--quote-depth, 1) * 1ch);
+}
+
 .amorist-wysiwyg-code {
   white-space: pre;
 }
