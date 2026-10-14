@@ -1684,5 +1684,192 @@
       ],
       "conclusion": "No dependency-free Rust decoder access established yet; do not add an unapproved crate or claim format support from fallback"
     }
+  },
+  "openerIntegrationDevelopment": {
+    "status": "Linux build passed; backend validation and UI integration pending",
+    "version": "2.5.3 exact pin",
+    "linuxBuildEvidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/opener-build-linked-linux.log",
+    "javascriptLinkInterception": false,
+    "genericFrontendPermissionsAdded": false,
+    "javascriptPackageAdded": false,
+    "dependencyDelta": [
+      {
+        "name": "async-broadcast",
+        "version": "0.7.2"
+      },
+      {
+        "name": "async-channel",
+        "version": "2.5.0"
+      },
+      {
+        "name": "async-executor",
+        "version": "1.14.0"
+      },
+      {
+        "name": "async-io",
+        "version": "2.6.0"
+      },
+      {
+        "name": "async-lock",
+        "version": "3.4.2"
+      },
+      {
+        "name": "async-process",
+        "version": "2.5.0"
+      },
+      {
+        "name": "async-recursion",
+        "version": "1.2.0"
+      },
+      {
+        "name": "async-signal",
+        "version": "0.2.14"
+      },
+      {
+        "name": "async-task",
+        "version": "4.7.1"
+      },
+      {
+        "name": "async-trait",
+        "version": "0.1.92"
+      },
+      {
+        "name": "blocking",
+        "version": "1.7.0"
+      },
+      {
+        "name": "concurrent-queue",
+        "version": "2.5.0"
+      },
+      {
+        "name": "endi",
+        "version": "1.1.1"
+      },
+      {
+        "name": "enumflags2",
+        "version": "0.7.12"
+      },
+      {
+        "name": "enumflags2_derive",
+        "version": "0.7.12"
+      },
+      {
+        "name": "errno",
+        "version": "0.3.14"
+      },
+      {
+        "name": "event-listener",
+        "version": "5.4.2"
+      },
+      {
+        "name": "event-listener-strategy",
+        "version": "0.5.4"
+      },
+      {
+        "name": "futures-lite",
+        "version": "2.6.1"
+      },
+      {
+        "name": "hermit-abi",
+        "version": "0.5.3"
+      },
+      {
+        "name": "is-docker",
+        "version": "0.2.0"
+      },
+      {
+        "name": "is-wsl",
+        "version": "0.4.0"
+      },
+      {
+        "name": "linux-raw-sys",
+        "version": "0.12.1"
+      },
+      {
+        "name": "open",
+        "version": "5.4.4"
+      },
+      {
+        "name": "ordered-stream",
+        "version": "0.2.0"
+      },
+      {
+        "name": "parking",
+        "version": "2.2.1"
+      },
+      {
+        "name": "piper",
+        "version": "0.2.5"
+      },
+      {
+        "name": "polling",
+        "version": "3.11.0"
+      },
+      {
+        "name": "rustix",
+        "version": "1.1.5"
+      },
+      {
+        "name": "signal-hook-registry",
+        "version": "1.4.8"
+      },
+      {
+        "name": "syn",
+        "version": "3.0.9"
+      },
+      {
+        "name": "tauri-plugin-opener",
+        "version": "2.5.3"
+      },
+      {
+        "name": "tempfile",
+        "version": "3.27.0"
+      },
+      {
+        "name": "tracing-attributes",
+        "version": "0.1.31"
+      },
+      {
+        "name": "uds_windows",
+        "version": "1.2.1"
+      },
+      {
+        "name": "zbus",
+        "version": "5.19.0"
+      },
+      {
+        "name": "zbus_macros",
+        "version": "5.19.0"
+      },
+      {
+        "name": "zbus_names",
+        "version": "4.3.4"
+      },
+      {
+        "name": "zcheapstr",
+        "version": "1.1.0"
+      },
+      {
+        "name": "zvariant",
+        "version": "5.15.0"
+      },
+      {
+        "name": "zvariant_derive",
+        "version": "5.15.0"
+      },
+      {
+        "name": "zvariant_utils",
+        "version": "4.2.0"
+      }
+    ],
+    "remaining": [
+      "validated backend command",
+      "Ctrl/Cmd click and same-document heading behavior",
+      "local Markdown new instance and heading anchor",
+      "accessible shared link dialog",
+      "Windows/macOS compatibility",
+      "three package byte deltas",
+      "native activation acceptance"
+    ]
   }
 }
