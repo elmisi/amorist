@@ -1476,6 +1476,29 @@
         },
         "scope": "Current image atom/remote-load/navigation/table-layout changes plus existing editor regressions; local protocol and package acceptance are not certified"
       }
+    },
+    "localImageProtocolDevelopment": {
+      "status": "content signature classifier implemented; protocol/store/lifecycle integration pending",
+      "mimeClassifier": {
+        "pass": 2,
+        "fail": 0,
+        "report": "image-mime-rust-linux.log",
+        "scope": [
+          "PNG/JPEG/GIF/WebP/BMP signatures",
+          "AVIF major/compatible brands with box bounds",
+          "UTF8 SVG with XML declaration/comments",
+          "reject HTML, nonimage and malformed/unknown headers"
+        ],
+        "limit": "Header classification is not a full image decoder; browser decode and valid format fixtures remain required"
+      },
+      "remaining": [
+        "document-scoped opaque resource store",
+        "relative/escaped/Unicode/Windows reference resolution",
+        "asynchronous Tauri protocol transport",
+        "New/Open/SaveAs invalidation",
+        "frontend integration and native format acceptance",
+        "SVG encoding/doctype completeness"
+      ]
     }
   }
 }

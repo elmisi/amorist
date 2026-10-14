@@ -13,6 +13,7 @@ mod document;
 mod instances;
 mod native_open;
 mod settings;
+mod image_resources;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
