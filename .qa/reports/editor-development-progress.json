@@ -2968,5 +2968,15 @@
       "direct-list-fence-task-wrapper-linux.log exit0 GTK/Chromium"
     ],
     "remaining": "Final full contract and native/package/platform acceptance remain pending."
+  },
+  "originalSevenReportsCurrentLinux": {
+    "inventory": ".qa/reports/editor-problem-cases-20261013.json",
+    "sourceCommit": "034cfa9",
+    "result": "all seven full snapshots pass GTK/Chromium; original hashes and file bytes unchanged",
+    "evidence": [
+      "original-reports-current-linux.log exit0",
+      "original-reports-current-linux.json"
+    ],
+    "remaining": "Final current all-platform/native/package and complete review-loop end-to-end acceptance remain pending."
   }
 }

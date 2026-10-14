@@ -17,7 +17,40 @@
         "webkitgtk",
         "chromium-linux"
       ],
-      "explanation": "An existing identical matching delimiter closes the current block; opening does not rewrite that source. Creating a block chooses a delimiter longer than all content backtick or tilde runs."
+      "explanation": "An existing identical matching delimiter closes the current block; opening does not rewrite that source. Creating a block chooses a delimiter longer than all content backtick or tilde runs.",
+      "latestLinuxSnapshotVerification": {
+        "sourceCommit": "034cfa9",
+        "results": [
+          {
+            "engine": "webkitgtk",
+            "id": "BUG-001",
+            "zeroFences": true,
+            "undo": true,
+            "completeRows": true,
+            "joinedQuotes": true,
+            "unchanged": true,
+            "modeRoundTrip": true,
+            "literalCode": true,
+            "edited": true,
+            "quoteChecks": 0
+          },
+          {
+            "engine": "chromium",
+            "id": "BUG-001",
+            "unchanged": true,
+            "completeRows": true,
+            "literalCode": true,
+            "zeroFences": true,
+            "quoteChecks": 0,
+            "joinedQuotes": true,
+            "modeRoundTrip": true,
+            "edited": true,
+            "undo": true
+          }
+        ],
+        "evidence": "original-reports-current-linux.log/json",
+        "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
+      }
     },
     {
       "id": "BUG-002",
@@ -34,7 +67,40 @@
         "chromium-linux",
         "safari",
         "chromium-macos"
-      ]
+      ],
+      "latestLinuxSnapshotVerification": {
+        "sourceCommit": "034cfa9",
+        "results": [
+          {
+            "engine": "webkitgtk",
+            "id": "BUG-002",
+            "zeroFences": true,
+            "undo": true,
+            "completeRows": true,
+            "joinedQuotes": true,
+            "unchanged": true,
+            "modeRoundTrip": true,
+            "literalCode": true,
+            "edited": true,
+            "quoteChecks": 0
+          },
+          {
+            "engine": "chromium",
+            "id": "BUG-002",
+            "unchanged": true,
+            "completeRows": true,
+            "literalCode": true,
+            "zeroFences": true,
+            "quoteChecks": 0,
+            "joinedQuotes": true,
+            "modeRoundTrip": true,
+            "edited": true,
+            "undo": true
+          }
+        ],
+        "evidence": "original-reports-current-linux.log/json",
+        "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
+      }
     },
     {
       "id": "BUG-003",
@@ -51,7 +117,40 @@
         "chromium-linux",
         "safari",
         "chromium-macos"
-      ]
+      ],
+      "latestLinuxSnapshotVerification": {
+        "sourceCommit": "034cfa9",
+        "results": [
+          {
+            "engine": "webkitgtk",
+            "id": "BUG-003",
+            "zeroFences": true,
+            "undo": true,
+            "completeRows": true,
+            "joinedQuotes": true,
+            "unchanged": true,
+            "modeRoundTrip": true,
+            "literalCode": true,
+            "edited": true,
+            "quoteChecks": 0
+          },
+          {
+            "engine": "chromium",
+            "id": "BUG-003",
+            "unchanged": true,
+            "completeRows": true,
+            "literalCode": true,
+            "zeroFences": true,
+            "quoteChecks": 0,
+            "joinedQuotes": true,
+            "modeRoundTrip": true,
+            "edited": true,
+            "undo": true
+          }
+        ],
+        "evidence": "original-reports-current-linux.log/json",
+        "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
+      }
     },
     {
       "id": "BUG-004",
@@ -66,7 +165,40 @@
       "verifiedEngines": [
         "webkitgtk",
         "chromium-linux"
-      ]
+      ],
+      "latestLinuxSnapshotVerification": {
+        "sourceCommit": "034cfa9",
+        "results": [
+          {
+            "engine": "webkitgtk",
+            "id": "BUG-004",
+            "zeroFences": true,
+            "undo": true,
+            "completeRows": true,
+            "joinedQuotes": true,
+            "unchanged": true,
+            "modeRoundTrip": true,
+            "literalCode": true,
+            "edited": true,
+            "quoteChecks": 0
+          },
+          {
+            "engine": "chromium",
+            "id": "BUG-004",
+            "unchanged": true,
+            "completeRows": true,
+            "literalCode": true,
+            "zeroFences": true,
+            "quoteChecks": 0,
+            "joinedQuotes": true,
+            "modeRoundTrip": true,
+            "edited": true,
+            "undo": true
+          }
+        ],
+        "evidence": "original-reports-current-linux.log/json",
+        "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
+      }
     },
     {
       "id": "BUG-005",
@@ -83,7 +215,40 @@
         "chromium-linux",
         "safari",
         "chromium-macos"
-      ]
+      ],
+      "latestLinuxSnapshotVerification": {
+        "sourceCommit": "034cfa9",
+        "results": [
+          {
+            "engine": "webkitgtk",
+            "id": "BUG-005",
+            "zeroFences": true,
+            "undo": true,
+            "completeRows": true,
+            "joinedQuotes": true,
+            "unchanged": true,
+            "modeRoundTrip": true,
+            "literalCode": true,
+            "edited": true,
+            "quoteChecks": 0
+          },
+          {
+            "engine": "chromium",
+            "id": "BUG-005",
+            "unchanged": true,
+            "completeRows": true,
+            "literalCode": true,
+            "zeroFences": true,
+            "quoteChecks": 0,
+            "joinedQuotes": true,
+            "modeRoundTrip": true,
+            "edited": true,
+            "undo": true
+          }
+        ],
+        "evidence": "original-reports-current-linux.log/json",
+        "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
+      }
     },
     {
       "id": "BUG-006",
@@ -98,7 +263,40 @@
       "verifiedEngines": [
         "webkitgtk",
         "chromium-linux"
-      ]
+      ],
+      "latestLinuxSnapshotVerification": {
+        "sourceCommit": "034cfa9",
+        "results": [
+          {
+            "engine": "webkitgtk",
+            "id": "BUG-006",
+            "zeroFences": true,
+            "undo": true,
+            "completeRows": true,
+            "joinedQuotes": true,
+            "unchanged": true,
+            "modeRoundTrip": true,
+            "literalCode": true,
+            "edited": true,
+            "quoteChecks": 0
+          },
+          {
+            "engine": "chromium",
+            "id": "BUG-006",
+            "unchanged": true,
+            "completeRows": true,
+            "literalCode": true,
+            "zeroFences": true,
+            "quoteChecks": 0,
+            "joinedQuotes": true,
+            "modeRoundTrip": true,
+            "edited": true,
+            "undo": true
+          }
+        ],
+        "evidence": "original-reports-current-linux.log/json",
+        "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
+      }
     },
     {
       "id": "BUG-007",
@@ -113,7 +311,50 @@
       "verifiedEngines": [
         "webkitgtk",
         "chromium-linux"
-      ]
+      ],
+      "latestLinuxSnapshotVerification": {
+        "sourceCommit": "034cfa9",
+        "results": [
+          {
+            "engine": "webkitgtk",
+            "id": "BUG-007",
+            "zeroFences": true,
+            "undo": true,
+            "completeRows": true,
+            "joinedQuotes": true,
+            "unchanged": true,
+            "modeRoundTrip": true,
+            "literalCode": true,
+            "edited": true,
+            "quoteChecks": 1
+          },
+          {
+            "engine": "chromium",
+            "id": "BUG-007",
+            "unchanged": true,
+            "completeRows": true,
+            "literalCode": true,
+            "zeroFences": true,
+            "quoteChecks": 1,
+            "joinedQuotes": true,
+            "modeRoundTrip": true,
+            "edited": true,
+            "undo": true
+          }
+        ],
+        "evidence": "original-reports-current-linux.log/json",
+        "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
+      }
     }
-  ]
+  ],
+  "latestInventory": {
+    "records": 7,
+    "newRecords": 0,
+    "originalFileSha256": "84af7ebdb58cdbebad52cfb4e5934bcb9577b4e3c6b1bf41ddde04bd6719f83f",
+    "unchanged": true,
+    "pendingFinalPlatforms": [
+      "Windows current native/package acceptance",
+      "macOS current native/package acceptance"
+    ]
+  }
 }
