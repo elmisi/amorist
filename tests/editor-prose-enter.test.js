@@ -58,6 +58,31 @@ async function main(){
       await sendKeys([{key:"Tab"}]);
       assert.equal((await state()).source,"  alpha \\\n  beta");
       assert.deepEqual((await state()).boundaries,[{marker:8,escapes:[]}],`${entry.id}: indenting rows preserves generated-boundary ownership`);
+      await sendKeys([{key:"Tab"}]);
+      assert.equal((await state()).source,"    alpha \n    beta",`${entry.id}: making the whole selection code removes its internal automatic break`);
+      assert.equal((await state()).boundaries.length,0);
+      await engine.evaluate("(()=>{window.__prose.undo();return true})()");
+      assert.equal((await state()).source,"  alpha \\\n  beta");
+      assert.deepEqual((await state()).boundaries,[{marker:8,escapes:[]}],`${entry.id}: one undo restores indentation and owned marker`);
+      for(const tail of ['# title','- item','> note','```\ncode\n```']) {
+        const original='alpha '+tail;await mount(original,6);await sendKeys([{key:'Enter'}]);
+        assert.equal((await state()).source,'alpha \n'+tail,`${entry.id}: splitting before a block does not retain a newly generated hard break`);
+        assert.equal((await state()).boundaries.length,0);
+        await engine.evaluate('(()=>{window.__prose.undo();return true})()');assert.equal((await state()).source,original);
+      }
+      await mount('alpha beta',6);await sendKeys([{key:'Enter'}]);
+      await engine.evaluate("(()=>{const editor=window.__prose;editor.setSurfaceSelection(editor.getMarkdown().indexOf('beta'),editor.getMarkdown().length);editor.handleCopy({clipboardData:{setData(){}},preventDefault(){}},true);return true})()");
+      assert.equal((await state()).source,'alpha \n',`${entry.id}: cutting the next row removes its redundant owned boundary`);
+      assert.equal((await state()).boundaries.length,0);
+      await engine.evaluate('(()=>{window.__prose.undo();return true})()');assert.equal((await state()).source,'alpha \\\nbeta');assert.equal((await state()).boundaries.length,1);
+      const mixedOriginal='literal\\\r\n\r\nalpha 😀 beta\rneighbor';await mount(mixedOriginal,mixedOriginal.indexOf('beta'));await sendKeys([{key:'Enter'}]);
+      await engine.evaluate("(()=>{const editor=window.__prose,s=editor.getMarkdown();editor.restoreRawSelection({start:s.indexOf('alpha'),end:s.indexOf('beta')+4,direction:'backward'});return true})()");
+      await sendKeys([{key:'Tab'},{key:'Tab'}]);
+      const mixedExpected='literal\\\r\n\r\n    alpha 😀 \r    beta\rneighbor';
+      assert.equal((await state()).source,mixedExpected,`${entry.id}: whole-unit cleanup preserves mixed endings, Unicode and unrelated literal marker`);
+      const mixedSelection=await engine.evaluate('({span:window.__prose.selectionRaw(),direction:window.__prose.selectionDirection()})');
+      assert.deepEqual(mixedSelection,{span:{start:mixedExpected.indexOf('alpha'),end:mixedExpected.indexOf('beta')+4},direction:'backward'});
+      await engine.evaluate('(()=>{window.__prose.undo();return true})()');assert.equal((await state()).source,'literal\\\r\n\r\n  alpha 😀 \\\r  beta\rneighbor');assert.equal((await state()).boundaries.length,1);
       const inline="before `alpha beta` after",codeAt=inline.indexOf("beta");
       for(const shortcut of ["- ","# ","> "]) {
         await mount("alpha",5);await sendKeys([{key:"Enter"}]);

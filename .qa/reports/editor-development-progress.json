@@ -41,7 +41,7 @@
       "id": 6,
       "name": "enter-tab-and-local-cleanup",
       "status": "partial",
-      "evidence": "Tab/Shift+Tab in both modes preserves mixed terminators, list subtrees and oriented selections, with undo/redo. Visual prose Enter now generates one local hard-break marker, hides its syntax, removes owned markers for paragraph creation/Backspace joins and protects literal escaping or explicitly retyped source. Provenance survives row indentation. Full Linux suite and eleven isolated regression scripts passed. Structure-transition cleanup, remaining boundary operations, general gesture planning and actual recovery persistence are still pending. Forward Delete now joins owned boundaries atomically with undo/provenance restoration, including mixed terminators and literal escaping; full Linux suite and eleven regressions passed. Structural transitions after an owned boundary now remove the redundant marker in the same transaction, with manual-marker preservation and undo restoration. Cleanup within larger transformed units and recovery integration remain pending."
+      "evidence": "Shared planEdit plans raw replacement, selection, provenance and affected structure before one journal transaction. Enter/Tab/Backspace/Delete and cut preserve original terminators and manual markers; cleanup now handles internal owned boundaries in transformed units, newly structural rows and empty rows. Directed GTK/Chromium tests and final full Linux contract passed; actual final-package recovery provenance and all-platform acceptance pending. First full-run intermittent GTK B2 failure retained with80 traced passes and green isolated/full rechecks."
     },
     {
       "id": 7,
@@ -3301,5 +3301,33 @@
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     }
+  },
+  "gesturePlanningAndOwnedBoundaryCleanupLinux": {
+    "status": "implemented; directed and final full Linux contract passed; candidate package/native proofs pending",
+    "behavior": [
+      "planEdit returns one raw replacement, final selection, boundary provenance and affected structural span; apply journals the planned replacement once",
+      "Owned markers inside a selection transformed to code are removed in the same indentation transaction",
+      "New Enter before structural content and cut leaving an empty row remove redundant automatic markers",
+      "Literal/manual markers and unrelated content remain untouched; undo restores markers and indentation together"
+    ],
+    "evidence": [
+      "whole-unit-boundary-cleanup-before-linux.log: reproduced stale internal marker after second Tab",
+      "whole-unit-boundary-cleanup-after-linux.log: prose/indentation passed GTK/Chromium",
+      "gesture-planner-context-regression-linux.log: structural Enter and cut context tests passed GTK/Chromium",
+      "gesture-planner-all-classic-linux.log:16 passed, prose failed due invalid indented-code fixture without paragraph boundary; corrected fixture",
+      "gesture-planner-mixed-boundary-regression-linux.log: prose passed GTK/Chromium after fixture correction",
+      "gesture-planner-full-contract-first-linux.json/log: B2 GTK failed unexpected extra character on first row; Chromium passed; other requirements passed, H4 delegated",
+      "gesture-planner-family-b-recheck-linux.json/log: isolated complete family B green on GTK/Chromium",
+      "gesture-planner-b2-trace-linux.log: same long fixture passed30 exact-insertion repetitions with beforeinput offset trace",
+      "gesture-planner-b2-corpus-trace-linux.log:50 exact-insertion cycles across five original B2 fixtures passed with beforeinput offsets recorded",
+      "gesture-planner-full-contract-recheck-linux.json/log: final full contract green; actual Finder/Dock delegated to macOS"
+    ],
+    "remaining": "Final candidate package/native/recovery/platform acceptance pending. Preserve and investigate first-run intermittent B2 typing failure during native acceptance;80 exact insertions plus isolated family B and full recheck passed, cause not identified."
+  },
+  "linuxCandidatePackaging": {
+    "status": "prepared; build pending",
+    "previousArtifactsBackup": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-packages-before-gesture-planner/manifest.json",
+    "decoderConfig": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-candidate-combined-decoder-config.json",
+    "deliveryBlocked": true
   }
 }

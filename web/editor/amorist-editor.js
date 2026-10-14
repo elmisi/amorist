@@ -1545,30 +1545,45 @@
       selection.addRange(range);
     }
 
-    apply(start, end, replacement, gesture, boundaryState) {
-      const beforeSource = this.model.source;
-      const beforeDescriptors = this.lineDescriptors;
-      if(this.mode==="wysiwyg" && this.model.automaticBreaks.length) {
+    planEdit(gesture, selection) {
+      let {start,end}=selection;
+      let {replacement,boundaryState}=gesture;
+      const beforeSource=this.model.source;
+      let afterSelection=gesture.selectionAfter || {start:start+replacement.length,end:start+replacement.length};
+      if(this.mode==="wysiwyg" && (this.model.automaticBreaks.length || boundaryState?.automaticBreaks.length)) {
         const nextSource=beforeSource.slice(0,start)+replacement+beforeSource.slice(end);
         const descriptors=this.buildProjection(nextSource);
-        const row=this.descriptorAtRaw(start,descriptors);
-        const projection=row.projection;
-        const structural=row.unitType!=="line" || projection.list || projection.tag!=="div" || projection.rule || projection.setextDelimiter;
         const state=boundaryState || this.model.boundaryStateAfterEdit(start,end,replacement);
-        const record=state.automaticBreaks.find(record=>record.marker<start
-          && record.marker+1+(nextSource.slice(record.marker+1,record.marker+3)==="\r\n"?2:1)===row.start);
-        if(structural && record) {
-          const marker=record.marker;
-          replacement=beforeSource.slice(marker+1,start)+replacement;
-          start=marker;
-          boundaryState={...state,automaticBreaks:state.automaticBreaks.filter(item=>item!==record)
-            .map(item=>({marker:item.marker>marker?item.marker-1:item.marker,escapes:item.escapes.map(at=>at>marker?at-1:at)}))};
+        const changedEnd=start+replacement.length;
+        const removed=state.automaticBreaks.filter(record=>{
+          const next=record.marker+1+(nextSource.slice(record.marker+1,record.marker+3)==="\r\n"?2:1);
+          const row=this.descriptorAtRaw(next,descriptors),projection=row?.projection;
+          if(!row || row.start!==next || row.start>changedEnd || row.end<start) return false;
+          return !row.raw.trim() || row.unitType!=="line" || projection.list || projection.tag!=="div" || projection.rule || projection.setextDelimiter;
+        }).map(record=>record.marker).sort((a,b)=>a-b);
+        if(removed.length) {
+          const map=position=>position-removed.filter(marker=>marker<position).length;
+          start=Math.min(start,removed[0]);
+          replacement=nextSource.slice(start,changedEnd);
+          for(const marker of removed.slice().reverse())replacement=replacement.slice(0,marker-start)+replacement.slice(marker-start+1);
+          boundaryState={...state,automaticBreaks:state.automaticBreaks.filter(record=>!removed.includes(record.marker))
+            .map(record=>({marker:map(record.marker),escapes:record.escapes.map(map)}))};
+          afterSelection={...afterSelection,start:map(afterSelection.start),end:map(afterSelection.end)};
         }
       }
-      const entry = this.model.transaction(start, end, replacement, gesture, boundaryState);
+      const first=this.descriptorAtRaw(start),last=this.descriptorAtRaw(Math.max(start,end-1));
+      return {start,end,replacement,boundaryState,selection:afterSelection,
+        structure:{start:this.lineDescriptors[first.unitStart??first.index].start,end:this.lineDescriptors[last.unitEnd??last.index].end}};
+    }
+
+    apply(start, end, replacement, gesture, boundaryState, selectionAfter) {
+      const beforeSource = this.model.source;
+      const beforeDescriptors = this.lineDescriptors;
+      const plan=this.planEdit({kind:gesture,replacement,boundaryState,selectionAfter},{start,end});
+      const entry = this.model.transaction(plan.start, plan.end, plan.replacement, gesture, plan.boundaryState);
+      if(selectionAfter)entry.selectionAfter=plan.selection;
       this.history.push(entry);
-      const caret = start + replacement.length;
-      this.patchProjection(beforeSource, beforeDescriptors, entry.forward, { start: caret, end: caret });
+      this.patchProjection(beforeSource, beforeDescriptors, entry.forward, plan.selection);
       this.emitChange();
       return entry;
     }
@@ -1859,9 +1874,9 @@
       const afterSelection = { start: map(beforeSelection.start), end: map(beforeSelection.end), direction: beforeSelection.direction };
       const boundaries=this.model.boundaryState();
       boundaries.automaticBreaks=boundaries.automaticBreaks.map(record=>({marker:map(record.marker),escapes:record.escapes.map(map)}));
-      const entry = this.apply(start, end, replacement, outdent ? "outdent" : "indent", boundaries);
-      entry.selectionBefore = beforeSelection; entry.selectionAfter = afterSelection;
-      this.restoreRawSelection(afterSelection);
+      const entry = this.apply(start, end, replacement, outdent ? "outdent" : "indent", boundaries, afterSelection);
+      entry.selectionBefore = beforeSelection;
+      this.restoreRawSelection(entry.selectionAfter);
     }
 
     handleSourceInput() {
