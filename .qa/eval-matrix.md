@@ -47,19 +47,20 @@ generated; the contract is the source of truth.
 | `REQ-I2` | Inline-link grammar separates destinations and titles, honors escaped and balanced parent… | R-006 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-I3` | Reference links resolve full, collapsed and shortcut labels against the first matching do… | R-006 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-J1` | Settings provides an isolated preview, approved font sizes/scales/palette, defaults and t… | R-022 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-K1` | Copy/cut/paste preserves selected Markdown and formatting through a validated internal pa… | R-008 | deterministic | blocking | full | medium | low | RED today |
 
 ## Reading this table
 
 **State** is measured against the repository at commit a9d7e73, not assumed:
-8 requirements hold today, 1 holds partially, 29 fail. The suite is
+8 requirements hold today, 1 holds partially, 30 fail. The suite is
 expected to be red on first run — the contract specifies the editor that must
 exist, not the one that does.
 
-**Gate**: 37 blocking, 1 advisory. A blocking failure stops
+**Gate**: 38 blocking, 1 advisory. A blocking failure stops
 publication of a release; it does not stop a commit, a merge or a push
 (`G-PUSH` in the contract).
 
-**Verification**: 37 deterministic, 1 manual. No requirement is verified by
+**Verification**: 38 deterministic, 1 manual. No requirement is verified by
 a model. The runner never calls one, so a red result always means the code is
 wrong — never that a service was unavailable or a model was inconsistent.
 

@@ -1145,7 +1145,6 @@
         "reference dependencies and cross-document resource context",
         "recursive external HTML structure conversion",
         "empty or HTML-only clipboard degradation",
-        "dedicated clipboard contract gate",
         "real clipboard MIME/fallback across windows and platforms",
         "native plain-paste shortcut acceptance"
       ],
@@ -1156,6 +1155,12 @@
           "empty paste preserves selection",
           "HTML-only source/code paste remains literal"
         ]
+      },
+      "contractGate": {
+        "id": "REQ-K1",
+        "exitCode": 0,
+        "report": "clipboard-k1-qa-linux.json",
+        "scope": "Real editor handlers with controlled clipboard formats, both applicable Linux browser engines; native transport is not certified"
       }
     },
     "externalHtmlStructureDevelopment": {

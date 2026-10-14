@@ -126,7 +126,7 @@ risks:
     mitigation: >
       Declare, per fixture, the tokens that must survive; convert what is
       convertible and degrade the rest to readable text.
-    verification_ids: [REQ-D1]
+    verification_ids: [REQ-D1, REQ-K1]
     status: open
 
   - id: R-009

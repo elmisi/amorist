@@ -3,8 +3,9 @@ const assert=require('node:assert/strict');
 const path=require('node:path');
 const {resolveEngines}=require('./qa/lib/engines');
 const {startStaticServer}=require('./qa/lib/server');
-async function main(){
- const entries=resolveEngines().filter(entry=>entry.applicable);assert.ok(entries.length);
+async function main(options={}){
+ const exercised=[];
+ const entries=resolveEngines(options.engineIds).filter(entry=>entry.applicable);assert.ok(entries.length,"No applicable engine declared for clipboard probes");
  const server=await startStaticServer(path.resolve(__dirname,'..'));
  try {for(const entry of entries){
   assert.ok(entry.available,entry.reason);const engine=entry.create();
@@ -116,8 +117,11 @@ async function main(){
     editor.handlePaste({clipboardData:{getData:type=>data.get(type)||''},preventDefault(){}});return editor.getMarkdown();
    })()`);
    assert.equal(orderedFallback,'5. First\n12. Second\n13. Third');
+   exercised.push(entry.id);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}
+ return {engines:exercised};
 }
-main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
+module.exports={run:main};
+if(require.main===module) main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

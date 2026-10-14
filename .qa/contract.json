@@ -595,6 +595,19 @@
       "risks": [
         "R-022"
       ]
+    },
+    {
+      "id": "REQ-K1",
+      "statement": "Copy/cut/paste preserves selected Markdown and formatting through a validated internal payload and semantic HTML/plain fallbacks. Source/code/plain-paste remain literal; empty clipboard data and failed writes never delete selected work. Incoming reference definitions must not change existing link destinations.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "K",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-008"
+      ]
     }
   ]
 }

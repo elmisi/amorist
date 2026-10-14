@@ -1835,3 +1835,37 @@ requirements:
       This gate tests the real frontend with controlled backend responses. Atomic
       persistence has separate Rust tests. Actual native IPC, concurrent instances,
       restart and package acceptance remain mandatory delivery gates on all platforms.
+
+  - id: REQ-K1
+    statement: >
+      Copy/cut/paste preserves selected Markdown and formatting through a validated
+      internal payload and semantic HTML/plain fallbacks. Source/code/plain-paste
+      remain literal; empty clipboard data and failed writes never delete selected work.
+      Incoming reference definitions must not change existing link destinations.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Clipboard operations must preserve useful structure across modes and documents.
+    risk_id: R-008
+    verification:
+      type: deterministic
+      evidence_required:
+        - partial inline formatting, source copy/cut, cut undo and rejected clipboard writes
+        - internal payload preference, malformed payload fallback and literal source/code/plain paste
+        - empty paste preservation and HTML-only source fallback
+        - copied code/heading/list/quote context and safe fences
+        - reference dependencies, destination collisions and table-cell references
+        - semantic HTML fallback for links/titles, tables, task states and ordered numbers
+      success_condition: >
+        Every applicable browser engine passes the real editor-handler probes with
+        controlled clipboard data. Untouched source remains exact, undo restores edits,
+        selected formatting survives and existing reference destinations stay unchanged.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Controlled clipboard data is not proof of native clipboard transport. Real MIME
+      support, multi-window transfer, shortcuts, nested containers and relative resource
+      context remain mandatory additional delivery work on all published webviews.
