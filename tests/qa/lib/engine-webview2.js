@@ -19,7 +19,7 @@ class WebView2Engine extends TauriEngine {
   const nativeDriver=process.env.AMORIST_QA_EDGE_DRIVER||find('msedgedriver.exe');
   const application=process.env.AMORIST_QA_APPLICATION||path.resolve(__dirname,'../../../src-tauri/target/debug/amorist.exe');
   for(const [name,value] of [['tauri-driver',driver],['Edge WebDriver',nativeDriver],['compiled Amorist application',application]]) {
-   if(!value||!fs.existsSync(value))return {available:false,reason:`Missing ${name} for mandatory Windows WebView2 checks.`};
+   if(!value||!fs.existsSync(value))return {available:false,reason:`${name} was not found for mandatory Windows WebView2 checks.`};
   }
   return {available:true,binary:driver,browser:{application,nativeDriver}};
  }

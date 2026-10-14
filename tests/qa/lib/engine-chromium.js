@@ -44,8 +44,15 @@ function discover() {
     return { available: true, binary: override };
   }
   const tried = [];
+  if(process.platform==="win32") {
+    const roots=[process.env.PROGRAMFILES,process.env['PROGRAMFILES(X86)'],process.env.LOCALAPPDATA].filter(Boolean);
+    for(const root of roots) for(const relative of ['Google/Chrome/Application/chrome.exe','Chromium/Application/chrome.exe','Microsoft/Edge/Application/msedge.exe']) {
+      const candidate=path.join(root,relative);tried.push(candidate);
+      if(fs.existsSync(candidate)) return {available:true,binary:candidate};
+    }
+  }
   for (const candidate of CANDIDATES) {
-    const found = childProcess.spawnSync("which", [candidate], { encoding: "utf8" });
+    const found = childProcess.spawnSync(process.platform==="win32"?"where.exe":"which", [candidate], { encoding: "utf8" });
     if (found.status === 0) return { available: true, binary: found.stdout.trim() };
     tried.push(candidate);
   }

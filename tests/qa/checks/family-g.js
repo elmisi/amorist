@@ -52,6 +52,7 @@ module.exports = [
       // testing this on the other.
       const shipping = process.platform === "darwin"
         ? { id: "safari", variable: "AMORIST_QA_SAFARIDRIVER" }
+        : process.platform === "win32" ? {id:"webview2",variable:"AMORIST_QA_TAURI_DRIVER"}
         : { id: "webkitgtk", variable: "AMORIST_QA_WEBKIT_DRIVER" };
 
       const sabotages = [

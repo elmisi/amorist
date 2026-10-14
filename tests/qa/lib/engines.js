@@ -21,10 +21,12 @@
 const { ChromiumEngine } = require("./engine-chromium");
 const { WebKitGtkEngine } = require("./engine-webkitgtk");
 const { SafariEngine } = require("./engine-safari");
+const { WebView2Engine } = require("./engine-webview2");
 
 // Mirrors REQ-G2's platform_engines. If the two ever disagree, the contract is
 // right and this is wrong.
 const REGISTRY = [
+  {id:"webview2",role:"shipping",platforms:["win32"],description:"the native Windows application WebView2 engine",Engine:WebView2Engine},
   {
     id: "webkitgtk",
     role: "shipping",
@@ -44,7 +46,7 @@ const REGISTRY = [
   {
     id: "chromium",
     role: "stand-in",
-    platforms: ["linux", "darwin"],
+    platforms: ["linux", "darwin", "win32"],
     description: "a Chromium-family browser, kept for speed and for cross-checking",
     Engine: ChromiumEngine,
   },
@@ -92,6 +94,7 @@ function publishedPlatformsNotCovered() {
   return [
     { platform: "linux", covered: platform === "linux" },
     { platform: "macos", covered: platform === "darwin" },
+    { platform: "windows", covered: platform === "win32" },
   ].filter((entry) => !entry.covered).map((entry) => entry.platform);
 }
 
