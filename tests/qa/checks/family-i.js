@@ -116,3 +116,68 @@ module.exports.push({
     return {failures, fixturesExercised};
   },
 });
+
+module.exports.push({
+  id: "REQ-I3", title: "Document reference links resolve and remain editable",
+  async run(ctx) {
+    const failures = [], fixturesExercised = [];
+    const cases = [
+      ["full/collapsed/shortcut Unicode", '[Read][STRASSE] [Straße][] [STRAẞE]\r\n\r\n[Straße]: notes.md "Title"',
+        Array(3).fill({text:"Read", href:"notes.md",title:"Title"}).map((link,i)=>({...link,text:["Read","Straße","STRAẞE"][i]}))],
+      ["first definition", '[name]\n\n[NAME]: first.md\n[name]: second.md', [{text:"name",href:"first.md",title:null}]],
+      ["whitespace", '[Read][ A\t B ]\n\n[a b]: notes.md', [{text:"Read",href:"notes.md",title:null}]],
+      ["unresolved second label suppresses shortcut", '[name][missing]\n\n[name]: notes.md', []],
+      ["literal code", '`[name]`\n\n~~~\n[name]: notes.md\n~~~\n\n[name]', []],
+      ["escaped syntax", '\\[name]\n\n[name]: notes.md', []],
+      ["raw escaped lookup", '[a*b] [a\\*b]\n\n[a\\*b]: notes.md', [{text:"a*b",href:"notes.md",title:null}]],
+      ["paragraph interruption", 'ordinary paragraph\n[name]: notes.md\n\n[name]', []],
+      ["multiline definition", '[name]:\r\n  <docs/λ.md>\r\n  "first\r\nsecond"\r\n\r\n[name]', [{text:"name",href:"docs/λ.md",title:"first\r\nsecond"}]],
+      ["malformed next-line title", '[name]: notes.md\n"unclosed\n\n[name]', [{text:"name",href:"notes.md",title:null}]],
+      ["unsafe decoded destination", '[name]\n\n[name]: javascr&#x69;pt:alert(1)', [{text:"name",href:null,title:null}]],
+      ["nested reference precedence", '[outer [inner]][name]\n\n[inner]: inside.md\n[name]: outside.md', [{text:"inner",href:"inside.md",title:null},{text:"name",href:"outside.md",title:null}]],
+    ];
+    for (const [name, source, expected] of cases) {
+      fixturesExercised.push(name);
+      try {
+        await ctx.page.open(source);
+        const actual = await ctx.page.evaluate(`(() => {
+          const surface = document.querySelector('.amorist-editor-surface');
+          return {links:Array.from(surface.querySelectorAll('a')).map(a=>({text:a.textContent,href:a.getAttribute('href'),title:a.getAttribute('title')})),nested:surface.querySelectorAll('a a').length};
+        })()`);
+        assert.deepEqual(actual.links, expected); assert.equal(actual.nested, 0);
+        assert.equal(await ctx.page.markdown(), source);
+        await ctx.page.toggleMode(); await ctx.page.toggleMode();
+        assert.equal(await ctx.page.markdown(), source);
+      } catch (error) { failures.push({fixture:name,detail:error.message}); }
+    }
+    const source = '[Read][name]\r\n\r\n| Link | Note |\r\n| --- | --- |\r\n| [name] | stable |\r\n\r\n[name]: old.md "Title"\r\n\r\nuntouched tail';
+    fixturesExercised.push('native destination/label edits, table dependencies and undo');
+    try {
+      await ctx.page.open(source); await ctx.page.focusSurface();
+      await ctx.page.evaluate(`(() => { window.__referenceGateTail = document.querySelector('.amorist-editor-surface').lastElementChild; return true; })()`);
+      const at = source.indexOf('old.md');
+      await ctx.page.setRawSelection(at, at+3);
+      await ctx.page.sendKeys(['n']); await ctx.page.settle();
+      assert.equal(await ctx.page.markdown(), source.slice(0,at)+'n'+source.slice(at+3));
+      const updated = await ctx.page.evaluate(`(() => {
+        const surface = document.querySelector('.amorist-editor-surface');
+        return {destinations:Array.from(surface.querySelectorAll('a')).map(a=>a.dataset.linkDestination),tailSame:surface.lastElementChild===window.__referenceGateTail};
+      })()`);
+      assert.deepEqual(updated, {destinations:['n.md','n.md'],tailSame:true});
+      await ctx.page.sendKeys([{key:'z',ctrl:true}]); await ctx.page.settle();
+      assert.equal(await ctx.page.markdown(), source);
+      assert.deepEqual(await ctx.page.evaluate("Array.from(document.querySelectorAll('.amorist-editor-surface a')).map(a=>a.dataset.linkDestination)"), ['old.md','old.md']);
+      await ctx.page.evaluate(`(() => {
+        const node = document.querySelector('.amorist-editor-surface a .amorist-inline-text').firstChild;
+        const range = document.createRange(); range.setStart(node,2); range.collapse(true);
+        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); return true;
+      })()`);
+      await ctx.page.sendKeys(['X']); await ctx.page.settle();
+      assert.equal(await ctx.page.markdown(), source.slice(0,3)+'X'+source.slice(3));
+      await ctx.page.sendKeys([{key:'z',ctrl:true}]); await ctx.page.settle();
+      assert.equal(await ctx.page.markdown(), source);
+      await ctx.page.toggleMode(); await ctx.page.toggleMode(); assert.equal(await ctx.page.markdown(), source);
+    } catch (error) { failures.push({fixture:'native reference edits',detail:error.message}); }
+    return {failures, fixturesExercised};
+  },
+});

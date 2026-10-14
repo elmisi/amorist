@@ -45,19 +45,20 @@ generated; the contract is the source of truth.
 | `REQ-H4` | macOS Finder events survive frontend startup. Initial file arguments and duplicate initia… | R-009 | deterministic | blocking | partial | medium | medium | RED today |
 | `REQ-I1` | URI and email autolinks render as links outside literal code, retain exact source interva… | R-006 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-I2` | Inline-link grammar separates destinations and titles, honors escaped and balanced parent… | R-006 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-I3` | Reference links resolve full, collapsed and shortcut labels against the first matching do… | R-006 | deterministic | blocking | full | medium | low | RED today |
 
 ## Reading this table
 
 **State** is measured against the repository at commit a9d7e73, not assumed:
-8 requirements hold today, 1 holds partially, 27 fail. The suite is
+8 requirements hold today, 1 holds partially, 28 fail. The suite is
 expected to be red on first run — the contract specifies the editor that must
 exist, not the one that does.
 
-**Gate**: 35 blocking, 1 advisory. A blocking failure stops
+**Gate**: 36 blocking, 1 advisory. A blocking failure stops
 publication of a release; it does not stop a commit, a merge or a push
 (`G-PUSH` in the contract).
 
-**Verification**: 35 deterministic, 1 manual. No requirement is verified by
+**Verification**: 36 deterministic, 1 manual. No requirement is verified by
 a model. The runner never calls one, so a red result always means the code is
 wrong — never that a service was unavailable or a model was inconsistent.
 

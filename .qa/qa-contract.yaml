@@ -1769,3 +1769,35 @@ requirements:
       This gate verifies grammar and row-local projection. Cross-row inline
       projection, reference definitions and native activation remain required
       separate work in the approved plan.
+
+  - id: REQ-I3
+    statement: >
+      Reference links resolve full, collapsed and shortcut labels against the
+      first matching document definition, using Unicode case folding and whitespace
+      normalization. Definition metadata remains editable without source rewriting.
+      Editing a definition updates dependent prose and tables, preserving unrelated DOM.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Reference links belong to the approved common Markdown base.
+    risk_id: R-006
+    verification:
+      type: deterministic
+      evidence_required:
+        - full, collapsed and shortcut references, Unicode labels and first-definition precedence
+        - unresolved labels, literal code, escaped syntax and definitions that cannot interrupt prose
+        - multiline destination/title metadata and malformed title fallback
+        - native label/destination edits, dependent table refresh and unrelated DOM preservation
+        - exact CRLF, undo and mode round-trip
+      success_condition: >
+        Resolved labels expose the declared safe destination and title at exact raw
+        intervals. Malformed and unresolved syntax remains readable. Native edits
+        affect only their selected source span; undo restores source and resolution.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Cross-row inline projection, complete nested containers and native external
+      activation remain additional mandatory work under the approved plan.

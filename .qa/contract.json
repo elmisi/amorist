@@ -569,6 +569,19 @@
       "risks": [
         "R-006"
       ]
+    },
+    {
+      "id": "REQ-I3",
+      "statement": "Reference links resolve full, collapsed and shortcut labels against the first matching document definition, using Unicode case folding and whitespace normalization. Definition metadata remains editable without source rewriting. Editing a definition updates dependent prose and tables, preserving unrelated DOM.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "I",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-006"
+      ]
     }
   ]
 }
