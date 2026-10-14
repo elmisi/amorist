@@ -37,6 +37,15 @@
         "description": "Markdown document"
       }
     ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
     "linux": {
       "deb": {
         "desktopTemplate": "linux/amorist.desktop"
