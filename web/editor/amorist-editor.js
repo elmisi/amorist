@@ -5,6 +5,7 @@
   const HtmlToMarkdown = Internals.HtmlToMarkdown;
   const MarkdownCodec = Internals.MarkdownCodec;
   const TableCodec = Internals.TableCodec;
+  const CLIPBOARD_TYPE = "application/x-amorist-markdown+json";
   const CARET_SENTINEL = "\u200b";
   if (!HtmlToMarkdown) throw new Error("AmoristHtmlToMarkdown must load before AmoristEditor.");
   if (!MarkdownCodec) throw new Error("AmoristMarkdownCodec must load before AmoristEditor.");
@@ -199,7 +200,11 @@
 
     bind() {
       this.surface.addEventListener("beforeinput", (event) => this.handleBeforeInput(event));
-      this.surface.addEventListener("paste", (event) => this.handlePaste(event));
+      for (const pane of [this.surface, this.source]) {
+        pane.addEventListener("paste", event => this.handlePaste(event));
+        pane.addEventListener("copy", event => this.handleCopy(event, false));
+        pane.addEventListener("cut", event => this.handleCopy(event, true));
+      }
       this.surface.addEventListener("keydown", (event) => this.handleKeyDown(event));
       this.surface.addEventListener("click", (event) => this.handleClick(event));
       this.source.addEventListener("input", () => this.handleSourceInput());
@@ -1179,6 +1184,10 @@
       if (mod && !event.shiftKey && this.mode === "wysiwyg" && event.key.toLowerCase() === "a") {
         event.preventDefault(); this.selectSurfaceContents(); return;
       }
+      if(mod && event.shiftKey && event.key.toLowerCase()==="v") {
+        this.plainPasteRequested=true;
+        setTimeout(()=>{this.plainPasteRequested=false;},1000);
+      }
       if (mod && !event.shiftKey && event.key.toLowerCase() === "z") { event.preventDefault(); this.undo(); return; }
       if (mod && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"))) { event.preventDefault(); this.redo(); return; }
       if (mod && event.key.toLowerCase() === "f") { event.preventDefault(); this.openFindBar(); return; }
@@ -1314,18 +1323,74 @@
       this.source.focus(); this.source.setSelectionRange(caret, caret);
     }
 
-    handlePaste(event) {
-      const clipboard = event.clipboardData; if (!clipboard) return;
+    clipboardFragment(selection) {
+      const raw=this.model.source;
+      if(this.mode==="source") return raw.slice(selection.start,selection.end);
+      const first=this.descriptorAtRaw(selection.start), last=this.descriptorAtRaw(Math.max(selection.start,selection.end-1));
+      let prefix="", suffix="";
+      const edge=(descriptor,offset,opening)=> {
+        if(!descriptor || descriptor.unitType!=="line" || descriptor.projection.referenceDefinition) return;
+        const projection=descriptor.projection, base=descriptor.start+projection.prefix;
+        const point=offset-base;
+        const visit=tokens=>tokens.forEach(token=> {
+          if(!token.children && token.type!=="code") return;
+          if(opening ? point<token.contentStart || point>=token.contentEnd : point<=token.contentStart || point>token.contentEnd) return;
+          if(opening && offset>base+token.start) prefix+=projection.text.slice(token.start,token.contentStart);
+          if(!opening && offset<base+token.end) suffix=projection.text.slice(token.contentEnd,token.end)+suffix;
+          if(token.children) visit(token.children);
+        });
+        visit(MarkdownCodec.tokenizeInline(projection.text,0,projection.text.length,0,false,false,this.lineDescriptors.references));
+      };
+      edge(first,selection.start,true); edge(last,selection.end,false);
+      return prefix+raw.slice(selection.start,selection.end)+suffix;
+    }
+
+    finishClipboardEdit(selection,replacement,gesture) {
+      this.apply(selection.start,selection.end,replacement,gesture);
+      if(this.mode==="source") {
+        this.sourceBeforeInput=null;
+        this.source.value=this.model.display;
+        const caret=this.model.displayOffset(selection.start+replacement.length);
+        this.source.setSelectionRange(caret,caret);
+      }
+      this.scheduleCurrentLine?.();
+    }
+
+    handleCopy(event,cut) {
+      const clipboard=event.clipboardData, selection=this.selectionRaw();
+      if(!clipboard || selection.start===selection.end) return;
+      const markdown=this.clipboardFragment(selection);
       event.preventDefault();
-      const selection = this.selectionRaw();
-      const raw = this.model.source;
-      const context = this.editingContextAt(selection.start);
-      const inCode = (context && context.kind === "code")
-        || raw.lastIndexOf("`", selection.start) > raw.lastIndexOf("\n", selection.start);
-      const html = clipboard.getData("text/html");
-      let replacement = inCode ? clipboard.getData("text/plain") : (html ? HtmlToMarkdown.convert(html) : clipboard.getData("text/plain"));
-      replacement = String(replacement || "").replace(/\r\n|\r|\n/g, this.model.lineEndingAt(selection.start));
-      this.apply(selection.start, selection.end, replacement, "paste");
+      try {
+        clipboard.setData("text/plain",markdown);
+      } catch(error) {
+        this.options.onWarning?.("Could not copy to the clipboard. Your document was not changed.");
+        return;
+      }
+      try {clipboard.setData("text/html",MarkdownCodec.renderMarkdown(markdown));} catch(error) { /* Plain Markdown remains available. */ }
+      try {clipboard.setData(CLIPBOARD_TYPE,JSON.stringify({schemaVersion:1,markdown}));} catch(error) { /* Some native clipboards reject custom types. */ }
+      if(cut) this.finishClipboardEdit(selection,"","cut");
+    }
+
+    handlePaste(event) {
+      const clipboard=event.clipboardData; if(!clipboard) return;
+      event.preventDefault();
+      const selection=this.selectionRaw(), context=this.editingContextAt(selection.start);
+      const plainOnly=this.mode==="source" || context?.kind==="code" || event.shiftKey || this.plainPasteRequested;
+      this.plainPasteRequested=false;
+      let replacement=null;
+      if(!plainOnly) {
+        try {
+          const payload=JSON.parse(clipboard.getData(CLIPBOARD_TYPE));
+          if(payload && payload.schemaVersion===1 && typeof payload.markdown==="string"
+              && payload.markdown.length<=10*1024*1024 && Object.keys(payload).length===2) replacement=payload.markdown;
+        } catch(error) { /* Invalid/unsupported internal data uses public clipboard formats. */ }
+      }
+      if(replacement===null) {
+        const html=plainOnly?"":clipboard.getData("text/html");
+        replacement=html?HtmlToMarkdown.convert(html).replace(/\r\n|\r|\n/g,this.model.lineEndingAt(selection.start)):clipboard.getData("text/plain");
+      }
+      this.finishClipboardEdit(selection,String(replacement||""),plainOnly?"paste-plain":"paste");
     }
 
     runAction(action) {

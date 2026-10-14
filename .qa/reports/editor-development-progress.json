@@ -47,7 +47,7 @@
       "id": 7,
       "name": "clipboard",
       "status": "partial",
-      "evidence": "HTML PRE preserves literal text, whitespace and safe fences; internal clipboard and the remaining HTML structures are pending."
+      "evidence": "Safe PRE conversion already implemented. Clipboard core now supports visual/source copy/cut/paste, validated internal payload, plain Markdown/semantic HTML, partial inline delimiters, transactional cut and exact source-mode edits. Directed controlled-clipboard tests pass both Linux engines and all thirteen classic checks pass. Structured fragments, external conversion completeness and real native/system clipboard acceptance remain pending."
     },
     {
       "id": 8,
@@ -1112,6 +1112,43 @@
           "destroyed preview cannot move document viewport"
         ]
       }
+    },
+    "clipboardCoreDevelopment": {
+      "status": "copy/cut/paste core and thirteen classic checks passed; structured fragments and system clipboard acceptance pending",
+      "directedLinux": {
+        "exitCode": 0,
+        "report": "clipboard-core-browser-linux.log",
+        "engines": [
+          "WebKitGTK",
+          "Chromium"
+        ],
+        "scope": "Real editor handlers with controlled clipboard data; not an OS clipboard proof"
+      },
+      "classicLinux": {
+        "pass": 13,
+        "fail": 0,
+        "report": "clipboard-core-classic-linux.log"
+      },
+      "scope": [
+        "copy/cut handlers in source and visual mode",
+        "internal JSON payload with schema and bounded string validation",
+        "plain Markdown plus semantic HTML fallback",
+        "partial inline format delimiters included in copied fragment",
+        "cut only after plain clipboard write succeeds",
+        "undo and source textarea synchronization",
+        "code context from existing projection rather than last-backtick heuristic",
+        "source/code/plain-paste choose literal plain text",
+        "internal payload and plain text preserve original terminators"
+      ],
+      "remaining": [
+        "structured partial list/quote/heading/code/table context",
+        "reference dependencies and cross-document resource context",
+        "recursive external HTML structure conversion",
+        "empty or HTML-only clipboard degradation",
+        "dedicated clipboard contract gate",
+        "real clipboard MIME/fallback across windows and platforms",
+        "native plain-paste shortcut acceptance"
+      ]
     }
   }
 }
