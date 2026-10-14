@@ -420,6 +420,17 @@
         showWarning((elements.notice.hidden ? "" : elements.notice.textContent + " ")
           + doc.recoveryWarnings.join(" "));
       }
+      if(window.__TAURI__) {
+        const anchorEditor=state.editor,anchorContext=state.contextId;
+        const startupAnchor=await window.__TAURI__.core.invoke("take_startup_anchor");
+        if(startupAnchor!==null && startupAnchor!==undefined) {
+          requestAnimationFrame(function() {
+            if(state.editor===anchorEditor && state.contextId===anchorContext && !anchorEditor.navigateHeading(startupAnchor)) {
+              showWarning("Heading not found: "+startupAnchor,"link");
+            }
+          });
+        }
+      }
       setStatus(doc.exists ? "Loaded" : "New file");
       backend.setWindowTitle(doc.name || "");
   }
@@ -573,6 +584,18 @@
     var editor = window.AmoristEditor.create(elements.editor, {
       value: markdown,
       spellcheck: true,
+      onActivateLink: window.__TAURI__ ? async function(reference) {
+        const contextId=state.contextId;
+        const destination=await window.__TAURI__.core.invoke("resolve_link",{reference:reference,contextId:contextId});
+        if(state.contextId!==contextId || state.editor!==editor) return;
+        if(destination.kind==="anchor") {
+          if(!editor.navigateHeading(destination.value)) throw new Error("Heading not found: "+destination.value);
+        } else if(destination.kind==="markdown") {
+          await window.__TAURI__.core.invoke("spawn_document_instance",{path:destination.value.path,anchor:destination.value.anchor});
+        } else {
+          await window.__TAURI__.core.invoke("open_external_link",{reference:reference,contextId:contextId});
+        }
+      } : undefined,
       resolveImage: window.__TAURI__ ? async function(reference) {
         const contextId=state.contextId;
         const id=await window.__TAURI__.core.invoke("register_image",{reference:reference,contextId:contextId});
