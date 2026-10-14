@@ -608,6 +608,7 @@
     var editor = window.AmoristEditor.create(elements.editor, {
       value: markdown,
       spellcheck: true,
+      documentPath: function () { return state.documentPath; },
       onActivateLink: window.__TAURI__ ? async function(reference) {
         const contextId=state.contextId;
         const destination=await window.__TAURI__.core.invoke("resolve_link",{reference:reference,contextId:contextId});

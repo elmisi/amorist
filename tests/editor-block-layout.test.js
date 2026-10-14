@@ -153,6 +153,23 @@ async function main() {
           assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'),source.slice(0,end)+'\r\n'+indent+'> '+source.slice(end),`${entry.id}: Enter retains nested quote container`);
           await engine.evaluate('(() => {window.__blocks.undo();return true;})()');assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'),source);
         }
+        const navigationSource='# Title\n\n```\ncode\n```\n';
+        await engine.evaluate(`(() => {const editor=window.__blocks;editor.setMarkdown(${JSON.stringify(navigationSource)});editor.focus();editor.setSurfaceSelection(13,13);return true;})()`);
+        await sendKeys([{key:'ArrowUp'}]);
+        assert.deepEqual(await engine.evaluate('window.__blocks.selectionRaw()'),{start:8,end:8},`${entry.id}: Up must stop on the empty row before code`);
+        await engine.evaluate('(() => {window.__blocks.setSurfaceSelection(3,3);return true;})()');
+        await sendKeys([{key:'ArrowDown'}]);
+        assert.deepEqual(await engine.evaluate('window.__blocks.selectionRaw()'),{start:8,end:8},`${entry.id}: Down reaches the same empty row`);
+        assert.equal(await engine.evaluate('window.__blocks.getMarkdown()'),navigationSource);
+
+        const dividerSource='| A | B |\r\n|---|:---:|\r\n| left | right |';
+        const divider=await engine.evaluate(`(() => {const editor=window.__blocks;editor.setMarkdown(${JSON.stringify(dividerSource)});
+          const row=editor.surface.querySelector('.amorist-wysiwyg-table-delimiter'),style=getComputedStyle(row);
+          editor.focus();editor.setSurfaceSelection(12,15);
+          return {source:editor.getMarkdown(),text:row.textContent,color:style.color,background:style.backgroundImage,selection:editor.selectionRaw()};})()`);
+        assert.equal(divider.source,dividerSource);assert.equal(divider.text,'|---|:---:|\n');
+        assert.equal(divider.color,'rgba(0, 0, 0, 0)');assert.ok(divider.background.startsWith('linear-gradient('));
+        assert.deepEqual(divider.selection,{start:12,end:15});
         console.log(`block-layout: ${entry.id} passed`);
       } finally { await engine.close(); }
     }

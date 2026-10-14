@@ -106,6 +106,24 @@ async function main(options = {}) {
         assert.equal(physical.hidden,false);assert.ok(Math.abs(physical.top-physical.expected)<1);
         assert.ok(Math.abs(physical.height-physical.lineHeight)<1);assert.equal(physical.source,wrappedSource);
 
+        // A fractional computed height can drift from WebKit's actual
+        // textarea line advance. Measure the whole document, not row zero.
+        const longSource=Array(150).fill('physical line').join('\r\n');
+        for(const fontSize of [16,18,22]) {
+          const metrics=await engine.evaluate(`(() => {
+            const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify(longSource)});
+            editor.applySettings({...window.AmoristSettings.defaults,baseFontSize:${fontSize},highlightCurrentLine:true});
+            editor.showSourceMode();editor.source.style.height='200px';editor.source.style.minHeight='0';
+            const style=getComputedStyle(editor.source);
+            return {height:editor.source.scrollHeight,padding:parseFloat(style.paddingTop)+parseFloat(style.paddingBottom),
+              lineHeight:parseFloat(style.lineHeight),source:editor.getMarkdown()};
+          })()`);
+          assert.ok(Math.abs(metrics.height-metrics.padding-150*metrics.lineHeight)<=1,
+            `${entry.id}: Source line advance at ${fontSize}px must match highlight geometry`);
+          assert.equal(metrics.source,longSource);
+        }
+        await engine.evaluate(`(() => {window.__prefsEditor.source.style.height='';window.__prefsEditor.source.style.minHeight='';return true;})()`);
+
         const horizontalSource='```\r\n'+ 'long code '.repeat(90)+'\r\n```';
         await engine.evaluate(`(() => {
           const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify(horizontalSource)});editor.showWysiwygMode();editor.focus();editor.setSurfaceSelection(10,10);

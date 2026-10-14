@@ -43,6 +43,12 @@ The standalone app uses a system webview (Tauri 2) with a Rust backend — singl
 - Rejects files larger than 10 MB before reading.
 - Reads and writes Markdown as UTF-8.
 
+Copying formatted text between Amorist documents preserves local link and
+image destinations relative to the original document. The plain-text clipboard
+still contains the original Markdown; pasting into Source mode keeps that text.
+In the visual editor, table header separators appear as horizontal lines while
+their Markdown characters remain available for selection and editing.
+
 ## Keyboard Shortcuts
 
 For local problem reporting, launch `amorist --debug file.md`. The **Bug**

@@ -158,7 +158,9 @@
     const point=value=>Math.max(0,Math.min(end,value)-start);
     return tokens.filter(token=>token.end>start&&token.start<end&&token.type!=="break").map(token=>{
       if(token.type==="image"&&(token.start<start||token.end>end)) {
-        return {type:"text",start:point(token.start),end:point(token.end),text:source.slice(Math.max(start,token.start),Math.min(end,token.end))};
+        const result={type:"text",start:point(token.start),end:point(token.end),text:source.slice(Math.max(start,token.start),Math.min(end,token.end))};
+        Object.defineProperty(result,"originalToken",{value:token});
+        return result;
       }
       const result={...token,start:point(token.start),end:point(token.end)};
       Object.defineProperty(result,"originalToken",{value:token});
@@ -400,6 +402,9 @@
       this.settings = {...settings};
       this.root.classList.toggle("amorist-highlight-current-line", !!settings.highlightCurrentLine);
       this.root.style.setProperty('--amorist-base-font-size', settings.baseFontSize + 'px');
+      // WebKit rounds fractional textarea line advances, while computedStyle
+      // retains the fraction. Use integral pixels so caret and overlay agree.
+      this.root.style.setProperty('--amorist-source-line-height', Math.round(settings.baseFontSize * 1.6) + 'px');
       this.root.style.setProperty('--amorist-table-scale', String(settings.tableScale));
       this.root.style.setProperty('--amorist-code-scale', String(settings.codeScale));
       this.root.style.setProperty('--amorist-current-line-color', settings.highlightColor);
@@ -862,7 +867,7 @@
               return rows[row].start+rows[row].projection.prefix+offset-starts[row];
             };
             const links=items=>items.forEach(token=>{
-              if(token.type==="link"&&!token.autolink){
+              if((token.type==="link"||token.type==="image")&&!token.autolink){
                 const destination=token.referenceKey?references.get(token.referenceKey):MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
                 if(destination)Object.defineProperty(token,"sourceLink",{value:{
                   contentStart:rawAt(token.contentStart),contentEnd:rawAt(token.contentEnd),
@@ -1045,7 +1050,9 @@
           this.appendSourceText(caret, CARET_SENTINEL, projection.prefix, projection.prefix);
           row.append(caret);
           if (!descriptor.ending) row.append(document.createElement("br"));
-        } else if (!descriptor.ending) {
+        } else {
+          // A newline alone has no stable caret stop when entering the row
+          // from a block below it. Keep empty physical rows navigable both ways.
           const caret = document.createElement("span");
           caret.className = "amorist-empty-caret";
           this.appendSourceText(caret, CARET_SENTINEL, 0, 0);
@@ -1075,6 +1082,7 @@
       block.dataset.unitEnd = String(end);
       for (let index = start; index <= end; index += 1) {
         const row = this.renderSourceLine(this.lineDescriptors[index]);
+        if (index === start + 1) row.classList.add("amorist-wysiwyg-table-delimiter");
         this.rowNodes[index] = row;
         block.append(row);
       }
@@ -2044,6 +2052,60 @@
       return closing+opening;
     }
 
+    clipboardDocumentUri() {
+      let path=typeof this.options.documentPath==="function" ? this.options.documentPath() : this.options.documentPath;
+      if(typeof path!=="string"||!path) return null;
+      if(path.startsWith("\\\\?\\")) {
+        path=path.slice(4);
+        if(/^UNC\\/i.test(path))path="\\\\"+path.slice(4);
+      }
+      const encode=path=>path.split("/").map(encodeURIComponent).join("/");
+      try {
+        if(path.startsWith("\\\\")) {
+          const normalized=path.slice(2).replace(/\\/g,"/"),slash=normalized.indexOf("/");
+          if(slash<0)return null;
+          return new URL("file://"+normalized.slice(0,slash)+"/"+encode(normalized.slice(slash+1))).href;
+        }
+        if(/^[a-z]:[\\/]/i.test(path)) return "file:///"+path.slice(0,2)+encode(path.slice(2).replace(/\\/g,"/"));
+        return path.startsWith("/") ? "file://"+encode(path) : null;
+      } catch(error) { return null; }
+    }
+
+    rebaseClipboardFragment(fragment, origin) {
+      if(!origin)return fragment;
+      const descriptors=this.buildProjection(fragment),edits=new Map();
+      const add=destination=>{
+        if(!destination||!destination.href||/^[a-z][a-z0-9+.-]*:/i.test(destination.href))return;
+        try {
+          const windows=/^file:\/\/\/([a-z]:\/)/i.test(origin)||!!new URL(origin).hostname;
+          const href=new URL(windows ? destination.href : destination.href.replace(/\\/g,"%5C"),origin).href;
+          if(!href.startsWith("file:"))return;
+          const text=href.replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[()<>]/g,"\\$&");
+          edits.set(destination.destinationStart+":"+destination.destinationEnd,{start:destination.destinationStart,end:destination.destinationEnd,text});
+        } catch(error) { /* Preserve destinations that cannot be resolved. */ }
+      };
+      for(const definition of descriptors.references.values())add(definition);
+      for(const descriptor of descriptors) {
+        const original=tokens=>tokens.forEach(token=>{
+          if(!token.referenceKey)add(token.originalToken?.sourceLink?.destination);
+          if(token.children)original(token.children);
+        });
+        original(descriptor.projection.inlineTokens||[]);
+        for(const {text,base} of this.clipboardInlineChunks(descriptor)) {
+          const visit=tokens=>tokens.forEach(token=>{
+            if((token.type==="link"||token.type==="image")&&!token.referenceKey&&!token.autolink) {
+              const destination=MarkdownCodec.linkDestinationAt(text,token.contentEnd+1);
+              if(destination)add({...destination,destinationStart:base+destination.destinationStart,destinationEnd:base+destination.destinationEnd});
+            }
+            if(token.children)visit(token.children);
+          });
+          visit(MarkdownCodec.tokenizeInline(text,0,text.length,0,false,false,descriptors.references));
+        }
+      }
+      for(const edit of Array.from(edits.values()).sort((a,b)=>b.start-a.start))fragment=fragment.slice(0,edit.start)+edit.text+fragment.slice(edit.end);
+      return fragment;
+    }
+
     handleCopy(event,cut) {
       const clipboard=event.clipboardData, selection=this.selectionRaw();
       if(!clipboard || selection.start===selection.end) return;
@@ -2055,10 +2117,12 @@
         this.options.onWarning?.("Could not copy to the clipboard. Your document was not changed.");
         return;
       }
-      const projected=this.buildProjection(markdown);
+      const base=this.clipboardDocumentUri(),semantic=this.rebaseClipboardFragment(markdown,base);
+      const origin=semantic!==markdown ? base : null;
+      const projected=this.buildProjection(semantic);
       const publicSource=projected.filter(row=>!row.projection.referenceDefinition).map(row=>row.raw+row.ending).join("");
       try {clipboard.setData("text/html",MarkdownCodec.renderMarkdown(publicSource,projected.references,true));} catch(error) { /* Plain Markdown remains available. */ }
-      try {clipboard.setData(CLIPBOARD_TYPE,JSON.stringify({schemaVersion:1,markdown}));} catch(error) { /* Some native clipboards reject custom types. */ }
+      try {clipboard.setData(CLIPBOARD_TYPE,JSON.stringify(origin ? {schemaVersion:2,markdown,origin} : {schemaVersion:1,markdown}));} catch(error) { /* Some native clipboards reject custom types. */ }
       if(cut) {
         const span=this.clipboardCutSelection(selection);
         this.finishClipboardEdit(span,this.clipboardCutReplacement(span),"cut");
@@ -2076,9 +2140,13 @@
       if(!plainOnly) {
         try {
           const payload=JSON.parse(clipboard.getData(CLIPBOARD_TYPE));
-          if(payload && payload.schemaVersion===1 && typeof payload.markdown==="string"
-              && payload.markdown.length<=10*1024*1024 && Object.keys(payload).length===2) {
-            replacement=this.isolateClipboardReferences(payload.markdown);structured=true;
+          const legacy=payload&&payload.schemaVersion===1&&Object.keys(payload).length===2;
+          const origin=payload&&payload.schemaVersion===2&&Object.keys(payload).length===3&&typeof payload.origin==="string"&&payload.origin.length<=65536 ? new URL(payload.origin) : null;
+          const validOrigin=origin&&origin.protocol==="file:"&&!origin.search&&!origin.hash;
+          if(payload && (legacy||validOrigin) && typeof payload.markdown==="string"
+              && payload.markdown.length<=10*1024*1024) {
+            const fragment=validOrigin&&origin.href!==this.clipboardDocumentUri() ? this.rebaseClipboardFragment(payload.markdown,origin.href) : payload.markdown;
+            replacement=this.isolateClipboardReferences(fragment);structured=true;
           }
         } catch(error) { /* Invalid/unsupported internal data uses public clipboard formats. */ }
       }

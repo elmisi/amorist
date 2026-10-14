@@ -2920,9 +2920,9 @@
     "identity": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:5cf154be1ad3ed3754b9f1eab15435b5956e1284",
-      "fingerprint": "5cf154be1ad3ed3754b9f1eab15435b5956e1284",
-      "commit": "4e36d512a267d76dbded525d2b469d4451a0c0e0",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:517c93608c59c2a11d20869fe480e860ed1815a0",
+      "fingerprint": "517c93608c59c2a11d20869fe480e860ed1815a0",
+      "commit": "923d65b95186440702fc00835c5c8ab4e5e0a486",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
@@ -2980,7 +2980,8 @@
         "dirty": false
       }
     ],
-    "preservedWipStatus": "Direct-list-fence archival patch retained; completed correction now part of preview726ecd3."
+    "preservedWipStatus": "Direct-list-fence archival patch retained; completed correction now part of preview726ecd3.",
+    "latestVerifiedEvidence": "linux-preview-bundle-identity-loop.log exit0: release923d65b; clipboard/new reports fixes not yet in preview"
   },
   "directListFencesLinux": {
     "status": "partial",
@@ -3202,5 +3203,34 @@
       }
     },
     "remaining": "Rebuild release artifacts and verify their headless identity/native runner, then test on macOS/Windows. Older package manifest is preserved as historical evidence."
+  },
+  "clipboardDocumentOriginsLinux": {
+    "status": "implemented; classic and full Linux contract passed; release-native proof pending",
+    "behavior": "Visual cross-document paste rebases local links/images from source file URI, preserves raw plain text and Source paste, and supplies absolute destinations for semantic HTML fallback. Schema1 compatible; schema2 validates origin. POSIX, drive, UNC, verbatim Windows paths supported.",
+    "evidence": [
+      "clipboard-origin-full-contract-linux.json: green before new visual fixes",
+      "clipboard-relative-origin-fallback-linux.log: actual debug cross-process image and HTML-only clipboard passed",
+      "clipboard-and-new-reports-classic-linux.log: pass17 fail0 skip0",
+      "clipboard-and-new-reports-contract-linux.json/log: full contract exit0; Finder/Dock delegated to macOS"
+    ],
+    "remaining": "Updated release-native proof and macOS/Windows pending"
+  },
+  "newReports8To10Linux": {
+    "status": "implemented; classic and full Linux contract passed; release-native proof pending",
+    "originalReportCount": 10,
+    "originalReportsPreserved": true,
+    "reports": {
+      "8": "Mapped zero-width caret on empty rows; trusted Up/Down reaches blank row in both engines",
+      "9": "Visual table delimiter is a horizontal line; raw text/selection preserved",
+      "10": "Integral Source line height avoids measured WebKit drift;150 rows verified at16/18/22px"
+    },
+    "evidence": [
+      "blank-arrow-before.log: both engines skipped blank row",
+      "blank-arrow-after.log: both engines Up reaches blank row",
+      "source-line-geometry-linux.log: GTK/Chromium passed",
+      "clipboard-and-new-reports-classic-linux.log: pass17 fail0 skip0",
+      "clipboard-and-new-reports-contract-linux.json/log: full contract exit0; Finder/Dock delegated to macOS"
+    ],
+    "remaining": "Full contract, release and platform proofs pending"
   }
 }

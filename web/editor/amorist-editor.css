@@ -264,6 +264,13 @@
   box-sizing: content-box;
 }
 
+/* Retain delimiter characters and their source offsets for editing/copying,
+   while drawing the header divider as a continuous line. */
+.amorist-wysiwyg-table-delimiter {
+  color: transparent;
+  background: linear-gradient(var(--border, #b8c2ca), var(--border, #b8c2ca)) no-repeat center / 100% 1px;
+}
+
 .amorist-wysiwyg-rule {
   border-top: 1px solid #ccc;
   display: inline-block;
@@ -526,7 +533,7 @@ mark.amorist-find-current {
 .amorist-editor .amorist-wysiwyg-h6, .amorist-editor-surface h6 { font-size: calc(var(--amorist-base-font-size, 16px) * .8125); }
 .amorist-editor .amorist-wysiwyg-code { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-code-scale, 1)); }
 .amorist-editor .amorist-wysiwyg-table { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-table-scale, .875)); }
-.amorist-editor .amorist-editor-source { font: var(--amorist-base-font-size, 16px)/1.6 "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+.amorist-editor .amorist-editor-source { font: var(--amorist-base-font-size, 16px)/var(--amorist-source-line-height, 26px) "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 
 .amorist-editor { position: relative; isolation: isolate; }
 .amorist-editor-surface, .amorist-editor-source { position: relative; z-index: 1; }

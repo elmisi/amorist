@@ -46,6 +46,36 @@ async function main(options={}){
    assert.equal(result.sourcePaste.raw,'raw *text*\r\nnextleft **bold** right');assert.equal(result.sourcePaste.display,'raw *text*\nnextleft **bold** right');
    assert.equal(result.outsideCode,'plain `code` after**HTML**');assert.equal(result.insideCode,'plain `coplainde` after');
    assert.equal(result.plainPaste,'plain');assert.equal(result.failedCut,'keep');
+   const originTransfer=await engine.evaluate(`(() => {
+    const editor=window.__clip,data=new Map(),event={clipboardData:{setData:(type,value)=>data.set(type,value),getData:type=>data.get(type)||''},preventDefault(){}};
+    let path='/origin α/source#?.md';editor.options.documentPath=()=>path;
+    const source=${JSON.stringify('[Read](../docs/manual.md#heading "Title")\r\n![Picture](pics/p%20λ.svg)\r\n\r\n[Ref][image]\r\n\r\n[image]: pics/r.svg\r\n\r\n`[literal](keep.md)`\r\n\r\n~~~\r\n[code](keep.md)\r\n~~~')};
+    editor.setMarkdown(source);editor.showWysiwygMode();editor.selectSurfaceContents();editor.handleCopy(event,false);
+    const copied=JSON.parse(data.get('application/x-amorist-markdown+json')),plain=data.get('text/plain'),html=data.get('text/html');
+    editor.setMarkdown('');editor.setSurfaceSelection(0,0);editor.handlePaste(event);const sameFile=editor.getMarkdown();
+    path='/destination/other.md';editor.setMarkdown('');editor.setSurfaceSelection(0,0);editor.handlePaste(event);
+    const transferred=editor.getMarkdown(),links=Array.from(editor.surface.querySelectorAll('a')).map(link=>link.dataset.linkDestination);editor.undo();const undo=editor.getMarkdown();
+    editor.showSourceMode();editor.source.setSelectionRange(0,0);editor.handlePaste(event);const literalSource=editor.getMarkdown();
+    editor.setMarkdown('');editor.showWysiwygMode();editor.setSurfaceSelection(0,0);data.delete('application/x-amorist-markdown+json');editor.handlePaste(event);const fallback=editor.getMarkdown();
+    const uris=[];for(const value of ${JSON.stringify(['C:\\origin λ\\note.md','\\\\server\\share\\note λ.md','\\\\?\\C:\\origin λ\\note.md','\\\\?\\UNC\\server\\share\\note λ.md'])}){path=value;uris.push(editor.clipboardDocumentUri());}
+    path='/origin/notes.md';const escaped=editor.rebaseClipboardFragment(${JSON.stringify('[File](a\\\\b.md)')},editor.clipboardDocumentUri());
+    data.clear();data.set('application/x-amorist-markdown+json',JSON.stringify({schemaVersion:2,markdown:'UNTRUSTED',origin:'https://example.test/source.md'}));data.set('text/plain','SAFE');editor.setMarkdown('');editor.setSurfaceSelection(0,0);editor.handlePaste(event);
+    const invalid=editor.getMarkdown();delete editor.options.documentPath;
+    return {source,copied,plain,html,sameFile,transferred,links,undo,literalSource,fallback,uris,escaped,invalid};
+   })()`);
+   assert.equal(originTransfer.copied.schemaVersion,2);assert.equal(originTransfer.copied.markdown,originTransfer.source);assert.equal(originTransfer.plain,originTransfer.source);
+   assert.equal(originTransfer.copied.origin,'file:///origin%20%CE%B1/source%23%3F.md');
+   assert.equal(originTransfer.sameFile,originTransfer.source);assert.equal(originTransfer.literalSource,originTransfer.source);assert.equal(originTransfer.undo,'');
+   assert.deepEqual(originTransfer.links,['file:///docs/manual.md#heading','file:///origin%20%CE%B1/pics/r.svg']);
+   assert.match(originTransfer.transferred,/!\[Picture\]\(file:\/\/\/origin%20%CE%B1\/pics\/p%20%CE%BB.svg\)/);
+   assert.ok(originTransfer.transferred.includes('`[literal](keep.md)`'));assert.ok(originTransfer.transferred.includes('~~~\r\n[code](keep.md)\r\n~~~'));
+   assert.match(originTransfer.html,/src="file:\/\/\/origin%20%CE%B1\/pics\/p%20%CE%BB.svg"/);assert.ok(originTransfer.fallback.includes('file:///origin%20%CE%B1/pics/p%20%CE%BB.svg'));
+   assert.deepEqual(originTransfer.uris,['file:///C:/origin%20%CE%BB/note.md','file://server/share/note%20%CE%BB.md','file:///C:/origin%20%CE%BB/note.md','file://server/share/note%20%CE%BB.md']);
+   assert.equal(originTransfer.escaped,'[File](file:///origin/a%5Cb.md)');assert.equal(originTransfer.invalid,'SAFE');
+   for(const fragment of ['> [first\r\n> second](../media/note.md "Title")\r\n','- ![first\r\n  second](../media/picture.svg)\r\n']) {
+    const rebased=await engine.evaluate(`window.__clip.rebaseClipboardFragment(${JSON.stringify(fragment)},'file:///origin/docs/source.md')`);
+    assert.equal(rebased,fragment.replace('../media/','file:///origin/media/'));
+   }
    const emptyCases=await engine.evaluate(`(() => {
     const editor=window.__clip, clipboard={getData:()=>''};
     editor.setMarkdown('keep selection');editor.setSurfaceSelection(0,4);

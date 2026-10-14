@@ -606,14 +606,14 @@
       if (token.type === "text") return TextUtils.escapeHtml(token.text);
       if (token.type === "image") {
         if (!clipboard) return TextUtils.escapeHtml(token.text);
-        const href = safeLinkHref(token.href);
+        const href = /^file:\/\//i.test(token.href) ? token.href : safeLinkHref(token.href);
         return `<img${href == null ? "" : ` src="${TextUtils.escapeAttr(href)}"`} alt="${TextUtils.escapeAttr(token.alt)}"${token.title == null ? "" : ` title="${TextUtils.escapeAttr(token.title)}"`}>`;
       }
       if (token.type === "break") return "<br>";
       if (token.type === "code") return `<code${clipboard ? ' style="white-space:pre-wrap"' : ""}>${TextUtils.escapeHtml(clipboard ? token.clipboardText ?? token.text : token.text)}</code>`;
       const content = renderInlineTokens(token.children,clipboard);
       if (token.type === "link") {
-        const href = safeLinkHref(token.href);
+        const href = clipboard && /^file:\/\//i.test(token.href) ? token.href : safeLinkHref(token.href);
         return `<a${href == null ? "" : ` href="${TextUtils.escapeAttr(href)}"`}${token.title == null ? "" : ` title="${TextUtils.escapeAttr(token.title)}"`} target="_blank" rel="noopener noreferrer">${content}</a>`;
       }
       if (token.type === "strong-em") return `<em><strong>${content}</strong></em>`;
