@@ -33,7 +33,16 @@ jobs:
             tauri_cli_asset: cargo-tauri-aarch64-apple-darwin.zip
             artifact_name: amorist-dmg
             artifact_glob: src-tauri/target/universal-apple-darwin/release/bundle/dmg/amorist_*.dmg
+          - os: windows-latest
+            bundle: nsis
+            target: x86_64-pc-windows-msvc
+            tauri_cli_asset: cargo-tauri-x86_64-pc-windows-msvc.zip
+            artifact_name: amorist-windows-setup
+            artifact_glob: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/amorist_*-setup.exe
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -74,7 +83,7 @@ jobs:
               tmp=$(mktemp -d)
               curl -fsSL "$url" -o "$tmp/tauri.zip"
               unzip -q -o "$tmp/tauri.zip" -d "$dest"
-              chmod +x "$dest/cargo-tauri"
+              chmod +x "$dest"/cargo-tauri*
               rm -rf "$tmp"
               ;;
           esac
