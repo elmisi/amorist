@@ -2010,6 +2010,25 @@
         "New/Open dirty decisions, recovery and concurrent-save acceptance"
       ],
       "driverDiagnostic": "standalone -- rejected by Edge driver; positional filename run did not adopt file and recovered previous untitled QA source; failures preserved, not counted as Save acceptance"
+    },
+    "directCliProof": {
+      "evidence": [
+        "windows-cli-direct-passed.log",
+        "windows-cli-direct-passed-status.json"
+      ],
+      "scope": "native Windows process launched with explicit argv; Edge WebDriver attaches to already running WebView2 through isolated temporary profile",
+      "proved": [
+        "Unicode path and leading-dash basename opened",
+        "standalone -- preserved as production argv separator",
+        "heading anchor reaches Unicode title",
+        "debug flag enables Bug",
+        "loaded source and original CRLF file unchanged"
+      ],
+      "cleanup": "only application process and WebView2 processes associated with uniquely created QA profile are stopped",
+      "remaining": [
+        "installer associations and packaged CLI acceptance",
+        "new-instance lifetime and recovery proofs"
+      ]
     }
   },
   "ciWindowsDevelopment": {
