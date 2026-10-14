@@ -2738,6 +2738,12 @@
         "inline-code-safe-clipboard-contexts-linux.log pass3 fail0 skip0",
         "inline-code-safe-clipboard-performance-linux.log exit0 B9 GTK/Chromium"
       ]
+    },
+    "externalHtmlCodeNewlines": {
+      "implemented": "HTML CODE conversion preserves physical newlines, normalizing CRLF/CR to LF and deriving delimiter padding from normalized code-span content.",
+      "verified": "Pure conversion helpers and rendered two-row inline code on WebKitGTK/Chromium pass.",
+      "evidence": "html-inline-code-newlines-linux.log exit0; node tests/editor-html-to-markdown.test.js exit0",
+      "remaining": "Internally generated semantic HTML still needs raw multiline code fidelity, including hard-break and container context; full final regression remains required."
     }
   }
 }

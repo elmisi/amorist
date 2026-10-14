@@ -35,6 +35,8 @@ async function main(){const server=await startStaticServer(path.resolve(__dirnam
   const start=source.indexOf('`cd'),end=source.indexOf('gh')+2;
   const fragment=await engine.evaluate(`(()=>{window.__multi.setMarkdown(${JSON.stringify(source)});return window.__multi.clipboardFragment({start:${start},end:${end}});})()`);assert.equal(fragment,expected,entry.id+': safe inline code retains enclosing context');
  }
+ const htmlCode=await engine.evaluate(`(()=>{const source=window.AmoristInternals.HtmlToMarkdown.convert('<p><code>first\\nsecond</code></p>');window.__multi.setMarkdown(source);return {source,code:Array.from(window.__multi.surface.querySelectorAll('code')).map(node=>node.textContent)};})()`);
+ assert.deepEqual(htmlCode,{source:'`first\nsecond`',code:['first','second']},entry.id+': external HTML code keeps physical rows');
  console.log('Multiline inline: '+entry.id+' passed');
  }finally{await engine.close();}}}finally{await server.stop();}}
 main().catch(error=>{console.error(error.stack);process.exitCode=1;});

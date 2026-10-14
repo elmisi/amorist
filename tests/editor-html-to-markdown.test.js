@@ -62,6 +62,12 @@ assert.equal(H._cleanupMarkdown(H._nodeToSource(table)),"| Name | Note |\n| --- 
 const inlineCode=el("CODE",[]);inlineCode.textContent="a``b";
 assert.equal(H._nodeToSource(inlineCode),"```a``b```");
 inlineCode.textContent="`edge`";assert.equal(H._nodeToSource(inlineCode),"`` `edge` ``");
+for(const newline of ["\n","\r\n","\r"]){
+ inlineCode.textContent="first"+newline+"second";
+ assert.equal(H._cleanupMarkdown(H._nodeToSource(inlineCode)),"`first\nsecond`");
+}
+inlineCode.textContent="\nedge\n";
+assert.equal(H._nodeToSource(inlineCode),"` \nedge\n `");
 assert.equal(H._nodeToSource(el("A",[text("Read")],{href:"docs/my (notes).md"})),"[Read](<docs/my (notes).md>)");
 assert.equal(H._nodeToSource(text("*literal* [name]")),"\\*literal\\* \\[name\\]");
 assert.equal(H._nodeToSource(text("1. literal")),"1\\. literal");

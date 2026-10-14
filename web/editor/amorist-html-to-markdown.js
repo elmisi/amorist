@@ -136,11 +136,12 @@
     if (tag === "EM" || tag === "I") return format("*");
     if (tag === "DEL" || tag === "STRIKE" || tag === "S") return format("~~");
     if (tag === "CODE") {
-      const text=(node.textContent || "").replace(/\r\n|\r|\n/g," ");
+      const text=(node.textContent || "").replace(/\r\n|\r/g,"\n");
       if(!text) return "";
       const width=Math.max(0,...Array.from(text.matchAll(/`+/g),match=>match[0].length))+1;
       const fence="`".repeat(width);
-      const padded=text.startsWith("`") || text.endsWith("`") || (text.startsWith(" ") && text.endsWith(" ") && /[^ ]/.test(text));
+      const normalized=text.replace(/\n/g," ");
+      const padded=text.startsWith("`") || text.endsWith("`") || (normalized.startsWith(" ") && normalized.endsWith(" ") && /[^ ]/.test(normalized));
       return fence+(padded?" ":"")+text+(padded?" ":"")+fence;
     }
     const destination=value=>"<"+String(value).replace(/&/g,"&amp;").replace(/\\/g,"\\\\").replace(/[<>]/g,char=>"\\"+char).replace(/\r\n|\r|\n/g,"%0A")+">";
