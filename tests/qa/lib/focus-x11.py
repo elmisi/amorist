@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focus the uniquely named QA window on the test's isolated X display."""
+"""Focus or close the uniquely named QA window on the isolated X display."""
 import ctypes as c
 import sys
 
@@ -51,7 +51,38 @@ try:
     visit(x.XDefaultRootWindow(display))
     if len(matches) != 1:
         raise RuntimeError(f'Expected one QA window, found {len(matches)}: {sys.argv[1]}; titles: {titles}')
-    x.XSetInputFocus(display, matches[0], 1, 0)
+    if len(sys.argv) == 4 and sys.argv[2] == '--close':
+        pid = int(sys.argv[3])
+        value = c.c_void_p()
+        kind, fmt, count, after = c.c_ulong(), c.c_int(), c.c_ulong(), c.c_ulong()
+        x.XGetWindowProperty(display, matches[0], x.XInternAtom(display, b'_NET_WM_PID', 0), 0, 1, 0, 0, c.byref(kind), c.byref(fmt), c.byref(count), c.byref(after), c.byref(value))
+        try:
+            if not value.value or fmt.value != 32 or count.value != 1 or c.cast(value, c.POINTER(c.c_ulong))[0] != pid:
+                raise RuntimeError('QA window process identity does not match; close refused')
+        finally:
+            if value.value:
+                x.XFree(value)
+        class Data(c.Union):
+            _fields_ = [('b', c.c_char * 20), ('s', c.c_short * 10), ('l', c.c_long * 5)]
+        class Client(c.Structure):
+            _fields_ = [('type', c.c_int), ('serial', c.c_ulong), ('send_event', c.c_int), ('display', c.c_void_p), ('window', c.c_ulong), ('message_type', c.c_ulong), ('format', c.c_int), ('data', Data)]
+        class Event(c.Union):
+            _fields_ = [('client', Client), ('pad', c.c_long * 24)]
+        x.XSendEvent.argtypes = [c.c_void_p, c.c_ulong, c.c_int, c.c_long, c.POINTER(Event)]
+        event = Event()
+        event.client.type = 33
+        event.client.send_event = 1
+        event.client.display = display
+        event.client.window = matches[0]
+        event.client.message_type = x.XInternAtom(display, b'WM_PROTOCOLS', 0)
+        event.client.format = 32
+        event.client.data.l[0] = x.XInternAtom(display, b'WM_DELETE_WINDOW', 0)
+        if not x.XSendEvent(display, matches[0], 0, 0, c.byref(event)):
+            raise RuntimeError('Native close event could not be queued')
+    else:
+        if len(sys.argv) != 2:
+            raise RuntimeError('Usage: focus-x11.py <title> [--close <owned-pid>]')
+        x.XSetInputFocus(display, matches[0], 1, 0)
     x.XSync(display, 0)
 finally:
     x.XCloseDisplay(display)

@@ -179,6 +179,10 @@ jobs:
         if: matrix.platform == 'linux'
         run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-local-image-native.test.js
 
+      - name: Verify native review loop, Bug capture and interruption recovery
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a python3 tests/editor-review-loop-native.test.py
+
       - name: Verify graceful image resource failure without host AV1 decoder
         if: matrix.platform == 'linux'
         run: |

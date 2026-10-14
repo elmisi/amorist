@@ -2995,5 +2995,32 @@
     "implemented": "File summary uses the same secondary button styles as other actions; disclosure glyph hidden in GTK/Chromium; native details toggle and keyboard semantics retained.",
     "evidence": "file-button-secondary-style-linux.log; file-button-preview.png; linux-preview-file-button-build.log",
     "previewSourceCommit": "57317aa147e4804f976e52e3b7605364eb334844"
+  },
+  "nativeReviewLoopLinux": {
+    "result": "pass",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+      "fingerprint": "5cf154be1ad3ed3754b9f1eab15435b5956e1284",
+      "commit": "57317aa147e4804f976e52e3b7605364eb334844",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "evidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/native-review-loop-owned-close/native-review-loop-result.json",
+    "checks": {
+      "nativeBug": true,
+      "ctrlCKeptWindowAlive": true,
+      "mismatchedWindowPidRefused": true,
+      "completedResumeOpenedNoWindow": true,
+      "originalCopiesUnchanged": true
+    },
+    "ciGatesAdded": [
+      "linux native debug application",
+      "linux AppImage before artifact upload"
+    ],
+    "appImageEvidence": "/home/alessandro/.local/state/amorist/execution-20261013-1932/appimage-review-loop-gate-fixed/native-review-loop-result.json",
+    "appImageScope": "Older source a27dfff; current runtime package validation remains pending",
+    "deliveryBlocked": true
   }
 }

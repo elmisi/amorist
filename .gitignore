@@ -8,3 +8,4 @@ src-tauri/gen/
 .qa/reports/last-run.json
 /markdown-file-paths.txt
 /markdown-review-state.json
+/markdown-review-state.json.lock
