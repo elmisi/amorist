@@ -1865,7 +1865,7 @@
     "remaining": [
       "native system browser/file dispatch acceptance",
       "native local Markdown second-window and parent viewport proof",
-      "native keyboard dialog acceptance on all platforms",
+      "Windows/macOS native keyboard dialog acceptance",
       "Windows/macOS GUI compatibility",
       "three package byte deltas",
       "full package activation acceptance"
@@ -1886,7 +1886,8 @@
       "linuxRust": "link-context-launch-rust-linux.log: 35 passed, 1 internal worker ignored",
       "macosRust": "link-candidate-rust-macos.log: 36 passed, 1 internal worker ignored",
       "windowsRust": "link-candidate-rust-windows.log: 34 passed, 1 internal worker ignored; cargo exit 0",
-      "scopeLimit": "Source-development evidence; not published webview/package acceptance"
+      "scopeLimit": "Source-development evidence; not published webview/package acceptance",
+      "linuxNativeKeyboard": "link-dialog-keyboard-native-linux.log: native key input confirms destination, Ctrl+Z restores it, Escape cancels; original file remains unchanged"
     }
   }
 }
