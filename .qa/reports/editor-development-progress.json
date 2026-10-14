@@ -1459,6 +1459,22 @@
           "image-table-layout-diagnostic-linux.log",
           "image-table-layout-error-linux.log"
         ]
+      },
+      "currentRegression": {
+        "classicLinux": {
+          "pass": 14,
+          "fail": 0,
+          "report": "image-classic-linux.log"
+        },
+        "D1Linux": {
+          "exitCode": 0,
+          "report": "image-current-d1-qa-linux.json",
+          "engines": [
+            "WebKitGTK",
+            "Chromium"
+          ]
+        },
+        "scope": "Current image atom/remote-load/navigation/table-layout changes plus existing editor regressions; local protocol and package acceptance are not certified"
       }
     }
   }
