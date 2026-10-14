@@ -2190,7 +2190,23 @@
     "startupEvidence": "recovery-changed-base-fixed-linux.log: native explicit selection, changed-base warning, recovered text and unchanged external file pass",
     "rustEvidence": "recovery-open-rust-linux.log: 35 passed, 1 ignored helper, exit 0",
     "openEvidence": "recovery-open-native-linux.log: startup and Open explicit recovery; cancellation and file race preserve previous editor root and original/recovery bytes; exit 0",
-    "saveRestartEvidence": "recovery-changed-base-save-restart-fixed-linux.log: explicit Save byte-exact CRLF, selected recovery removal, clean restart; exit 0"
+    "saveRestartEvidence": "recovery-changed-base-save-restart-fixed-linux.log: explicit Save byte-exact CRLF, selected recovery removal, clean restart; exit 0",
+    "platformRust": {
+      "snapshot": "17f592649e215d524a3d7fdc092d947236380f9d",
+      "macos": {
+        "passed": 36,
+        "ignoredWorker": 1,
+        "exitCode": 0,
+        "evidence": "recovery-open-rust-macos.log; test build used short commit metadata, not a package identity acceptance"
+      },
+      "windows": {
+        "passed": 34,
+        "ignoredWorker": 1,
+        "exitCode": 0,
+        "evidence": "recovery-open-rust-windows.log; native cargo exit 0"
+      },
+      "limitation": "Backend compile/unit evidence only; native GUI recovery acceptance remains Linux only"
+    }
   },
   "subscriptionStop": {
     "remainingPercentThreshold": 60,
