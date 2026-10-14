@@ -24,7 +24,9 @@ class ReviewRunnerTests(unittest.TestCase):
                            'if sys.argv[1]=="--build-info":\n'
                            ' (pathlib.Path(sys.argv[2])).write_bytes((root/"identity.json").read_bytes());sys.exit(0)\n'
                            'with (root/"opens.jsonl").open("a") as stream:stream.write(json.dumps(sys.argv[1:])+"\\n")\n'
-                           'time.sleep(float((root/"delay").read_text()) if (root/"delay").exists() else 0)\n', encoding='utf-8')
+                           'time.sleep(float((root/"delay").read_text()) if (root/"delay").exists() else 0)\n'
+                           'if (root/"change-build").exists():\n'
+                           ' info=json.loads((root/"identity.json").read_text());info["fingerprint"]="f"*40;(root/"identity.json").write_text(json.dumps(info))\n', encoding='utf-8')
         self.executable = self.root / ('fake editor.cmd' if os.name == 'nt' else 'fake editor')
         if os.name == 'nt':
             self.executable.write_text(f'@"{sys.executable}" "{fixture}" %*\n', encoding='utf-8')
@@ -70,6 +72,23 @@ class ReviewRunnerTests(unittest.TestCase):
         self.assertTrue(any(event['event']=='skipped' for event in state['events']))
         self.assertEqual({event['version'] for event in state['events']}, {'1.0.0','2.0.0'})
         for file in self.files:self.assertEqual(file.read_text(), '# Test')
+
+    def test_updated_list_opens_only_new_paths_on_same_build(self):
+        first=self.run_loop();self.assertEqual(first.returncode,0,first.stderr)
+        additional=self.root/'new note.md';additional.write_text('# New')
+        self.listing.write_text(self.listing.read_text()+str(additional)+'\n'+str(self.files[0])+'\n')
+        second=self.run_loop();self.assertEqual(second.returncode,0,second.stderr)
+        self.assertEqual(self.opened(),[['--',str(file)] for file in [*self.files,additional]])
+        self.assertEqual(additional.read_text(),'# New')
+
+    def test_changed_binary_is_rejected_before_next_file(self):
+        (self.root/'change-build').write_text('change after first file')
+        result=self.run_loop();self.assertEqual(result.returncode,1,result.stderr)
+        self.assertIn('differs',result.stderr)
+        self.assertEqual(self.opened(),[['--',str(self.files[0])]])
+        events=json.loads(self.state.read_text())['events']
+        self.assertEqual(events[-1]['event'],'failed')
+        self.assertEqual(events[-1]['path'],str(self.files[1]))
 
     def test_identity_mismatch_opens_nothing(self):
         self.identity.write_text(json.dumps({**self.info,'fingerprint':'f'*40}))
