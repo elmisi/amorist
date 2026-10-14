@@ -95,7 +95,7 @@ async function main(){
   const missingAvifLoader=process.argv.includes('--expect-no-avif-loader');
   assert.deepEqual(formats,formatFiles.map(file=>file.extension==='avif'&&missingAvifLoader
     ? {extension:file.extension,loaded:false}
-    : {extension:file.extension,loaded:true,width:32,height:24}));
+    : {extension:file.extension,loaded:true,width:32,height:24}),engine.output.slice(-4000));
   const lifecycle=await engine.evaluate(`(async () => {
     const invoke=window.__TAURI__.core.invoke,doc=await invoke('read_document');
     const id=await invoke('register_image',{reference:'../images/photo%20%CE%BB.svg',contextId:doc.contextId});

@@ -2325,8 +2325,16 @@
       "cause": "GdkPixbuf automatic AVIF decoding delegates to Glycin subprocess; it does not find package-local AV1 plugin",
       "evidence": "appimage-avif-native-error.log captures Glycin plugin-loading error; appimage-avif-explicit-loader-error.log proves explicit HEIF module loads/decode succeeds with host AV1 directory hidden",
       "fix": "Use PixbufLoader::with_type(\"heif/avif\") for Linux AVIF bytes",
-      "checks": "avif-explicit-loader-native-linux.log pass; avif-explicit-loader-negative-linux.log pass with actual host codec hidden; avif-explicit-loader-rust-linux.log full tests exit0",
-      "remaining": "Final AppImage rebuild and actual no-host native image acceptance remain required"
+      "checks": "avif-explicit-loader-native-linux.log pass and Rust tests pass; avif-explicit-loader-negative-linux.log FAIL: AVIF request times out rather than returning a failed image; previous pass statement corrected",
+      "remaining": "AppImage explicit-HEIF build handle68486 remains in progress; actual no-host packaged acceptance required; final package must include subsequent failure guard",
+      "failureGuard": {
+        "cause": "Missing codec makes native HEIF loader close fail without setting GError; gdk-pixbuf 0.18.5 debug binding panics, abandoning protocol request",
+        "evidence": "avif-explicit-loader-negative-diagnostic-fixed-linux.log captures the exact tokio worker assertion at PixbufLoader::close",
+        "fix": "Catch binding panic within native AVIF conversion, preserving normal unavailable-resource response",
+        "positive": "avif-failure-guard-positive-linux.log exit0; all formats and resource lifecycle pass",
+        "negative": "avif-failure-guard-negative-linux.log exit0; actual host codec masked, resource fails promptly and other formats/lifecycle pass",
+        "rust": "avif-failure-guard-rust-linux.log exit0"
+      }
     }
   }
 }

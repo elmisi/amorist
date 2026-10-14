@@ -115,6 +115,17 @@ pub fn read_resource(store: &std::sync::Mutex<Store>, id: &str) -> Option<(Vec<u
 fn display_bytes(bytes: Vec<u8>, mime: &'static str) -> Option<(Vec<u8>, &'static str)> {
     #[cfg(target_os = "linux")]
     if mime == "image/avif" {
+        return native_avif_png(&bytes).map(|png| (png, "image/png"));
+    }
+    Some((bytes, mime))
+}
+
+#[cfg(target_os = "linux")]
+fn native_avif_png(bytes: &[u8]) -> Option<Vec<u8>> {
+    // Some native loader failures omit GError, which trips the binding's debug
+    // assertion. Keep that failure local so the protocol can return its normal
+    // unavailable-image response instead of abandoning the request.
+    std::panic::catch_unwind(|| {
         use gdk_pixbuf::prelude::PixbufLoaderExt;
         // The protocol runs in spawn_blocking. Keep the native objects on that
         // worker and return only encoded bytes; the original resource is never
@@ -123,14 +134,13 @@ fn display_bytes(bytes: Vec<u8>, mime: &'static str) -> Option<(Vec<u8>, &'stati
         // otherwise delegate to Glycin, whose subprocess does not use our
         // package-local libheif plugin directory.
         let loader = gdk_pixbuf::PixbufLoader::with_type("heif/avif").ok()?;
-        let written = loader.write(&bytes);
+        let written = loader.write(bytes);
         let closed = loader.close();
         written.ok()?;
         closed.ok()?;
         let image = loader.pixbuf()?;
-        return Some((image.save_to_bufferv("png", &[]).ok()?, "image/png"));
-    }
-    Some((bytes, mime))
+        image.save_to_bufferv("png", &[]).ok()
+    }).ok().flatten()
 }
 
 pub(crate) fn decode_path(value: &str) -> Result<String, String> {
