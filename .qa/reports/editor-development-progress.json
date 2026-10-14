@@ -2779,5 +2779,41 @@
       "multiline-current-full-qa-linux.json"
     ],
     "scope": "Entire declared Linux contract suite, including native document/recovery flows. REQ-H4 Finder/Dock delegated to native macOS package acceptance. Does not close remaining unimplemented Markdown/clipboard requirements or final package/platform gates."
+  },
+  "linuxPackagesAfterMultiline": {
+    "build": "pass linux-multiline-package-build.log exit0",
+    "identity": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:d76058ff5b9919031ae48c31460562630d586fa3",
+      "fingerprint": "d76058ff5b9919031ae48c31460562630d586fa3",
+      "commit": "a27dfff04785f82978381c52cc986c9bce70c669",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "packages": {
+      "deb": {
+        "path": "src-tauri/target/release/bundle/deb/amorist_0.10.10_amd64.deb",
+        "sha256": "3bc3c78b13b892cb7f64bdea5c52df1a0e8b2eda1135cae4395b7c4b78f41e9d"
+      },
+      "appimage": {
+        "path": "src-tauri/target/release/bundle/appimage/amorist_0.10.10_amd64.AppImage",
+        "sha256": "fb195a65148ff00570840f33cba4c1079a3dcdcabb2703ff056711b8752e7433"
+      }
+    },
+    "nativeProofs": {
+      "deb": [
+        "deb-multiline-recovery-native-linux.log exit0",
+        "deb-multiline-settings-native-linux.log exit0",
+        "deb-multiline-images-native-linux.log exit0"
+      ],
+      "appimage": [
+        "appimage-multiline-recovery-native-linux.log exit0",
+        "appimage-multiline-settings-native-linux.log exit0",
+        "appimage-multiline-images-no-host-linux.log exit0"
+      ]
+    },
+    "scope": "Actual updated packages, isolated app-data/document fixtures. Recovery includes simultaneous lease exclusion and unavailable originals; preferences include Save/Cancel/restart/retry/focus/corrupt file preservation; images include all formats and resource lifetime. AppImage AVIF passed with host plugin directories hidden.",
+    "remaining": "Unimplemented Markdown/clipboard cases, complete File/Bug/link/system clipboard package acceptance, install/upgrade and all-platform final delivery gates remain open. No personal install or review manifest written."
   }
 }
