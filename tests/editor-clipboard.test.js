@@ -45,6 +45,15 @@ async function main(){
    assert.equal(result.sourcePaste.raw,'raw *text*\r\nnextleft **bold** right');assert.equal(result.sourcePaste.display,'raw *text*\nnextleft **bold** right');
    assert.equal(result.outsideCode,'plain `code` after**HTML**');assert.equal(result.insideCode,'plain `coplainde` after');
    assert.equal(result.plainPaste,'plain');assert.equal(result.failedCut,'keep');
+   const emptyCases=await engine.evaluate(`(() => {
+    const editor=window.__clip, clipboard={getData:()=>''};
+    editor.setMarkdown('keep selection');editor.setSurfaceSelection(0,4);
+    editor.handlePaste({clipboardData:clipboard,preventDefault(){}});
+    const empty=editor.getMarkdown();editor.showSourceMode();editor.source.setSelectionRange(0,4);
+    editor.handlePaste({clipboardData:{getData:type=>type==='text/html'?'<strong>HTML only</strong>':''},preventDefault(){}});
+    return {empty,htmlOnly:editor.getMarkdown()};
+   })()`);
+   assert.deepEqual(emptyCases,{empty:'keep selection',htmlOnly:'<strong>HTML only</strong> selection'});
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

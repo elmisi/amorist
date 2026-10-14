@@ -1387,10 +1387,12 @@
         } catch(error) { /* Invalid/unsupported internal data uses public clipboard formats. */ }
       }
       if(replacement===null) {
-        const html=plainOnly?"":clipboard.getData("text/html");
-        replacement=html?HtmlToMarkdown.convert(html).replace(/\r\n|\r|\n/g,this.model.lineEndingAt(selection.start)):clipboard.getData("text/plain");
+        const html=clipboard.getData("text/html"), plain=clipboard.getData("text/plain");
+        replacement=plainOnly ? (plain || html) : html
+          ? HtmlToMarkdown.convert(html).replace(/\r\n|\r|\n/g,this.model.lineEndingAt(selection.start)) : plain;
       }
-      this.finishClipboardEdit(selection,String(replacement||""),plainOnly?"paste-plain":"paste");
+      if(!replacement) return;
+      this.finishClipboardEdit(selection,String(replacement),plainOnly?"paste-plain":"paste");
     }
 
     runAction(action) {
