@@ -149,7 +149,7 @@
       persistWorkingCopy(savedSource, unsavedSource, revision, boundaryState, capturedContext) {
         return invoke("persist_working_copy", { savedSource: savedSource, unsavedSource: unsavedSource, revision: revision, boundaryState: boundaryState, contextId: capturedContext });
       },
-      discardWorkingCopy() { return invoke("discard_working_copy", { contextId: contextId }); },
+      discardWorkingCopy(capturedContext) { return invoke("discard_working_copy", { contextId: capturedContext == null ? contextId : capturedContext }); },
       selectRecovery(sessionId) { return invoke("select_recovery", { sessionId: sessionId, contextId: contextId }); },
       async setWindowTitle(name) {
         try {
@@ -336,7 +336,7 @@
         elements.editor.inert = value;
         setStatus(value ? "Loading" : state.dirty ? "Modified" : "Loaded");
       },
-      pauseRecovery: function () { clearTimeout(workingCopyTimer); workingCopyTimer = null; },
+      pauseRecovery: function () { workingCopy.cancel(); },
       resumeRecovery: function () { if (state.dirty && state.editor) scheduleWorkingCopy(state.editor.getValue()); },
       error: function (error) { showError(errorMessage(error, "The file action could not be completed."), "file"); },
       focusEditor: function () {
@@ -370,8 +370,7 @@
     }
 
     if (state.dirty) {
-      clearTimeout(workingCopyTimer);
-      workingCopyTimer = null;
+      workingCopy.cancel();
       try {
         await backend.discardWorkingCopy();
       } catch (error) {
@@ -517,8 +516,7 @@
 
   function finishSave(editor, markdown, result) {
     if (state.editor !== editor) return false;
-    clearTimeout(workingCopyTimer);
-    workingCopyTimer = null;
+    workingCopy.cancel();
     state.savedMarkdown = markdown;
     var latest = editor.getValue();
     setDirty(latest !== markdown);
@@ -538,8 +536,7 @@
     var markdown = editor.getValue();
     var revision = editor.model ? editor.model.revision : 0;
     setBusy("Saving");
-    clearTimeout(workingCopyTimer);
-    workingCopyTimer = null;
+    workingCopy.cancel();
     try {
       try {
         return finishSave(editor, markdown, await backend.saveDocument(markdown, false, revision));
@@ -686,24 +683,21 @@
     setStatus(dirty ? "Modified" : "Saved");
   }
 
-  let workingCopyTimer = null;
+  const workingCopy = window.AmoristWorkingCopy.create({
+    isCurrent: snapshot => state.editor === snapshot.editor
+      && (!backend.getContextId || backend.getContextId() === snapshot.context),
+    persist: snapshot => backend.persistWorkingCopy(snapshot.savedSource, snapshot.value,
+      snapshot.revision, snapshot.boundaries, snapshot.context),
+    discard: snapshot => backend.discardWorkingCopy(snapshot.context),
+    onError: (_error, clean) => showWarning(clean ? "Could not remove the recovery copy."
+      : "Could not persist recovery copy. Your file was not changed."),
+  });
   function scheduleWorkingCopy(value) {
     if (state.demo) return;
-    clearTimeout(workingCopyTimer);
-    if (value === state.savedMarkdown) {
-      backend.discardWorkingCopy().catch(function () { showWarning("Could not remove the recovery copy."); });
-      return;
-    }
-    var editor = state.editor;
-    var savedSource = state.savedMarkdown;
-    var revision = editor && editor.model ? editor.model.revision : 0;
-    var boundaries = editor && editor.model ? editor.model.boundaryState() : null;
-    var context = backend.getContextId ? backend.getContextId() : 0;
-    workingCopyTimer = setTimeout(function () {
-      if (state.editor !== editor) return;
-      backend.persistWorkingCopy(savedSource, value, revision, boundaries, context)
-        .catch(function () { if (state.editor === editor) showWarning("Could not persist recovery copy. Your file was not changed."); });
-    }, 2000);
+    const editor=state.editor;
+    workingCopy.schedule({editor, value, savedSource:state.savedMarkdown,
+      revision:editor?.model?.revision||0, boundaries:editor?.model?.boundaryState()||null,
+      context:backend.getContextId?backend.getContextId():0});
   }
 
   function showError(message, source) {

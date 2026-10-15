@@ -399,7 +399,7 @@
     },
     {
       "id": "REQ-E1",
-      "statement": "Work not yet saved survives an abrupt termination. A working copy is written periodically to amorist's own location and offered for recovery on the next start.",
+      "statement": "Work not yet saved survives an abrupt termination. A working copy is written periodically to amorist's own location and offered for recovery on the next start. Recovery is scheduled after 2000 ms of inactivity with a non-postponable 5000 ms deadline from the first unpersisted edit. Writes are serialized per session and preserve the captured document context.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",

@@ -173,6 +173,16 @@ jobs:
           AMORIST_QA_APPLICATION="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
           GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-boundaries-native.test.js
 
+      - name: Verify packaged recovery deadlines on real disk
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-deadline-native.test.js
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

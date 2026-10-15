@@ -138,7 +138,12 @@ risks:
     likelihood: low
     impact: high
     unacceptable: true
-    mitigation: Periodic working copy outside the user's file, offered on restart.
+    mitigation: >
+      Session-isolated working copy outside the user's file, offered on restart.
+      Persist after 2000 ms idle or a non-postponable 5000 ms deadline; serialize
+      writes and cancel pending work on document transitions. Measure twenty
+      checkpoints per scenario on 500/1500 lines, with all completions within
+      2100/5100 ms, and recover the exact persisted text after an owned crash.
     verification_ids: [REQ-E1, REQ-F1, REQ-F2, REQ-H1, REQ-H2, REQ-H3, REQ-H4]
     status: open
 

@@ -3613,7 +3613,8 @@
       "candidate": "installed executable and NSIS present",
       "runningQaBeforeCheck": false,
       "freeBytes": 2241683456,
-      "representativeGui": "PASS clipboard in installed WebView2 and Edge; scheduler terminal Ready, LastTaskResult0, child receipt0; windows-preflight-20261015-clipboard.log"
+      "representativeGui": "PASS clipboard in installed WebView2 and Edge; scheduler terminal Ready, LastTaskResult0, child receipt0; windows-preflight-20261015-clipboard.log",
+      "directCli": "PASS installed candidate Unicode/leading-dash path, heading anchor, debug flag, unchanged source; windows-current-installed-cli-20261015.log"
     },
     "macos": {
       "ssh": "pass",
@@ -3623,11 +3624,36 @@
         "x86_64",
         "arm64"
       ],
-      "screenLocked": true,
+      "screenLocked": false,
       "runningQa": false,
       "freeBytes": 859894833152,
-      "gui": "blocked until owner unlocks; requested asynchronously"
+      "gui": "Safari and Chromium operable; native UI automation blocked: AXIsProcessTrusted false and System Events queries time out -1712; do not infer permissions from unlocked screen"
     },
+    "deliveryBlocked": true
+  },
+  "safariImageSelectionAndRecoveryDeadline": {
+    "status": "targeted source and native development proofs passed; full Linux contract pending",
+    "arrowFix": "Use horizontal event.code when Safari Shift+ArrowLeft supplies control character key; preserve atomic image and backward selection",
+    "arrowEvidence": [
+      "arrow-code-linux-clipboard.log:2 suites passed",
+      "arrow-code-linux-full.json:full contract green before recovery scheduler changes",
+      "arrow-code-macos-jk.log:clipboard and settings passed Safari/Chromium; first full macOS report retained as RED"
+    ],
+    "recoveryFix": "2000ms idle and5000ms first-pending deadline; one write in flight; preserve subsequent pending deadline; serialize clean discard; cancel stale document work",
+    "recoveryEvidence": [
+      "working-copy.test.js:4 deterministic scenarios passed",
+      "working-copy-boundaries-native.log:owned process crash, CRLF ownership and Undo exact",
+      "recovery-deadline-native-linux.json:20 samples each idle/continuous on500/1500 lines; four exact crash recoveries; originals unchanged"
+    ],
+    "maximumCompletionMs": {
+      "500_idle": 2011,
+      "500_continuous": 5016,
+      "1500_idle": 2014,
+      "1500_continuous": 5017
+    },
+    "timingScope": "Actual Linux application and atomic recovery records observed on disk; continuous source input dispatched by the test; IPC instrumentation was read-only and rejected, first watcher-only run lost an atomic replacement notification, both diagnostic logs retained; event watch plus10ms record polling used in passing proof",
+    "contract": "Only REQ-E1 projection changed; IDs, severity and other requirement projections unchanged; native timing now part of E1 and packaged AppImage CI",
+    "previewReference": "Unchanged: prior Linux preview stays available; current development snapshot not yet promoted",
     "deliveryBlocked": true
   }
 }

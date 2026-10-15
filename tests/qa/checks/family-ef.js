@@ -123,12 +123,20 @@ module.exports = [
     note: "Rust verifies the storage boundary; on Linux tauri-driver also types in the built app, waits for persistence, kills it and verifies recovery after restart.",
     async run() {
       const app = await runTauriAppChecks();
+      const timingFailures=[],timingFixtures=[];
+      if(process.platform==='linux') {
+        try {
+          const timings=await require('../../editor-recovery-deadline-native.test').run();
+          timingFixtures.push(...timings.map(sample=>`${sample.size} lines / ${sample.mode}: twenty real disk checkpoints and exact crash recovery`));
+        }catch(error){timingFailures.push({fixture:'native recovery deadlines',detail:error.stack||String(error)});}
+      }
       return {
-        failures: [...collect("qa_req_e1_", "REQ-E1"), ...app.E1],
+        failures: [...collect("qa_req_e1_", "REQ-E1"), ...app.E1, ...timingFailures],
         fixturesExercised: [
           "exact CRLF, trailing-space and Unicode recovery after a disk reload",
           "discarding a recovery copy twice",
           ...app.fixtures.filter((fixture) => fixture.includes("SIGKILL")),
+          ...timingFixtures,
         ],
         delegated: app.delegated ? [app.delegated] : [],
       };

@@ -17,6 +17,18 @@ approved_by: repository owner
 approved_on: 2026-07-28
 
 amendments:
+  - date: 2026-10-15
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      REQ-E1 recovery starts after two seconds of inactivity or no later than
+      five seconds from the first unpersisted edit during continuous input.
+      Only one write is in flight per session; later edits retain their own
+      first-unpersisted deadline. Document transitions cancel pending work.
+    why: >
+      Completes the approved recovery timing requirement rather than allowing
+      continuous typing to postpone the checkpoint indefinitely.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
   - date: 2026-10-14
     authorised_by: repository owner, explicit approval of the editor development plan
     what: >
@@ -1315,7 +1327,9 @@ requirements:
     statement: >
       Work not yet saved survives an abrupt termination. A working copy is
       written periodically to amorist's own location and offered for recovery on
-      the next start.
+      the next start. Recovery is scheduled after 2000 ms of inactivity with a
+      non-postponable 5000 ms deadline from the first unpersisted edit. Writes
+      are serialized per session and preserve the captured document context.
     category: invariant
     origin: user-statement (Q-017 answer, D-024)
     motivation: >
@@ -1326,12 +1340,19 @@ requirements:
       type: deterministic
       evidence_required:
         - text typed, the process killed without a save, the recovered content
+        - twenty real disk checkpoints per idle/continuous scenario for 500 and 1500 lines
+        - all checkpoint completions within 2100 ms idle or 5100 ms continuous from the first pending edit
+        - serialized slow writes, clean-state discard and cancellation of stale contexts
         - generated boundary metadata persisted with its source and cleanup after restart
         - simultaneous same-path sessions, explicit recovery choice, own-copy discard and untitled restart
       success_condition: >
         The recovered text matches what was typed, verbatim, up to the last
         working-copy interval. That interval MUST be stated in the
-        implementation and asserted by the check. Explicit automatic boundary
+        implementation and asserted by the check. For each document size and
+        input scenario, all twenty measured completions stay within 2100 ms
+        after inactivity or 5100 ms during continuous input; no slow sample is
+        hidden by averaging. Only one persistence is in flight per session.
+        Explicit automatic boundary
         ownership also survives restart; a recovered generated break is removed
         by a join gesture while legacy copies without metadata remain readable.
     severity: blocking
