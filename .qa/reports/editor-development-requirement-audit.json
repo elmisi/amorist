@@ -1,0 +1,817 @@
+{
+  "schemaVersion": 1,
+  "applicationSourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+  "blockingRequirements": 38,
+  "contractSha256": "0f724d45d2f431c6888795b53500c0c42296836889ff2117d34f499513cc8b1f",
+  "reports": {
+    "linux": {
+      "file": "ba1f626-linux-full.json",
+      "sha256": "5a10963a6052ac0e97b8be22864503c4617505bb10e95d97b63dbe86cc5efbcc",
+      "engines": [
+        {
+          "id": "webkitgtk",
+          "role": "shipping",
+          "description": "the engine the Linux application runs inside",
+          "version": "MiniBrowser 2.52.6",
+          "font": {
+            "sizePx": "14px",
+            "referenceWidthPx": 160,
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace"
+          }
+        },
+        {
+          "id": "chromium",
+          "role": "stand-in",
+          "description": "a Chromium-family browser, kept for speed and for cross-checking",
+          "version": "Google Chrome 155.0.8059.39",
+          "font": {
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
+            "sizePx": "14px",
+            "referenceWidthPx": 168.58
+          }
+        }
+      ]
+    },
+    "windows": {
+      "file": "ba1f626-windows-full.json",
+      "sha256": "83e0a2d66ab89ead2753b8ef33d40d212a11796d0dd686f8db972f8048eb5d9d",
+      "engines": [
+        {
+          "id": "webview2",
+          "role": "shipping",
+          "description": "the native Windows application WebView2 engine",
+          "version": "webview2 155.0.4283.45",
+          "font": {
+            "referenceWidthPx": 153.95,
+            "sizePx": "14px",
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace"
+          }
+        },
+        {
+          "id": "chromium",
+          "role": "stand-in",
+          "description": "a Chromium-family browser, kept for speed and for cross-checking",
+          "version": "155.0.4283.45",
+          "font": {
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
+            "sizePx": "14px",
+            "referenceWidthPx": 153.95
+          }
+        }
+      ]
+    },
+    "macos": {
+      "file": "ba1f626-macos-full.json",
+      "sha256": "e4d09571b4ddb61555fcdef7b2fdb4de14b58096bae6342392dc7056e99ae27f",
+      "engines": [
+        {
+          "id": "safari",
+          "role": "shipping",
+          "description": "the engine the macOS application runs inside \u2014 same engine, different embedding: this covers the engine, not the embedding",
+          "version": "Safari 26.5",
+          "font": {
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
+            "sizePx": "14px",
+            "referenceWidthPx": 168.58
+          }
+        },
+        {
+          "id": "chromium",
+          "role": "stand-in",
+          "description": "a Chromium-family browser, kept for speed and for cross-checking",
+          "version": "Google Chrome 150.0.7871.187",
+          "font": {
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
+            "sizePx": "14px",
+            "referenceWidthPx": 168.58
+          }
+        }
+      ]
+    }
+  },
+  "requirements": [
+    {
+      "id": "REQ-A1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A3",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A4",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A5",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A6",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A7",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A8",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A9",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-A10",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B3",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B4",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass",
+          "the run itself": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B6",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass",
+          "the run itself": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B7",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass",
+          "the run itself": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B5",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B8",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-B9",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-C1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-C2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass",
+          "the run itself": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass",
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-C3",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-D1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-E1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-E2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-F1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "pass"
+        },
+        "macos": {
+          "the run itself": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-F2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-G1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "pass"
+        },
+        "macos": {
+          "the run itself": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-G2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "pass"
+        },
+        "macos": {
+          "the run itself": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-G3",
+      "severity": "advisory",
+      "platforms": {},
+      "status": "manual-advisory-not-claimed"
+    },
+    {
+      "id": "REQ-H1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-H2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-H3",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "the run itself": "delegated"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-H4",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "delegated"
+        },
+        "windows": {
+          "the run itself": "delegated"
+        },
+        "macos": {
+          "the run itself": "delegated"
+        }
+      },
+      "nativeAcceptance": {
+        "status": "pass",
+        "receipts": [
+          "ba1f626-native-startup-multiple.json",
+          "ba1f626-native-links-dock-verification.json",
+          "macos-native-dda92bf/dda92bf-native-open-event.json"
+        ],
+        "scope": "Cold startup and Dock on ba1f626; warm event on preceding dda92bf, preserving its exact source scope. Startup ownership fix tested separately on current bundle."
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-I1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-I2",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-I3",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "webkitgtk": "pass",
+          "chromium": "pass"
+        },
+        "windows": {
+          "webview2": "pass",
+          "chromium": "pass"
+        },
+        "macos": {
+          "safari": "pass",
+          "chromium": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-J1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "pass"
+        },
+        "macos": {
+          "the run itself": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    },
+    {
+      "id": "REQ-K1",
+      "severity": "blocking",
+      "platforms": {
+        "linux": {
+          "the run itself": "pass"
+        },
+        "windows": {
+          "the run itself": "pass"
+        },
+        "macos": {
+          "the run itself": "pass"
+        }
+      },
+      "status": "passed-composed-evidence"
+    }
+  ],
+  "nativePackageEvidence": "editor-development-progress.json currentCrossPlatformSource plus macosNativeAcceptanceDda92bf; native source/gesture scope remains explicit",
+  "reportMetadataErratum": "Historical notAutomatedAnywhere prose overstates lack of native embedding coverage; Windows already exercises actual application WebView2. Historical files retained unchanged; future reporter text corrected without changing verdicts.",
+  "newReportsPending": [
+    "BUG-011",
+    "BUG-012",
+    "BUG-013"
+  ],
+  "deliveryBlocked": true,
+  "pushAuthorized": false,
+  "publicationAuthorized": false
+}

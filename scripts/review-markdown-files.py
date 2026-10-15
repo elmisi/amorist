@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 from review_identity import release_reference_path, verify
-from review_state import load as load_state, save as save_state, exclusive
+from review_state import load as load_state, save as save_state, exclusive, completed_paths
 
 
 def main():
@@ -43,7 +43,7 @@ def run_review(args, parser, executable, release, identity):
         state, run = load_state(args.state, release)
     except ValueError as error:
         parser.error(str(error))
-    completed = set(run['completed'])
+    completed = completed_paths(state)
 
     def record(path, event, **details):
         state['events'].append({'time': datetime.now(timezone.utc).isoformat(), 'path': path, 'event': event, 'version': release['version'], 'buildId': release['buildId'], **details})

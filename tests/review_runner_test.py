@@ -66,12 +66,30 @@ class ReviewRunnerTests(unittest.TestCase):
         self.assertEqual(len(self.opened()), 2)
         self.info.update(version='2.0.0', buildId='two', fingerprint='2'*40);self.publish_fixture()
         third = self.run_loop();self.assertEqual(third.returncode, 0, third.stderr)
-        self.assertEqual(len(self.opened()), 4)
+        self.assertEqual(len(self.opened()), 2)
         state = json.loads(self.state.read_text(encoding='utf-8'));self.assertEqual(state['runs']['one']['completed'], list(map(str,self.files)))
-        self.assertEqual(state['runs']['two']['completed'], list(map(str,self.files)))
+        self.assertEqual(state['runs']['two']['completed'], [])
         self.assertTrue(any(event['event']=='skipped' for event in state['events']))
         self.assertEqual({event['version'] for event in state['events']}, {'1.0.0','2.0.0'})
         for file in self.files:self.assertEqual(file.read_text(encoding='utf-8'), '# Test')
+
+    def test_legacy_and_all_builds_resume_at_first_unreviewed_file(self):
+        self.state.write_text(json.dumps({'events': [], 'completed': [str(self.files[0])]}))
+        self.assertEqual(self.run_loop().returncode, 0)
+        self.assertEqual(self.opened(), [['--', str(self.files[1])]])
+        additional = self.root / 'third.md'
+        additional.write_text('# Third')
+        self.listing.write_text(self.listing.read_text() + str(additional) + '\n')
+        self.info.update(version='2.0.0', buildId='two', fingerprint='2'*40)
+        self.publish_fixture()
+        result = self.run_loop()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('[3/3]', result.stdout)
+        self.assertEqual(self.opened(), [['--', str(self.files[1])], ['--', str(additional)]])
+        state = json.loads(self.state.read_text())
+        self.assertEqual(state['legacyCompleted'], [str(self.files[0])])
+        self.assertEqual(state['runs']['one']['completed'], [str(self.files[1])])
+        self.assertEqual(state['runs']['two']['completed'], [str(additional)])
 
     def test_updated_list_opens_only_new_paths_on_same_build(self):
         first=self.run_loop();self.assertEqual(first.returncode,0,first.stderr)

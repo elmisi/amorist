@@ -78,10 +78,15 @@ python3 scripts/review-markdown-files.py --debug --amorist src-tauri/target/rele
 The runner verifies the executable against `review-release.json` in the app's
 local data directory before each file. A delivery must install this reference
 with the expected build identity; an executable override does not bypass it.
-Each build has its own review round, and earlier rounds remain in the state
-file. Ctrl+C stops the sequence after the current window closes normally;
+Review progress persists across builds: files completed on any earlier build
+are skipped, while build-specific history remains in the state file. The counter
+never resets on an update. Ctrl+C stops the sequence after the current window closes normally;
 restarting reopens the interrupted file. A build change during a round stops
 the runner before the next file.
+
+To append captured Bug reports to a separate processing queue without changing
+the originals or review progress, run `python3 scripts/queue-bug-reports.py`.
+Repeated imports skip existing records by their content hash.
 
 **Settings** provides a document preview, a shared base font size, separate
 table/code scales, and an optional highlight of the current visual line.

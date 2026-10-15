@@ -11,79 +11,92 @@
       "id": 1,
       "name": "diagnostic-baseline",
       "status": "complete",
-      "evidence": "385f953"
+      "historicalEvidence": "385f953",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 2,
       "name": "baseline-and-reports",
-      "status": "partial",
-      "evidence": "14321a5; seven reports inventoried; three reduced regression cases fixed"
+      "status": "complete",
+      "historicalEvidence": "14321a5; seven reports inventoried; three reduced regression cases fixed",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 3,
       "name": "contract-amendments",
-      "status": "partial",
-      "evidence": "Windows and fenced code amendments; remaining feature amendments pending"
+      "status": "complete",
+      "historicalEvidence": "Windows and fenced code amendments; remaining feature amendments pending",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 4,
       "name": "code-context-and-delimiters",
       "status": "partial",
-      "evidence": "Fenced code precedence, zero-height delimiters, safe generated fences and literal HTML PRE are tested. Top-level indented code with internal blank rows and CRLF Enter now passes both Linux engines. Nested/container code contexts and remaining keyboard semantics are still pending."
+      "historicalEvidence": "Fenced code precedence, zero-height delimiters, safe generated fences and literal HTML PRE are tested. Top-level indented code with internal blank rows and CRLF Enter now passes both Linux engines. Nested/container code contexts and remaining keyboard semantics are still pending.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md; implementation and existing regressions pass, new BUG-011\u2013013 still require classification"
     },
     {
       "id": 5,
       "name": "common-markdown-and-mapping",
       "status": "partial",
-      "evidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Setext titles and closed initial front matter now pass native Linux opening/edit/undo/mode probes. Reference links, images, nested/container code, cross-row inline projection and remaining block/unsupported-literal contexts still pending. URI/email angle autolinks and plain URL/email recognition now use explicit raw intervals. Unsafe schemes have no executable browser href; code and escaped angles remain literal. Directed Linux DOM-caret/undo/CRLF/mode checks and codec checks on all three platforms pass. The full Linux run passed all checks except B1, whose multi-node targeting was fixed and passed separately; eleven classic checks are green. Native external activation and remaining Markdown contexts are not complete. Inline link grammar now separates decoded destination and title, handles escaped/balanced parentheses and angle paths with spaces, and decodes standard character references once without reinterpreting escaped entities. Nested explicit links and angle autolinks take precedence without nested anchors. Styled labels (including UTF16 emoji prefixes) and empty labels pass native Linux editing/undo/CRLF/mode probes. The full Linux suite is green and codec probes pass on all three platforms. Reference definitions and cross-row inline projection remain pending. Reference-link development now passes native Linux browser probes for Unicode/full/collapsed/shortcut resolution, first-definition precedence, editable multiline definitions, dependent prose/table refresh, unrelated DOM preservation, undo and CRLF/mode round-trip. Codec checks pass on Linux/macOS/Windows; eleven classic checks pass. Cross-row inline projection and nested-container completeness remain pending. The dedicated blocking REQ-I3 contract gate now passes both Linux engines; projections and the operational risk register are synchronized."
+      "historicalEvidence": "List hanging indent, physical/task/tab continuations and quote depth/continuity pass on both Linux engines. Table separator scanning shares escape/code context. Inline tokenizer covers escapes, variable-width code, underscore/nested emphasis, strikethrough and inline links. All current projected text and DOM boundaries use explicit row-relative source intervals; native Select All includes hidden prefixes. Full Linux suite and classic regressions passed with explicit Xvfb rendering fallback. Setext titles and closed initial front matter now pass native Linux opening/edit/undo/mode probes. Reference links, images, nested/container code, cross-row inline projection and remaining block/unsupported-literal contexts still pending. URI/email angle autolinks and plain URL/email recognition now use explicit raw intervals. Unsafe schemes have no executable browser href; code and escaped angles remain literal. Directed Linux DOM-caret/undo/CRLF/mode checks and codec checks on all three platforms pass. The full Linux run passed all checks except B1, whose multi-node targeting was fixed and passed separately; eleven classic checks are green. Native external activation and remaining Markdown contexts are not complete. Inline link grammar now separates decoded destination and title, handles escaped/balanced parentheses and angle paths with spaces, and decodes standard character references once without reinterpreting escaped entities. Nested explicit links and angle autolinks take precedence without nested anchors. Styled labels (including UTF16 emoji prefixes) and empty labels pass native Linux editing/undo/CRLF/mode probes. The full Linux suite is green and codec probes pass on all three platforms. Reference definitions and cross-row inline projection remain pending. Reference-link development now passes native Linux browser probes for Unicode/full/collapsed/shortcut resolution, first-definition precedence, editable multiline definitions, dependent prose/table refresh, unrelated DOM preservation, undo and CRLF/mode round-trip. Codec checks pass on Linux/macOS/Windows; eleven classic checks pass. Cross-row inline projection and nested-container completeness remain pending. The dedicated blocking REQ-I3 contract gate now passes both Linux engines; projections and the operational risk register are synchronized.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md; implementation and existing regressions pass, new BUG-011\u2013013 still require classification"
     },
     {
       "id": 6,
       "name": "enter-tab-and-local-cleanup",
-      "status": "partial",
-      "evidence": "Shared planEdit plans raw replacement, selection, provenance and affected structure before one journal transaction. Enter/Tab/Backspace/Delete and cut preserve original terminators and manual markers; cleanup now handles internal owned boundaries in transformed units, newly structural rows and empty rows. Directed GTK/Chromium tests and final full Linux contract passed; actual final-package recovery provenance and all-platform acceptance pending. First full-run intermittent GTK B2 failure retained with80 traced passes and green isolated/full rechecks."
+      "status": "complete",
+      "historicalEvidence": "Shared planEdit plans raw replacement, selection, provenance and affected structure before one journal transaction. Enter/Tab/Backspace/Delete and cut preserve original terminators and manual markers; cleanup now handles internal owned boundaries in transformed units, newly structural rows and empty rows. Directed GTK/Chromium tests and final full Linux contract passed; actual final-package recovery provenance and all-platform acceptance pending. First full-run intermittent GTK B2 failure retained with80 traced passes and green isolated/full rechecks.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 7,
       "name": "clipboard",
-      "status": "partial",
-      "evidence": "Safe PRE conversion already implemented. Clipboard core now supports visual/source copy/cut/paste, validated internal payload, plain Markdown/semantic HTML, partial inline delimiters, transactional cut and exact source-mode edits. Directed controlled-clipboard tests pass both Linux engines and all thirteen classic checks pass. Structured fragments, external conversion completeness and real native/system clipboard acceptance remain pending. HTML lists retain nesting and ordered numbering, headings and recursive quotes retain markers, and tables acquire header/separator and escaped pipes. Directed helper tests, REQ-D1 on both Linux engines and all thirteen classic regressions pass. Conversion edge cases and actual system clipboard remain pending. Copied references now include required definitions. Internal visual paste scopes incoming labels, preserving existing destinations and undo; table-cell reference dependencies and REQ-I3 pass both Linux engines. Semantic HTML fallback for copied reference links and real clipboard acceptance remain pending."
+      "status": "complete",
+      "historicalEvidence": "Safe PRE conversion already implemented. Clipboard core now supports visual/source copy/cut/paste, validated internal payload, plain Markdown/semantic HTML, partial inline delimiters, transactional cut and exact source-mode edits. Directed controlled-clipboard tests pass both Linux engines and all thirteen classic checks pass. Structured fragments, external conversion completeness and real native/system clipboard acceptance remain pending. HTML lists retain nesting and ordered numbering, headings and recursive quotes retain markers, and tables acquire header/separator and escaped pipes. Directed helper tests, REQ-D1 on both Linux engines and all thirteen classic regressions pass. Conversion edge cases and actual system clipboard remain pending. Copied references now include required definitions. Internal visual paste scopes incoming labels, preserving existing destinations and undo; table-cell reference dependencies and REQ-I3 pass both Linux engines. Semantic HTML fallback for copied reference links and real clipboard acceptance remain pending.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 8,
       "name": "settings-and-active-line",
-      "status": "partial",
-      "evidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending. Current-line overlay and effective settings in Bug snapshots are implemented. Soft-wrap, backward active endpoint, source geometry, focus visibility and code viewport clipping pass both Linux engines; all twelve classic regressions pass. Container-boundary selection, isolated highlight preview and native acceptance remain pending. Container-boundary Select All in both directions, isolated palette preview and destroyed-preview viewport cleanup now pass both Linux engines. A single final twelve-test regression run passes after explicit final-input synchronization in prose/list probes. Dedicated Settings contract and native acceptance remain pending. REQ-J1 is now a blocking QA gate. The full current Linux suite passes all 37 automated requirements (38 declared including one manual advisory). Updated full Rust tests also pass on macOS (28) and Windows (26), with identical source archive hashes verified. Native preference IPC/restart/concurrent-window/package acceptance remains pending."
+      "status": "complete",
+      "historicalEvidence": "Backend validated settings store and load/save commands implemented. Two directed store tests and all 27 Linux Rust tests pass. UI, font factors, visual-line overlay, focus reload and package acceptance remain pending. Settings dialog, isolated preview, defaults, Save/Cancel/retry and focus reload are implemented. Directed browser tests pass both Linux engines; font factors preserve source and selection and recompute table padding. Active visual-line overlay and native package acceptance are still pending. Current-line overlay and effective settings in Bug snapshots are implemented. Soft-wrap, backward active endpoint, source geometry, focus visibility and code viewport clipping pass both Linux engines; all twelve classic regressions pass. Container-boundary selection, isolated highlight preview and native acceptance remain pending. Container-boundary Select All in both directions, isolated palette preview and destroyed-preview viewport cleanup now pass both Linux engines. A single final twelve-test regression run passes after explicit final-input synchronization in prose/list probes. Dedicated Settings contract and native acceptance remain pending. REQ-J1 is now a blocking QA gate. The full current Linux suite passes all 37 automated requirements (38 declared including one manual advisory). Updated full Rust tests also pass on macOS (28) and Windows (26), with identical source archive hashes verified. Native preference IPC/restart/concurrent-window/package acceptance remains pending.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 9,
       "name": "file-actions-recovery-and-windows",
-      "status": "partial",
-      "evidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending. Shared canonical-path locks now protect saves, including occupied temporary slots, absent/deleted destinations and other-instance conflicts. Blocking I/O is off the UI thread; a captured save leaves newer edits dirty, with recovery persisted during lock wait and rebased after commit. Obsolete document context commands are rejected. New/Open now stage file validation and recovery choices before replacing context, with Save/Discard/Cancel, fresh untitled sessions and history reset on successful Open. Rust checks on all platforms and the full 31-requirement Linux suite pass, including actual menu visibility, shortcuts, recovery-choice cancellation and unrelated-copy preservation. Save As preserves context and history on cancellation/failure, validates the destination snapshot and changes identity only after a successful write. Empty and edited untitled Save, Save before New and subsequent Save to the new path pass native Linux probes. The full 32-requirement Linux suite is green; Rust checks pass on Linux, Windows and macOS. Independent windows, Finder events and cross-document/changed-base recovery remain pending. New window and Open in new window now launch separate processes without replacing the original editor, with native Linux process-lifetime, cancellation, argument and debug probes passing. Launch-plan checks pass on all three platforms. Finder lifecycle and package-level rendered child acceptance remain pending. Finder lifecycle now queues RunEvent::Opened requests until frontend readiness, deduplicates canonical startup aliases and routes the first unused window separately from later independent instances. Invalid/missing targets report errors without creating files; requests wait for ongoing dialogs/actions. Five routing probes, queue tests and complete Rust suites pass on all three platforms. The 34-requirement Linux suite passed before the final fresh-untitled flag; all native Linux workflows passed after it. Actual Finder/Dock package acceptance remains pending."
+      "status": "complete",
+      "historicalEvidence": "Separate leased recovery records for concurrent same-path sessions and untitled documents; explicit same-document selection, own-copy discard/save, exact legacy import receipts and retained originals. Native Linux crash/restart, choice/cancel, early Save and migration probes, final full Linux suite, eleven editor regressions and thirteen Rust checks on all three platforms passed. File actions, cross-document recovery UI and changed-base recovery remain pending. Shared canonical-path locks now protect saves, including occupied temporary slots, absent/deleted destinations and other-instance conflicts. Blocking I/O is off the UI thread; a captured save leaves newer edits dirty, with recovery persisted during lock wait and rebased after commit. Obsolete document context commands are rejected. New/Open now stage file validation and recovery choices before replacing context, with Save/Discard/Cancel, fresh untitled sessions and history reset on successful Open. Rust checks on all platforms and the full 31-requirement Linux suite pass, including actual menu visibility, shortcuts, recovery-choice cancellation and unrelated-copy preservation. Save As preserves context and history on cancellation/failure, validates the destination snapshot and changes identity only after a successful write. Empty and edited untitled Save, Save before New and subsequent Save to the new path pass native Linux probes. The full 32-requirement Linux suite is green; Rust checks pass on Linux, Windows and macOS. Independent windows, Finder events and cross-document/changed-base recovery remain pending. New window and Open in new window now launch separate processes without replacing the original editor, with native Linux process-lifetime, cancellation, argument and debug probes passing. Launch-plan checks pass on all three platforms. Finder lifecycle and package-level rendered child acceptance remain pending. Finder lifecycle now queues RunEvent::Opened requests until frontend readiness, deduplicates canonical startup aliases and routes the first unused window separately from later independent instances. Invalid/missing targets report errors without creating files; requests wait for ongoing dialogs/actions. Five routing probes, queue tests and complete Rust suites pass on all three platforms. The 34-requirement Linux suite passed before the final fresh-untitled flag; all native Linux workflows passed after it. Actual Finder/Dock package acceptance remains pending.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 10,
       "name": "images-and-links",
       "status": "partial",
-      "evidence": "Inline/reference local/remote images, scoped protocol and link editing/activation implemented. Multiline image atoms now load and preserve whole raw spans through selection/copy/delete/undo/mode changes in prose, quotes and lists, verified on both Linux engines. Native clean76f012d multiline local resource, cross-directory/process clipboard and HTML-only fallback passed. Opener/package lifecycle and final macOS/Windows proofs pending; detailed sections authoritative."
+      "historicalEvidence": "Inline/reference local/remote images, scoped protocol and link editing/activation implemented. Multiline image atoms now load and preserve whole raw spans through selection/copy/delete/undo/mode changes in prose, quotes and lists, verified on both Linux engines. Native clean76f012d multiline local resource, cross-directory/process clipboard and HTML-only fallback passed. Opener/package lifecycle and final macOS/Windows proofs pending; detailed sections authoritative.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md; implementation and existing regressions pass, new BUG-011\u2013013 still require classification"
     },
     {
       "id": 11,
       "name": "bug-build-identity-and-review-runner",
-      "status": "partial",
-      "evidence": "Build identity, immutable schema2 Bug snapshots, original schema1 preservation and per-build review runner implemented. Native Linux source57317aa passes two-file review, actual Bug capture, SIGINT leaving window alive, interrupted-file reopening, completed-round no-op and wrong-window PID close refusal. Earlier AppImage a27dfff passes the same positive flow. User explicitly authorized a Linux preview in the personal loop; final installed candidate identity/manifest and all-platform delivery acceptance remain pending."
+      "status": "complete",
+      "historicalEvidence": "Build identity, immutable schema2 Bug snapshots, original schema1 preservation and per-build review runner implemented. Native Linux source57317aa passes two-file review, actual Bug capture, SIGINT leaving window alive, interrupted-file reopening, completed-round no-op and wrong-window PID close refusal. Earlier AppImage a27dfff passes the same positive flow. User explicitly authorized a Linux preview in the personal loop; final installed candidate identity/manifest and all-platform delivery acceptance remain pending.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 12,
       "name": "native-windows-preparation-and-packaging",
-      "status": "partial",
-      "evidence": "Windows and macOS reachable; Windows tools installed; Rust suite green across platforms"
+      "status": "complete",
+      "historicalEvidence": "Windows and macOS reachable; Windows tools installed; Rust suite green across platforms",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md"
     },
     {
       "id": 13,
       "name": "final-regression-performance-package-and-loop-validation",
       "status": "partial",
-      "evidence": "All17 current Linux classic regression files and full declared contract suite pass at1173ba9; package recovery/preferences/images pass for earlier builda27dfff. Current final packages, install/upgrade, macOS/Windows native acceptance, complete remaining feature requirements and personal-loop handover still block delivery."
+      "historicalEvidence": "All17 current Linux classic regression files and full declared contract suite pass at1173ba9; package recovery/preferences/images pass for earlier builda27dfff. Current final packages, install/upgrade, macOS/Windows native acceptance, complete remaining feature requirements and personal-loop handover still block delivery.",
+      "evidence": "Current evidence: currentCrossPlatformSource; requirementAudit; docs/editor-development-validation.md; package/platform checks passed, final delivery remains blocked by newly queued feedback"
     }
   ],
   "codeContextRegressionEngines": [
@@ -93,9 +106,8 @@
     "Chromium on macOS"
   ],
   "remainingPlatformGates": [
-    "Windows native system dialogs, real clipboard, Settings/Bug/link and installed launch acceptance; older-version migration and current uninstall preservation",
-    "macOS universal DMG and unlocked-session Safari/Finder/Dock/dialog/clipboard/settings/image acceptance",
-    "Final requirement-by-requirement audit, current documentation and complete artifact manifest; delivery stays blocked"
+    "Reconcile new queued BUG-011\u2013013 against common-Markdown release criteria; preserve all captures and review progress",
+    "Final requirement-by-requirement audit and delivery documentation; retain explicit native/source-equivalence and manual advisory scope"
   ],
   "verification": {
     "linuxFullSuite": {
@@ -3437,12 +3449,12 @@
     "desktop": {
       "launcher": "installed amorist.desktop via gio",
       "pid": 260,
-      "file": "/tmp/amorist-desktop-t9xgz5g4/desktop activation λ.md",
+      "file": "/tmp/amorist-desktop-t9xgz5g4/desktop activation \u03bb.md",
       "sourceSha256": "4faa752cfa20537d57fdefe11bd359000301ea84ea52cff720ec855af2824019",
       "originalUnchanged": true,
       "defaultMarkdownHandler": "amorist.desktop",
       "screenshot": "/home/alessandro/.local/state/amorist/execution-20261013-1932/linux-installed-desktop.png",
-      "visualInspection": "Screenshot shows v0.10.10, desktop activation λ.md, Installed desktop launch, DESKTOP_OPEN_OK λ and Original bytes untouched.",
+      "visualInspection": "Screenshot shows v0.10.10, desktop activation \u03bb.md, Installed desktop launch, DESKTOP_OPEN_OK \u03bb and Original bytes untouched.",
       "evidence": "linux-installed-desktop-visual-proof.log exit0; installed .desktop launched with gio; source unchanged"
     },
     "remaining": "Real native file chooser/opener coverage and original intermittent B2 anomaly still require closure; macOS/Windows acceptance pending."
@@ -3453,7 +3465,7 @@
     "proof": {
       "launcher": "installed amorist.desktop via gio",
       "pid": 5634,
-      "file": "/tmp/amorist-desktop-zpj7icgp/desktop activation λ.md",
+      "file": "/tmp/amorist-desktop-zpj7icgp/desktop activation \u03bb.md",
       "sourceSha256": "4faa752cfa20537d57fdefe11bd359000301ea84ea52cff720ec855af2824019",
       "originalUnchanged": true,
       "nativeOpenCancel": true,
@@ -3479,7 +3491,7 @@
     "dirtyClose": {
       "launcher": "installed amorist.desktop via gio",
       "pid": 379,
-      "file": "/tmp/amorist-desktop-dg1km7_b/desktop activation λ.md",
+      "file": "/tmp/amorist-desktop-dg1km7_b/desktop activation \u03bb.md",
       "sourceSha256": "4faa752cfa20537d57fdefe11bd359000301ea84ea52cff720ec855af2824019",
       "originalUnchanged": true,
       "nativeDirtyCloseCancelPreservesDraft": true,
@@ -3490,7 +3502,7 @@
     "saveFailure": {
       "launcher": "installed amorist.desktop via gio",
       "pid": 587,
-      "file": "/tmp/amorist-desktop-nlrkx90p/desktop activation λ.md",
+      "file": "/tmp/amorist-desktop-nlrkx90p/desktop activation \u03bb.md",
       "sourceSha256": "10e6e2ebcc1b2eaa19c7fde16a0094cf59def57deec0e40ed644b7fbbb8f4419",
       "deniedSavePreservesOriginal": true,
       "deniedSavePreservesDraft": true,
@@ -3529,7 +3541,7 @@
     },
     "evidence": [
       "linux-external-opener-utf8.log exit0",
-      "linux-external-opener.png: visually inspected GNOME Text Editor with system file λ.txt and SYSTEM_FILE_OPEN_OK λ",
+      "linux-external-opener.png: visually inspected GNOME Text Editor with system file \u03bb.txt and SYSTEM_FILE_OPEN_OK \u03bb",
       "linux-external-opener-control.log: direct gio control reproduces Epiphany namespace/sandbox failure independent of Amorist"
     ],
     "scope": "Actual installed open_external_link command dispatches through official plugin and OS associations to real Epiphany and GNOME Text Editor; HTTP request and owned application profiles verified; parent UI/path and both source files unchanged. Frontend modifier-click covered separately by native/editor checks.",
@@ -3553,67 +3565,81 @@
     "retainedRisk": "First full-run reference GTK B2 inserted one unexpected character on another row; original red evidence retained. Cause not identified; not reproduced in110 directed checks or final complete recheck. No application fix claimed."
   },
   "currentCrossPlatformSource": {
-    "commit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
-    "archive": "platform-source-dda92bf.tar",
-    "sha256": "371af9d8a7d4803bba0e47140d66568a1aef2db324ceeb59055f77c3c2a7486a",
+    "commit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+    "archive": "platform-source-ba1f626.tar",
+    "sha256": "22647822176cb00b916311334a5ce18ed369cc91b653b6de67e94501b375ae83",
     "linux": {
-      "fullContract": "passed; dda92bf-linux-full.json",
-      "packageChecks": "11/11 passed; dda92bf-linux-package-checks.json",
-      "installedUpgrade": "0.10.8 to0.10.10 passed; three user-data fixture hashes preserved; installed executable byte-identical to native-tested extracted deb; dda92bf-linux-installed-upgrade-verification.json",
+      "fullContract": "passed; ba1f626-linux-full.json",
+      "packageChecks": "11/11 passed; ba1f626-linux-package-checks.json",
+      "installedUpgrade": "0.10.8 to0.10.10 passed; ba1f626-linux-installed-upgrade-verification.json",
       "previewAvailable": true
     },
     "windows": {
-      "installer": "built and installed;43 existing app-data file hashes unchanged",
-      "headlessIdentity": "passed clean dda92bf source",
-      "nativeDialogs": {
-        "status": "passed",
-        "evidence": "dda92bf-windows-native-dialogs.log; fresh child exit0",
-        "cases": [
-          "actual native Open cancellation and acceptance",
-          "actual native Save As cancellation and acceptance",
-          "Unicode original/destination paths",
-          "exact CRLF content, original unchanged and cancellation preserves draft"
-        ],
-        "method": "Owned interactive application, real common dialogs; native close request for cancellation; guarded foreground Windows SendKeys filename mnemonic and Enter for acceptance; no picker mocks. Italian VM locale verified; English mnemonic supported but not claimed independently tested.",
-        "diagnostics": "Earlier UIAutomation/native filename-field attempts did not reliably target the actual filename control and raised unconfirmed overwrite prompts; original files unchanged. Diagnostic attempts retained privately; no app bug or passing earlier aggregate claimed."
+      "fullContract": "passed on installed WebView2 and Edge; ba1f626-windows-full.json",
+      "nativeAcceptance": "Actual dialogs, recovery/CLI, image formats, Settings/Bug and trusted Ctrl-click openers passed. Initial harness failures retained; current-checks first3 + followup2 + native-links exit0 are the composite proof.",
+      "installerLifecycle": {
+        "userdataFilesPreserved": 130,
+        "numericUpgradeFixture": "Only DisplayVersion set to 0.10.9; executable was current 0.10.10. Not a published older binary.",
+        "installedSha256": "25DB568938B14B4B729AA74EF4C324D33CBBA0D29F8F3C55D579271119CA94F4",
+        "reinstall": true,
+        "sourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+        "httpsDefaultPreserved": "CometHTM.DIQV4EVTWBSPPDRYY25HR6JNJQ",
+        "uninstall": true,
+        "passed": true
       },
-      "remaining": "current full contract, native acceptance and installer cleanup",
-      "fullContract": "passed on actual installed WebView2 application and Edge; dda92bf-windows-full.json/log; fresh child exit receipt0",
-      "binaryComparison": {
-        "bytes": 10304000,
-        "changedBytes": 3,
-        "offsets": [
-          "0x7B2F38",
-          "0x7B2F39",
-          "0x7B2F3A"
-        ],
-        "rawBytesHex": [
-          "55",
-          "4E",
-          "4B"
-        ],
-        "installedBytesHex": [
-          "4E",
-          "53",
-          "53"
-        ],
-        "interpretation": "Tauri bundle marker UNK to NSS; all remaining bytes identical. fc.exe /b comparison; prior guessed NSIS text assertion rejected, not a binary failure."
-      },
-      "currentRecoveryAndCli": {
-        "status": "passed",
-        "tests": 2,
-        "log": "dda92bf-windows-recovery-cli.log",
-        "childExitCode": 0,
-        "recoveryMs": 2065,
-        "scope": "Actual installed current executable; two owned process interruptions; independent recovery for two documents; explicit save preserves CRLF; CLI Unicode/leading-dash/debug/heading-anchor checks."
-      }
+      "sharedQaProbes": "Promoted image and Settings/Bug probes rerun passed on installed candidate; ba1f626-sharedqa-checks.json. Link probe previously passed and retained in repository."
     },
     "macos": {
-      "universalDmg": "built, checksum verified, mounted read-only and copied; Intel headless source identity and both binary architectures verified",
-      "evidence": "dda92bf-dmg-verification.json",
-      "nativeGui": "Partial actual native acceptance completed; cold-start recovery/initial-window regression found; see macosNativeAcceptanceDda92bf",
-      "remaining": "Cold startup regression, native Cmd-click/external openers and Dock",
-      "fullContract": "passed Safari and Chromium; dda92bf-macos-full.json/log, child exit0"
+      "fullContract": "passed Safari and Chromium; ba1f626-macos-full.json",
+      "universalDmg": "passed verify/read-only mount/copied application; ba1f626-dmg-verification.json",
+      "nativeStartup": "Actual two-file cold LaunchServices regression passed; ba1f626-native-startup-multiple.json",
+      "nativeLinksDock": {
+        "sourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+        "parentPid": 42828,
+        "markdownOpenedPid": 51767,
+        "markdownHeadingAnchor": "target",
+        "method": "Trusted native CoreGraphics Command-click with click count1",
+        "filesBefore": {
+          "original-hashes.json": "019a6275bb638a4e53c323ec24e06b7be9037f0016da2d70ff0d15659a4a1e35",
+          "image.svg": "bf49589cf5640873235c670bb69165eaa21b8f8289ec946667cd7ae514c4b13c",
+          "second \u03a9.md": "b27f6bfe4d674040fd9ecc7b8680d0f5494b5571ecbdc9e63156da30ba9444f4",
+          "edit \u03bb.md": "485f2fd46c20c9f0c4a15d33e4f76d321a24a5b44b149059469174232bafb4a7",
+          "saved \u03a9.md": "dcdc01a290fdec4994b4480a61fd09931478bc40ba393cc2c1598ff8cd1ff89c",
+          "external \u03bb.txt": "41712524c29b861ad76bd3e65e7a0dfb85945352f27c30427cc5a36dc321d563",
+          "native \u03bb.md": "7460209830596a23f6c91692f4da03bb20e8240350e1f3122898e770cadaa744"
+        },
+        "textFileOpened": {
+          "application": "TextEdit",
+          "pid": 51804,
+          "AXDocument": "file:///Users/alessandro/.local/state/amorist-execution-20261013/native-acceptance-dda92bf/external \u03bb.txt"
+        },
+        "browserFrontmost": "Google Chrome, 51847",
+        "sourceUnchanged": {
+          "native \u03bb.md": true,
+          "second \u03a9.md": true
+        },
+        "passed": true,
+        "browserOpened": {
+          "application": "Google Chrome",
+          "pid": 51847,
+          "observedWindow": "Example Domain - Google Chrome \u2013 Alessandro"
+        },
+        "dock": {
+          "bundleUrlVerifiedViaNativeAXURL": "/Users/alessandro/.local/state/amorist-execution-20261013/installed-ba1f626/amorist.app",
+          "items": [
+            18,
+            19
+          ],
+          "activatedPids": [
+            42828,
+            51767
+          ],
+          "extraProcessCreated": false
+        },
+        "allFixtureBytesUnchanged": true,
+        "diagnostics": "Initial TextEdit observation ran before first window existed; subsequent AXDocument verified exact private path. Browser update/profile prompts left untouched."
+      },
+      "earlierNativeFlows": "macosNativeAcceptanceDda92bf documents earlier actual dialog/clipboard/Settings/Bug/save/close/image proofs; runtime changes since that source limited to initial native-open ownership and separately verified here"
     },
     "deliveryBlocked": true
   },
@@ -3765,8 +3791,103 @@
     "fix": "Notify native-open controller after actual recovery choice; merely listing candidates no longer reserves initial blank window; real files and recovered unnamed copies remain protected even when empty",
     "unitChecks": "7 routing tests passed, including2 new cases covering continuation and adopted/recovered ownership",
     "baselineUnitLog": "native-startup-recovery-baseline.log (5 existing tests passed before functional changes)",
-    "linuxPriority": "Native recovery and full Linux contract next; macOS regression stays unvalidated until rebuilt and rerun",
-    "preview": "Current tested dda92bf Linux preview remains the reference until refreshed checks pass",
-    "deliveryBlocked": true
+    "linuxPriority": "Native recovery, complete Linux contract and all11 package checks passed",
+    "preview": "Current ba1f626 verified preview installed as local review reference",
+    "deliveryBlocked": true,
+    "macosRegression": "passed actual two-file cold OS open; exactly2 windows; no extra Untitled"
+  },
+  "crossPlatformSourceHistory": [
+    {
+      "commit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+      "archive": "platform-source-dda92bf.tar",
+      "sha256": "371af9d8a7d4803bba0e47140d66568a1aef2db324ceeb59055f77c3c2a7486a",
+      "linux": {
+        "fullContract": "passed; dda92bf-linux-full.json",
+        "packageChecks": "11/11 passed; dda92bf-linux-package-checks.json",
+        "installedUpgrade": "0.10.8 to0.10.10 passed; three user-data fixture hashes preserved; installed executable byte-identical to native-tested extracted deb; dda92bf-linux-installed-upgrade-verification.json",
+        "previewAvailable": true
+      },
+      "windows": {
+        "installer": "built and installed;43 existing app-data file hashes unchanged",
+        "headlessIdentity": "passed clean dda92bf source",
+        "nativeDialogs": {
+          "status": "passed",
+          "evidence": "dda92bf-windows-native-dialogs.log; fresh child exit0",
+          "cases": [
+            "actual native Open cancellation and acceptance",
+            "actual native Save As cancellation and acceptance",
+            "Unicode original/destination paths",
+            "exact CRLF content, original unchanged and cancellation preserves draft"
+          ],
+          "method": "Owned interactive application, real common dialogs; native close request for cancellation; guarded foreground Windows SendKeys filename mnemonic and Enter for acceptance; no picker mocks. Italian VM locale verified; English mnemonic supported but not claimed independently tested.",
+          "diagnostics": "Earlier UIAutomation/native filename-field attempts did not reliably target the actual filename control and raised unconfirmed overwrite prompts; original files unchanged. Diagnostic attempts retained privately; no app bug or passing earlier aggregate claimed."
+        },
+        "remaining": "current full contract, native acceptance and installer cleanup",
+        "fullContract": "passed on actual installed WebView2 application and Edge; dda92bf-windows-full.json/log; fresh child exit receipt0",
+        "binaryComparison": {
+          "bytes": 10304000,
+          "changedBytes": 3,
+          "offsets": [
+            "0x7B2F38",
+            "0x7B2F39",
+            "0x7B2F3A"
+          ],
+          "rawBytesHex": [
+            "55",
+            "4E",
+            "4B"
+          ],
+          "installedBytesHex": [
+            "4E",
+            "53",
+            "53"
+          ],
+          "interpretation": "Tauri bundle marker UNK to NSS; all remaining bytes identical. fc.exe /b comparison; prior guessed NSIS text assertion rejected, not a binary failure."
+        },
+        "currentRecoveryAndCli": {
+          "status": "passed",
+          "tests": 2,
+          "log": "dda92bf-windows-recovery-cli.log",
+          "childExitCode": 0,
+          "recoveryMs": 2065,
+          "scope": "Actual installed current executable; two owned process interruptions; independent recovery for two documents; explicit save preserves CRLF; CLI Unicode/leading-dash/debug/heading-anchor checks."
+        }
+      },
+      "macos": {
+        "universalDmg": "built, checksum verified, mounted read-only and copied; Intel headless source identity and both binary architectures verified",
+        "evidence": "dda92bf-dmg-verification.json",
+        "nativeGui": "Partial actual native acceptance completed; cold-start recovery/initial-window regression found; see macosNativeAcceptanceDda92bf",
+        "remaining": "Cold startup regression, native Cmd-click/external openers and Dock",
+        "fullContract": "passed Safari and Chromium; dda92bf-macos-full.json/log, child exit0"
+      },
+      "deliveryBlocked": true
+    }
+  ],
+  "newFeedbackQueue": {
+    "count": 13,
+    "newPending": [
+      "BUG-011",
+      "BUG-012",
+      "BUG-013"
+    ],
+    "index": "docs/bug-feedback-backlog.md",
+    "originalReportsPreserved": true,
+    "reviewStateUntouched": true,
+    "loopPolicy": "Completed paths survive all build/version changes including legacy history; identity checked before every file",
+    "checks": "8 runner tests and2 queue tests passed; actual native Linux review loop passed (persistent-review-loop-x11.log). Initial missing-driver/Wayland environment diagnostics preserved."
+  },
+  "subscriptionCheckpoint": {
+    "usedPercent": 6,
+    "remainingPercent": 94,
+    "stopRemainingPercent": 90,
+    "observedAt": "2026-10-15T17:48:53.164Z"
+  },
+  "requirementAudit": {
+    "file": ".qa/reports/editor-development-requirement-audit.json",
+    "blockingRequirements": 38,
+    "passedByComposedEvidence": 38,
+    "manualAdvisory": "REQ-G3 not claimed",
+    "newFeedbackGate": "BUG-011\u2013013 queued, unresolved until reproduced/classified",
+    "summary": "docs/editor-development-validation.md"
   }
 }

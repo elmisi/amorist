@@ -5,9 +5,11 @@ const os=require('node:os');
 const path=require('node:path');
 const cp=require('node:child_process');
 const {TauriEngine,discoverDriver}=require('./qa/lib/engine-tauri');
+const {WindowsAttachEngine}=require('./qa/lib/engine-windows-attach');
+const normalized=value=>process.platform==='win32'?value.replace(/^\\\\\?\\/,'').toLowerCase():value;
 const {closeOwnedNative}=require('./qa/lib/close-owned-native');
 async function main(){
- assert.equal(process.platform,'linux','This directed native probe requires Linux');
+ assert.ok(['linux','win32'].includes(process.platform),'Requires supported actual native engine');
  const root=path.resolve(__dirname,'..'),manifest=path.join(root,'src-tauri/Cargo.toml');
  const application=process.env.AMORIST_QA_APPLICATION||path.join(root,'src-tauri/target/debug/amorist');
  if(!process.env.AMORIST_QA_APPLICATION){
@@ -15,16 +17,18 @@ async function main(){
   assert.equal(build.status,0,build.stderr);
  }
  assert.ok(fs.existsSync(application),'The specified native application must exist');
- const driver=discoverDriver();assert.ok(driver,'tauri-driver is required');
+ const driver=process.platform==='win32'?process.env.AMORIST_QA_EDGE_DRIVER:discoverDriver();assert.ok(driver,'The platform native driver is required');
  const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'amorist-local-image-'));
  fs.mkdirSync(path.join(scratch,'docs'));fs.mkdirSync(path.join(scratch,'images'));fs.mkdirSync(path.join(scratch,'data'));
  fs.copyFileSync(path.join(root,'tests/qa/assets/image.svg'),path.join(scratch,'images','photo λ.svg'));
  const file=path.join(scratch,'docs','note.md');
  const source='before\r\n![Alt](<../images/photo%20%CE%BB.svg> "Title")\r\nafter';fs.writeFileSync(file,source);
- const engine=new TauriEngine(driver,application,[file],{...process.env,XDG_DATA_HOME:path.join(scratch,'data'),
+ const NativeEngine=process.platform==='win32'?WindowsAttachEngine:TauriEngine;
+ const engine=new NativeEngine(driver,application,[file],{...process.env,XDG_DATA_HOME:path.join(scratch,'data'),
   XDG_CACHE_HOME:path.join(scratch,'cache'),XDG_CONFIG_HOME:path.join(scratch,'config')});
  try {
   await engine.start();
+  const readyDeadline=Date.now()+8000;while(!await engine.evaluate("!!document.getElementById('notice')&&!!document.querySelector('.amorist-editor-source')")){assert.ok(Date.now()<readyDeadline,'Native document UI readiness');await new Promise(resolve=>setTimeout(resolve,50));}
   let actual;
   const started=Date.now();
   do {
@@ -33,7 +37,7 @@ async function main(){
    await new Promise(resolve=>setTimeout(resolve,100));
   }while(Date.now()-started<8000);
   assert.equal(actual.state,'loaded',JSON.stringify(actual));assert.equal(actual.width,200);assert.equal(actual.alt,'Alt');assert.equal(actual.title,'Title');
-  assert.match(actual.src,/^amorist-image:\/\/localhost\/[a-f0-9]{32}$/);
+  assert.match(actual.src,/^(?:amorist-image:\/\/localhost|https?:\/\/amorist-image\.localhost)\/[a-f0-9]{32}$/);
   assert.equal(fs.readFileSync(file,'utf8'),source);
   const destination=path.join(scratch,'other','docs','note.md');
   fs.mkdirSync(path.dirname(destination),{recursive:true});fs.mkdirSync(path.join(scratch,'other','images'));
@@ -50,10 +54,10 @@ async function main(){
       return {state:atom?.dataset.imageState,width:image?.naturalWidth,src:image?.src,path:document.getElementById('file-path').textContent,
         rootSame:document.querySelector('.amorist-editor')===window.__imageRoot,atomSame:atom===window.__imageAtom};
     })()`);
-    if(rebased.state==='loaded' && rebased.width===320 && rebased.path===destination) break;
+    if(rebased.state==='loaded' && rebased.width===320 && normalized(rebased.path)===normalized(destination)) break;
     await new Promise(resolve=>setTimeout(resolve,100));
   }while(Date.now()-rebaseStarted<8000);
-  assert.equal(rebased.state,'loaded',JSON.stringify(rebased));assert.equal(rebased.width,320);assert.equal(rebased.path,destination);
+  assert.equal(rebased.state,'loaded',JSON.stringify(rebased));assert.equal(rebased.width,320);assert.equal(normalized(rebased.path),normalized(destination));
   assert.equal(rebased.rootSame,true);assert.equal(rebased.atomSame,true);assert.notEqual(rebased.src,actual.src);
   assert.equal(fs.readFileSync(destination,'utf8'),source);assert.equal(fs.readFileSync(file,'utf8'),source);
   const saveAsExpired=await engine.evaluate(`new Promise(resolve=> {
@@ -117,6 +121,6 @@ async function main(){
   assert.deepEqual(lifecycle,{active:{loaded:true,width:320},expired:{loaded:false},staleRejected:true,nextUntitled:true});
   assert.equal(fs.readFileSync(file,'utf8'),source);
   console.log(JSON.stringify({status:'pass',image:actual,rebased,saveAsExpired,formats,lifecycle,sourceUnchanged:true}));
- }finally {await closeOwnedNative(engine);fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
+ }finally {await (process.platform==='win32'?engine.close():closeOwnedNative(engine));fs.rmSync(scratch,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 }
 main().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

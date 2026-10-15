@@ -101,13 +101,15 @@ class Report {
       publishedPlatformsThisRunDidNotCover: this.platformsNotCovered,
       notAutomatedAnywhere: [
         {
-          what: "the application's own embedding of the engine, on every platform",
+          what: "complete release-package acceptance on every published platform",
           why:
-            "Every run drives the engine inside a TEST host — a reference browser "
-            + "on Linux, the system browser on macOS — not inside the webview the "
-            + "application embeds. Same engine, different host. The engine is "
-            + "covered everywhere and the embedding nowhere: window chrome, focus "
-            + "handling, and whatever the embedding changes about editing.",
+            "Requirement checks exercise the engines named above; Windows uses "
+            + "the application's WebView2 and native lifecycle probes launch the "
+            + "application. This run alone does not certify every installer, OS "
+            + "dialog, clipboard, file association, Finder or Dock gesture. "
+            + "Separate native package receipts are listed in the candidate "
+            + "artifact manifest and development progress report. macOS Safari "
+            + "checks alone do not certify the application's WKWebView embedding.",
           manualPass: "once per release, repository owner, six-case list in REQ-G3",
         },
       ],

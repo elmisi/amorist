@@ -1,4 +1,4 @@
-"""Version-scoped review progress with preserved history and atomic writes."""
+"""Persistent review progress with build-scoped history and atomic writes."""
 from contextlib import contextmanager
 import json
 import os
@@ -26,6 +26,14 @@ def load(path, release):
     if run['version'] != release['version']:
         raise ValueError('Review build identity has inconsistent version; state preserved.')
     return state, run
+
+
+def completed_paths(state):
+    """A new build never invalidates files already reviewed on any older build."""
+    legacy = state.get('legacyCompleted', [])
+    if not isinstance(legacy, list) or not all(isinstance(path, str) for path in legacy):
+        raise ValueError('Invalid legacy review progress; original state preserved.')
+    return set(legacy).union(*(run['completed'] for run in state['runs'].values()))
 
 
 def save(path, state):
