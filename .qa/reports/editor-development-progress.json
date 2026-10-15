@@ -3565,7 +3565,18 @@
     "windows": {
       "installer": "built and installed;43 existing app-data file hashes unchanged",
       "headlessIdentity": "passed clean dda92bf source",
-      "nativeDialogs": "Actual Open cancellation/acceptance and Save As cancellation passed. Save As accept command reached owned native dialog but expected destination file was not observed; diagnosis pending. No aggregate native dialog pass claimed.",
+      "nativeDialogs": {
+        "status": "passed",
+        "evidence": "dda92bf-windows-native-dialogs.log; fresh child exit0",
+        "cases": [
+          "actual native Open cancellation and acceptance",
+          "actual native Save As cancellation and acceptance",
+          "Unicode original/destination paths",
+          "exact CRLF content, original unchanged and cancellation preserves draft"
+        ],
+        "method": "Owned interactive application, real common dialogs; native close request for cancellation; guarded foreground Windows SendKeys filename mnemonic and Enter for acceptance; no picker mocks. Italian VM locale verified; English mnemonic supported but not claimed independently tested.",
+        "diagnostics": "Earlier UIAutomation/native filename-field attempts did not reliably target the actual filename control and raised unconfirmed overwrite prompts; original files unchanged. Diagnostic attempts retained privately; no app bug or passing earlier aggregate claimed."
+      },
       "remaining": "current full contract, native acceptance and installer cleanup",
       "fullContract": "passed on actual installed WebView2 application and Edge; dda92bf-windows-full.json/log; fresh child exit receipt0",
       "binaryComparison": {
