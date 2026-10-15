@@ -79,7 +79,7 @@ class ReviewRunnerTests(unittest.TestCase):
         self.assertEqual(self.opened(), [['--', str(self.files[1])]])
         additional = self.root / 'third.md'
         additional.write_text('# Third')
-        self.listing.write_text(self.listing.read_text(encoding='utf-8') + str(additional) + '\n')
+        self.listing.write_text(self.listing.read_text(encoding='utf-8') + str(additional) + '\n', encoding='utf-8')
         self.info.update(version='2.0.0', buildId='two', fingerprint='2'*40)
         self.publish_fixture()
         result = self.run_loop()
