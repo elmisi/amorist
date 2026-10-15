@@ -22,7 +22,8 @@ jobs:
           - os: macos-15-intel
             platform: macos
             shipping_engine: Safari
-          - os: windows-latest
+          # Keep native desktop QA on a fixed Windows baseline as well.
+          - os: windows-2022
             platform: windows
             shipping_engine: WebView2
     defaults:
