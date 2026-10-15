@@ -17,7 +17,9 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             shipping_engine: WebKitGTK
-          - os: macos-latest
+          # Pin the Safari QA environment; macos-latest moved to 26.6.2,
+          # whose WebDriver drops Command chords before page keydown.
+          - os: macos-15-intel
             platform: macos
             shipping_engine: Safari
           - os: windows-latest
