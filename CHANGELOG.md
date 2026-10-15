@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Thematic breaks preserve the source blank-line spacing instead of adding
+  vertical margins. Link editing uses a spaced, responsive dialog with a
+  full-width destination field and aligned Save/Cancel buttons.
 - Review progress now survives build and version changes, including legacy
   completed files, while retaining per-build history and identity checks.
   Bug reports can be copied into a deduplicated processing queue without

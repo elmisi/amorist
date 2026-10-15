@@ -79,7 +79,8 @@ async function main() {
           "<pre><code>first  \\n\\n\\n&#96;&#96;&#96;nested&#96;&#96;&#96;\\nlast\\t\\n</code></pre>")`);
         assert.equal(converted, "````\nfirst  \n\n\n```nested```\nlast\t\n````",
           `${entry.id}: HTML PRE keeps whitespace and uses safe fences`);
-        const identical = "```\nfirst\n```\n# outside\n```\nlast\n```";
+        // BUG-013: info strings and CRLF do not make identical fences nest.
+        const identical = "```text\r\n# literal first\r\n```\r\n# outside\r\n```\r\n# literal second\r\n```";
         const interpretation = await engine.evaluate(`(() => {
           const editor = window.__codeRegression;
           editor.setMarkdown(${JSON.stringify(identical)});

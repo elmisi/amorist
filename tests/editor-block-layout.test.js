@@ -16,6 +16,31 @@ async function main() {
       try {
         await engine.start();
         await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+        // BUG-011: one physical empty row after a rule stays one visual row.
+        const ruleSpacing = await engine.evaluate(`(() => {
+          const editor = window.AmoristEditor.create(document.getElementById("host"), {value:"---\\r\\n\\r\\n- item"});
+          const results = [];
+          for (const baseFontSize of [12,16,24]) {
+            editor.applySettings({...editor.settings,baseFontSize});
+            const rows = Array.from(editor.surface.querySelectorAll('.amorist-source-line'));
+            const [rule,blank,item] = rows.map(row=>row.getBoundingClientRect());
+            const actual=item.top-editor.surface.getBoundingClientRect().top;
+            const source=editor.getMarkdown();
+            editor.setMarkdown("text\\r\\n\\r\\n- item");
+            const control=editor.surface.querySelectorAll('.amorist-source-line')[2].getBoundingClientRect().top-editor.surface.getBoundingClientRect().top;
+            editor.setMarkdown(source);
+            results.push({baseFontSize,actual,control,source});
+          }
+          editor.showSourceMode(); editor.showWysiwygMode();
+          const source = editor.getMarkdown(); editor.destroy();
+          return {results,source};
+        })()`);
+        assert.equal(ruleSpacing.source,"---\r\n\r\n- item");
+        for (const result of ruleSpacing.results) {
+          assert.equal(result.source,ruleSpacing.source);
+          assert.ok(Math.abs(result.actual-result.control)<1.5,
+            `${entry.id}: rule adds no extra blank space: ${JSON.stringify(result)}`);
+        }
         // WebKit driver completion can precede the final input callback.
         // Wait before reading source; document expectations remain unchanged.
         const sendKeys = async sequence => {

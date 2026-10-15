@@ -345,6 +345,48 @@
         "evidence": "original-reports-current-linux.log/json",
         "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
       }
+    },
+    {
+      "id": "BUG-011",
+      "capturedAt": "2026-10-15T17:22:01.499Z",
+      "recordSha256": "5501ddeee9226e456ed46ccab17af47a25858f23e38953391eb77043e24a6023",
+      "reportedVersion": "0.10.10",
+      "case": "Extra visual spacing after thematic break",
+      "status": "fixed-source-tests-package-verification-pending",
+      "check": "tests/editor-block-layout.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux"
+      ],
+      "explanation": "A physical rule row had additional vertical margins. The regression fails before the CSS change and passes against a plain-row control at12/16/24px on GTK/Chromium; Markdown and CRLF stay unchanged."
+    },
+    {
+      "id": "BUG-012",
+      "capturedAt": "2026-10-15T17:23:57.962Z",
+      "recordSha256": "450ff5fbfe679d7cf2b9ded0abde487fdb824375f956eee305e1d425b5c24833",
+      "reportedVersion": "0.10.10",
+      "case": "Link editing dialog appearance",
+      "status": "polished-source-tests-package-verification-pending",
+      "check": "tests/editor-link-activation.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux"
+      ],
+      "explanation": "Scoped dialog styles add clear vertical spacing, a full-width input and aligned actions. Existing link/keyboard checks pass; geometry, focus and a narrow380px viewport were checked separately."
+    },
+    {
+      "id": "BUG-013",
+      "capturedAt": "2026-10-15T17:26:25.685Z",
+      "recordSha256": "761c8e063087535f4a462bdc9d58a774de2e4c7f15c28450a4bad42473d6feee",
+      "reportedVersion": "0.10.10",
+      "case": "Identical nested fences",
+      "status": "explained-with-real-snapshot-and-regression",
+      "check": "tests/editor-code-context.test.js",
+      "verifiedEngines": [
+        "webkitgtk",
+        "chromium-linux"
+      ],
+      "explanation": "An identical matching fence closes the existing block; later fences can start another block. The captured Markdown is preserved, not silently rewritten. To display triple-backtick content inside a single code block, use a longer outer delimiter; generated delimiters already do this. Complete captured source passed projection/mode/edit/undo probes on GTK/Chromium; the reduced existing regression now covers the text info string and CRLF."
     }
   ],
   "latestInventory": {

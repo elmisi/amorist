@@ -106,8 +106,8 @@
     "Chromium on macOS"
   ],
   "remainingPlatformGates": [
-    "Reconcile new queued BUG-011\u2013013 against common-Markdown release criteria; preserve all captures and review progress",
-    "Final requirement-by-requirement audit and delivery documentation; retain explicit native/source-equivalence and manual advisory scope"
+    "New CSS package build and verification on Linux, then Windows/macOS; existing ba1f626 package evidence remains historical and explicitly attributed",
+    "Refresh final requirement audit/manifest to new application source; no push/publication"
   ],
   "verification": {
     "linuxFullSuite": {
@@ -3889,5 +3889,16 @@
     "manualAdvisory": "REQ-G3 not claimed",
     "newFeedbackGate": "BUG-011\u2013013 queued, unresolved until reproduced/classified",
     "summary": "docs/editor-development-validation.md"
+  },
+  "feedbackSourceFollowup": {
+    "reports": [
+      "BUG-011",
+      "BUG-012",
+      "BUG-013"
+    ],
+    "status": "Two scoped CSS changes passed directed source checks; identical-fence behavior explained with full captured source. New package/platform verification pending.",
+    "baselineAndEvidence": "new-feedback-baseline-and-source-checks.json",
+    "previewPreserved": "ba1f626 remains available while isolated target directory builds successor",
+    "deliveryBlocked": true
   }
 }
