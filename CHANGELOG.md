@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Recovery checkpoints can no longer be postponed indefinitely by continuous
+  input: a two-second idle timer has a five-second first-pending deadline.
+  Writes are serialized, subsequent edits retain their own deadline, and returning
+  to saved content removes the copy after any in-flight write finishes.
+- Shift+Arrow selection across an image recognizes the physical arrow code when
+  Safari supplies a control character in the key value, preserving backward selection.
 - Inline links separate destinations from titles, support escaped/balanced
   parentheses and angle destinations with spaces, and decode character references
   once. Nested links and angle autolinks take precedence over an enclosing link;
@@ -89,7 +95,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The source model tracks validated automatic-boundary provenance separately
   from Markdown, including generated escaping positions and UTF-16 offsets.
   Transactions and undo/redo preserve it; malformed metadata cannot edit source.
-  Structural boundary cleanup and actual recovery persistence remain pending.
+  Native Linux crash/recovery checks verify exact boundary ownership, structural
+  cleanup and Undo. Recovery timing checks measure twenty real disk checkpoints
+  for each idle/continuous scenario on 500 and 1,500 lines, without averaging
+  away failures; packaged acceptance remains a release gate.
 - Linux automated graphical checks explicitly use X11 under Xvfb, avoiding an
   inherited Wayland session. Graphical regression scripts run sequentially.
 - This version is the editor development candidate. Delivery remains blocked

@@ -49,6 +49,16 @@ still contains the original Markdown; pasting into Source mode keeps that text.
 In the visual editor, table header separators appear as horizontal lines while
 their Markdown characters remain available for selection and editing.
 
+**Settings** previews the shared base font size (12–24 px), separate table and
+code scales, and optional highlighting of the current visual line. Save keeps
+the preferences across launches; Cancel restores the previous appearance.
+Changing these settings does not edit the Markdown document.
+
+Each window keeps its own recovery copy outside the original file. A checkpoint
+is scheduled after two seconds without edits, or within five seconds during
+continuous writing. Recovery writes are serialized; changing documents cancels
+pending work for the previous context. Only an explicit Save writes your file.
+
 ## Keyboard Shortcuts
 
 For local problem reporting, launch `amorist --debug file.md`. The **Bug**

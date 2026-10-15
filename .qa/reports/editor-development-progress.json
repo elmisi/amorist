@@ -2224,7 +2224,7 @@
     "stopRemainingPercent": 90,
     "stopUsedPercent": 10,
     "authorizedBy": "User restart instruction2026-10-15; previous consumption entirely attributed to this task by owner",
-    "latestObservedUsedPercent": 0,
+    "latestObservedUsedPercent": 2,
     "policy": "Checkpoint and pause at used_percent>=10; final delivery remains blocked until all required proofs pass"
   },
   "postRecoveryFullLinux": {
@@ -3553,6 +3553,84 @@
     "retainedRisk": "First full-run reference GTK B2 inserted one unexpected character on another row; original red evidence retained. Cause not identified; not reproduced in110 directed checks or final complete recheck. No application fix claimed."
   },
   "currentCrossPlatformSource": {
+    "commit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+    "archive": "platform-source-dda92bf.tar",
+    "sha256": "371af9d8a7d4803bba0e47140d66568a1aef2db324ceeb59055f77c3c2a7486a",
+    "linux": {
+      "fullContract": "passed; dda92bf-linux-full.json",
+      "packageChecks": "11/11 passed; dda92bf-linux-package-checks.json",
+      "installedUpgrade": "0.10.8 to0.10.10 passed; three user-data fixture hashes preserved; installed executable byte-identical to native-tested extracted deb; dda92bf-linux-installed-upgrade-verification.json",
+      "previewAvailable": true
+    },
+    "windows": {
+      "installer": "built and installed;43 existing app-data file hashes unchanged",
+      "headlessIdentity": "passed clean dda92bf source",
+      "nativeDialogs": "Current helper proves actual Open cancellation/acceptance and Save As cancellation on owned application; Save As accept is still pending filename control readiness. Diagnostic failures retained; no passing aggregate claimed.",
+      "remaining": "current full contract, native acceptance and installer cleanup"
+    },
+    "macos": {
+      "universalDmg": "built, checksum verified, mounted read-only and copied; Intel headless source identity and both binary architectures verified",
+      "evidence": "dda92bf-dmg-verification.json",
+      "nativeGui": "blocked pending owner Accessibility enablement; owner prefers enabling Accessibility; fresh SSH AXIsProcessTrusted false",
+      "remaining": "current full Safari/Chromium contract and actual native app acceptance"
+    },
+    "deliveryBlocked": true
+  },
+  "restartPreflight20261015": {
+    "windows": {
+      "ssh": "pass",
+      "os": "Windows10Pro19045x64",
+      "session": "console1 active",
+      "tools": "Node22.23.2 Rust1.94.1 Git2.56.0.2; Edge and driver155.0.4283.45",
+      "candidate": "installed executable and NSIS present",
+      "runningQaBeforeCheck": false,
+      "freeBytes": 2241683456,
+      "representativeGui": "PASS clipboard in installed WebView2 and Edge; scheduler terminal Ready, LastTaskResult0, child receipt0; windows-preflight-20261015-clipboard.log",
+      "directCli": "PASS installed candidate Unicode/leading-dash path, heading anchor, debug flag, unchanged source; windows-current-installed-cli-20261015.log"
+    },
+    "macos": {
+      "ssh": "pass",
+      "os": "macOS26.5 25F71 Intel",
+      "tools": "Node26.5 Rust1.95 TauriCLI2.11.2 SafariDriver26.5",
+      "bundleArchitectures": [
+        "x86_64",
+        "arm64"
+      ],
+      "screenLocked": false,
+      "runningQa": false,
+      "freeBytes": 859894833152,
+      "gui": "Safari and Chromium operable; native UI automation blocked: AXIsProcessTrusted false and System Events queries time out -1712; do not infer permissions from unlocked screen"
+    },
+    "deliveryBlocked": true
+  },
+  "safariImageSelectionAndRecoveryDeadline": {
+    "status": "Linux full contract and all11 package checks passed; other-platform final proofs pending",
+    "arrowFix": "Use horizontal event.code when Safari Shift+ArrowLeft supplies control character key; preserve atomic image and backward selection",
+    "arrowEvidence": [
+      "arrow-code-linux-clipboard.log:2 suites passed",
+      "arrow-code-linux-full.json:full contract green before recovery scheduler changes",
+      "arrow-code-macos-jk.log:clipboard and settings passed Safari/Chromium; first full macOS report retained as RED"
+    ],
+    "recoveryFix": "2000ms idle and5000ms first-pending deadline; one write in flight; preserve subsequent pending deadline; serialize clean discard; cancel stale document work",
+    "recoveryEvidence": [
+      "working-copy.test.js:4 deterministic scenarios passed",
+      "working-copy-boundaries-native.log:owned process crash, CRLF ownership and Undo exact",
+      "recovery-deadline-native-linux.json:20 samples each idle/continuous on500/1500 lines; four exact crash recoveries; originals unchanged",
+      "dda92bf-linux-full.json: current full contract green including E1 native80 checkpoints",
+      "dda92bf-appimage-recovery-timings.json:80 real packaged checkpoints and4 exact crash recoveries passed"
+    ],
+    "maximumCompletionMs": {
+      "500_idle": 2011,
+      "500_continuous": 5016,
+      "1500_idle": 2014,
+      "1500_continuous": 5017
+    },
+    "timingScope": "Actual Linux application and atomic recovery records observed on disk; continuous source input dispatched by the test; IPC instrumentation was read-only and rejected, first watcher-only run lost an atomic replacement notification, both diagnostic logs retained; event watch plus10ms record polling used in passing proof",
+    "contract": "Only REQ-E1 projection changed; IDs, severity and other requirement projections unchanged; native timing now part of E1 and packaged AppImage CI",
+    "previewReference": "Current dda92bf Linux preview reference updated atomically; review history untouched",
+    "deliveryBlocked": true
+  },
+  "previousCrossPlatformSource": {
     "commit": "0d3591380da47ace0a299636360c806f657247cb",
     "archive": "platform-source-0d35913.tar",
     "sha256": "c91106d98459a67f5a434eb251cd6e508af1e6879232e8ca0abb8e2629f69c5f",
@@ -3604,56 +3682,14 @@
       ]
     }
   },
-  "restartPreflight20261015": {
-    "windows": {
-      "ssh": "pass",
-      "os": "Windows10Pro19045x64",
-      "session": "console1 active",
-      "tools": "Node22.23.2 Rust1.94.1 Git2.56.0.2; Edge and driver155.0.4283.45",
-      "candidate": "installed executable and NSIS present",
-      "runningQaBeforeCheck": false,
-      "freeBytes": 2241683456,
-      "representativeGui": "PASS clipboard in installed WebView2 and Edge; scheduler terminal Ready, LastTaskResult0, child receipt0; windows-preflight-20261015-clipboard.log",
-      "directCli": "PASS installed candidate Unicode/leading-dash path, heading anchor, debug flag, unchanged source; windows-current-installed-cli-20261015.log"
-    },
-    "macos": {
-      "ssh": "pass",
-      "os": "macOS26.5 25F71 Intel",
-      "tools": "Node26.5 Rust1.95 TauriCLI2.11.2 SafariDriver26.5",
-      "bundleArchitectures": [
-        "x86_64",
-        "arm64"
-      ],
-      "screenLocked": false,
-      "runningQa": false,
-      "freeBytes": 859894833152,
-      "gui": "Safari and Chromium operable; native UI automation blocked: AXIsProcessTrusted false and System Events queries time out -1712; do not infer permissions from unlocked screen"
-    },
-    "deliveryBlocked": true
-  },
-  "safariImageSelectionAndRecoveryDeadline": {
-    "status": "targeted source and native development proofs passed; full Linux contract pending",
-    "arrowFix": "Use horizontal event.code when Safari Shift+ArrowLeft supplies control character key; preserve atomic image and backward selection",
-    "arrowEvidence": [
-      "arrow-code-linux-clipboard.log:2 suites passed",
-      "arrow-code-linux-full.json:full contract green before recovery scheduler changes",
-      "arrow-code-macos-jk.log:clipboard and settings passed Safari/Chromium; first full macOS report retained as RED"
+  "linuxCurrentCandidateVerification": {
+    "sourceCommit": "dda92bf",
+    "evidence": [
+      "dda92bf-linux-artifact-manifest.json",
+      "dda92bf-linux-full.json",
+      "dda92bf-linux-package-checks.json",
+      "dda92bf-linux-installed-upgrade-verification.json"
     ],
-    "recoveryFix": "2000ms idle and5000ms first-pending deadline; one write in flight; preserve subsequent pending deadline; serialize clean discard; cancel stale document work",
-    "recoveryEvidence": [
-      "working-copy.test.js:4 deterministic scenarios passed",
-      "working-copy-boundaries-native.log:owned process crash, CRLF ownership and Undo exact",
-      "recovery-deadline-native-linux.json:20 samples each idle/continuous on500/1500 lines; four exact crash recoveries; originals unchanged"
-    ],
-    "maximumCompletionMs": {
-      "500_idle": 2011,
-      "500_continuous": 5016,
-      "1500_idle": 2014,
-      "1500_continuous": 5017
-    },
-    "timingScope": "Actual Linux application and atomic recovery records observed on disk; continuous source input dispatched by the test; IPC instrumentation was read-only and rejected, first watcher-only run lost an atomic replacement notification, both diagnostic logs retained; event watch plus10ms record polling used in passing proof",
-    "contract": "Only REQ-E1 projection changed; IDs, severity and other requirement projections unchanged; native timing now part of E1 and packaged AppImage CI",
-    "previewReference": "Unchanged: prior Linux preview stays available; current development snapshot not yet promoted",
     "deliveryBlocked": true
   }
 }
