@@ -2220,11 +2220,12 @@
     "windowsNativeEvidence": "recovery-changed-base-native-windows.log: interactive scheduled task exit 0; startup/Open cancel, external race, recovery, Save exact CRLF and restart pass; runtime snapshot17f5926"
   },
   "subscriptionStop": {
-    "remainingPercentThreshold": 60,
-    "usedPercentThreshold": 40,
-    "lastObservedUsedPercent": 26,
-    "source": "current session rate_limits events in local rollout log",
-    "actionAtThreshold": "pause at user request and leave documented restart point"
+    "baselineRemainingPercent": 100,
+    "stopRemainingPercent": 90,
+    "stopUsedPercent": 10,
+    "authorizedBy": "User restart instruction2026-10-15; previous consumption entirely attributed to this task by owner",
+    "latestObservedUsedPercent": 0,
+    "policy": "Checkpoint and pause at used_percent>=10; final delivery remains blocked until all required proofs pass"
   },
   "postRecoveryFullLinux": {
     "snapshot": "604a062",
@@ -3602,5 +3603,31 @@
         "windows-current-clipboard-recheck.stdout.log"
       ]
     }
+  },
+  "restartPreflight20261015": {
+    "windows": {
+      "ssh": "pass",
+      "os": "Windows10Pro19045x64",
+      "session": "console1 active",
+      "tools": "Node22.23.2 Rust1.94.1 Git2.56.0.2; Edge and driver155.0.4283.45",
+      "candidate": "installed executable and NSIS present",
+      "runningQaBeforeCheck": false,
+      "freeBytes": 2241683456,
+      "representativeGui": "PASS clipboard in installed WebView2 and Edge; scheduler terminal Ready, LastTaskResult0, child receipt0; windows-preflight-20261015-clipboard.log"
+    },
+    "macos": {
+      "ssh": "pass",
+      "os": "macOS26.5 25F71 Intel",
+      "tools": "Node26.5 Rust1.95 TauriCLI2.11.2 SafariDriver26.5",
+      "bundleArchitectures": [
+        "x86_64",
+        "arm64"
+      ],
+      "screenLocked": true,
+      "runningQa": false,
+      "freeBytes": 859894833152,
+      "gui": "blocked until owner unlocks; requested asynchronously"
+    },
+    "deliveryBlocked": true
   }
 }
