@@ -13,3 +13,11 @@ assert.match(engines.find(entry=>entry.id==='webview2').reason,/not found/);
 for(const id of ['safari','webkitgtk'])assert.equal(engines.find(entry=>entry.id===id).applicable,false);
 assert.deepEqual(publishedPlatformsNotCovered(),['linux','macos']);
 console.log('Windows engine discovery: missing mandatory drivers and browser remain unavailable');
+
+// The shipping embedding attaches directly through the matching Edge driver.
+// Its availability must not depend on the Linux-oriented intermediary.
+process.env.AMORIST_QA_EDGE_DRIVER=__filename;
+process.env.AMORIST_QA_APPLICATION=__filename;
+const shipping=resolveEngines(['webview2'])[0];
+assert.equal(shipping.available,true);
+assert.ok(shipping.create() instanceof require('./qa/lib/engine-windows-attach').WindowsAttachEngine);

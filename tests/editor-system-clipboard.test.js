@@ -33,7 +33,7 @@ async function main(){
    await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.showSourceMode();editor.focus();editor.source.setSelectionRange(0,0);return true;})()`);
    await send([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**');
-   const secondEngine=entry.create();
+   const secondEngine=engine.openWindow ? await engine.openWindow() : entry.create();
    try {
     await secondEngine.start();await secondEngine.navigate(`${server.origin}/tests/qa/page/harness.html`);
     await secondEngine.evaluate(`(() => {

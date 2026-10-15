@@ -65,6 +65,20 @@ class SafariEngine extends WebDriverEngine {
     return { browserName: "safari" };
   }
 
+  async openWindow() {
+    // Safari permits one WebDriver session, with multiple native windows.
+    const original = await this.request("GET", `/session/${this.sessionId}/window`);
+    const created = await this.request("POST", `/session/${this.sessionId}/window/new`, {type:"window"});
+    await this.request("POST", `/session/${this.sessionId}/window`, {handle:created.value.handle});
+    const window = Object.create(this);
+    window.start = async () => {};
+    window.close = async () => {
+      await this.request("DELETE", `/session/${this.sessionId}/window`);
+      await this.request("POST", `/session/${this.sessionId}/window`, {handle:original.value});
+    };
+    return window;
+  }
+
   // The server refuses a session until automation has been enabled by an
   // administrator. Turn that into the instruction rather than the symptom.
   async start() {
