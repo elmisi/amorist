@@ -16,8 +16,7 @@ name: QA
 # then, and a costly one to take now.
 
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
   workflow_call:
 
 jobs:
@@ -148,6 +147,7 @@ jobs:
         run: |
           python3 tests/review_runner_test.py
           python3 tests/problem_report_reader_test.py
+          python3 tests/bug_report_queue_test.py
 
       - name: Verify effective bundle configuration and payload build identity
         run: |

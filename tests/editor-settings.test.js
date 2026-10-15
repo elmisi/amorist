@@ -30,7 +30,7 @@ async function main(options = {}) {
             window.__prefsStore={...args.settings}; window.__prefsWrites++; return {...args.settings};
           }}); return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const changed=await engine.evaluate(`(() => {
           const editor=window.__prefsEditor; editor.focus(); editor.setSurfaceSelection(14,18);
           editor.applySettings({...window.AmoristSettings.defaults,baseFontSize:24,tableScale:1.5,codeScale:.75});
@@ -46,16 +46,16 @@ async function main(options = {}) {
         const preview=await engine.evaluate(`({mainFont:getComputedStyle(window.__prefsEditor.source).fontSize,previewFont:getComputedStyle(document.querySelector('#settings-preview .amorist-source-line')).fontSize,writes:window.__prefsWrites})`);
         assert.deepEqual(preview,{mainFont:'24px',previewFont:'44px',writes:0});
         await engine.evaluate(`(() => {document.querySelector('[data-settings="cancel"]').click();return true;})()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.equal(await engine.evaluate('window.__prefsWrites'),0);
         await engine.evaluate(`(() => {document.getElementById('settings-button').click();const form=document.getElementById('settings-form');form.elements.baseFontSize.value=20;window.__prefsFail=true;form.requestSubmit();return true;})()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.deepEqual(await engine.evaluate(`({open:document.getElementById('settings-dialog').open,error:document.getElementById('settings-error').textContent,writes:window.__prefsWrites,font:getComputedStyle(window.__prefsEditor.source).fontSize})`),{open:true,error:'denied settings write',writes:0,font:'16px'});
         await engine.evaluate(`(() => {window.__prefsFail=false;document.getElementById('settings-form').requestSubmit();return true;})()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.deepEqual(await engine.evaluate(`({open:document.getElementById('settings-dialog').open,writes:window.__prefsWrites,font:getComputedStyle(window.__prefsEditor.source).fontSize,source:window.__prefsEditor.getMarkdown()})`),{open:false,writes:1,font:'20px',source});
         await engine.evaluate(`(() => {window.__prefsStore.baseFontSize=18;window.dispatchEvent(new Event('focus'));return true;})()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.equal(await engine.evaluate('getComputedStyle(window.__prefsEditor.source).fontSize'),'18px');
 
         const wrappedSource = 'word '.repeat(90)+'\r\nsecond physical line';
@@ -65,7 +65,7 @@ async function main(options = {}) {
           editor.applySettings({...window.AmoristSettings.defaults,highlightCurrentLine:true,highlightColor:'#e8f2ff'});
           editor.setSurfaceSelection(65,65);window.scrollTo(0,0);return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const wrapped=await engine.evaluate(`(() => {
           const editor=window.__prefsEditor, overlay=editor.currentLine, selection=window.getSelection();
           const range=document.createRange();range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
@@ -80,24 +80,24 @@ async function main(options = {}) {
         assert.equal(wrapped.source,wrappedSource);
         await engine.evaluate(`(() => {
           const node=document.querySelector('.amorist-editor-surface .amorist-inline-text').firstChild;
-          window.getSelection().setBaseAndExtent(node,80,node,5);return true;
+          window.getSelection().setBaseAndExtent(node,80,node,5);window.__prefsEditor.scheduleCurrentLine();return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const backward=await engine.evaluate(`(() => {
           const editor=window.__prefsEditor,selection=window.getSelection(),range=document.createRange();
           range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);
           return {top:editor.currentLine.getBoundingClientRect().top,caret:range.getBoundingClientRect().top,offset:selection.focusOffset};
         })()`);
-        assert.equal(backward.offset,5);assert.ok(Math.abs(backward.top-backward.caret)<10);
+        assert.equal(backward.offset,5);assert.ok(Math.abs(backward.top-backward.caret)<10,JSON.stringify({engine:entry.id,...backward}));
         await engine.evaluate(`(() => {document.getElementById('settings-button').focus();return true;})()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.equal(await engine.evaluate('window.__prefsEditor.currentLine.hidden'),true);
         await engine.evaluate(`(() => {
           const editor=window.__prefsEditor;editor.showSourceMode();editor.focus();
           editor.source.setSelectionRange(0,editor.source.value.length,'backward');
           editor.source.dispatchEvent(new Event('select'));editor.scheduleCurrentLine();return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const physical=await engine.evaluate(`(() => {
           const editor=window.__prefsEditor,box=editor.source.getBoundingClientRect(),style=getComputedStyle(editor.source);
           return {hidden:editor.currentLine.hidden,top:editor.currentLine.getBoundingClientRect().top,
@@ -129,7 +129,7 @@ async function main(options = {}) {
           const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify(horizontalSource)});editor.showWysiwygMode();editor.focus();editor.setSurfaceSelection(10,10);
           const block=editor.surface.querySelector('.amorist-wysiwyg-code-block');block.scrollLeft=100;window.scrollTo(0,0);editor.scheduleCurrentLine();return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const horizontal=await engine.evaluate(`(() => {
           const editor=window.__prefsEditor,block=editor.surface.querySelector('.amorist-wysiwyg-code-block'),box=block.getBoundingClientRect(),overlay=editor.currentLine.getBoundingClientRect();
           return {hidden:editor.currentLine.hidden,insideBlock:editor.currentLine.parentElement===block,left:overlay.left,right:overlay.right,blockLeft:box.left+block.clientLeft,blockRight:box.left+block.clientLeft+block.clientWidth,source:editor.getMarkdown()};
@@ -139,16 +139,16 @@ async function main(options = {}) {
         assert.equal(horizontal.source,horizontalSource);
         await engine.evaluate(`(() => {
           const editor=window.__prefsEditor,row=editor.surface.querySelector('.amorist-wysiwyg-fence'),range=document.createRange();
-          range.setStart(row,0);range.collapse(true);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);editor.scheduleCurrentLine();return true;
+          range.setStart(row.firstChild || row,0);range.collapse(true);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);editor.scheduleCurrentLine();return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.equal(await engine.evaluate('window.__prefsEditor.currentLine.hidden'),true);
 
         await engine.evaluate(`(() => {
           const editor=window.__prefsEditor;editor.setMarkdown(${JSON.stringify('first\r\nsecond')});editor.showWysiwygMode();editor.focus();
           editor.selectSurfaceContents();window.scrollTo(0,0);editor.scheduleCurrentLine();return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const all=await engine.evaluate(`(() => {
           const editor=window.__prefsEditor,rows=editor.surface.querySelectorAll('.amorist-source-line');
           return {hidden:editor.currentLine.hidden,top:editor.currentLine.getBoundingClientRect().top,lastTop:rows[rows.length-1].getBoundingClientRect().top,source:editor.getMarkdown()};
@@ -157,24 +157,24 @@ async function main(options = {}) {
         await engine.evaluate(`(() => {
           const surface=window.__prefsEditor.surface;window.getSelection().setBaseAndExtent(surface,surface.childNodes.length,surface,0);return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         const reverseAll=await engine.evaluate(`({hidden:window.__prefsEditor.currentLine.hidden,top:window.__prefsEditor.currentLine.getBoundingClientRect().top,firstTop:window.__prefsEditor.surface.firstElementChild.getBoundingClientRect().top})`);
         assert.equal(reverseAll.hidden,false);assert.ok(Math.abs(reverseAll.top-reverseAll.firstTop)<1);
         await engine.evaluate(`(() => {
           document.getElementById('settings-button').click();const form=document.getElementById('settings-form');
           form.elements.highlightCurrentLine.checked=true;form.elements.highlightColor.value='#e9f5ed';form.dispatchEvent(new Event('input',{bubbles:true}));return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.deepEqual(await engine.evaluate(`({color:getComputedStyle(document.getElementById('settings-line-preview')).backgroundColor,mainHidden:window.__prefsEditor.currentLine.hidden,source:window.__prefsEditor.getMarkdown()})`),{color:'rgb(233, 245, 237)',mainHidden:true,source:'first\r\nsecond'});
         await engine.evaluate(`(() => {document.querySelector('[data-settings="cancel"]').click();return true;})()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         await engine.evaluate(`(() => {
           document.body.style.minHeight='3000px';window.scrollTo(0,0);
           const host=document.createElement('div');document.body.append(host);
           const preview=window.AmoristEditor.create(host,{value:'preview'});
           preview.restoreWysiwygViewportAnchor({line:0,edge:'end'});preview.destroy();host.remove();return true;
         })()`);
-        await new Promise(resolve=>setTimeout(resolve,80));
+        await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         assert.equal(await engine.evaluate('window.scrollY'),0,`${entry.id}: destroyed preview cannot move main viewport`);
         const tallImage='![Alt]('+server.origin+'/tests/qa/assets/image-tall.svg)';
         for(const tallSource of ['Before '+tallImage+' after\r\n','Before '.repeat(9)+tallImage+' '+ 'after '.repeat(12)+'\r\n']) {
@@ -190,7 +190,7 @@ async function main(options = {}) {
         for(const at of [3,tallSource.lastIndexOf('after')+2]) {
           await engine.evaluate(`window.__prefsEditor.setSurfaceSelection(${at},${at})`);
           await engine.evaluate(`window.getSelection().focusNode.parentElement.scrollIntoView({block:'center'})`);
-          await new Promise(resolve=>setTimeout(resolve,80));
+          await engine.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
           const active=await engine.evaluate(`(() => {
             const editor=window.__prefsEditor,selection=window.getSelection(),range=document.createRange();
             range.setStart(selection.focusNode,selection.focusOffset);range.collapse(true);

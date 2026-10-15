@@ -217,6 +217,10 @@ class ChromiumEngine {
             windowsVirtualKeyCode: vk,
             nativeVirtualKeyCode: process.platform === "win32" ? vk : undefined,
             modifiers,
+            // CDP does not infer macOS editing commands from Meta alone.
+            commands: process.platform === "darwin" && item.meta && !item.alt && !item.ctrl
+              ? ({a:["selectAll"],c:["copy"],x:["cut"],v:[item.shift ? "pasteAndMatchStyle" : "paste"],z:[item.shift ? "redo" : "undo"]}[item.key.toLowerCase()] || [])
+              : undefined,
           });
           await this.socket.send("Input.dispatchKeyEvent", {
             type: "keyUp",

@@ -169,10 +169,10 @@ async function main() {
           assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),source.slice(0,at)+"X"+source.slice(at),
             `${entry.id}: element boundary ${side} emphasis is outside its delimiters`);
         }
-        await engine.evaluate("(() => {const editor=window.__codeRegression;editor.setMarkdown('# title\\n- item');editor.focus();return true;})()");
+        await engine.evaluate("(() => {const editor=window.__codeRegression;editor.setMarkdown('# title\\n- item');editor.focus();window.__selectAllKeys=[];editor.surface.addEventListener('keydown',event=>window.__selectAllKeys.push({key:event.key,code:event.code,meta:event.metaKey,ctrl:event.ctrlKey,shift:event.shiftKey,focus:document.activeElement===editor.surface}));return true;})()");
         await sendKeys([{key:"a",ctrl:process.platform!=="darwin",meta:process.platform==="darwin"}]);
         assert.deepEqual(await engine.evaluate("window.__codeRegression.selectionRaw()"),{start:0,end:14},
-          `${entry.id}: native Select All reaches both document boundaries`);
+          `${entry.id}: native Select All reaches both document boundaries: ${JSON.stringify(await engine.evaluate("window.__selectAllKeys"))}`);
         await sendKeys(["Z"]);
         assert.equal(await engine.evaluate("window.__codeRegression.getMarkdown()"),"Z",
           `${entry.id}: native Select All includes the first hidden structural prefix`);
