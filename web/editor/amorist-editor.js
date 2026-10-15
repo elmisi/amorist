@@ -1727,9 +1727,29 @@
       if (mod && !event.shiftKey && this.mode === "wysiwyg" && event.key.toLowerCase() === "a") {
         event.preventDefault(); this.selectSurfaceContents(); return;
       }
-      if(mod && event.shiftKey && event.key.toLowerCase()==="v") {
+      if(mod && event.shiftKey && (event.key.toLowerCase()==="v" || event.code==="KeyV")) {
         this.plainPasteRequested=true;
         setTimeout(()=>{this.plainPasteRequested=false;},1000);
+        // WKWebView does not synthesize paste for Command+Shift+V. Read only
+        // plain text during this explicit user gesture; never paste a delayed
+        // result into a different document, selection, mode or focused pane.
+        if (/Mac/i.test(navigator.platform) && /AppleWebKit/i.test(navigator.userAgent) &&
+            !/Chrome|Chromium|Edg/i.test(navigator.userAgent) && navigator.clipboard?.readText) {
+          event.preventDefault();
+          const model=this.model, revision=model.revision, mode=this.mode, selection=this.selectionRaw(), active=document.activeElement;
+          const token=this.clipboardReadToken=Symbol();
+          try {
+            navigator.clipboard.readText().then(text=>{
+              if(this.clipboardReadToken!==token || this.model!==model || this.model.revision!==revision || this.mode!==mode || document.activeElement!==active) return;
+              const current=this.selectionRaw();
+              if(current.start!==selection.start || current.end!==selection.end) return;
+              this.handlePaste({shiftKey:true,preventDefault(){},clipboardData:{getData:type=>type==="text/plain"?text:""}});
+            }).catch(()=>{
+              if(this.clipboardReadToken===token) this.options.onWarning?.("Could not read the clipboard. Your document was not changed.");
+            });
+          } catch (_) { this.options.onWarning?.("Could not read the clipboard. Your document was not changed."); }
+          return;
+        }
       }
       if (mod && !event.shiftKey && event.key.toLowerCase() === "z") { event.preventDefault(); this.undo(); return; }
       if (mod && (event.key.toLowerCase() === "y" || (event.shiftKey && event.key.toLowerCase() === "z"))) { event.preventDefault(); this.redo(); return; }

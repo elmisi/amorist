@@ -12,7 +12,7 @@ class WindowsAttachEngine extends WebDriverEngine {
   this.applicationProcess.on('error',error=>{this.applicationError=error;});
   this.applicationOutput='';
   for(const stream of [this.applicationProcess.stdout,this.applicationProcess.stderr]) stream.on('data',chunk=>{this.applicationOutput=(this.applicationOutput+chunk.toString()).slice(-4000);});
-  const deadline=Date.now()+20000;
+  const deadline=Date.now()+60000;
   for(;;){
    if(this.applicationError || this.applicationProcess.exitCode!==null) throw new Error('Owned application exited before WebView2 attachment: '+(this.applicationError||this.applicationProcess.exitCode)+' '+this.applicationOutput);
    try {await debugEndpoint(this.debugPort);break;}

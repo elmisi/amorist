@@ -107,8 +107,8 @@ class ChromiumEngine {
 
       let stderr = "";
       const timer = setTimeout(() => {
-        reject(new Error(`${this.binary} did not report a DevTools endpoint within 20s.`));
-      }, 20000);
+        reject(new Error(`${this.binary} did not report a DevTools endpoint within 60s.`));
+      }, 60000);
       proc.stderr.on("data", (chunk) => {
         stderr += chunk.toString("utf8");
         const match = stderr.match(/DevTools listening on (ws:\/\/[^\s]+)/);

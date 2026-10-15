@@ -291,6 +291,31 @@ async function main(options={}){
    assert.ok(unsupported.source.endsWith('outside\r\n'));assert.match(unsupported.source,/Before 2\r\n\r\nraw \\\*literal\\\* λfield value/);
    assert.doesNotMatch(unsupported.source,/discard executable|custom-panel|<sup/);assert.match(unsupported.rendered,/raw \*literal\* λfield value/);
    assert.equal(unsupported.undo,'outside\r\n');assert.equal(unsupported.plain,'plain fallback');assert.equal(unsupported.count,1);assert.equal(unsupported.afterPlain,1);assert.equal(unsupported.warnings.length,1);assert.match(unsupported.warnings[0],/unsupported/);assert.equal(unsupported.supported,'**Supported**');
+   const asynchronous=await engine.evaluate(`(async () => {
+    const saved={};for(const key of ['platform','userAgent','clipboard']) saved[key]=Object.getOwnPropertyDescriptor(navigator,key);
+    const host=document.createElement('div');document.body.append(host);const warnings=[];
+    const editor=window.AmoristEditor.create(host,{value:'target: ',onWarning:message=>warnings.push(message)});
+    let accept,deny;
+    try {
+     Object.defineProperty(navigator,'platform',{configurable:true,value:'MacIntel'});
+     Object.defineProperty(navigator,'userAgent',{configurable:true,value:'AppleWebKit Safari'});
+     Object.defineProperty(navigator,'clipboard',{configurable:true,value:{readText:()=>new Promise((resolve,reject)=>{accept=resolve;deny=reject;})}});
+     const paste=()=>{editor.focus();editor.handleKeyDown({metaKey:true,shiftKey:true,key:'V',code:'KeyV',preventDefault(){}});};
+     const flush=async()=>{await Promise.resolve();await Promise.resolve();};
+     editor.focus();editor.setSurfaceSelection(8,8);paste();accept('plain **raw**');await flush();
+     const pasted=editor.getMarkdown();editor.undo();const undone=editor.getMarkdown();
+     editor.setSurfaceSelection(8,8);paste();editor.setMarkdown('changed');accept('stale');await flush();const changed=editor.getMarkdown();
+     editor.setMarkdown('selection');editor.focus();editor.setSurfaceSelection(0,0);paste();editor.setSurfaceSelection(3,3);accept('stale');await flush();const moved=editor.getMarkdown();
+     paste();deny(new Error('denied'));await flush();
+     return {pasted,undone,changed,moved,denied:editor.getMarkdown(),warnings};
+    } finally {
+     editor.destroy();host.remove();
+     for(const key of Object.keys(saved)) {if(saved[key]) Object.defineProperty(navigator,key,saved[key]);else delete navigator[key];}
+    }
+   })()`);
+   assert.equal(asynchronous.pasted,'target: plain **raw**');assert.equal(asynchronous.undone,'target: ');
+   assert.equal(asynchronous.changed,'changed');assert.equal(asynchronous.moved,'selection');assert.equal(asynchronous.denied,'selection');
+   assert.equal(asynchronous.warnings.length,1);assert.match(asynchronous.warnings[0],/not changed/);
    console.log(`clipboard: ${entry.id} passed`);
   } finally {await engine.close();}
  }} finally {await server.stop();}

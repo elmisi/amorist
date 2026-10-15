@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.11.0] - Unreleased
 
 ### Fixed
+- Command+Shift+V reads plain clipboard text on macOS WebKit when the native
+  view does not emit paste, and discards delayed reads after document, selection
+  or focus changes. Clipboard denial leaves the document unchanged.
 - Thematic breaks preserve the source blank-line spacing instead of adding
   vertical margins. Link editing uses a spaced, responsive dialog with a
   full-width destination field and aligned Save/Cancel buttons.

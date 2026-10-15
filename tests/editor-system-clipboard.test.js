@@ -69,6 +69,8 @@ async function main(){
     assert.equal(result.status,0,result.stderr);
     await new Promise(resolve=>setTimeout(resolve,100));
    } else await send([{key:'v',shift:true,ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+   const plainDeadline=Date.now()+3000;
+   while(await engine.evaluate('window.__pasteEditor.getMarkdown()')!== '**bold**' && Date.now()<plainDeadline) await new Promise(resolve=>setTimeout(resolve,25));
    assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**',JSON.stringify(await engine.evaluate('({keys:window.__plainKeys,paste:window.__nativePaste})')));
    console.log(`system clipboard: ${entry.id} passed; types=${visual.paste[0].types.join(',')}`);
   } finally {await engine.close();}
