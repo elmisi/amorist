@@ -1,19 +1,8 @@
 name: QA
 
-# Placement is deliberate and comes from the contract (G-PUSH, G-RELEASE).
-#
-# This runs on every push and its result is visible, but a red result does NOT
-# block a commit, a merge or a push: almost every requirement is red today, and
-# a gate on commits would block the very work that turns them green. What it
-# does block is PUBLICATION — the release job in build.yml calls this workflow
-# and will not publish while it is red.
-#
-# It runs on BOTH published platforms, because a run on one platform is evidence
-# about one platform and nothing more. Each run judges only where it ran; the
-# composition across platforms is what the release gate consumes.
-#
-# Tighten to merges once the suite is green. That is an easy decision to take
-# then, and a costly one to take now.
+# Build calls this suite once per pull request or main push. Keep manual runs
+# available for diagnosis without duplicating the entire platform matrix.
+# Each platform verifies its own shipping engine; publication depends on all.
 
 on:
   workflow_dispatch:
@@ -103,11 +92,30 @@ jobs:
             echo "stand-in:  $("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version 2>/dev/null || echo absent)"
           fi
 
+      - name: Enable isolated decoder tests on the ephemeral Linux runner
+        if: matrix.platform == 'linux'
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          bwrap --ro-bind / / --proc /proc --dev-bind /dev /dev -- /bin/true
+
+      - name: Run codec, toolbar and code-context regressions
+        if: matrix.platform != 'windows'
+        run: |
+          checks="tests/working-copy.test.js tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/qa-windows-discovery.test.js tests/qa-driver-transport.test.js tests/editor-code-context.test.js tests/editor-multiline-inline.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
+          else
+            node --test --test-concurrency=1 $checks
+          fi
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
           key: qa-${{ matrix.platform }}
 
       - name: Install the Tauri application WebDriver intermediary
@@ -155,6 +163,7 @@ jobs:
           python3 tests/build-identity-config.test.py
 
       - name: Run codec, toolbar and code-context regressions
+        if: matrix.platform == 'windows'
         run: |
           checks="tests/working-copy.test.js tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/qa-windows-discovery.test.js tests/qa-driver-transport.test.js tests/editor-code-context.test.js tests/editor-multiline-inline.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
           if [ "${{ matrix.platform }}" = "linux" ]; then

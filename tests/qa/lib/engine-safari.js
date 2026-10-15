@@ -67,22 +67,30 @@ class SafariEngine extends WebDriverEngine {
   }
 
   async sendKeys(sequence) {
-    // Recent Safari Actions consumes Command chords before the letter reaches
-    // the editable element. Element Send Keys targets that same focused element
-    // through the standard WebDriver endpoint, retaining trusted native events.
-    for (const item of keys.normalizeSequence(sequence)) {
-      if (!item.meta) {
-        await super.sendKeys([item.text === undefined ? item : item.text]);
-        continue;
-      }
-      const active = await this.request("GET", `/session/${this.sessionId}/element/active`);
-      const id = active.value["element-6066-11e4-a52e-4f735466cecf"];
-      if (!id) throw new Error("Safari did not identify the focused element");
-      const modifiers = Object.entries(keys.WEBDRIVER_MODIFIERS)
-        .filter(([name]) => item[name]).map(([, value]) => value).join("");
-      const text = modifiers + (keys.WEBDRIVER[item.key] || item.key).repeat(item.repeat) + "\uE000";
-      await this.request("POST", `/session/${this.sessionId}/element/${id}/value`, {text, value:Array.from(text)});
+    if (keys.normalizeSequence(sequence).some(item => item.meta)) {
+      // DOM focus alone need not make Safari's web view the native responder.
+      // Activate its padding with a trusted pointer, then restore the exact
+      // selection that the test established before sending the real chord.
+      const point = await this.evaluate(`(() => {
+        const active=document.activeElement, selection=window.getSelection();
+        window.__qaKeyboardFocus={active,anchor:selection.anchorNode,anchorOffset:selection.anchorOffset,
+          focus:selection.focusNode,focusOffset:selection.focusOffset,
+          start:active.selectionStart,end:active.selectionEnd,direction:active.selectionDirection};
+        const box=active.getBoundingClientRect();
+        return {x:Math.floor(box.left+1),y:Math.floor(box.top+1)};
+      })()`);
+      await this.request("POST", `/session/${this.sessionId}/actions`, {actions:[{
+        type:"pointer",id:"focus-pointer",parameters:{pointerType:"mouse"},actions:[
+          {type:"pointerMove",origin:"viewport",x:point.x,y:point.y},
+          {type:"pointerDown",button:0},{type:"pointerUp",button:0}]}]});
+      await this.evaluate(`(() => {
+        const saved=window.__qaKeyboardFocus;saved.active.focus();
+        if(typeof saved.start==='number') saved.active.setSelectionRange(saved.start,saved.end,saved.direction);
+        else if(saved.anchor && saved.focus) window.getSelection().setBaseAndExtent(saved.anchor,saved.anchorOffset,saved.focus,saved.focusOffset);
+        delete window.__qaKeyboardFocus;return true;
+      })()`);
     }
+    return super.sendKeys(sequence);
   }
 
   // The server refuses a session until automation has been enabled by an

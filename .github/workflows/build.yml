@@ -13,6 +13,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: write
 
@@ -61,6 +65,14 @@ jobs:
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev heif-gdk-pixbuf \
             libheif-plugin-aomdec webkit2gtk-driver xvfb bubblewrap
 
+      - name: Enable isolated decoder tests on the ephemeral Linux runner
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          bwrap --ro-bind / / --proc /proc --dev-bind /dev /dev -- /bin/true
+
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Add macOS universal targets
@@ -70,6 +82,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
           key: ${{ matrix.os }}-${{ matrix.target }}
 
       - name: Install Tauri CLI
