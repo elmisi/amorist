@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "candidateVersion": "0.10.10",
+  "sourceCommit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+  "sourceArchiveSha256": "371af9d8a7d4803bba0e47140d66568a1aef2db324ceeb59055f77c3c2a7486a",
+  "finalDeliveryValidated": false,
+  "linux": {
+    "sourceCommit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+    "buildInfo": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:4c60722c6e9d938db763db5aba99c1c98dd43d30",
+      "fingerprint": "4c60722c6e9d938db763db5aba99c1c98dd43d30",
+      "commit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+      "target": "x86_64-unknown-linux-gnu",
+      "dirty": false
+    },
+    "artifacts": [
+      {
+        "path": "src-tauri/target/release/amorist",
+        "bytes": 8940176,
+        "sha256": "8701026c039b4fdbeb229e58a07303afcdcd83eaac4502d8e7b397ec7a4a0270"
+      },
+      {
+        "path": "src-tauri/target/release/bundle/deb/amorist_0.10.10_amd64.deb",
+        "bytes": 3745740,
+        "sha256": "64505cb640a3b8c4c469f633231d2c16cc18615d310f75314bc1b0113103f76b"
+      },
+      {
+        "path": "src-tauri/target/release/bundle/appimage/amorist_0.10.10_amd64.AppImage",
+        "bytes": 85912056,
+        "sha256": "25c3d02abedb1aea9334ec431518b2c286ef9324366e1dc1b5f047e33aca3043"
+      }
+    ],
+    "finalDeliveryValidated": false
+  },
+  "windows": {
+    "buildInfo": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-pc-windows-msvc:b685933c729a86b8749597f985d0f52b15ada86c",
+      "fingerprint": "b685933c729a86b8749597f985d0f52b15ada86c",
+      "commit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+      "target": "x86_64-pc-windows-msvc",
+      "dirty": false
+    },
+    "rawBytes": 10304000,
+    "rawSha256": "BE950D2BC79823BAAC1F5FDDC376C689BC24DCD05FCCB4FC26CF22857AE1F516",
+    "installedBytes": 10304000,
+    "installedSha256": "BCC4AB1670462C29448B459A116755A1D3EC8C93FD45C5C69FBEAB8DE6F61FB5",
+    "installerBytes": 2444089,
+    "installerSha256": "CAD16F2CEE63CD2AB69CF05DBC9A244CF2898FE34838C5A6BE3060BE3184E7C7"
+  },
+  "macos": {
+    "dmgBytes": 5973487,
+    "dmgSha256": "91ba88155bb4124c14730033d08e1bc91c1e4a4447692b1af76d3e3016ea3c50",
+    "verify": "pass",
+    "mountedReadonly": true,
+    "copiedApplication": "private QA installation copied from verified read-only DMG on Lestrade",
+    "architectures": "x86_64 arm64",
+    "binaryBytes": 13769248,
+    "binarySha256": "e5e151217eeef6b100c7b4836cbfefd7b19bcb7cf00cb30cfac36332613d83b2",
+    "buildInfo": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-apple-darwin:b685933c729a86b8749597f985d0f52b15ada86c",
+      "fingerprint": "b685933c729a86b8749597f985d0f52b15ada86c",
+      "commit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+      "target": "x86_64-apple-darwin",
+      "dirty": false
+    },
+    "nativeGuiAcceptance": "pending; SSH Accessibility not granted"
+  },
+  "dependencyFootprint": {
+    "newDirectRuntimeDependency": "tauri-plugin-opener =2.5.3",
+    "newCargoLockEntries": [
+      {
+        "name": "async-broadcast",
+        "version": "0.7.2"
+      },
+      {
+        "name": "async-channel",
+        "version": "2.5.0"
+      },
+      {
+        "name": "async-executor",
+        "version": "1.14.0"
+      },
+      {
+        "name": "async-io",
+        "version": "2.6.0"
+      },
+      {
+        "name": "async-lock",
+        "version": "3.4.2"
+      },
+      {
+        "name": "async-process",
+        "version": "2.5.0"
+      },
+      {
+        "name": "async-recursion",
+        "version": "1.2.0"
+      },
+      {
+        "name": "async-signal",
+        "version": "0.2.14"
+      },
+      {
+        "name": "async-task",
+        "version": "4.7.1"
+      },
+      {
+        "name": "async-trait",
+        "version": "0.1.92"
+      },
+      {
+        "name": "blocking",
+        "version": "1.7.0"
+      },
+      {
+        "name": "concurrent-queue",
+        "version": "2.5.0"
+      },
+      {
+        "name": "endi",
+        "version": "1.1.1"
+      },
+      {
+        "name": "enumflags2",
+        "version": "0.7.12"
+      },
+      {
+        "name": "enumflags2_derive",
+        "version": "0.7.12"
+      },
+      {
+        "name": "errno",
+        "version": "0.3.14"
+      },
+      {
+        "name": "event-listener",
+        "version": "5.4.2"
+      },
+      {
+        "name": "event-listener-strategy",
+        "version": "0.5.4"
+      },
+      {
+        "name": "futures-lite",
+        "version": "2.6.1"
+      },
+      {
+        "name": "hermit-abi",
+        "version": "0.5.3"
+      },
+      {
+        "name": "is-docker",
+        "version": "0.2.0"
+      },
+      {
+        "name": "is-wsl",
+        "version": "0.4.0"
+      },
+      {
+        "name": "linux-raw-sys",
+        "version": "0.12.1"
+      },
+      {
+        "name": "open",
+        "version": "5.4.4"
+      },
+      {
+        "name": "ordered-stream",
+        "version": "0.2.0"
+      },
+      {
+        "name": "parking",
+        "version": "2.2.1"
+      },
+      {
+        "name": "piper",
+        "version": "0.2.5"
+      },
+      {
+        "name": "polling",
+        "version": "3.11.0"
+      },
+      {
+        "name": "rustix",
+        "version": "1.1.5"
+      },
+      {
+        "name": "signal-hook-registry",
+        "version": "1.4.8"
+      },
+      {
+        "name": "syn",
+        "version": "3.0.9"
+      },
+      {
+        "name": "tauri-plugin-opener",
+        "version": "2.5.3"
+      },
+      {
+        "name": "tempfile",
+        "version": "3.27.0"
+      },
+      {
+        "name": "tracing-attributes",
+        "version": "0.1.31"
+      },
+      {
+        "name": "uds_windows",
+        "version": "1.2.1"
+      },
+      {
+        "name": "zbus",
+        "version": "5.19.0"
+      },
+      {
+        "name": "zbus_macros",
+        "version": "5.19.0"
+      },
+      {
+        "name": "zbus_names",
+        "version": "4.3.4"
+      },
+      {
+        "name": "zcheapstr",
+        "version": "1.1.0"
+      },
+      {
+        "name": "zvariant",
+        "version": "5.15.0"
+      },
+      {
+        "name": "zvariant_derive",
+        "version": "5.15.0"
+      },
+      {
+        "name": "zvariant_utils",
+        "version": "4.2.0"
+      }
+    ],
+    "newFrontendPackageDependencies": 0,
+    "interpretation": "Target-conditional and transitive lockfile entries do not imply every crate is linked on every platform. No additional runtime crate or frontend dependency for the recovery scheduler.",
+    "linuxInstalledBaseline": {
+      "bytes": 6406864,
+      "sha256": "38823ff93e2dc8e7c256b86b3f4bf9b56d614b39e4befb90558f490c43a76285",
+      "note": "Existing0.10.8 installed binary, unchanged; this does not identify historical reports as a published build"
+    },
+    "previousDevelopmentCandidateArtifacts": [
+      {
+        "file": "amorist",
+        "bytes": 8939152,
+        "sha256": "cac601beecd3f297445407ac41ddbf39dd75f54288dffcedcec9943b83dd6211"
+      },
+      {
+        "file": "amorist_0.10.10_amd64.deb",
+        "bytes": 3745236,
+        "sha256": "05550c686b4ea6cbc312a2d774b9369c1970a6382d5fbde5b46e96c6c9ee1343"
+      },
+      {
+        "file": "amorist_0.10.10_amd64.AppImage",
+        "bytes": 85916152,
+        "sha256": "352fd9babea4201fdb9ec1855f69c263162fb7d0e2162fdc05678f74797ca4c4"
+      }
+    ],
+    "comparisonScope": "Exact current artifact sizes recorded above. Previous development candidate is not a published-package baseline. No previous published Windows installer exists; no invented package-size delta."
+  }
+}
