@@ -52,7 +52,7 @@ async function main(){
    await send([{key:'z',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    assert.equal(await engine.evaluate('window.__copyEditor.getMarkdown()'),'before **bold** after');
    assert.deepEqual(await engine.evaluate('window.__copyEditor.selectionRaw()'),{start:9,end:13});
-   await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.showWysiwygMode();editor.focus();editor.setSurfaceSelection(0,0);return true;})()`);
+   await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.showWysiwygMode();editor.focus();editor.setSurfaceSelection(0,0);window.__plainKeys=[];editor.surface.addEventListener('keydown',event=>window.__plainKeys.push({key:event.key,code:event.code,shift:event.shiftKey,meta:event.metaKey,alt:event.altKey}));return true;})()`);
    if(process.platform==='win32' && entry.id==='webview2') {
     // Edge WebDriver emits two trusted paste events for this chord. Windows
     // SendKeys emits one, as a real keyboard does; retain the same assertions.
@@ -69,7 +69,7 @@ async function main(){
     assert.equal(result.status,0,result.stderr);
     await new Promise(resolve=>setTimeout(resolve,100));
    } else await send([{key:'v',shift:true,alt:process.platform==='darwin' && entry.id==='safari',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
-   assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**');
+   assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**',JSON.stringify(await engine.evaluate('({keys:window.__plainKeys,paste:window.__nativePaste})')));
    console.log(`system clipboard: ${entry.id} passed; types=${visual.paste[0].types.join(',')}`);
   } finally {await engine.close();}
  }} finally {await server.stop();if(previousHeadful===undefined) delete process.env.AMORIST_QA_CHROMIUM_HEADFUL;else process.env.AMORIST_QA_CHROMIUM_HEADFUL=previousHeadful;}

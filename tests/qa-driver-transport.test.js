@@ -41,3 +41,11 @@ test('macOS CDP shortcuts include editing commands without extra key presses', a
     assert.equal(events[1].type, 'keyUp');
   }
 });
+
+test('Shift chords send the resulting uppercase character to WebDriver', async () => {
+  const engine=new WebDriverEngine('unused');engine.sessionId='test';
+  let sent;engine.request=async (method,endpoint,body)=>{sent=body;};
+  await engine.sendKeys([{key:'v',shift:true,meta:true,alt:true}]);
+  const letters=sent.actions[0].actions.filter(action=>action.value==='V');
+  assert.deepEqual(letters.map(action=>action.type),['keyDown','keyUp']);
+});

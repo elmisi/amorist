@@ -162,7 +162,7 @@ class WebDriverEngine {
       for (const [name, value] of Object.entries(keys.WEBDRIVER_MODIFIERS)) {
         if (item[name]) held.push(value);
       }
-      const value = keys.WEBDRIVER[item.key] || item.key;
+      const value = keys.WEBDRIVER[item.key] || (item.shift && item.key.length === 1 ? item.key.toUpperCase() : item.key);
       for (const modifier of held) actions.push({ type: "keyDown", value: modifier });
       for (let n = 0; n < item.repeat; n += 1) {
         actions.push({ type: "keyDown", value });
