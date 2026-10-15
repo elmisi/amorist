@@ -222,6 +222,9 @@ class WebDriverEngine {
           resolve(parsed);
         });
       });
+      req.setTimeout(this.requestTimeoutMs || 45000, () => {
+        req.destroy(new Error(`${method} ${endpoint} timed out waiting for ${this.id || "WebDriver"}: ${this.output.slice(-2000)}`));
+      });
       req.on("error", reject);
       if (payload) req.write(payload);
       req.end();

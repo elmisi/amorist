@@ -123,6 +123,7 @@ jobs:
         run: cargo install tauri-driver --version 2.0.6 --locked
 
       - name: Verify packaged images without the host AV1 decoder
+        timeout-minutes: 5
         if: matrix.bundle == 'appimage'
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'

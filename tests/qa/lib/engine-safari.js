@@ -14,6 +14,7 @@
 
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
+const keys = require("./keys");
 
 const { WebDriverEngine } = require("./engine-webdriver");
 
@@ -63,6 +64,25 @@ class SafariEngine extends WebDriverEngine {
 
   sessionCapabilities() {
     return { browserName: "safari" };
+  }
+
+  async sendKeys(sequence) {
+    // Recent Safari Actions consumes Command chords before the letter reaches
+    // the editable element. Element Send Keys targets that same focused element
+    // through the standard WebDriver endpoint, retaining trusted native events.
+    for (const item of keys.normalizeSequence(sequence)) {
+      if (!item.meta) {
+        await super.sendKeys([item.text === undefined ? item : item.text]);
+        continue;
+      }
+      const active = await this.request("GET", `/session/${this.sessionId}/element/active`);
+      const id = active.value["element-6066-11e4-a52e-4f735466cecf"];
+      if (!id) throw new Error("Safari did not identify the focused element");
+      const modifiers = Object.entries(keys.WEBDRIVER_MODIFIERS)
+        .filter(([name]) => item[name]).map(([, value]) => value).join("");
+      const text = modifiers + (keys.WEBDRIVER[item.key] || item.key).repeat(item.repeat) + "\uE000";
+      await this.request("POST", `/session/${this.sessionId}/element/${id}/value`, {text, value:Array.from(text)});
+    }
   }
 
   // The server refuses a session until automation has been enabled by an
