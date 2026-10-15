@@ -52,7 +52,7 @@ async function main(){
    await send([{key:'z',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    assert.equal(await engine.evaluate('window.__copyEditor.getMarkdown()'),'before **bold** after');
    assert.deepEqual(await engine.evaluate('window.__copyEditor.selectionRaw()'),{start:9,end:13});
-   await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.focus();editor.source.setSelectionRange(0,0);return true;})()`);
+   await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.showWysiwygMode();editor.focus();editor.setSurfaceSelection(0,0);return true;})()`);
    if(process.platform==='win32' && entry.id==='webview2') {
     // Edge WebDriver emits two trusted paste events for this chord. Windows
     // SendKeys emits one, as a real keyboard does; retain the same assertions.
