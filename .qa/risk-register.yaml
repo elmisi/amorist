@@ -1,8 +1,9 @@
 # amorist — risk register
 #
-# Companion to .qa/qa-contract.yaml (status: proposed). Every risk here was
-# reproduced against the repository at commit a9d7e73 — the reproductions are in
-# .qa/risks.yaml, which is the raw Discovery log. This file is the mapping:
+# Companion to the approved .qa/qa-contract.yaml. Original reproductions at
+# commit a9d7e73 remain in .qa/risks.yaml, the raw Discovery log. Later risks
+# identify their evidence below. Current verdicts are recorded in .qa/reports/.
+# This file is the mapping:
 # risk -> the requirement(s) that must fail when the risk is present.
 #
 # Audit rule: a risk with an empty verification_ids list is an uncovered risk,

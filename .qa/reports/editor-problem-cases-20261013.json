@@ -159,7 +159,7 @@
       "reportedVersion": "0.10.8",
       "buildIdentity": "not measured by original schema 1",
       "case": "List continuation alignment",
-      "status": "fixed-with-synthetic-regression-pending-platform-gates",
+      "status": "fixed-with-synthetic-regression",
       "fixture": "tests/qa/corpus/regression-block-layout.md",
       "check": "tests/editor-block-layout.test.js",
       "verifiedEngines": [
@@ -198,7 +198,9 @@
         ],
         "evidence": "original-reports-current-linux.log/json",
         "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
-      }
+      },
+      "historicalStatus": "fixed-with-synthetic-regression-pending-platform-gates",
+      "platformGateClosure": "Current full platform reports and native acceptance composed in editor-development-requirement-audit.json"
     },
     {
       "id": "BUG-005",
@@ -257,7 +259,7 @@
       "reportedVersion": "0.10.8",
       "buildIdentity": "not measured by original schema 1",
       "case": "Wrapped list alignment",
-      "status": "fixed-with-synthetic-regression-pending-platform-gates",
+      "status": "fixed-with-synthetic-regression",
       "fixture": "tests/qa/corpus/regression-block-layout.md",
       "check": "tests/editor-block-layout.test.js",
       "verifiedEngines": [
@@ -296,7 +298,9 @@
         ],
         "evidence": "original-reports-current-linux.log/json",
         "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
-      }
+      },
+      "historicalStatus": "fixed-with-synthetic-regression-pending-platform-gates",
+      "platformGateClosure": "Current full platform reports and native acceptance composed in editor-development-requirement-audit.json"
     },
     {
       "id": "BUG-007",
@@ -305,7 +309,7 @@
       "reportedVersion": "0.10.8",
       "buildIdentity": "not measured by original schema 1",
       "case": "Multiline quote continuity",
-      "status": "fixed-with-synthetic-regression-pending-platform-gates",
+      "status": "fixed-with-synthetic-regression",
       "fixture": "tests/qa/corpus/regression-block-layout.md",
       "check": "tests/editor-block-layout.test.js",
       "verifiedEngines": [
@@ -344,7 +348,69 @@
         ],
         "evidence": "original-reports-current-linux.log/json",
         "scope": "Full original captured Markdown: source preservation, complete row mapping, literal classified code, zero-height delimiters, adjacent quote continuity, mode round-trip, Unicode edit and undo. Does not certify all native package/platform flows; existing reduced fixtures remain permanent regressions."
-      }
+      },
+      "historicalStatus": "fixed-with-synthetic-regression-pending-platform-gates",
+      "platformGateClosure": "Current full platform reports and native acceptance composed in editor-development-requirement-audit.json"
+    },
+    {
+      "id": "BUG-008",
+      "capturedAt": "2026-10-14T19:32:04.312Z",
+      "recordSha256": "6a3c20a581d34a8a926435187adb77d435caca99fba83e869c0287782f9fa1de",
+      "reportedVersion": "0.10.10",
+      "buildIdentity": {
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:517c93608c59c2a11d20869fe480e860ed1815a0",
+        "commit": "923d65b95186440702fc00835c5c8ab4e5e0a486",
+        "dirty": false,
+        "fingerprint": "517c93608c59c2a11d20869fe480e860ed1815a0",
+        "schemaVersion": 1,
+        "target": "x86_64-unknown-linux-gnu",
+        "version": "0.10.10"
+      },
+      "case": "Arrow navigation through blank row before code",
+      "status": "fixed-with-regression-and-platform-verification",
+      "check": "tests/editor-block-layout.test.js",
+      "explanation": "Mapped zero-width caret on empty rows; trusted Up and Down both reach the physical blank row without changing source.",
+      "evidence": "newReports8To10Linux historical reproduction logs; current full platform reports; for BUG-008/009 also6364643-feedback-directed.json on Safari/Chromium"
+    },
+    {
+      "id": "BUG-009",
+      "capturedAt": "2026-10-14T19:33:34.131Z",
+      "recordSha256": "9c8f4d216b1b93ab13bd86760c4ae8c93de6679cb7705728f6712e1884028c90",
+      "reportedVersion": "0.10.10",
+      "buildIdentity": {
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:517c93608c59c2a11d20869fe480e860ed1815a0",
+        "commit": "923d65b95186440702fc00835c5c8ab4e5e0a486",
+        "dirty": false,
+        "fingerprint": "517c93608c59c2a11d20869fe480e860ed1815a0",
+        "schemaVersion": 1,
+        "target": "x86_64-unknown-linux-gnu",
+        "version": "0.10.10"
+      },
+      "case": "Visible table header separator",
+      "status": "fixed-with-regression-and-platform-verification",
+      "check": "tests/editor-block-layout.test.js",
+      "explanation": "Draws a continuous horizontal divider while retaining original delimiter text, raw offsets and selection.",
+      "evidence": "newReports8To10Linux historical reproduction logs; current full platform reports; for BUG-008/009 also6364643-feedback-directed.json on Safari/Chromium"
+    },
+    {
+      "id": "BUG-010",
+      "capturedAt": "2026-10-14T19:34:52.872Z",
+      "recordSha256": "31a2c6a35ddcab050541094a79c6bc3685d8376e3421762f4898a129d17766e8",
+      "reportedVersion": "0.10.10",
+      "buildIdentity": {
+        "buildId": "0.10.10:x86_64-unknown-linux-gnu:517c93608c59c2a11d20869fe480e860ed1815a0",
+        "commit": "923d65b95186440702fc00835c5c8ab4e5e0a486",
+        "dirty": false,
+        "fingerprint": "517c93608c59c2a11d20869fe480e860ed1815a0",
+        "schemaVersion": 1,
+        "target": "x86_64-unknown-linux-gnu",
+        "version": "0.10.10"
+      },
+      "case": "Source active-line geometry drift",
+      "status": "fixed-with-regression-and-platform-verification",
+      "check": "tests/editor-settings.test.js",
+      "explanation": "Integral Source line advance matches textarea layout;150 CRLF rows measured at16/18/22px. The current blocking Settings requirement and platform suites pass.",
+      "evidence": "newReports8To10Linux historical reproduction logs; current full platform reports; for BUG-008/009 also6364643-feedback-directed.json on Safari/Chromium"
     },
     {
       "id": "BUG-011",
@@ -352,13 +418,23 @@
       "recordSha256": "5501ddeee9226e456ed46ccab17af47a25858f23e38953391eb77043e24a6023",
       "reportedVersion": "0.10.10",
       "case": "Extra visual spacing after thematic break",
-      "status": "fixed-source-tests-package-verification-pending",
+      "status": "fixed-with-source-and-native-package-verification",
       "check": "tests/editor-block-layout.test.js",
       "verifiedEngines": [
         "webkitgtk",
-        "chromium-linux"
+        "chromium-linux",
+        "webview2-windows",
+        "safari",
+        "chromium-macos",
+        "native-wk-macos"
       ],
-      "explanation": "A physical rule row had additional vertical margins. The regression fails before the CSS change and passes against a plain-row control at12/16/24px on GTK/Chromium; Markdown and CRLF stay unchanged."
+      "explanation": "A physical rule row had additional vertical margins. The regression fails before the CSS change and passes against a plain-row control at12/16/24px on GTK/Chromium; Markdown and CRLF stay unchanged.",
+      "currentPackageEvidence": [
+        "6364643-linux-package-checks.json",
+        "6364643-current-checks.json",
+        "6364643-native-feedback-verification.json"
+      ],
+      "macosDirectedEvidence": "6364643-feedback-directed.json; corresponding case passed on Safari and Chromium"
     },
     {
       "id": "BUG-012",
@@ -366,13 +442,23 @@
       "recordSha256": "450ff5fbfe679d7cf2b9ded0abde487fdb824375f956eee305e1d425b5c24833",
       "reportedVersion": "0.10.10",
       "case": "Link editing dialog appearance",
-      "status": "polished-source-tests-package-verification-pending",
+      "status": "polished-with-native-package-verification",
       "check": "tests/editor-link-activation.test.js",
       "verifiedEngines": [
         "webkitgtk",
-        "chromium-linux"
+        "chromium-linux",
+        "webview2-windows",
+        "safari",
+        "chromium-macos",
+        "native-wk-macos"
       ],
-      "explanation": "Scoped dialog styles add clear vertical spacing, a full-width input and aligned actions. Existing link/keyboard checks pass; geometry, focus and a narrow380px viewport were checked separately."
+      "explanation": "Scoped dialog styles add clear vertical spacing, a full-width input and aligned actions. Existing link/keyboard checks pass; geometry, focus and a narrow380px viewport were checked separately.",
+      "currentPackageEvidence": [
+        "6364643-linux-package-checks.json",
+        "6364643-current-checks.json",
+        "6364643-native-feedback-verification.json"
+      ],
+      "macosDirectedEvidence": "6364643-feedback-directed.json; corresponding case passed on Safari and Chromium"
     },
     {
       "id": "BUG-013",
@@ -386,7 +472,8 @@
         "webkitgtk",
         "chromium-linux"
       ],
-      "explanation": "An identical matching fence closes the existing block; later fences can start another block. The captured Markdown is preserved, not silently rewritten. To display triple-backtick content inside a single code block, use a longer outer delimiter; generated delimiters already do this. Complete captured source passed projection/mode/edit/undo probes on GTK/Chromium; the reduced existing regression now covers the text info string and CRLF."
+      "explanation": "An identical matching fence closes the existing block; later fences can start another block. The captured Markdown is preserved, not silently rewritten. To display triple-backtick content inside a single code block, use a longer outer delimiter; generated delimiters already do this. Complete captured source passed projection/mode/edit/undo probes on GTK/Chromium; the reduced existing regression now covers the text info string and CRLF.",
+      "macosDirectedEvidence": "6364643-feedback-directed.json; corresponding case passed on Safari and Chromium"
     }
   ],
   "latestInventory": {

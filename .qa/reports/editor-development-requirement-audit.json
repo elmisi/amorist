@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "applicationSourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+  "applicationSourceCommit": "636464301cd52410c784eb5d6e0cbc1f01614f2c",
   "blockingRequirements": 38,
   "contractSha256": "0f724d45d2f431c6888795b53500c0c42296836889ff2117d34f499513cc8b1f",
   "reports": {
     "linux": {
-      "file": "ba1f626-linux-full.json",
-      "sha256": "5a10963a6052ac0e97b8be22864503c4617505bb10e95d97b63dbe86cc5efbcc",
+      "file": "6364643-linux-full.json",
+      "sha256": "4ed1afa38b1483608b0dd5fbc8878b5f8a8135b34d9427f3cb3f0d2f6fa48edb",
       "engines": [
         {
           "id": "webkitgtk",
@@ -33,8 +33,8 @@
       ]
     },
     "windows": {
-      "file": "ba1f626-windows-full.json",
-      "sha256": "83e0a2d66ab89ead2753b8ef33d40d212a11796d0dd686f8db972f8048eb5d9d",
+      "file": "6364643-windows-full.json",
+      "sha256": "83c2b9dea40e0ee512c3815ee8a6252ad5bd176b497678cbeaa80f826a23604a",
       "engines": [
         {
           "id": "webview2",
@@ -61,8 +61,8 @@
       ]
     },
     "macos": {
-      "file": "ba1f626-macos-full.json",
-      "sha256": "e4d09571b4ddb61555fcdef7b2fdb4de14b58096bae6342392dc7056e99ae27f",
+      "file": "6364643-macos-full.json",
+      "sha256": "0123a1c7e0ca68993afcbbb5bb4b85a843fb4f2703036da275d24b2fca07ad60",
       "engines": [
         {
           "id": "safari",
@@ -79,7 +79,7 @@
           "id": "chromium",
           "role": "stand-in",
           "description": "a Chromium-family browser, kept for speed and for cross-checking",
-          "version": "Google Chrome 150.0.7871.187",
+          "version": "Google Chrome 155.0.8059.40",
           "font": {
             "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
             "sizePx": "14px",
@@ -708,9 +708,10 @@
         "receipts": [
           "ba1f626-native-startup-multiple.json",
           "ba1f626-native-links-dock-verification.json",
-          "macos-native-dda92bf/dda92bf-native-open-event.json"
+          "macos-native-dda92bf/dda92bf-native-open-event.json",
+          "6364643-native-feedback-verification.json"
         ],
-        "scope": "Cold startup and Dock on ba1f626; warm event on preceding dda92bf, preserving its exact source scope. Startup ownership fix tested separately on current bundle."
+        "scope": "Fresh6364643 cold two-file OS launch, exact Source, native dialog/Cancel and Cmd-click; prior ba1f626 Dock and dda92bf warm-event proofs retain their source scope. The only runtime difference since ba1f626 is CSS."
       },
       "status": "passed-composed-evidence"
     },
@@ -806,12 +807,24 @@
   ],
   "nativePackageEvidence": "editor-development-progress.json currentCrossPlatformSource plus macosNativeAcceptanceDda92bf; native source/gesture scope remains explicit",
   "reportMetadataErratum": "Historical notAutomatedAnywhere prose overstates lack of native embedding coverage; Windows already exercises actual application WebView2. Historical files retained unchanged; future reporter text corrected without changing verdicts.",
-  "newReportsPending": [
-    "BUG-011",
-    "BUG-012",
-    "BUG-013"
-  ],
-  "deliveryBlocked": true,
+  "newReportsPending": [],
+  "deliveryBlocked": false,
   "pushAuthorized": false,
-  "publicationAuthorized": false
+  "publicationAuthorized": false,
+  "runtimeDifferenceSincePriorNativeAcceptance": [
+    "web/editor/amorist-editor.css"
+  ],
+  "extraCurrentPackageChecks": {
+    "linux": 14,
+    "windows": 7,
+    "macosNativeFeedback": "6364643-native-feedback-verification.json",
+    "macosDirectedFeedback": "3/3 passed;6364643-feedback-directed.json"
+  },
+  "newFeedbackDisposition": {
+    "BUG-011": "fixed; directed baseline failure and current package checks pass",
+    "BUG-012": "dialog polished; native layout/focus/Cancel and existing link/keyboard checks pass",
+    "BUG-013": "correct matching-fence behavior explained; complete original snapshot and reduced regression passed"
+  },
+  "inventoriedProblemRecords": 13,
+  "problemInventorySha256": "3900c9d003e6eec8f5801b004b5b221204702783940bbb7d050b83135d68941d"
 }

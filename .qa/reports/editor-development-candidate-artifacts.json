@@ -1,85 +1,85 @@
 {
   "schemaVersion": 1,
   "candidateVersion": "0.10.10",
-  "sourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
-  "sourceArchiveSha256": "22647822176cb00b916311334a5ce18ed369cc91b653b6de67e94501b375ae83",
-  "finalDeliveryValidated": false,
+  "sourceCommit": "636464301cd52410c784eb5d6e0cbc1f01614f2c",
+  "sourceArchiveSha256": "733ff5decd1a94ee00b9608f901c0c1236ea930e1d0235319e8e791fa5e192da",
+  "finalDeliveryValidated": true,
   "linux": {
-    "sourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+    "sourceCommit": "636464301cd52410c784eb5d6e0cbc1f01614f2c",
     "buildInfo": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-unknown-linux-gnu:08fa126df3304405fa3958333c0b3f35d99e17c3",
-      "fingerprint": "08fa126df3304405fa3958333c0b3f35d99e17c3",
-      "commit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+      "buildId": "0.10.10:x86_64-unknown-linux-gnu:c550c82c56cbdba2d4b502cb7e12ea8536f80e2e",
+      "fingerprint": "c550c82c56cbdba2d4b502cb7e12ea8536f80e2e",
+      "commit": "636464301cd52410c784eb5d6e0cbc1f01614f2c",
       "target": "x86_64-unknown-linux-gnu",
       "dirty": false
     },
     "artifacts": [
       {
-        "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/amorist",
-        "bytes": 8940176,
-        "sha256": "19db2739667ea59d96678a9bf761eceabb6d99db92272c925366067aedef5db4"
+        "path": "src-tauri/target/release/amorist",
+        "bytes": 8940560,
+        "sha256": "77bcd7b7c51b16928b6eb906ca20d421b05a8cfcc6cb0f2f182e5b82c0b4165d"
       },
       {
-        "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/bundle/deb/amorist_0.10.10_amd64.deb",
-        "bytes": 3745782,
-        "sha256": "d8560918036bae897c6b5bd748146c8512ad8b3f87fde4e3fbf829480a110a27"
+        "path": "src-tauri/target/release/bundle/deb/amorist_0.10.10_amd64.deb",
+        "bytes": 3746144,
+        "sha256": "82b3d0cba345ba4fb77b2a02aeeeec6c32d1505b24faba41d90419e9ed195105"
       },
       {
-        "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/bundle/appimage/amorist_0.10.10_amd64.AppImage",
-        "bytes": 85912056,
-        "sha256": "a7a82e615202dfabc0ffcda6bd054a9bf9bba72723d302a0569e1357dabdfb14"
+        "path": "src-tauri/target/release/bundle/appimage/amorist_0.10.10_amd64.AppImage",
+        "bytes": 85916152,
+        "sha256": "f9deda84c2699a643c5db4587bbc33795ef079666f6b4e2a0631b0a5fab761b5"
       }
     ],
-    "finalDeliveryValidated": false
+    "finalDeliveryValidated": true
   },
   "windows": {
-    "buildInfo": {
-      "schemaVersion": 1,
-      "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-pc-windows-msvc:9b25fa585f6857904555cce2f95b31791ac8d979",
-      "fingerprint": "9b25fa585f6857904555cce2f95b31791ac8d979",
-      "commit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
-      "target": "x86_64-pc-windows-msvc",
-      "dirty": false
-    },
-    "rawBytes": 10304512,
-    "rawSha256": "E1DC9158223206E7D2BE01BA3669DAD96519C701C17CF8CEC1678A2F822FACB7",
     "installedBytes": 10304512,
-    "installedSha256": "25DB568938B14B4B729AA74EF4C324D33CBBA0D29F8F3C55D579271119CA94F4",
-    "installerBytes": 2444806,
-    "installerSha256": "9AA4FC25992453577A66F2C36ADEC1C68533A64C6FECCC94815C42757ED105C4",
+    "rawSha256": "15837F43B9A1CF40100E59B37C7BA133145A3EDC99180A76919E81BE2AD0A47C",
+    "installedSha256": "9A2B4F17090DB3A92443D2FEC2A963DA98779AA3DB54243AA6A5E7699B189AA0",
+    "installerBytes": 2444834,
     "binaryComparison": {
       "remainingBytesIdentical": true,
       "differences": [
-        "007B2F50: 55 4E",
-        "007B2F51: 4E 53",
-        "007B2F52: 4B 53"
+        "007B30D0: 55 4E",
+        "007B30D1: 4E 53",
+        "007B30D2: 4B 53"
       ],
       "changedBytes": 3
-    }
-  },
-  "macos": {
-    "dmgBytes": 5973545,
-    "dmgSha256": "527f0a16024a0a5aee4c5944171c218c2e28dce4362df506f35a295f6b042eb1",
-    "verify": "pass",
-    "mountedReadonly": true,
-    "copiedApplication": "/Users/alessandro/.local/state/amorist-execution-20261013/installed-ba1f626/amorist.app",
-    "architectures": "x86_64 arm64",
-    "binaryBytes": 13769248,
-    "binarySha256": "a505a68820e9f8d42d3f19fc37b39420025cd1f73001f3b0625874b3fab7ff9f",
+    },
+    "installerSha256": "EE9560B16BDC7BB4D52C11DF0D4DB023C860009A94204B35F7E287CFCE363F33",
+    "rawBytes": 10304512,
     "buildInfo": {
       "schemaVersion": 1,
       "version": "0.10.10",
-      "buildId": "0.10.10:x86_64-apple-darwin:9b25fa585f6857904555cce2f95b31791ac8d979",
-      "fingerprint": "9b25fa585f6857904555cce2f95b31791ac8d979",
-      "commit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+      "buildId": "0.10.10:x86_64-pc-windows-msvc:891c10644bd64cb9467b1011374fc76b72ed1391",
+      "fingerprint": "891c10644bd64cb9467b1011374fc76b72ed1391",
+      "commit": "636464301cd52410c784eb5d6e0cbc1f01614f2c",
+      "target": "x86_64-pc-windows-msvc",
+      "dirty": false
+    }
+  },
+  "macos": {
+    "dmgBytes": 5974521,
+    "dmgSha256": "91f55315c8e37d1a603b64a9989d5b5147d6b1b4524c47d2f81653d29ed2e33b",
+    "verify": "pass",
+    "mountedReadonly": true,
+    "copiedApplication": "/Users/alessandro/.local/state/amorist-execution-20261013/installed-6364643/amorist.app",
+    "architectures": "x86_64 arm64",
+    "binaryBytes": 13769248,
+    "binarySha256": "184e4818f4e5f99e767bd2d119fba6a3b15e83d4b7f698d7e8ef8883ee27ea86",
+    "buildInfo": {
+      "schemaVersion": 1,
+      "version": "0.10.10",
+      "buildId": "0.10.10:x86_64-apple-darwin:891c10644bd64cb9467b1011374fc76b72ed1391",
+      "fingerprint": "891c10644bd64cb9467b1011374fc76b72ed1391",
+      "commit": "636464301cd52410c784eb5d6e0cbc1f01614f2c",
       "target": "x86_64-apple-darwin",
       "dirty": false
     },
-    "nativeStartupRegression": "passed; ba1f626-native-startup-multiple.json",
-    "nativeGuiAcceptance": "Cmd-click Markdown/anchor, external text/browser and Dock passed; other acceptance flows retained from dda92bf source with startup-only runtime change tested separately"
+    "nativeGuiAcceptance": "Fresh6364643 native feedback/startup/Source/Cmd-click pass; other receipts retain earlier source scope with CSS-only difference verified.",
+    "fullContract": "passed;6364643-macos-full.json"
   },
   "dependencyFootprint": {
     "newDirectRuntimeDependency": "tauri-plugin-opener =2.5.3",
@@ -551,6 +551,289 @@
         ],
         "comparisonScope": "Exact current artifact sizes recorded above. Previous development candidate is not a published-package baseline. No previous published Windows installer exists; no invented package-size delta."
       }
+    },
+    {
+      "schemaVersion": 1,
+      "candidateVersion": "0.10.10",
+      "sourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+      "sourceArchiveSha256": "22647822176cb00b916311334a5ce18ed369cc91b653b6de67e94501b375ae83",
+      "finalDeliveryValidated": false,
+      "linux": {
+        "sourceCommit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+        "buildInfo": {
+          "schemaVersion": 1,
+          "version": "0.10.10",
+          "buildId": "0.10.10:x86_64-unknown-linux-gnu:08fa126df3304405fa3958333c0b3f35d99e17c3",
+          "fingerprint": "08fa126df3304405fa3958333c0b3f35d99e17c3",
+          "commit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+          "target": "x86_64-unknown-linux-gnu",
+          "dirty": false
+        },
+        "artifacts": [
+          {
+            "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/amorist",
+            "bytes": 8940176,
+            "sha256": "19db2739667ea59d96678a9bf761eceabb6d99db92272c925366067aedef5db4"
+          },
+          {
+            "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/bundle/deb/amorist_0.10.10_amd64.deb",
+            "bytes": 3745782,
+            "sha256": "d8560918036bae897c6b5bd748146c8512ad8b3f87fde4e3fbf829480a110a27"
+          },
+          {
+            "path": "/home/alessandro/elmisi/amorist/src-tauri/target/release/bundle/appimage/amorist_0.10.10_amd64.AppImage",
+            "bytes": 85912056,
+            "sha256": "a7a82e615202dfabc0ffcda6bd054a9bf9bba72723d302a0569e1357dabdfb14"
+          }
+        ],
+        "finalDeliveryValidated": false
+      },
+      "windows": {
+        "buildInfo": {
+          "schemaVersion": 1,
+          "version": "0.10.10",
+          "buildId": "0.10.10:x86_64-pc-windows-msvc:9b25fa585f6857904555cce2f95b31791ac8d979",
+          "fingerprint": "9b25fa585f6857904555cce2f95b31791ac8d979",
+          "commit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+          "target": "x86_64-pc-windows-msvc",
+          "dirty": false
+        },
+        "rawBytes": 10304512,
+        "rawSha256": "E1DC9158223206E7D2BE01BA3669DAD96519C701C17CF8CEC1678A2F822FACB7",
+        "installedBytes": 10304512,
+        "installedSha256": "25DB568938B14B4B729AA74EF4C324D33CBBA0D29F8F3C55D579271119CA94F4",
+        "installerBytes": 2444806,
+        "installerSha256": "9AA4FC25992453577A66F2C36ADEC1C68533A64C6FECCC94815C42757ED105C4",
+        "binaryComparison": {
+          "remainingBytesIdentical": true,
+          "differences": [
+            "007B2F50: 55 4E",
+            "007B2F51: 4E 53",
+            "007B2F52: 4B 53"
+          ],
+          "changedBytes": 3
+        }
+      },
+      "macos": {
+        "dmgBytes": 5973545,
+        "dmgSha256": "527f0a16024a0a5aee4c5944171c218c2e28dce4362df506f35a295f6b042eb1",
+        "verify": "pass",
+        "mountedReadonly": true,
+        "copiedApplication": "/Users/alessandro/.local/state/amorist-execution-20261013/installed-ba1f626/amorist.app",
+        "architectures": "x86_64 arm64",
+        "binaryBytes": 13769248,
+        "binarySha256": "a505a68820e9f8d42d3f19fc37b39420025cd1f73001f3b0625874b3fab7ff9f",
+        "buildInfo": {
+          "schemaVersion": 1,
+          "version": "0.10.10",
+          "buildId": "0.10.10:x86_64-apple-darwin:9b25fa585f6857904555cce2f95b31791ac8d979",
+          "fingerprint": "9b25fa585f6857904555cce2f95b31791ac8d979",
+          "commit": "ba1f626b1ed21bc5d7d47ac4c88540c79f096eb3",
+          "target": "x86_64-apple-darwin",
+          "dirty": false
+        },
+        "nativeStartupRegression": "passed; ba1f626-native-startup-multiple.json",
+        "nativeGuiAcceptance": "Cmd-click Markdown/anchor, external text/browser and Dock passed; other acceptance flows retained from dda92bf source with startup-only runtime change tested separately"
+      },
+      "dependencyFootprint": {
+        "newDirectRuntimeDependency": "tauri-plugin-opener =2.5.3",
+        "newCargoLockEntries": [
+          {
+            "name": "async-broadcast",
+            "version": "0.7.2"
+          },
+          {
+            "name": "async-channel",
+            "version": "2.5.0"
+          },
+          {
+            "name": "async-executor",
+            "version": "1.14.0"
+          },
+          {
+            "name": "async-io",
+            "version": "2.6.0"
+          },
+          {
+            "name": "async-lock",
+            "version": "3.4.2"
+          },
+          {
+            "name": "async-process",
+            "version": "2.5.0"
+          },
+          {
+            "name": "async-recursion",
+            "version": "1.2.0"
+          },
+          {
+            "name": "async-signal",
+            "version": "0.2.14"
+          },
+          {
+            "name": "async-task",
+            "version": "4.7.1"
+          },
+          {
+            "name": "async-trait",
+            "version": "0.1.92"
+          },
+          {
+            "name": "blocking",
+            "version": "1.7.0"
+          },
+          {
+            "name": "concurrent-queue",
+            "version": "2.5.0"
+          },
+          {
+            "name": "endi",
+            "version": "1.1.1"
+          },
+          {
+            "name": "enumflags2",
+            "version": "0.7.12"
+          },
+          {
+            "name": "enumflags2_derive",
+            "version": "0.7.12"
+          },
+          {
+            "name": "errno",
+            "version": "0.3.14"
+          },
+          {
+            "name": "event-listener",
+            "version": "5.4.2"
+          },
+          {
+            "name": "event-listener-strategy",
+            "version": "0.5.4"
+          },
+          {
+            "name": "futures-lite",
+            "version": "2.6.1"
+          },
+          {
+            "name": "hermit-abi",
+            "version": "0.5.3"
+          },
+          {
+            "name": "is-docker",
+            "version": "0.2.0"
+          },
+          {
+            "name": "is-wsl",
+            "version": "0.4.0"
+          },
+          {
+            "name": "linux-raw-sys",
+            "version": "0.12.1"
+          },
+          {
+            "name": "open",
+            "version": "5.4.4"
+          },
+          {
+            "name": "ordered-stream",
+            "version": "0.2.0"
+          },
+          {
+            "name": "parking",
+            "version": "2.2.1"
+          },
+          {
+            "name": "piper",
+            "version": "0.2.5"
+          },
+          {
+            "name": "polling",
+            "version": "3.11.0"
+          },
+          {
+            "name": "rustix",
+            "version": "1.1.5"
+          },
+          {
+            "name": "signal-hook-registry",
+            "version": "1.4.8"
+          },
+          {
+            "name": "syn",
+            "version": "3.0.9"
+          },
+          {
+            "name": "tauri-plugin-opener",
+            "version": "2.5.3"
+          },
+          {
+            "name": "tempfile",
+            "version": "3.27.0"
+          },
+          {
+            "name": "tracing-attributes",
+            "version": "0.1.31"
+          },
+          {
+            "name": "uds_windows",
+            "version": "1.2.1"
+          },
+          {
+            "name": "zbus",
+            "version": "5.19.0"
+          },
+          {
+            "name": "zbus_macros",
+            "version": "5.19.0"
+          },
+          {
+            "name": "zbus_names",
+            "version": "4.3.4"
+          },
+          {
+            "name": "zcheapstr",
+            "version": "1.1.0"
+          },
+          {
+            "name": "zvariant",
+            "version": "5.15.0"
+          },
+          {
+            "name": "zvariant_derive",
+            "version": "5.15.0"
+          },
+          {
+            "name": "zvariant_utils",
+            "version": "4.2.0"
+          }
+        ],
+        "newFrontendPackageDependencies": 0,
+        "interpretation": "Target-conditional and transitive lockfile entries do not imply every crate is linked on every platform. No additional runtime crate or frontend dependency for the recovery scheduler.",
+        "linuxInstalledBaseline": {
+          "bytes": 6406864,
+          "sha256": "38823ff93e2dc8e7c256b86b3f4bf9b56d614b39e4befb90558f490c43a76285",
+          "note": "Existing0.10.8 installed binary, unchanged; this does not identify historical reports as a published build"
+        },
+        "previousDevelopmentCandidateArtifacts": [
+          {
+            "file": "amorist",
+            "bytes": 8939152,
+            "sha256": "cac601beecd3f297445407ac41ddbf39dd75f54288dffcedcec9943b83dd6211"
+          },
+          {
+            "file": "amorist_0.10.10_amd64.deb",
+            "bytes": 3745236,
+            "sha256": "05550c686b4ea6cbc312a2d774b9369c1970a6382d5fbde5b46e96c6c9ee1343"
+          },
+          {
+            "file": "amorist_0.10.10_amd64.AppImage",
+            "bytes": 85916152,
+            "sha256": "352fd9babea4201fdb9ec1855f69c263162fb7d0e2162fdc05678f74797ca4c4"
+          }
+        ],
+        "comparisonScope": "Exact current artifact sizes recorded above. Previous development candidate is not a published-package baseline. No previous published Windows installer exists; no invented package-size delta."
+      }
     }
-  ]
+  ],
+  "validationAudit": ".qa/reports/editor-development-requirement-audit.json"
 }

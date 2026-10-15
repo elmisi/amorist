@@ -172,6 +172,16 @@ jobs:
             node tests/editor-recovery-changed-base-native.test.js
           fi
 
+      - name: Verify native rule spacing and link dialog layout
+        if: matrix.platform != 'macos'
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            AMORIST_QA_APPLICATION="$PWD/src-tauri/target/debug/amorist" \
+            GDK_BACKEND=x11 xvfb-run -a node tests/editor-feedback-native.test.js
+          else
+            node tests/editor-feedback-native.test.js
+          fi
+
       - name: Verify startup recovery across documents
         if: matrix.platform == 'linux'
         run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-startup-documents-native.test.js
