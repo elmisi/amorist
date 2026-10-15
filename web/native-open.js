@@ -28,6 +28,9 @@
     return {
       ready: function () { ready = true; return pump(); },
       claim: function () { initial = false; },
+      documentAdopted: function (document) {
+        if (document.path || document.recoveryMarkdown != null) initial = false;
+      },
     };
   }
   var api = { install: install };

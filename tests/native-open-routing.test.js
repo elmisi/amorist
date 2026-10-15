@@ -37,6 +37,27 @@ test("an initial CLI, recovered or previously used document is preserved even wh
   assert.deepEqual(h.opened, []); assert.deepEqual(h.spawned, ["another.md"]);
 });
 
+test("declining startup recovery leaves the blank window available for the first queued Finder file", async () => {
+  const h = harness(); const controller = await install(h.options);
+  h.pending.push({path: "first.md"}, {path: "second.md"});
+  h.notify();
+  controller.documentAdopted({path: null, recoveryCandidates: [{sessionId: "old-copy"}]});
+  await controller.ready();
+  assert.deepEqual(h.opened, ["first.md"]);
+  assert.deepEqual(h.spawned, ["second.md"]);
+});
+
+test("an adopted file or explicitly recovered unnamed copy keeps its window even when the recovered source is empty", async () => {
+  for (const document of [{path: "existing.md"}, {path: null, recoveryMarkdown: ""}, {path: null, recoveryMarkdown: "recovered"}]) {
+    const h = harness(); const controller = await install(h.options);
+    controller.documentAdopted(document);
+    h.pending.push({path: "another.md"});
+    await controller.ready();
+    assert.deepEqual(h.opened, []);
+    assert.deepEqual(h.spawned, ["another.md"]);
+  }
+});
+
 test("native requests wait for a dialog and recheck whether the initial document was used", async () => {
   const h = harness(); const controller = await install(h.options);
   h.busy = true; h.pending.push({path: "after-dialog.md"});

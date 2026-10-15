@@ -3598,13 +3598,21 @@
           "53"
         ],
         "interpretation": "Tauri bundle marker UNK to NSS; all remaining bytes identical. fc.exe /b comparison; prior guessed NSIS text assertion rejected, not a binary failure."
+      },
+      "currentRecoveryAndCli": {
+        "status": "passed",
+        "tests": 2,
+        "log": "dda92bf-windows-recovery-cli.log",
+        "childExitCode": 0,
+        "recoveryMs": 2065,
+        "scope": "Actual installed current executable; two owned process interruptions; independent recovery for two documents; explicit save preserves CRLF; CLI Unicode/leading-dash/debug/heading-anchor checks."
       }
     },
     "macos": {
       "universalDmg": "built, checksum verified, mounted read-only and copied; Intel headless source identity and both binary architectures verified",
       "evidence": "dda92bf-dmg-verification.json",
-      "nativeGui": "blocked pending owner Accessibility enablement; owner prefers enabling Accessibility; fresh SSH AXIsProcessTrusted false",
-      "remaining": "Actual native app acceptance: Finder/Dock, dialogs, clipboard, images, settings and new instances; SSH Accessibility pending",
+      "nativeGui": "Partial actual native acceptance completed; cold-start recovery/initial-window regression found; see macosNativeAcceptanceDda92bf",
+      "remaining": "Cold startup regression, native Cmd-click/external openers and Dock",
       "fullContract": "passed Safari and Chromium; dda92bf-macos-full.json/log, child exit0"
     },
     "deliveryBlocked": true
@@ -3723,6 +3731,42 @@
       "dda92bf-linux-package-checks.json",
       "dda92bf-linux-installed-upgrade-verification.json"
     ],
+    "deliveryBlocked": true
+  },
+  "macosNativeAcceptanceDda92bf": {
+    "sourceCommit": "dda92bff3d8cbeead706fda1fc18a239db3f7560",
+    "accessibility": "trusted; System Events UI automation responds",
+    "passed": [
+      "Settings Cancel leaves preference bytes unchanged; Save and independent launch persist19px",
+      "Actual Open and Save As dialogs: cancellation, Unicode paths, exact CRLF, originals unchanged",
+      "Native Source copy/paste across independent processes via system clipboard",
+      "Bug Cancel and complete-note Save report; previous diagnostic prefix unchanged; exact source and build identity",
+      "Actual local image loaded in native WK renderedHtml; AX image dimensions240x80",
+      "Actual denied save reports permission error and preserves destination bytes; folder permissions restored",
+      "Dirty native close Cancel retains exact draft; confirmed close exits only owned process",
+      "Warm LaunchServices open creates one independent new document process and preserves existing document",
+      "File New window creates empty Untitled in separate process without creating a document file"
+    ],
+    "failed": [
+      "Cold LaunchServices two-file open with existing recovery candidates: Continue without recovery yields three processes including extra Untitled, expected two"
+    ],
+    "pending": [
+      "Native Cmd-click and external opener proof",
+      "Dock activation",
+      "Cold native startup regression after source fix"
+    ],
+    "cleanup": "All owned QA app processes closed normally; original absent settings file state and empty clipboard restored; four original fixture hashes unchanged; recovery records retained",
+    "pixelCapture": "CGPreflightScreenCaptureAccess false; owner preference requested: screen recording permission or short manual checklist",
+    "evidenceDirectory": "private macos-native-dda92bf (14 JSON receipts); raw diagnostic logs remain on Lestrade",
+    "deliveryBlocked": true
+  },
+  "nativeStartupRecoveryFollowup": {
+    "baseline": "dda92bf native cold LaunchServices open: expected2 windows, actual3 after continuing without recovery; failed receipt retained",
+    "fix": "Notify native-open controller after actual recovery choice; merely listing candidates no longer reserves initial blank window; real files and recovered unnamed copies remain protected even when empty",
+    "unitChecks": "7 routing tests passed, including2 new cases covering continuation and adopted/recovered ownership",
+    "baselineUnitLog": "native-startup-recovery-baseline.log (5 existing tests passed before functional changes)",
+    "linuxPriority": "Native recovery and full Linux contract next; macOS regression stays unvalidated until rebuilt and rerun",
+    "preview": "Current tested dda92bf Linux preview remains the reference until refreshed checks pass",
     "deliveryBlocked": true
   }
 }

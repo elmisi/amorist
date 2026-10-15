@@ -399,7 +399,6 @@
   }
 
   async function adoptDocument(doc) {
-      if (nativeOpen && (doc.path || doc.recoveryMarkdown != null || (doc.recoveryCandidates || []).length)) nativeOpen.claim();
       if (doc.recoveryCandidates && doc.recoveryCandidates.length) {
         var selected = await chooseRecovery(doc.recoveryCandidates, false, doc.markdown || "", doc.path || null);
         if (selected) {
@@ -419,6 +418,7 @@
           }
         }
       }
+      if (nativeOpen) nativeOpen.documentAdopted(doc);
       state.savedMarkdown = doc.markdown || "";
       state.contextId = doc.contextId || 0;
       setDocumentLabel(doc);

@@ -7,6 +7,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [0.10.10] - Unreleased
 
 ### Fixed
+- Continuing without startup recovery leaves the initial empty macOS window
+  available for the first Finder file. Further files open in independent windows;
+  an explicitly recovered unnamed copy retains its own window even when empty.
 - Recovery checkpoints can no longer be postponed indefinitely by continuous
   input: a two-second idle timer has a five-second first-pending deadline.
   Writes are serialized, subsequent edits retain their own deadline, and returning
