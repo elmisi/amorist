@@ -232,10 +232,17 @@ jobs:
           DEB=$(ls dist/amorist-deb/amorist_*.deb)
           DMG=$(ls dist/amorist-dmg/amorist_*.dmg)
           APPIMAGE=$(ls dist/amorist-appimage/amorist_*.AppImage)
+          WINDOWS=$(ls dist/amorist-windows-setup/amorist_*-setup.exe)
           if gh release view "v$VERSION" > /dev/null 2>&1; then
-            gh release upload "v$VERSION" "$DEB" "$DMG" "$APPIMAGE" --clobber
+            RELEASE_COMMIT=$(gh api "repos/$GITHUB_REPOSITORY/commits/v$VERSION" --jq .sha)
+            if [ "$RELEASE_COMMIT" != "$GITHUB_SHA" ]; then
+              echo "Release tag targets another commit; use a new version before replacing its assets." >&2
+              exit 1
+            fi
+            gh release upload "v$VERSION" "$DEB" "$DMG" "$APPIMAGE" "$WINDOWS" --clobber
           else
-            gh release create "v$VERSION" "$DEB" "$DMG" "$APPIMAGE" \
+            gh release create "v$VERSION" "$DEB" "$DMG" "$APPIMAGE" "$WINDOWS" \
+              --target "$GITHUB_SHA" \
               --title "v$VERSION" \
               --notes "See [CHANGELOG.md](CHANGELOG.md) for details."
           fi

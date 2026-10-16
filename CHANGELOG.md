@@ -4,7 +4,7 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.11.0] - Unreleased
+## [0.11.0] - 2026-10-16
 
 ### Fixed
 - Command+Shift+V reads plain clipboard text on macOS WebKit when the native

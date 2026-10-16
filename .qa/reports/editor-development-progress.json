@@ -1,11 +1,18 @@
 {
   "schemaVersion": 1,
   "plan": "docs/plan-amorist-editor-development-20261013-1932.md",
-  "candidateVersion": "0.10.10",
+  "candidateVersion": "0.11.0",
+  "previousCandidateVersion": "0.10.10",
+  "releaseVerification": {
+    "commit": "c46f8e2da6d477ddd2ec0a0488b40dc02ebe3b8f",
+    "workflowRun": "https://github.com/elmisi/amorist/actions/runs/38905038898",
+    "conclusion": "success",
+    "linuxQaAttempt": 2
+  },
   "goalStatus": "complete",
   "deliveryBlocked": false,
-  "pushAuthorized": false,
-  "publicationAuthorized": false,
+  "pushAuthorized": true,
+  "publicationAuthorized": true,
   "tasks": [
     {
       "id": 1,
