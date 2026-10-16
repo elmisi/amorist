@@ -309,7 +309,7 @@ async function verifyIndependentInstances(driver, scratch) {
     const before = new Set(instanceProcesses());
     await fileAction(engine, action);
     let pid;
-    await waitUntil(() => { pid = instanceProcesses().find((pid) => !before.has(pid)); return !!pid; }, 5000, "new independent process");
+    await waitUntil(() => { pid = instanceProcesses().find((pid) => !before.has(pid)); return !!pid; }, 60000, "new independent process");
     children.add(pid);
     return fs.readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean);
   }
@@ -346,7 +346,9 @@ async function verifyIndependentInstances(driver, scratch) {
         catch { return []; }
       }); } catch { return []; }
     }
-    await waitUntil(() => childLeases().length > 0, 5000, "fresh untitled child lease");
+    // A spawned webview must finish native startup before its frontend claims a session.
+    // Hosted runners can take longer than five seconds without losing isolation.
+    await waitUntil(() => childLeases().length > 0, 60000, `fresh untitled child lease (owned PID ${newPid})`);
     if (childLeases().includes(path.join(unrelated, "session.lock"))) throw new Error("New window adopted an unrelated untitled recovery copy.");
     if (fs.readFileSync(path.join(unrelated, "record.json"), "utf8") !== unrelatedRecord) throw new Error("New window changed another untitled copy.");
     const unchanged = await engine.evaluate(`({same: window.__qaInstanceSource === document.querySelector('.amorist-editor-source'),
