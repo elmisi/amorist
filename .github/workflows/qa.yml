@@ -84,19 +84,35 @@ jobs:
         # failing here on every run would be noise rather than information.
         run: sudo safaridriver --enable
 
+      - name: Install the same stable Chromium comparison browser on every platform
+        env:
+          CHROME_TEST_VERSION: '155.0.8059.84'
+        run: |
+          case "${{ matrix.platform }}" in
+            linux) chrome_platform=linux64; chrome_relative=chrome-linux64/chrome ;;
+            macos) chrome_platform=mac-x64; chrome_relative='chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing' ;;
+            windows) chrome_platform=win64; chrome_relative=chrome-win64/chrome.exe ;;
+          esac
+          chrome_root="$RUNNER_TEMP/amorist-chrome-$CHROME_TEST_VERSION"
+          mkdir -p "$chrome_root"
+          curl -fSL --retry 3 "https://storage.googleapis.com/chrome-for-testing-public/$CHROME_TEST_VERSION/$chrome_platform/chrome-$chrome_platform.zip" -o "$chrome_root/chrome.zip"
+          unzip -q "$chrome_root/chrome.zip" -d "$chrome_root"
+          echo "AMORIST_QA_CHROMIUM=$chrome_root/$chrome_relative" >> "$GITHUB_ENV"
+          echo "Chrome for Testing: $CHROME_TEST_VERSION ($chrome_platform)"
+
       - name: Record what is actually installed
         run: |
           echo "platform:  ${{ matrix.platform }}"
           if [ "${{ matrix.platform }}" = "linux" ]; then
             echo "WebKitGTK: $(dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0 2>/dev/null || echo absent)"
             echo "driver:    $(command -v WebKitWebDriver || echo absent)"
-            echo "stand-in:  $(google-chrome --version 2>/dev/null || echo absent)"
+            echo "stand-in:  $("$AMORIST_QA_CHROMIUM" --version 2>/dev/null || echo absent)"
           elif [ "${{ matrix.platform }}" = "windows" ]; then
             powershell.exe -NoProfile -Command '(Get-Item -LiteralPath $env:AMORIST_QA_EDGE_DRIVER).VersionInfo.FileVersion'
           else
             echo "Safari:    $(defaults read /Applications/Safari.app/Contents/Info CFBundleShortVersionString 2>/dev/null || echo absent)"
             echo "driver:    $(command -v safaridriver || echo absent)"
-            echo "stand-in:  $("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version 2>/dev/null || echo absent)"
+            echo "stand-in:  $("$AMORIST_QA_CHROMIUM" --version 2>/dev/null || echo absent)"
           fi
 
       - name: Enable isolated decoder tests on the ephemeral Linux runner

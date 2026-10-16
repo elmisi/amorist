@@ -13,6 +13,7 @@ async function main(){
   assert.ok(entry.available,entry.reason);const engine=entry.create();
   try {
    await engine.start();await engine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+   if(process.platform==='win32' && entry.id==='webview2') await send([],engine,true);
    await engine.evaluate(`(() => {
     const host=document.getElementById('host'),second=document.createElement('div');host.after(second);
     window.__copyEditor=window.AmoristEditor.create(host,{value:'before **bold** after'});
@@ -23,9 +24,9 @@ async function main(){
     },true);
     window.__copyEditor.focus();window.__copyEditor.setSurfaceSelection(9,13);return true;
    })()`);
-   const send=async (sequence,target=engine)=>{
-    if(process.platform==='win32' && entry.id==='webview2' && (sequence[0].key!=='v' || sequence[0].shift)) {
-     assert.equal(sequence.length,1);const key=sequence[0];assert.match(key.key,/^[cvxz]$/);
+   async function send(sequence,target=engine,focusOnly=false){
+    if(process.platform==='win32' && entry.id==='webview2') {
+     assert.equal(sequence.length,focusOnly?0:1);const key=focusOnly?{key:''}:sequence[0];if(!focusOnly)assert.match(key.key,/^[cvxz]$/);
      const script=`Add-Type -AssemblyName System.Windows.Forms
        $owned=Get-Process -Id $env:AMORIST_QA_APP_PID -ErrorAction Stop
        if($owned.Path -ne $env:AMORIST_QA_APPLICATION -or $owned.SessionId -ne (Get-Process -Id $PID).SessionId){throw 'Owned application identity mismatch'}
@@ -35,7 +36,7 @@ async function main(){
        $end=[DateTime]::UtcNow.AddSeconds(3);[uint32]$foreground=0
        do{[void][AmoristClipboardFocus]::GetWindowThreadProcessId([AmoristClipboardFocus]::GetForegroundWindow(),[ref]$foreground);if($foreground -ne $owned.Id){Start-Sleep -Milliseconds 50}}while($foreground -ne $owned.Id -and [DateTime]::UtcNow -lt $end)
        if($foreground -ne $owned.Id){throw 'Owned application not foreground; keyboard input refused'}
-       [System.Windows.Forms.SendKeys]::SendWait($env:AMORIST_QA_CHORD)`;
+       if($env:AMORIST_QA_CHORD){[System.Windows.Forms.SendKeys]::SendWait($env:AMORIST_QA_CHORD)}`;
      const result=require('node:child_process').spawnSync('powershell.exe',['-NoProfile','-Command',script],
        {encoding:'utf8',timeout:30000,env:{...process.env,AMORIST_QA_APPLICATION:target.application,
         AMORIST_QA_APP_PID:String(target.applicationProcess.pid),AMORIST_QA_CHORD:(key.ctrl?'^':'')+(key.shift?'+':'')+key.key}});
@@ -55,9 +56,10 @@ async function main(){
    const secondEngine=engine.openWindow ? await engine.openWindow() : entry.create();
    try {
     await secondEngine.start();await secondEngine.navigate(`${server.origin}/tests/qa/page/harness.html`);
+    if(process.platform==='win32' && entry.id==='webview2') await send([],secondEngine,true);
     await secondEngine.evaluate(`(() => {
       const editor=window.__secondWindow=window.AmoristEditor.create(document.getElementById('host'),{value:'window: '});
-      window.__windowPaste=[];editor.surface.addEventListener('paste',event=>window.__windowPaste.push({trusted:event.isTrusted,types:Array.from(event.clipboardData.types)}),true);
+      window.__windowPaste=[];editor.surface.addEventListener('paste',event=>window.__windowPaste.push({trusted:event.isTrusted,types:Array.from(event.clipboardData.types),plain:event.clipboardData.getData('text/plain')}),true);
       editor.focus();editor.setSurfaceSelection(8,8);return true;
     })()`);
     await send([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}],secondEngine);
