@@ -24,14 +24,17 @@ async function main(){
     window.__copyEditor.focus();window.__copyEditor.setSurfaceSelection(9,13);return true;
    })()`);
    const send=async (sequence,target=engine)=>{
-    if(process.platform==='win32' && entry.id==='webview2') {
+    if(process.platform==='win32' && entry.id==='webview2' && (sequence[0].key!=='v' || sequence[0].shift)) {
      assert.equal(sequence.length,1);const key=sequence[0];assert.match(key.key,/^[cvxz]$/);
      const script=`Add-Type -AssemblyName System.Windows.Forms
        $owned=Get-Process -Id $env:AMORIST_QA_APP_PID -ErrorAction Stop
        if($owned.Path -ne $env:AMORIST_QA_APPLICATION -or $owned.SessionId -ne (Get-Process -Id $PID).SessionId){throw 'Owned application identity mismatch'}
        $shell=New-Object -ComObject WScript.Shell
        if(!$shell.AppActivate($owned.Id)){throw 'Owned application activation failed'}
-       Start-Sleep -Milliseconds 200
+       Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class AmoristClipboardFocus{[DllImport("user32.dll")]public static extern IntPtr GetForegroundWindow();[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr h,out uint p);}'
+       $end=[DateTime]::UtcNow.AddSeconds(3);[uint32]$foreground=0
+       do{[void][AmoristClipboardFocus]::GetWindowThreadProcessId([AmoristClipboardFocus]::GetForegroundWindow(),[ref]$foreground);if($foreground -ne $owned.Id){Start-Sleep -Milliseconds 50}}while($foreground -ne $owned.Id -and [DateTime]::UtcNow -lt $end)
+       if($foreground -ne $owned.Id){throw 'Owned application not foreground; keyboard input refused'}
        [System.Windows.Forms.SendKeys]::SendWait($env:AMORIST_QA_CHORD)`;
      const result=require('node:child_process').spawnSync('powershell.exe',['-NoProfile','-Command',script],
        {encoding:'utf8',timeout:30000,env:{...process.env,AMORIST_QA_APPLICATION:target.application,

@@ -31,6 +31,10 @@ jobs:
         shell: bash
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.platform }} (ships on ${{ matrix.shipping_engine }})
+    env:
+      # macOS headless rendering is throttled by the virtual display. Exercise
+      # the same visible desktop conditions used for the shipping engine.
+      AMORIST_QA_CHROMIUM_HEADFUL: ${{ matrix.platform == 'macos' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -107,14 +111,22 @@ jobs:
         if: matrix.platform != 'windows'
         run: |
           if [ "${{ matrix.platform }}" = "macos" ]; then
-            node tests/editor-system-clipboard.test.js
+            caffeinate -diu node tests/editor-system-clipboard.test.js
           fi
           checks="tests/working-copy.test.js tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/qa-windows-discovery.test.js tests/qa-driver-transport.test.js tests/editor-code-context.test.js tests/editor-multiline-inline.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
           if [ "${{ matrix.platform }}" = "linux" ]; then
             GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            caffeinate -diu node --test --test-concurrency=1 $checks
           else
             node --test --test-concurrency=1 $checks
           fi
+
+      - name: Verify macOS Chromium frame and viewport checks
+        if: matrix.platform == 'macos'
+        run: |
+          caffeinate -diu node tests/qa/run.js --only B9 --engine chromium
+          caffeinate -diu node tests/qa/run.js --only C2 --engine chromium
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -134,6 +146,10 @@ jobs:
       - name: Build native Windows application for WebView2 checks
         if: matrix.platform == 'windows'
         run: cargo build --manifest-path src-tauri/Cargo.toml
+
+      - name: Verify Windows native clipboard before expensive checks
+        if: matrix.platform == 'windows'
+        run: node tests/editor-system-clipboard.test.js
 
       - name: Check the contract and its generated projection agree
         if: matrix.platform == 'linux'
@@ -174,6 +190,8 @@ jobs:
           checks="tests/working-copy.test.js tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/qa-windows-discovery.test.js tests/qa-driver-transport.test.js tests/editor-code-context.test.js tests/editor-multiline-inline.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
           if [ "${{ matrix.platform }}" = "linux" ]; then
             GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            caffeinate -diu node --test --test-concurrency=1 $checks
           else
             node --test --test-concurrency=1 $checks
           fi
@@ -233,9 +251,9 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
             GDK_BACKEND=x11 xvfb-run -a node tests/qa/run.js
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            caffeinate -diu node tests/qa/run.js
           else
-            # No virtual display here: the shipping engine on this platform
-            # needs a real graphical session, which the runner already has.
             node tests/qa/run.js
           fi
 
