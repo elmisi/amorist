@@ -25,7 +25,7 @@ async function main() {
   const directory = path.join(recoveryRoot, sessionId);
   fs.mkdirSync(directory, { recursive: true });
   const recordPath = path.join(directory, 'record.json');
-  const record = JSON.stringify({ schemaVersion: 1, sessionId, path: process.platform === 'win32' ? '\\\\?\\' + fs.realpathSync(file) : file,
+  const record = JSON.stringify({ schemaVersion: 1, sessionId, path: process.platform === 'win32' ? path.toNamespacedPath(fs.realpathSync.native(file)) : file,
     savedSource: 'Original document\r\n', unsavedSource: 'Original document with unsaved work\r\n',
     revision: 1, boundaryState: null, legacyImport: false });
   fs.writeFileSync(recordPath, record);
@@ -60,7 +60,7 @@ async function main() {
     } while (Date.now() < deadline);
     assert.equal(fs.readFileSync(file, 'utf8'), disk, 'Opening must preserve the externally updated file');
     assert.equal(fs.readFileSync(recordPath, 'utf8'), record, 'The old recovery copy must remain intact');
-    assert.equal(ready.dialog, true, 'A recovery copy with a changed saved base must be offered explicitly instead of silently ignored');
+    assert.equal(ready.dialog, true, 'A recovery copy with a changed saved base must be offered explicitly instead of silently ignored: '+JSON.stringify({recordPath:JSON.parse(record).path,document:await engine.evaluate("document.getElementById('file-path').textContent"),notice:await engine.evaluate("document.getElementById('notice').textContent")}));
     assert.match(await engine.evaluate(`document.querySelector('#recovery-dialog p').textContent`), /saved file changed.*does not merge/i);
     await engine.evaluate(`document.getElementById('recovery-dialog').dispatchEvent(new Event('cancel',{cancelable:true}))`);
     await waitFor(`!document.getElementById('editor').inert && !!document.querySelector('.amorist-source-line')`);
