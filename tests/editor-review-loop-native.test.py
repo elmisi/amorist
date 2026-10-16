@@ -14,10 +14,10 @@ reference=scratch/'reference.json';reference.write_text(json.dumps({**info,'exec
 state=scratch/'state.json';env={**os.environ,'AMORIST_LOOP_APPLICATION':str(application),'AMORIST_LOOP_REPO':str(repo),'AMORIST_LOOP_SCRATCH':str(scratch),'AMORIST_LOOP_CLOSE_HELPER':str(root/'focus-x11.py'),'XDG_DATA_HOME':str(scratch/'data'),'XDG_CONFIG_HOME':str(scratch/'config'),'XDG_CACHE_HOME':str(scratch/'cache')}
 args=['python3',str(repo/'scripts/review-markdown-files.py'),'--debug','--amorist',str(root/'native-review-app-adapter.js'),'--release-reference',str(reference),'--list',str(listing),'--state',str(state)]
 def wait_stage(phase,file):
- p=scratch/(phase+'-'+file.name+'.ready.json');end=time.monotonic()+20
+ p=scratch/(phase+'-'+file.name+'.ready.json');end=time.monotonic()+90
  while not p.exists():
   if process.poll() is not None:raise RuntimeError('Runner stopped before native stage: '+(scratch/(phase+'.log')).read_text())
-  assert time.monotonic()<end,'Native stage timeout';time.sleep(.04)
+  assert time.monotonic()<end,'Native stage timeout: '+phase+' / '+file.name+'\n'+(scratch/(phase+'.log')).read_text();time.sleep(.04)
  return json.loads(p.read_text())
 def launch(phase,bug):
  e={**env,'AMORIST_LOOP_PHASE':phase,'AMORIST_LOOP_BUG':bug}

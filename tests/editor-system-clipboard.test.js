@@ -23,7 +23,23 @@ async function main(){
     },true);
     window.__copyEditor.focus();window.__copyEditor.setSurfaceSelection(9,13);return true;
    })()`);
-   const send=async sequence=>{await engine.sendKeys(sequence);await new Promise(resolve=>setTimeout(resolve,100));};
+   const send=async (sequence,target=engine)=>{
+    if(process.platform==='win32' && entry.id==='webview2') {
+     assert.equal(sequence.length,1);const key=sequence[0];assert.match(key.key,/^[cvxz]$/);
+     const script=`Add-Type -AssemblyName System.Windows.Forms
+       $owned=Get-Process -Id $env:AMORIST_QA_APP_PID -ErrorAction Stop
+       if($owned.Path -ne $env:AMORIST_QA_APPLICATION -or $owned.SessionId -ne (Get-Process -Id $PID).SessionId){throw 'Owned application identity mismatch'}
+       $shell=New-Object -ComObject WScript.Shell
+       if(!$shell.AppActivate($owned.Id)){throw 'Owned application activation failed'}
+       Start-Sleep -Milliseconds 200
+       [System.Windows.Forms.SendKeys]::SendWait($env:AMORIST_QA_CHORD)`;
+     const result=require('node:child_process').spawnSync('powershell.exe',['-NoProfile','-Command',script],
+       {encoding:'utf8',timeout:30000,env:{...process.env,AMORIST_QA_APPLICATION:target.application,
+        AMORIST_QA_APP_PID:String(target.applicationProcess.pid),AMORIST_QA_CHORD:(key.ctrl?'^':'')+(key.shift?'+':'')+key.key}});
+     assert.equal(result.status,0,result.error?.message||result.stderr);
+    } else await target.sendKeys(sequence);
+    await new Promise(resolve=>setTimeout(resolve,100));
+   };
    await send([{key:'c',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    await engine.evaluate(`(() => {window.__pasteEditor.focus();window.__pasteEditor.setSurfaceSelection(8,8);return true;})()`);
    await send([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
@@ -41,7 +57,7 @@ async function main(){
       window.__windowPaste=[];editor.surface.addEventListener('paste',event=>window.__windowPaste.push({trusted:event.isTrusted,types:Array.from(event.clipboardData.types)}),true);
       editor.focus();editor.setSurfaceSelection(8,8);return true;
     })()`);
-    await secondEngine.sendKeys([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+    await send([{key:'v',ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}],secondEngine);
     await new Promise(resolve=>setTimeout(resolve,100));
     const transferred=await secondEngine.evaluate('({source:window.__secondWindow.getMarkdown(),events:window.__windowPaste})');
     assert.equal(transferred.source,'window: **bold**',JSON.stringify(transferred));assert.equal(transferred.events[0].trusted,true);
@@ -53,22 +69,7 @@ async function main(){
    assert.equal(await engine.evaluate('window.__copyEditor.getMarkdown()'),'before **bold** after');
    assert.deepEqual(await engine.evaluate('window.__copyEditor.selectionRaw()'),{start:9,end:13});
    await engine.evaluate(`(() => {const editor=window.__pasteEditor;editor.setMarkdown('');editor.showWysiwygMode();editor.focus();editor.setSurfaceSelection(0,0);window.__plainKeys=[];editor.surface.addEventListener('keydown',event=>window.__plainKeys.push({key:event.key,code:event.code,shift:event.shiftKey,meta:event.metaKey,alt:event.altKey}));return true;})()`);
-   if(process.platform==='win32' && entry.id==='webview2') {
-    // Edge WebDriver emits two trusted paste events for this chord. Windows
-    // SendKeys emits one, as a real keyboard does; retain the same assertions.
-    const script=`Add-Type -AssemblyName System.Windows.Forms
-      $session=(Get-Process -Id $PID).SessionId
-      $owned=@(Get-Process amorist | Where-Object { $_.Path -eq $env:AMORIST_QA_APPLICATION -and $_.SessionId -eq $session })
-      if($owned.Count -ne 1){throw 'Expected exactly one owned application in this session'}
-      $shell=New-Object -ComObject WScript.Shell
-      if(!$shell.AppActivate($owned[0].Id)){throw 'Owned application activation failed'}
-      Start-Sleep -Milliseconds 200
-      [System.Windows.Forms.SendKeys]::SendWait('^+v')`;
-    const result=require('node:child_process').spawnSync('powershell.exe',['-NoProfile','-Command',script],
-      {encoding:'utf8',timeout:10000,env:{...process.env,AMORIST_QA_APPLICATION:engine.application}});
-    assert.equal(result.status,0,result.stderr);
-    await new Promise(resolve=>setTimeout(resolve,100));
-   } else await send([{key:'v',shift:true,ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
+   await send([{key:'v',shift:true,ctrl:process.platform!=='darwin',meta:process.platform==='darwin'}]);
    const plainDeadline=Date.now()+3000;
    while(await engine.evaluate('window.__pasteEditor.getMarkdown()')!== '**bold**' && Date.now()<plainDeadline) await new Promise(resolve=>setTimeout(resolve,25));
    assert.equal(await engine.evaluate('window.__pasteEditor.getMarkdown()'),'**bold**',JSON.stringify(await engine.evaluate('({keys:window.__plainKeys,paste:window.__nativePaste})')));

@@ -2,7 +2,7 @@
 const cp=require('node:child_process'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),net=require('node:net'),http=require('node:http');
 const {WebDriverEngine}=require('./engine-webdriver');
 class WindowsAttachEngine extends WebDriverEngine {
- constructor(driver,application,args,environment=process.env){super(driver);this.application=application;this.applicationArgs=args;this.environment=environment;this.id='webview2';this.applicationProcess=null;this.profile=null;this.debugPort=0;}
+ constructor(driver,application,args,environment=process.env){super(driver);this.application=fs.realpathSync(application);this.applicationArgs=args;this.environment=environment;this.id='webview2';this.applicationProcess=null;this.profile=null;this.debugPort=0;}
  checkPreconditions(){return process.platform==='win32'?'':'Direct WebView2 attachment requires Windows.';}
  serverArguments(){return [`--port=${this.port}`];}
  sessionCapabilities(){return {browserName:'webview2','ms:edgeOptions':{debuggerAddress:`127.0.0.1:${this.debugPort}`}};}

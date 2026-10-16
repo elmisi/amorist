@@ -94,6 +94,9 @@ class ChromiumEngine {
         ...(process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1" ? [] : ["--headless=new"]),
         ...(process.platform === "linux" && process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1" ? ["--ozone-platform=x11"] : []),
         "--disable-gpu",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
         "--no-sandbox",
         "--no-first-run",
         "--no-default-browser-check",
@@ -151,6 +154,8 @@ class ChromiumEngine {
 
   async navigate(url) {
     await this.socket.send("Page.enable", {});
+    await this.socket.send("Page.bringToFront", {});
+    await this.socket.send("Emulation.setFocusEmulationEnabled", {enabled:true});
     await this.socket.send("Page.navigate", { url });
     await this.evaluate(`new Promise((resolve) => {
       if (document.readyState === "complete") { resolve(true); return; }
