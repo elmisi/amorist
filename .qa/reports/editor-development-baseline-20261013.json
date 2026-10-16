@@ -1,0 +1,3933 @@
+{
+  "schemaVersion": 1,
+  "plan": "docs/plan-amorist-editor-development-20261013-1932.md",
+  "approvedOn": "2026-10-13",
+  "status": "in-progress-delivery-blocked",
+  "diagnosticVersion": "0.10.9",
+  "diagnosticCommit": "385f953b07c611d4c112a18198abfa61fc92c907",
+  "originalCommit": "7c936f3a9947f3637315323d1ccfba89b3a817ad",
+  "baseline": {
+    "linux": {
+      "startedAt": "2026-10-13T19:10:44.055Z",
+      "finishedAt": "2026-10-13T19:12:42.624Z",
+      "enginesExercised": [
+        {
+          "id": "webkitgtk",
+          "role": "shipping",
+          "description": "the engine the Linux application runs inside",
+          "version": "MiniBrowser 2.52.6",
+          "font": {
+            "sizePx": "14px",
+            "referenceWidthPx": 168.58,
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace"
+          }
+        },
+        {
+          "id": "chromium",
+          "role": "stand-in",
+          "description": "a Chromium-family browser, kept for speed and for cross-checking",
+          "version": "Google Chrome 155.0.8059.39",
+          "font": {
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
+            "sizePx": "14px",
+            "referenceWidthPx": 168.58
+          }
+        }
+      ],
+      "enginesUnavailable": [],
+      "enginesNotApplicableHere": [
+        {
+          "id": "safari",
+          "role": "shipping",
+          "reason": "not applicable on linux; declared for darwin"
+        }
+      ],
+      "platform": "linux",
+      "publishedPlatformsThisRunDidNotCover": [
+        "macos"
+      ],
+      "notAutomatedAnywhere": [
+        {
+          "what": "the application's own embedding of the engine, on every platform",
+          "why": "Every run drives the engine inside a TEST host \u2014 a reference browser on Linux, the system browser on macOS \u2014 not inside the webview the application embeds. Same engine, different host. The engine is covered everywhere and the embedding nowhere: window chrome, focus handling, and whatever the embedding changes about editing.",
+          "manualPass": "once per release, repository owner, six-case list in REQ-G3"
+        }
+      ],
+      "harnessErrors": [],
+      "requirements": [
+        {
+          "requirement": "REQ-A1",
+          "title": "Any file, one character typed and deleted, saved: byte-identical",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A3",
+          "title": "A touched but unchanged region keeps its own line wrapping",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A4",
+          "title": "Invisible characters are preserved: trailing spaces, the final newline or its absence",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A5",
+          "title": "Constructs the editor does not understand pass through untouched",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A6",
+          "title": "Table spacing is kept as found; no re-alignment on open or save",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A7",
+          "title": "List markers and numbering are kept as the author wrote them",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A8",
+          "title": "A fence keeps its information string, its character and its length",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A9",
+          "title": "Line terminators are preserved per line, with no majority computed",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A2",
+          "title": "After a real edit, only the lines that edit can account for may differ",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A10",
+          "title": "Switching views any number of times leaves the document byte-identical",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B1",
+          "title": "Every line of the file is shown as its own line; soft breaks are not collapsed",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B2",
+          "title": "Typing lengthens the current line and never moves the other lines of the paragraph",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B3",
+          "title": "Enter inserts a bare newline: no paragraph break, no two-space hard break",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "Visual Markdown projection keeps subsequent typing at the caret",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass",
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "Lists continue, split, exit and lose their marker like a conventional editor",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass",
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "Headings and quotes continue or exit without exposing broken prefixes",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass",
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B5",
+          "title": "Pipe-table columns align visually without changing the Markdown",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B8",
+          "title": "Tables and fenced code are framed blocks with independent horizontal scrolling",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B9",
+          "title": "Stable same-line typing is DOM-local and meets the event-to-frame budgets",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-C1",
+          "title": "Switching views leaves the caret on the same character, in both directions",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The source line at the viewport midpoint remains the visual anchor across a view switch",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass",
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-C3",
+          "title": "A WYSIWYG render failure falls back to visible Source",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-D1",
+          "title": "Pasted content never disappears silently",
+          "severity": "blocking",
+          "engines": {
+            "webkitgtk": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        }
+      ],
+      "raw": [
+        {
+          "requirement": "REQ-A1",
+          "title": "Any file, one character typed and deleted, saved: byte-identical",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 3279,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A3",
+          "title": "A touched but unchanged region keeps its own line wrapping",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 707,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A4",
+          "title": "Invisible characters are preserved: trailing spaces, the final newline or its absence",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 516,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-no-final-newline.md",
+            "edge-whitespace.md",
+            "prose-draft.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A5",
+          "title": "Constructs the editor does not understand pass through untouched",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 1609,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-lists.md",
+            "edge-passthrough.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A6",
+          "title": "Table spacing is kept as found; no re-alignment on open or save",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 900,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-tables.md",
+            "messy-export.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A7",
+          "title": "List markers and numbering are kept as the author wrote them",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 1406,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A8",
+          "title": "A fence keeps its information string, its character and its length",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 549,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-fences.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A9",
+          "title": "Line terminators are preserved per line, with no majority computed",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 513,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-crlf.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A2",
+          "title": "After a real edit, only the lines that edit can account for may differ",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 9873,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A10",
+          "title": "Switching views any number of times leaves the document byte-identical",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 7861,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B1",
+          "title": "Every line of the file is shown as its own line; soft breaks are not collapsed",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 253,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B2",
+          "title": "Typing lengthens the current line and never moves the other lines of the paragraph",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 875,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B3",
+          "title": "Enter inserts a bare newline: no paragraph break, no two-space hard break",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 628,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "Visual Markdown projection keeps subsequent typing at the caret",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 496,
+          "failures": [],
+          "fixturesExercised": [
+            "bullet",
+            "ordered item",
+            "quote",
+            "heading",
+            "task item"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "Lists continue, split, exit and lose their marker like a conventional editor",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 1321,
+          "failures": [],
+          "fixturesExercised": [
+            "dash item continues",
+            "asterisk item continues",
+            "plus item continues",
+            "dotted ordered item increments",
+            "ordered item increments",
+            "indented marker and spacing are retained",
+            "item splits in the middle",
+            "task continuation starts unchecked",
+            "empty item exits the list",
+            "Backspace removes the item prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "Headings and quotes continue or exit without exposing broken prefixes",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 1027,
+          "failures": [],
+          "fixturesExercised": [
+            "quote continues",
+            "quote splits",
+            "empty quote exits",
+            "quote Backspace removes prefix",
+            "heading Enter creates prose",
+            "heading splits into prose",
+            "empty heading exits",
+            "heading Backspace removes prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B5",
+          "title": "Pipe-table columns align visually without changing the Markdown",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 85,
+          "failures": [],
+          "fixturesExercised": [
+            "ragged pipe table"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B8",
+          "title": "Tables and fenced code are framed blocks with independent horizontal scrolling",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 92,
+          "failures": [],
+          "fixturesExercised": [
+            "narrow table",
+            "two wide tables",
+            "backtick fence",
+            "tilde fence"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B9",
+          "title": "Stable same-line typing is DOM-local and meets the event-to-frame budgets",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 3264,
+          "failures": [],
+          "fixturesExercised": [
+            "prose",
+            "list",
+            "table",
+            "fenced code",
+            "IME composition",
+            "scrolled table typing",
+            "500-line mixed document",
+            "1500-line mixed document"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "timing": [
+              {
+                "engine": "webkitgtk",
+                "lines": 500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  13,
+                  6,
+                  14,
+                  7,
+                  16,
+                  8,
+                  5,
+                  6,
+                  14,
+                  7,
+                  15,
+                  8,
+                  17,
+                  8,
+                  16,
+                  7,
+                  16,
+                  7,
+                  4,
+                  5
+                ],
+                "p95": 16,
+                "limit": 50
+              },
+              {
+                "engine": "webkitgtk",
+                "lines": 500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  15,
+                  6,
+                  14,
+                  5,
+                  13,
+                  5,
+                  7,
+                  14,
+                  6,
+                  12,
+                  6,
+                  8,
+                  6,
+                  6,
+                  13,
+                  5,
+                  6,
+                  7,
+                  13,
+                  16
+                ],
+                "p95": 15,
+                "limit": 50
+              },
+              {
+                "engine": "webkitgtk",
+                "lines": 1500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  10,
+                  14,
+                  14,
+                  14,
+                  10,
+                  16,
+                  12,
+                  15,
+                  11,
+                  11,
+                  11,
+                  14,
+                  10,
+                  15,
+                  13,
+                  13,
+                  14,
+                  15,
+                  8,
+                  8
+                ],
+                "p95": 15,
+                "limit": 100
+              },
+              {
+                "engine": "webkitgtk",
+                "lines": 1500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  13,
+                  15,
+                  9,
+                  16,
+                  8,
+                  10,
+                  16,
+                  9,
+                  10,
+                  12,
+                  14,
+                  9,
+                  9,
+                  8,
+                  16,
+                  8,
+                  12,
+                  15,
+                  9,
+                  10
+                ],
+                "p95": 16,
+                "limit": 100
+              }
+            ]
+          }
+        },
+        {
+          "requirement": "REQ-C1",
+          "title": "Switching views leaves the caret on the same character, in both directions",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 10007,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "anchorsProbed": 79
+          }
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The source line at the viewport midpoint remains the visual anchor across a view switch",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 5302,
+          "failures": [],
+          "fixturesExercised": [
+            "short content, start, contained app viewport",
+            "short content, middle, contained app viewport",
+            "short content, end, contained app viewport",
+            "long content, start, contained app viewport",
+            "long content, middle, contained app viewport",
+            "long content, end, contained app viewport",
+            "long mixed geometry, table midpoint, contained app viewport",
+            "long mixed geometry, fenced-code midpoint, contained app viewport",
+            "prose-long-manual.md at 1200px",
+            "prose-long-manual.md at 640px"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "probes": 40
+          }
+        },
+        {
+          "requirement": "REQ-C3",
+          "title": "A WYSIWYG render failure falls back to visible Source",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 7,
+          "failures": [],
+          "fixturesExercised": [
+            "injected render failure"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-D1",
+          "title": "Pasted content never disappears silently",
+          "severity": "blocking",
+          "engine": "webkitgtk",
+          "verdict": "pass",
+          "durationMs": 695,
+          "failures": [],
+          "fixturesExercised": [
+            "formatted-prose.json",
+            "image-with-alt-text.json",
+            "list-with-links.json",
+            "table-from-web-page.json"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A1",
+          "title": "Any file, one character typed and deleted, saved: byte-identical",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 3080,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A3",
+          "title": "A touched but unchanged region keeps its own line wrapping",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 678,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A4",
+          "title": "Invisible characters are preserved: trailing spaces, the final newline or its absence",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 498,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-no-final-newline.md",
+            "edge-whitespace.md",
+            "prose-draft.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A5",
+          "title": "Constructs the editor does not understand pass through untouched",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1508,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-lists.md",
+            "edge-passthrough.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A6",
+          "title": "Table spacing is kept as found; no re-alignment on open or save",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 844,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-tables.md",
+            "messy-export.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A7",
+          "title": "List markers and numbering are kept as the author wrote them",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1350,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A8",
+          "title": "A fence keeps its information string, its character and its length",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 508,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-fences.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A9",
+          "title": "Line terminators are preserved per line, with no majority computed",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 498,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-crlf.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A2",
+          "title": "After a real edit, only the lines that edit can account for may differ",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 9557,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A10",
+          "title": "Switching views any number of times leaves the document byte-identical",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 7496,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B1",
+          "title": "Every line of the file is shown as its own line; soft breaks are not collapsed",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 218,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B2",
+          "title": "Typing lengthens the current line and never moves the other lines of the paragraph",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 710,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B3",
+          "title": "Enter inserts a bare newline: no paragraph break, no two-space hard break",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 518,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "Visual Markdown projection keeps subsequent typing at the caret",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 430,
+          "failures": [],
+          "fixturesExercised": [
+            "bullet",
+            "ordered item",
+            "quote",
+            "heading",
+            "task item"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "Lists continue, split, exit and lose their marker like a conventional editor",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1258,
+          "failures": [],
+          "fixturesExercised": [
+            "dash item continues",
+            "asterisk item continues",
+            "plus item continues",
+            "dotted ordered item increments",
+            "ordered item increments",
+            "indented marker and spacing are retained",
+            "item splits in the middle",
+            "task continuation starts unchecked",
+            "empty item exits the list",
+            "Backspace removes the item prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "Headings and quotes continue or exit without exposing broken prefixes",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1002,
+          "failures": [],
+          "fixturesExercised": [
+            "quote continues",
+            "quote splits",
+            "empty quote exits",
+            "quote Backspace removes prefix",
+            "heading Enter creates prose",
+            "heading splits into prose",
+            "empty heading exits",
+            "heading Backspace removes prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B5",
+          "title": "Pipe-table columns align visually without changing the Markdown",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 82,
+          "failures": [],
+          "fixturesExercised": [
+            "ragged pipe table"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B8",
+          "title": "Tables and fenced code are framed blocks with independent horizontal scrolling",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 85,
+          "failures": [],
+          "fixturesExercised": [
+            "narrow table",
+            "two wide tables",
+            "backtick fence",
+            "tilde fence"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B9",
+          "title": "Stable same-line typing is DOM-local and meets the event-to-frame budgets",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 2927,
+          "failures": [],
+          "fixturesExercised": [
+            "prose",
+            "list",
+            "table",
+            "fenced code",
+            "IME composition",
+            "scrolled table typing",
+            "500-line mixed document",
+            "1500-line mixed document"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "timing": [
+              {
+                "engine": "chromium",
+                "lines": 500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  11.2,
+                  6.5,
+                  3.9,
+                  4.4,
+                  4.4,
+                  4.3,
+                  4.4,
+                  5,
+                  4,
+                  4,
+                  4.8,
+                  3.9,
+                  3.9,
+                  3.7,
+                  4.7,
+                  4.2,
+                  4.4,
+                  4.6,
+                  4.1,
+                  4.3
+                ],
+                "p95": 6.5,
+                "limit": 50
+              },
+              {
+                "engine": "chromium",
+                "lines": 500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  4.1,
+                  4.4,
+                  4.5,
+                  4.4,
+                  4.3,
+                  5.9,
+                  16.7,
+                  8.2,
+                  4.3,
+                  4.4,
+                  16.4,
+                  7.7,
+                  4.4,
+                  4.3,
+                  15.3,
+                  5.4,
+                  4.4,
+                  4.1,
+                  5.2,
+                  4.1
+                ],
+                "p95": 16.4,
+                "limit": 50
+              },
+              {
+                "engine": "chromium",
+                "lines": 1500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  11.9,
+                  10.7,
+                  19.2,
+                  10.1,
+                  10.4,
+                  10.4,
+                  10.8,
+                  10.9,
+                  12.8,
+                  13.3,
+                  13,
+                  13,
+                  9.9,
+                  11.3,
+                  14.5,
+                  11.7,
+                  11.5,
+                  10.4,
+                  11.5,
+                  10.9
+                ],
+                "p95": 14.5,
+                "limit": 100
+              },
+              {
+                "engine": "chromium",
+                "lines": 1500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  11.5,
+                  13.4,
+                  11.1,
+                  13.5,
+                  11.1,
+                  11.1,
+                  11.9,
+                  15.5,
+                  11,
+                  11.7,
+                  14.1,
+                  13.9,
+                  16.8,
+                  11.5,
+                  10.8,
+                  11.5,
+                  11,
+                  11.2,
+                  12.4,
+                  12.4
+                ],
+                "p95": 15.5,
+                "limit": 100
+              }
+            ]
+          }
+        },
+        {
+          "requirement": "REQ-C1",
+          "title": "Switching views leaves the caret on the same character, in both directions",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 9212,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "anchorsProbed": 79
+          }
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The source line at the viewport midpoint remains the visual anchor across a view switch",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 5008,
+          "failures": [],
+          "fixturesExercised": [
+            "short content, start, contained app viewport",
+            "short content, middle, contained app viewport",
+            "short content, end, contained app viewport",
+            "long content, start, contained app viewport",
+            "long content, middle, contained app viewport",
+            "long content, end, contained app viewport",
+            "long mixed geometry, table midpoint, contained app viewport",
+            "long mixed geometry, fenced-code midpoint, contained app viewport",
+            "prose-long-manual.md at 1200px",
+            "prose-long-manual.md at 640px"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "probes": 40
+          }
+        },
+        {
+          "requirement": "REQ-C3",
+          "title": "A WYSIWYG render failure falls back to visible Source",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 4,
+          "failures": [],
+          "fixturesExercised": [
+            "injected render failure"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-D1",
+          "title": "Pasted content never disappears silently",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 612,
+          "failures": [],
+          "fixturesExercised": [
+            "formatted-prose.json",
+            "image-with-alt-text.json",
+            "list-with-links.json",
+            "table-from-web-page.json"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "The built application places the caret after projected markers",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 14814,
+          "failures": [],
+          "fixturesExercised": [
+            "built app: projected caret and structural editing workflows"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "The built application supports conventional list workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "built app: projected caret and structural editing workflows"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "The built application supports heading and quote workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "built app: projected caret and structural editing workflows"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The built application preserves the eight view-position scenarios",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "built app: eight view-position scenarios in both view-switch directions"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 2462,
+          "failures": [],
+          "fixturesExercised": [
+            "a successful save",
+            "a save into a directory that cannot be written"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "a file changed between opening and saving",
+            "a forced save after the conflict"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "exact CRLF, trailing-space and Unicode recovery after a disk reload",
+            "discarding a recovery copy twice",
+            "built app: timer, SIGKILL, restart, exact recovery, Reload/discard"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "working-copy persistence beside an unchanged user document",
+            "built app: file sampled before/after recovery timer and changed only by Save"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 150,
+          "failures": [],
+          "fixturesExercised": [
+            "the fixture directory is empty",
+            "the stand-in browser cannot be found",
+            "the shipping engine's driver cannot be found (webkitgtk)"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "webkitgtk",
+            "chromium"
+          ],
+          "notCovered": [],
+          "delegated": []
+        }
+      ],
+      "exitCode": 0
+    },
+    "node": {
+      "pass": 7,
+      "fail": 0
+    },
+    "rust": {
+      "pass": 9,
+      "fail": 0
+    },
+    "missing": [
+      "Windows engine baseline: original runner does not declare Windows; result recorded red",
+      "Windows Rust baseline: original test suite does not compile on Windows; exact errors recorded",
+      "Native package and GUI acceptance on all three platforms"
+    ],
+    "macos": {
+      "startedAt": "2026-10-13T20:54:25.408Z",
+      "finishedAt": "2026-10-13T20:57:05.616Z",
+      "enginesExercised": [
+        {
+          "id": "safari",
+          "role": "shipping",
+          "description": "the engine the macOS application runs inside \u2014 same engine, different embedding: this covers the engine, not the embedding",
+          "version": "Safari 26.5",
+          "font": {
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
+            "sizePx": "14px",
+            "referenceWidthPx": 168.58
+          }
+        },
+        {
+          "id": "chromium",
+          "role": "stand-in",
+          "description": "a Chromium-family browser, kept for speed and for cross-checking",
+          "version": "Google Chrome 150.0.7871.187",
+          "font": {
+            "stack": "\"DejaVu Sans Mono\", \"Liberation Mono\", monospace",
+            "sizePx": "14px",
+            "referenceWidthPx": 168.58
+          }
+        }
+      ],
+      "enginesUnavailable": [],
+      "enginesNotApplicableHere": [
+        {
+          "id": "webkitgtk",
+          "role": "shipping",
+          "reason": "not applicable on darwin; declared for linux"
+        }
+      ],
+      "platform": "darwin",
+      "publishedPlatformsThisRunDidNotCover": [
+        "linux"
+      ],
+      "notAutomatedAnywhere": [
+        {
+          "what": "the application's own embedding of the engine, on every platform",
+          "why": "Every run drives the engine inside a TEST host \u2014 a reference browser on Linux, the system browser on macOS \u2014 not inside the webview the application embeds. Same engine, different host. The engine is covered everywhere and the embedding nowhere: window chrome, focus handling, and whatever the embedding changes about editing.",
+          "manualPass": "once per release, repository owner, six-case list in REQ-G3"
+        }
+      ],
+      "harnessErrors": [],
+      "requirements": [
+        {
+          "requirement": "REQ-A1",
+          "title": "Any file, one character typed and deleted, saved: byte-identical",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A3",
+          "title": "A touched but unchanged region keeps its own line wrapping",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A4",
+          "title": "Invisible characters are preserved: trailing spaces, the final newline or its absence",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A5",
+          "title": "Constructs the editor does not understand pass through untouched",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A6",
+          "title": "Table spacing is kept as found; no re-alignment on open or save",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A7",
+          "title": "List markers and numbering are kept as the author wrote them",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A8",
+          "title": "A fence keeps its information string, its character and its length",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A9",
+          "title": "Line terminators are preserved per line, with no majority computed",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A2",
+          "title": "After a real edit, only the lines that edit can account for may differ",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-A10",
+          "title": "Switching views any number of times leaves the document byte-identical",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B1",
+          "title": "Every line of the file is shown as its own line; soft breaks are not collapsed",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B2",
+          "title": "Typing lengthens the current line and never moves the other lines of the paragraph",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B3",
+          "title": "Enter inserts a bare newline: no paragraph break, no two-space hard break",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "Visual Markdown projection keeps subsequent typing at the caret",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass",
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "Lists continue, split, exit and lose their marker like a conventional editor",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass",
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "Headings and quotes continue or exit without exposing broken prefixes",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass",
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B5",
+          "title": "Pipe-table columns align visually without changing the Markdown",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B8",
+          "title": "Tables and fenced code are framed blocks with independent horizontal scrolling",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-B9",
+          "title": "Stable same-line typing is DOM-local and meets the event-to-frame budgets",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-C1",
+          "title": "Switching views leaves the caret on the same character, in both directions",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The source line at the viewport midpoint remains the visual anchor across a view switch",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass",
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-C3",
+          "title": "A WYSIWYG render failure falls back to visible Source",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-D1",
+          "title": "Pasted content never disappears silently",
+          "severity": "blocking",
+          "engines": {
+            "safari": "pass",
+            "chromium": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "pass"
+          },
+          "failures": [],
+          "delegated": []
+        }
+      ],
+      "raw": [
+        {
+          "requirement": "REQ-A1",
+          "title": "Any file, one character typed and deleted, saved: byte-identical",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 5049,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A3",
+          "title": "A touched but unchanged region keeps its own line wrapping",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 867,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A4",
+          "title": "Invisible characters are preserved: trailing spaces, the final newline or its absence",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 611,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-no-final-newline.md",
+            "edge-whitespace.md",
+            "prose-draft.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A5",
+          "title": "Constructs the editor does not understand pass through untouched",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 1930,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-lists.md",
+            "edge-passthrough.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A6",
+          "title": "Table spacing is kept as found; no re-alignment on open or save",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 1068,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-tables.md",
+            "messy-export.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A7",
+          "title": "List markers and numbering are kept as the author wrote them",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 1730,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A8",
+          "title": "A fence keeps its information string, its character and its length",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 635,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-fences.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A9",
+          "title": "Line terminators are preserved per line, with no majority computed",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 682,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-crlf.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A2",
+          "title": "After a real edit, only the lines that edit can account for may differ",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 11895,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A10",
+          "title": "Switching views any number of times leaves the document byte-identical",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 9935,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B1",
+          "title": "Every line of the file is shown as its own line; soft breaks are not collapsed",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 395,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B2",
+          "title": "Typing lengthens the current line and never moves the other lines of the paragraph",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 1898,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B3",
+          "title": "Enter inserts a bare newline: no paragraph break, no two-space hard break",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 748,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "Visual Markdown projection keeps subsequent typing at the caret",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 819,
+          "failures": [],
+          "fixturesExercised": [
+            "bullet",
+            "ordered item",
+            "quote",
+            "heading",
+            "task item"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "Lists continue, split, exit and lose their marker like a conventional editor",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 1768,
+          "failures": [],
+          "fixturesExercised": [
+            "dash item continues",
+            "asterisk item continues",
+            "plus item continues",
+            "dotted ordered item increments",
+            "ordered item increments",
+            "indented marker and spacing are retained",
+            "item splits in the middle",
+            "task continuation starts unchecked",
+            "empty item exits the list",
+            "Backspace removes the item prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "Headings and quotes continue or exit without exposing broken prefixes",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 1300,
+          "failures": [],
+          "fixturesExercised": [
+            "quote continues",
+            "quote splits",
+            "empty quote exits",
+            "quote Backspace removes prefix",
+            "heading Enter creates prose",
+            "heading splits into prose",
+            "empty heading exits",
+            "heading Backspace removes prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B5",
+          "title": "Pipe-table columns align visually without changing the Markdown",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 95,
+          "failures": [],
+          "fixturesExercised": [
+            "ragged pipe table"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B8",
+          "title": "Tables and fenced code are framed blocks with independent horizontal scrolling",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 115,
+          "failures": [],
+          "fixturesExercised": [
+            "narrow table",
+            "two wide tables",
+            "backtick fence",
+            "tilde fence"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B9",
+          "title": "Stable same-line typing is DOM-local and meets the event-to-frame budgets",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 3767,
+          "failures": [],
+          "fixturesExercised": [
+            "prose",
+            "list",
+            "table",
+            "fenced code",
+            "IME composition",
+            "scrolled table typing",
+            "500-line mixed document",
+            "1500-line mixed document"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "timing": [
+              {
+                "engine": "safari",
+                "lines": 500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  4,
+                  3,
+                  3,
+                  2,
+                  2,
+                  3,
+                  4,
+                  4,
+                  3,
+                  6,
+                  4,
+                  13,
+                  4,
+                  7,
+                  3,
+                  3,
+                  2,
+                  3,
+                  3,
+                  2
+                ],
+                "p95": 7,
+                "limit": 50
+              },
+              {
+                "engine": "safari",
+                "lines": 500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  4,
+                  4,
+                  5,
+                  3,
+                  9,
+                  3,
+                  5,
+                  5,
+                  18,
+                  8,
+                  4,
+                  8,
+                  4,
+                  8,
+                  4,
+                  16,
+                  5,
+                  12,
+                  3,
+                  6
+                ],
+                "p95": 16,
+                "limit": 50
+              },
+              {
+                "engine": "safari",
+                "lines": 1500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  6,
+                  8,
+                  8,
+                  8,
+                  8,
+                  7,
+                  8,
+                  8,
+                  7,
+                  8,
+                  8,
+                  8,
+                  8,
+                  7,
+                  8,
+                  5,
+                  6,
+                  6,
+                  6,
+                  6
+                ],
+                "p95": 8,
+                "limit": 100
+              },
+              {
+                "engine": "safari",
+                "lines": 1500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  7,
+                  7,
+                  6,
+                  9,
+                  11,
+                  8,
+                  7,
+                  7,
+                  16,
+                  15,
+                  8,
+                  9,
+                  9,
+                  17,
+                  15,
+                  9,
+                  8,
+                  6,
+                  6,
+                  6
+                ],
+                "p95": 16,
+                "limit": 100
+              }
+            ]
+          }
+        },
+        {
+          "requirement": "REQ-C1",
+          "title": "Switching views leaves the caret on the same character, in both directions",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 14369,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "anchorsProbed": 79
+          }
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The source line at the viewport midpoint remains the visual anchor across a view switch",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 6702,
+          "failures": [],
+          "fixturesExercised": [
+            "short content, start, contained app viewport",
+            "short content, middle, contained app viewport",
+            "short content, end, contained app viewport",
+            "long content, start, contained app viewport",
+            "long content, middle, contained app viewport",
+            "long content, end, contained app viewport",
+            "long mixed geometry, table midpoint, contained app viewport",
+            "long mixed geometry, fenced-code midpoint, contained app viewport",
+            "prose-long-manual.md at 1200px",
+            "prose-long-manual.md at 640px"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "probes": 40
+          }
+        },
+        {
+          "requirement": "REQ-C3",
+          "title": "A WYSIWYG render failure falls back to visible Source",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 13,
+          "failures": [],
+          "fixturesExercised": [
+            "injected render failure"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-D1",
+          "title": "Pasted content never disappears silently",
+          "severity": "blocking",
+          "engine": "safari",
+          "verdict": "pass",
+          "durationMs": 768,
+          "failures": [],
+          "fixturesExercised": [
+            "formatted-prose.json",
+            "image-with-alt-text.json",
+            "list-with-links.json",
+            "table-from-web-page.json"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A1",
+          "title": "Any file, one character typed and deleted, saved: byte-identical",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 3930,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A3",
+          "title": "A touched but unchanged region keeps its own line wrapping",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 823,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A4",
+          "title": "Invisible characters are preserved: trailing spaces, the final newline or its absence",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 529,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-no-final-newline.md",
+            "edge-whitespace.md",
+            "prose-draft.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A5",
+          "title": "Constructs the editor does not understand pass through untouched",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1602,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-lists.md",
+            "edge-passthrough.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A6",
+          "title": "Table spacing is kept as found; no re-alignment on open or save",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 884,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-tables.md",
+            "messy-export.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A7",
+          "title": "List markers and numbering are kept as the author wrote them",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1475,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A8",
+          "title": "A fence keeps its information string, its character and its length",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 533,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-fences.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A9",
+          "title": "Line terminators are preserved per line, with no majority computed",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 525,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-crlf.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A2",
+          "title": "After a real edit, only the lines that edit can account for may differ",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 9971,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "edge-crlf.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-A10",
+          "title": "Switching views any number of times leaves the document byte-identical",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 8118,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-empty.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-minimal.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B1",
+          "title": "Every line of the file is shown as its own line; soft breaks are not collapsed",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 393,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B2",
+          "title": "Typing lengthens the current line and never moves the other lines of the paragraph",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1425,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B3",
+          "title": "Enter inserts a bare newline: no paragraph break, no two-space hard break",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 581,
+          "failures": [],
+          "fixturesExercised": [
+            "edge-mixed-endings.md",
+            "messy-export.md",
+            "prose-draft.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "Visual Markdown projection keeps subsequent typing at the caret",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 520,
+          "failures": [],
+          "fixturesExercised": [
+            "bullet",
+            "ordered item",
+            "quote",
+            "heading",
+            "task item"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "Lists continue, split, exit and lose their marker like a conventional editor",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1380,
+          "failures": [],
+          "fixturesExercised": [
+            "dash item continues",
+            "asterisk item continues",
+            "plus item continues",
+            "dotted ordered item increments",
+            "ordered item increments",
+            "indented marker and spacing are retained",
+            "item splits in the middle",
+            "task continuation starts unchecked",
+            "empty item exits the list",
+            "Backspace removes the item prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "Headings and quotes continue or exit without exposing broken prefixes",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 1070,
+          "failures": [],
+          "fixturesExercised": [
+            "quote continues",
+            "quote splits",
+            "empty quote exits",
+            "quote Backspace removes prefix",
+            "heading Enter creates prose",
+            "heading splits into prose",
+            "empty heading exits",
+            "heading Backspace removes prefix"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B5",
+          "title": "Pipe-table columns align visually without changing the Markdown",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 86,
+          "failures": [],
+          "fixturesExercised": [
+            "ragged pipe table"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B8",
+          "title": "Tables and fenced code are framed blocks with independent horizontal scrolling",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 91,
+          "failures": [],
+          "fixturesExercised": [
+            "narrow table",
+            "two wide tables",
+            "backtick fence",
+            "tilde fence"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B9",
+          "title": "Stable same-line typing is DOM-local and meets the event-to-frame budgets",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 4140,
+          "failures": [],
+          "fixturesExercised": [
+            "prose",
+            "list",
+            "table",
+            "fenced code",
+            "IME composition",
+            "scrolled table typing",
+            "500-line mixed document",
+            "1500-line mixed document"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "timing": [
+              {
+                "engine": "chromium",
+                "lines": 500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  5.9,
+                  7.3,
+                  18.7,
+                  5.9,
+                  6.4,
+                  15.7,
+                  6.4,
+                  6.5,
+                  16.5,
+                  6.6,
+                  6.5,
+                  6.3,
+                  5.9,
+                  5.6,
+                  43.8,
+                  34.6,
+                  5.6,
+                  6.4,
+                  5.8,
+                  5.5
+                ],
+                "p95": 34.6,
+                "limit": 50
+              },
+              {
+                "engine": "chromium",
+                "lines": 500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  7.9,
+                  7.1,
+                  37.4,
+                  69.7,
+                  8.7,
+                  8.4,
+                  7.3,
+                  8.1,
+                  9.6,
+                  8.4,
+                  7.4,
+                  7.5,
+                  18.6,
+                  6.5,
+                  6.5,
+                  6.8,
+                  7,
+                  7.6,
+                  7.4,
+                  7.5
+                ],
+                "p95": 37.4,
+                "limit": 50
+              },
+              {
+                "engine": "chromium",
+                "lines": 1500,
+                "target": "plain",
+                "warmups": 3,
+                "samples": [
+                  17.5,
+                  29.2,
+                  15.8,
+                  15.9,
+                  15.8,
+                  18.7,
+                  21.5,
+                  16.5,
+                  45.9,
+                  14.9,
+                  21.3,
+                  17.1,
+                  16.1,
+                  33.5,
+                  21.2,
+                  20.4,
+                  45.5,
+                  15.8,
+                  15.2,
+                  14.8
+                ],
+                "p95": 45.5,
+                "limit": 100
+              },
+              {
+                "engine": "chromium",
+                "lines": 1500,
+                "target": "table",
+                "warmups": 3,
+                "samples": [
+                  26.7,
+                  15.6,
+                  19.3,
+                  22.5,
+                  16.1,
+                  16.8,
+                  16.9,
+                  16.5,
+                  16.9,
+                  17.5,
+                  17.6,
+                  16,
+                  15.9,
+                  15.8,
+                  17.1,
+                  18.7,
+                  25.5,
+                  29.7,
+                  25.4,
+                  21.1
+                ],
+                "p95": 26.7,
+                "limit": 100
+              }
+            ]
+          }
+        },
+        {
+          "requirement": "REQ-C1",
+          "title": "Switching views leaves the caret on the same character, in both directions",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 10509,
+          "failures": [],
+          "fixturesExercised": [
+            "doc-api.md",
+            "doc-install.md",
+            "edge-crlf.md",
+            "edge-fences.md",
+            "edge-lists.md",
+            "edge-mixed-endings.md",
+            "edge-no-final-newline.md",
+            "edge-passthrough.md",
+            "edge-tables.md",
+            "edge-whitespace.md",
+            "messy-export.md",
+            "note-daily.md",
+            "note-index.md",
+            "prose-draft.md",
+            "prose-letter.md",
+            "prose-long-manual.md"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "anchorsProbed": 79
+          }
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The source line at the viewport midpoint remains the visual anchor across a view switch",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 5353,
+          "failures": [],
+          "fixturesExercised": [
+            "short content, start, contained app viewport",
+            "short content, middle, contained app viewport",
+            "short content, end, contained app viewport",
+            "long content, start, contained app viewport",
+            "long content, middle, contained app viewport",
+            "long content, end, contained app viewport",
+            "long mixed geometry, table midpoint, contained app viewport",
+            "long mixed geometry, fenced-code midpoint, contained app viewport",
+            "prose-long-manual.md at 1200px",
+            "prose-long-manual.md at 640px"
+          ],
+          "notCovered": [],
+          "metrics": {
+            "probes": 40
+          }
+        },
+        {
+          "requirement": "REQ-C3",
+          "title": "A WYSIWYG render failure falls back to visible Source",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 7,
+          "failures": [],
+          "fixturesExercised": [
+            "injected render failure"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-D1",
+          "title": "Pasted content never disappears silently",
+          "severity": "blocking",
+          "engine": "chromium",
+          "verdict": "pass",
+          "durationMs": 643,
+          "failures": [],
+          "fixturesExercised": [
+            "formatted-prose.json",
+            "image-with-alt-text.json",
+            "list-with-links.json",
+            "table-from-web-page.json"
+          ],
+          "notCovered": [],
+          "metrics": null
+        },
+        {
+          "requirement": "REQ-B4",
+          "title": "The built application places the caret after projected markers",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 1,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "The built application supports conventional list workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "The built application supports heading and quote workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The built application preserves the eight view-position scenarios",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 30201,
+          "failures": [],
+          "fixturesExercised": [
+            "a successful save",
+            "a save into a directory that cannot be written"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "a file changed between opening and saving",
+            "a forced save after the conflict"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "exact CRLF, trailing-space and Unicode recovery after a disk reload",
+            "discarding a recovery copy twice"
+          ],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "working-copy persistence beside an unchanged user document"
+          ],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 345,
+          "failures": [],
+          "fixturesExercised": [
+            "the fixture directory is empty",
+            "the stand-in browser cannot be found",
+            "the shipping engine's driver cannot be found (safari)"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "pass",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [
+            "safari",
+            "chromium"
+          ],
+          "notCovered": [],
+          "delegated": []
+        }
+      ],
+      "exitCode": 0
+    },
+    "macosNode": {
+      "pass": 7,
+      "fail": 0
+    },
+    "macosRust": {
+      "pass": 9,
+      "fail": 0
+    },
+    "windowsInitial": {
+      "startedAt": "2026-10-13T21:21:08.443Z",
+      "finishedAt": "2026-10-13T21:22:39.273Z",
+      "enginesExercised": [],
+      "enginesUnavailable": [],
+      "enginesNotApplicableHere": [
+        {
+          "id": "webkitgtk",
+          "role": "shipping",
+          "reason": "not applicable on win32; declared for linux"
+        },
+        {
+          "id": "safari",
+          "role": "shipping",
+          "reason": "not applicable on win32; declared for darwin"
+        },
+        {
+          "id": "chromium",
+          "role": "stand-in",
+          "reason": "not applicable on win32; declared for linux, darwin"
+        }
+      ],
+      "platform": "win32",
+      "publishedPlatformsThisRunDidNotCover": [
+        "linux",
+        "macos"
+      ],
+      "notAutomatedAnywhere": [
+        {
+          "what": "the application's own embedding of the engine, on every platform",
+          "why": "Every run drives the engine inside a TEST host \u2014 a reference browser on Linux, the system browser on macOS \u2014 not inside the webview the application embeds. Same engine, different host. The engine is covered everywhere and the embedding nowhere: window chrome, focus handling, and whatever the embedding changes about editing.",
+          "manualPass": "once per release, repository owner, six-case list in REQ-G3"
+        }
+      ],
+      "harnessErrors": [
+        {
+          "where": "engines",
+          "message": "No engine could be started, so nothing was verified."
+        }
+      ],
+      "requirements": [
+        {
+          "requirement": "REQ-B4",
+          "title": "The built application places the caret after projected markers",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "The built application supports conventional list workflows",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "The built application supports heading and quote workflows",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The built application preserves the eight view-position scenarios",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "delegated"
+          },
+          "failures": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "the stand-in browser cannot be found",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"does not exist\"",
+              "actual": "t applicable here: chromium (stand-in) \u2014 not applicable on win32; declared for linux, darwin\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n",
+              "engine": "the run itself"
+            },
+            {
+              "fixture": "the shipping engine's driver cannot be found (webkitgtk)",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"not found\"",
+              "actual": "rpus\nnot applicable here: webkitgtk (shipping) \u2014 not applicable on win32; declared for linux\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engines": {
+            "the run itself": "fail"
+          },
+          "failures": [
+            {
+              "fixture": "engine coverage",
+              "detail": "No shipping engine is declared for this platform (win32). Either the platform is not one the product ships on, or the declaration is incomplete \u2014 and the second would let a whole platform run green having tested only a stand-in.",
+              "engine": "the run itself"
+            }
+          ],
+          "delegated": []
+        }
+      ],
+      "raw": [
+        {
+          "requirement": "REQ-B4",
+          "title": "The built application places the caret after projected markers",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 1,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B6",
+          "title": "The built application supports conventional list workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-B7",
+          "title": "The built application supports heading and quote workflows",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-C2",
+          "title": "The built application preserves the eight view-position scenarios",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "delegated",
+          "durationMs": 0,
+          "failures": [],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-F1",
+          "title": "The file is written atomically; a failed write leaves the original intact",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 86809,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "a successful save",
+            "a save into a directory that cannot be written"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-F2",
+          "title": "A file changed outside amorist is detected and never silently overwritten",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 1,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "a file changed between opening and saving",
+            "a forced save after the conflict"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-E1",
+          "title": "Work not yet saved survives an abrupt termination",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 0,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "exact CRLF, trailing-space and Unicode recovery after a disk reload",
+            "discarding a recovery copy twice"
+          ],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-E2",
+          "title": "The user's file is never written except on an explicit save",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 0,
+          "failures": [
+            {
+              "fixture": "the Rust checks",
+              "detail": "The Rust checks did not build, so nothing was verified about the write path.",
+              "actual": "rror\nwarning: build failed, waiting for other jobs to finish...\nerror: linking with `link.exe` failed: exit code: 1181\n  |\n  = note: \"C:\\\\AmoristBuildTools\\\\VC\\\\Tools\\\\MSVC\\\\14.44.35207\\\\bin\\\\HostX64\\\\x64\\\\link.exe\" \"/NOLOGO\" \"C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\rustcGMgkcj\\\\symbols.o\" \"<2 object files omitted>\" \"<sysroot>\\\\lib\\\\rustlib\\\\x86_64-pc-windows-msvc\\\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"kernel32.lib\" \"kernel32.lib\" \"kernel32.lib\" \"ntdll.lib\" \"userenv.lib\" \"ws2_32.lib\" \"dbghelp.lib\" \"/defaultlib:msvcrt\" \"/NXCOMPAT\" \"/OUT:C:\\\\Users\\\\elmis\\\\AppData\\\\Local\\\\AmoristQA\\\\baseline\\\\src-tauri\\\\target\\\\debug\\\\build\\\\quote-7f47f72891ace304\\\\build_script_build-7f47f72891ace304.exe\" \"/OPT:REF,NOICF\" \"/DEBUG\" \"/PDBALTPATH:%_PDB%\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\intrinsic.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\liballoc.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libcore.natvis\" \"/NATVIS:<sysroot>\\\\lib\\\\rustlib\\\\etc\\\\libstd.natvis\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: LINK : fatal error LNK1181: non \u00e8 possibile aprire il file di input 'kernel32.lib'\r\n          \n\nerror: could not compile `quote` (build script) due to 1 previous error\n"
+            }
+          ],
+          "fixturesExercised": [
+            "working-copy persistence beside an unchanged user document"
+          ],
+          "notCovered": [],
+          "delegated": [
+            "Direct tauri-driver application automation exists on Linux only; the Linux run supplies the embedding verdict."
+          ]
+        },
+        {
+          "requirement": "REQ-G1",
+          "title": "A check that cannot execute is a failure, never a pass",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 3591,
+          "failures": [
+            {
+              "fixture": "the stand-in browser cannot be found",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"does not exist\"",
+              "actual": "t applicable here: chromium (stand-in) \u2014 not applicable on win32; declared for linux, darwin\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n"
+            },
+            {
+              "fixture": "the shipping engine's driver cannot be found (webkitgtk)",
+              "detail": "The run failed but did not say why, so the failure is not actionable.",
+              "expected": "output containing \"not found\"",
+              "actual": "rpus\nnot applicable here: webkitgtk (shipping) \u2014 not applicable on win32; declared for linux\nthis run says NOTHING about: linux, macos\n\n\nThe run itself could not do what it claims to do:\n  [engines] No engine could be started, so nothing was verified.\n\nreport: .qa\\reports\\last-run.json\nresult: RED\n\n"
+            }
+          ],
+          "fixturesExercised": [
+            "the fixture directory is empty",
+            "the stand-in browser cannot be found",
+            "the shipping engine's driver cannot be found (webkitgtk)"
+          ],
+          "notCovered": [],
+          "delegated": []
+        },
+        {
+          "requirement": "REQ-G2",
+          "title": "The editor checks run on the engine that ships, not only on a stand-in",
+          "severity": "blocking",
+          "engine": "the run itself",
+          "verdict": "fail",
+          "durationMs": 1,
+          "failures": [
+            {
+              "fixture": "engine coverage",
+              "detail": "No shipping engine is declared for this platform (win32). Either the platform is not one the product ships on, or the declaration is incomplete \u2014 and the second would let a whole platform run green having tested only a stand-in."
+            }
+          ],
+          "fixturesExercised": [],
+          "notCovered": [],
+          "delegated": []
+        }
+      ],
+      "exitCode": 1
+    },
+    "windowsNode": {
+      "pass": 7,
+      "fail": 0,
+      "note": "Six checks passed initially; toolbar passed after explicitly selecting installed Edge."
+    },
+    "windowsRust": {
+      "verdict": "could-not-build",
+      "errors": [
+        {
+          "code": "E0433",
+          "source": "src-tauri/src/lib.rs:809",
+          "detail": "The failed-save test imports std::os::unix::fs::PermissionsExt unconditionally."
+        },
+        {
+          "code": "E0599",
+          "source": "src-tauri/src/lib.rs:817",
+          "detail": "Permissions::from_mode is unavailable on Windows."
+        },
+        {
+          "code": "E0599",
+          "source": "src-tauri/src/lib.rs:819",
+          "detail": "Permissions::from_mode is unavailable on Windows."
+        }
+      ],
+      "environment": "SDK kernel32.lib now exists; this run reaches compilation of Amorist tests."
+    }
+  },
+  "reportCountAtStart": 7,
+  "originalReportsPreserved": true,
+  "preexistingUntrackedFilesPreserved": true,
+  "nativeEnvironment": {
+    "windows": {
+      "vmLocated": true,
+      "configuredArchitecture": "64-bit",
+      "configuredMemoryMiB": 8192,
+      "guestInspected": true,
+      "startAuthorized": false,
+      "running": true,
+      "osVersion": "Windows 10 Pro 22H2 19045.6466",
+      "architecture": "x86_64",
+      "memoryMiBConfigured": 8192,
+      "sshAccess": "verified",
+      "sshService": {
+        "status": "Running",
+        "startupType": "Automatic",
+        "account": "LocalSystem",
+        "repair": "Host key owner set to SYSTEM and explicit user write permission removed; original keys preserved; diagnostic ImagePath restored; verified new connection."
+      },
+      "nodeVersion": "22.23.2",
+      "rustVersion": "1.94.1",
+      "msvcBuildToolsVersion": "17.14.27",
+      "windowsSdk": "10.0.19041.0",
+      "webviewVersion": "155.0.4283.45",
+      "edgeDriverVersion": "155.0.4283.45",
+      "edgeDriverSignature": "Valid Microsoft Corporation",
+      "guestUser": "elmis",
+      "hostOnlyAddress": "192.168.189.128",
+      "toolsLocation": "%LOCALAPPDATA%/AmoristQA/tools",
+      "tauriCliVersion": "2.11.2",
+      "tauriDriver": "2.0.6 installed",
+      "nativeGuiAcceptance": "not-run",
+      "msvcInstallationExitCode": 0,
+      "rustInstallationExitCode": 0,
+      "tauriCliInstallationExitCode": 0,
+      "qaEnvironmentScript": "%LOCALAPPDATA%/AmoristQA/qa-env.ps1"
+    },
+    "macos": {
+      "candidateHost": "lestrade.local",
+      "confirmed": true,
+      "contacted": true,
+      "osVersion": "26.5",
+      "architecture": "x86_64",
+      "nodeVersion": "26.5.0",
+      "rustVersion": "1.95.0",
+      "graphicalSession": true,
+      "xcodeAvailable": true,
+      "tauriCliVersion": "2.11.2",
+      "installedRustTargets": [
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin"
+      ],
+      "debugBundleBuilt": true,
+      "nativeGuiAcceptance": "not-run",
+      "uiAutomationProbe": "no verdict; stopped after timeout"
+    }
+  },
+  "delivery": {
+    "blocked": true,
+    "publishAuthorized": false,
+    "pushPerformed": false,
+    "packageAcceptance": {
+      "linux": "not-run",
+      "macos": "not-run",
+      "windows10VM": "not-run"
+    }
+  },
+  "pendingInput": [],
+  "postBaselineChecks": {
+    "change": "Platform-specific denied-write test after recording the original Windows compilation failure",
+    "rust": {
+      "linux": {
+        "pass": 9,
+        "fail": 0
+      },
+      "macos": {
+        "pass": 9,
+        "fail": 0
+      },
+      "windows": {
+        "pass": 9,
+        "fail": 0
+      }
+    },
+    "qaContractProjection": "cross-check passed: no orphan requirement or unverified risk",
+    "nativeGuiAcceptance": "not-run"
+  }
+}

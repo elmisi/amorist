@@ -17,6 +17,13 @@ function loadTableCodec() {
 const codec = loadTableCodec();
 
 assert.deepEqual(Array.from(codec.splitTableRow("| a\\|b | c |")), ["a|b", "c"]);
+assert.deepEqual(Array.from(codec.splitTableRow("| `a|b` | c |")), ["`a|b`", "c"]);
+assert.deepEqual(Array.from(codec.splitTableRow("| ``a|`b`` | c |")), ["``a|`b``", "c"]);
+assert.deepEqual(Array.from(codec.splitTableRow("| `unclosed | c |")), ["`unclosed", "c"]);
+assert.deepEqual(Array.from(codec.splitTableRow("| ``unclosed` | c |")), ["``unclosed`", "c"]);
+assert.deepEqual(Array.from(codec.splitTableRow("a | b\\|")), ["a", "b|"]);
+assert.deepEqual(Array.from(codec.splitTableRow("| a\\\\|b | c |")), ["a\\\\", "b", "c"]);
+assert.deepEqual(Array.from(codec.splitTableRow("| a\\\\\\|b | c |")), ["a\\\\|b", "c"]);
 assert.deepEqual(Array.from(codec.splitTableRow("| 1 | 2 | 3 |", 2)), ["1", "2 | 3"]);
 assert.equal(codec.tableCellWidth("abc"), 3);
 assert.equal(codec.tableCellWidth("😀"), 2);

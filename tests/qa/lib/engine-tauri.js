@@ -8,6 +8,7 @@
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const net = require("node:net");
+const crypto = require("node:crypto");
 
 const { WebDriverEngine } = require("./engine-webdriver");
 const { terminate } = require("./engine-chromium");
@@ -18,7 +19,7 @@ class TauriEngine extends WebDriverEngine {
     this.id = "tauri-webkitgtk";
     this.application = fs.realpathSync(application);
     this.applicationArgs = applicationArgs;
-    this.environment = environment;
+    this.environment = {...(environment || process.env), AMORIST_QA_INSTANCE_NONCE: crypto.randomUUID()};
     this.nativePort = 0;
   }
 

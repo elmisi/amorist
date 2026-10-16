@@ -99,7 +99,7 @@
           },
           {
             "id": "indent",
-            "affected_lines": "affected-list-item",
+            "affected_lines": "affected-list-item-subtree",
             "line_delta": 0
           },
           {
@@ -254,7 +254,7 @@
     },
     {
       "id": "REQ-B3",
-      "statement": "In ordinary prose, Enter inserts a bare newline at the caret. It does not create a paragraph break and never writes the two-space hard break. Structural list behavior is specified separately by REQ-B6.",
+      "statement": "In ordinary visual prose, Enter inserts a backslash hard break at the caret using the local terminator. Existing physical boundaries remain verbatim. Structural list behavior is specified separately by REQ-B6.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
@@ -399,7 +399,7 @@
     },
     {
       "id": "REQ-E1",
-      "statement": "Work not yet saved survives an abrupt termination. A working copy is written periodically to amorist's own location and offered for recovery on the next start.",
+      "statement": "Work not yet saved survives an abrupt termination. A working copy is written periodically to amorist's own location and offered for recovery on the next start. Recovery is scheduled after 2000 ms of inactivity with a non-postponable 5000 ms deadline from the first unpersisted edit. Writes are serialized per session and preserve the captured document context.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
@@ -433,7 +433,8 @@
       "currentlyHolds": true,
       "allowedChange": null,
       "risks": [
-        "R-009"
+        "R-009",
+        "R-021"
       ]
     },
     {
@@ -459,12 +460,13 @@
       "currentlyHolds": false,
       "allowedChange": null,
       "risks": [
-        "R-016"
+        "R-016",
+        "R-021"
       ]
     },
     {
       "id": "REQ-G2",
-      "statement": "The editor checks run on the engines the product actually ships with, not only on a stand-in. Which engines those are is declared per platform: on Linux, WebKitGTK through its own WebDriver server; on macOS, Safari through the system's WebDriver server. Every check in families A, B, C and D runs unchanged on every engine applicable to the platform the suite is running on, and must pass on all of them.",
+      "statement": "The editor checks run on the engines the product actually ships with, not only on a stand-in. Which engines those are is declared per platform: on Linux, WebKitGTK through its own WebDriver server; on macOS, Safari through the system's WebDriver server; on Windows, WebView2 through tauri-driver and a matching Microsoft Edge driver. Every check in families A, B, C and D runs unchanged on every engine applicable to the platform the suite is running on, and must pass on all of them.",
       "severity": "blocking",
       "verification": "deterministic",
       "automation": "full",
@@ -472,7 +474,8 @@
       "currentlyHolds": false,
       "allowedChange": null,
       "risks": [
-        "R-017"
+        "R-017",
+        "R-021"
       ]
     },
     {
@@ -485,7 +488,125 @@
       "currentlyHolds": false,
       "allowedChange": null,
       "risks": [
-        "R-017"
+        "R-017",
+        "R-021"
+      ]
+    },
+    {
+      "id": "REQ-H1",
+      "statement": "New and Open change the current document only after successful preparation and the required Save/Discard/Cancel choice. Cancelling or failing keeps the original path, text, editor history and recovery. New is empty and untitled; successful Open resets history and preserves the selected file's bytes.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "H",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-009"
+      ]
+    },
+    {
+      "id": "REQ-H2",
+      "statement": "Save As preserves the current editor, history and recovery on cancellation or failure. Successful writing changes its backend identity and saved source while retaining history. Save of an untitled document opens Save As; new documents use LF and a missing extension defaults to .md.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "H",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-009"
+      ]
+    },
+    {
+      "id": "REQ-H3",
+      "statement": "New window and Open in new window launch an independent process without changing or prompting to discard the original document. The same package and debug mode are inherited, with filenames passed as structured arguments.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "H",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-009"
+      ]
+    },
+    {
+      "id": "REQ-H4",
+      "statement": "macOS Finder events survive frontend startup. Initial file arguments and duplicate initial events open once; the first event can fill an unused initial window. Further events launch independent instances and preserve the current document. Missing Finder targets report an error without creation.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "partial",
+      "family": "H",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-009"
+      ]
+    },
+    {
+      "id": "REQ-I1",
+      "statement": "URI and email autolinks render as links outside literal code, retain exact source intervals and remain editable with undo and mode round-trips. Angle delimiters and plain URL punctuation remain in the original source. Executable or unsupported URI schemes never become browser href attributes.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "I",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-006"
+      ]
+    },
+    {
+      "id": "REQ-I2",
+      "statement": "Inline-link grammar separates destinations and titles, honors escaped and balanced parentheses, angle destinations with spaces and character references. Row-local projection preserves raw intervals, including styled or empty labels. Nested links and angle autolinks take precedence over an enclosing link.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "I",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-006"
+      ]
+    },
+    {
+      "id": "REQ-I3",
+      "statement": "Reference links resolve full, collapsed and shortcut labels against the first matching document definition, using Unicode case folding and whitespace normalization. Definition metadata remains editable without source rewriting. Editing a definition updates dependent prose and tables, preserving unrelated DOM.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "I",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-006"
+      ]
+    },
+    {
+      "id": "REQ-J1",
+      "statement": "Settings provides an isolated preview, approved font sizes/scales/palette, defaults and transactional Save/Cancel. Failed writes retain the dialog and applied preferences; successful writes and focus reload update typography without changing Markdown or selection. Only the active visual line is highlighted.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "J",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-022"
+      ]
+    },
+    {
+      "id": "REQ-K1",
+      "statement": "Copy/cut/paste preserves selected Markdown and formatting through a validated internal payload and semantic HTML/plain fallbacks. Source/code/plain-paste remain literal; empty clipboard data and failed writes never delete selected work. Incoming reference definitions must not change existing link destinations.",
+      "severity": "blocking",
+      "verification": "deterministic",
+      "automation": "full",
+      "family": "K",
+      "currentlyHolds": false,
+      "allowedChange": null,
+      "risks": [
+        "R-008"
       ]
     }
   ]

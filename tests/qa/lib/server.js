@@ -17,6 +17,7 @@ const TYPES = {
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".md": "text/plain; charset=utf-8",
+  ".svg": "image/svg+xml",
 };
 
 function startStaticServer(rootDir) {
@@ -36,8 +37,12 @@ function startStaticServer(rootDir) {
         res.writeHead(200, {
           "content-type": TYPES[path.extname(resolved)] || "application/octet-stream",
           "cache-control": "no-store",
+          "content-security-policy": "img-src 'self' data:",
         });
-        res.end(data);
+        // Bounded fixture-only latency makes late image layout reproducible.
+        const delay=requested.startsWith("/tests/qa/assets/")
+          ? Math.max(0,Math.min(1000,Number(new URL(req.url,"http://localhost").searchParams.get("qaDelay"))||0)):0;
+        if(delay) setTimeout(()=>res.end(data),delay);else res.end(data);
       });
     });
     server.on("error", reject);

@@ -5,6 +5,7 @@ const vm = require("node:vm");
 function loadModule() {
   const window = { AmoristInternals: { MarkdownCodec: { serializeBlocks: () => "" } } };
   const context = vm.createContext({ window, console });
+  vm.runInContext(fs.readFileSync("web/editor/amorist-text-utils.js", "utf8"), context);
   vm.runInContext(fs.readFileSync("web/editor/amorist-html-to-markdown.js", "utf8"), context, {
     filename: "amorist-html-to-markdown.js",
   });
@@ -34,4 +35,50 @@ assert.equal(H._cleanupMarkdown("a\t\nb"), "a\nb");
 // Whitespace-only lines are blank lines, not breaks.
 assert.equal(H._cleanupMarkdown("a\n  \nb"), "a\n\nb");
 
+const code = "first  \n\n\n```nested```\nlast\t\n";
+const pre = { nodeType: 1, tagName: "PRE", textContent: code };
+const source = H._nodeToSource(pre);
+assert.equal(source, "````\n" + code + "````\n\n");
+assert.equal(H._cleanupMarkdown(source), "````\n" + code + "````");
+assert.equal(H._nodeToSource({ nodeType: 1, tagName: "PRE", textContent: "``````" }),
+  "```````\n``````\n```````\n\n");
+assert.equal(H._nodeToSource({ nodeType: 1, tagName: "PRE", textContent: "~~~~~" }),
+  "``````\n~~~~~\n``````\n\n");
+
+const text=value=>({nodeType:3,textContent:value});
+const el=(tag,children,attrs={})=>({nodeType:1,tagName:tag,childNodes:children,children:children.filter(child=>child.nodeType===1),getAttribute:name=>attrs[name]??null});
+const nested=el("OL",[
+ el("LI",[text("parent"),el("UL",[el("LI",[text("nested")])])]),
+ el("LI",[text("explicit")],{value:"12"}),
+ el("LI",[text("next")]),
+],{start:"5"});
+assert.equal(H._cleanupMarkdown(H._nodeToSource(nested)),"5. parent\n   - nested\n12. explicit\n13. next");
+assert.equal(H._cleanupMarkdown(H._nodeToSource(el("H2",[text("Title"),el("EM",[text(" styled")])]))),"## Title *styled*");
+assert.equal(H._cleanupMarkdown(H._nodeToSource(el("BLOCKQUOTE",[el("P",[text("first")]),el("BLOCKQUOTE",[el("P",[text("nested")])])]))),"> first\n>\n> > nested");
+const table=el("TABLE",[]);
+const rows=[el("TR",[el("TH",[text("Name")]),el("TH",[text("Note")])]),el("TR",[el("TD",[text("A|B")]),el("TD",[text("value")])])];
+rows.forEach(row=>{row.closest=()=>table;});table.querySelectorAll=()=>rows;
+assert.equal(H._cleanupMarkdown(H._nodeToSource(table)),"| Name | Note |\n| --- | --- |\n| A\\|B | value |");
+const inlineCode=el("CODE",[]);inlineCode.textContent="a``b";
+assert.equal(H._nodeToSource(inlineCode),"```a``b```");
+inlineCode.textContent="`edge`";assert.equal(H._nodeToSource(inlineCode),"`` `edge` ``");
+for(const newline of ["\n","\r\n","\r"]){
+ inlineCode.textContent="first"+newline+"second";
+ assert.equal(H._cleanupMarkdown(H._nodeToSource(inlineCode)),"`first\nsecond`");
+}
+inlineCode.textContent="\nedge\n";
+assert.equal(H._nodeToSource(inlineCode),"` \nedge\n `");
+inlineCode.textContent="first   \n\t\n\n\nlast";
+assert.equal(H._cleanupMarkdown(H._nodeToSource(inlineCode)),"`first   \n\t\n\n\nlast`");
+assert.equal(H._cleanupMarkdown("before \n`first   \n\t\nlast`   \nafter "),"before\n`first   \n\t\nlast`  \nafter");
+assert.equal(H._nodeToSource(el("A",[text("Read")],{href:"docs/my (notes).md"})),"[Read](<docs/my (notes).md>)");
+assert.equal(H._nodeToSource(text("*literal* [name]")),"\\*literal\\* \\[name\\]");
+assert.equal(H._nodeToSource(text("1. literal")),"1\\. literal");
+assert.equal(H._nodeToSource(text("- literal")),"\\- literal");
+const codeCell=el("CODE",[]);codeCell.textContent="a|b";
+rows[1].children[0].childNodes=[codeCell];
+assert.equal(H._cleanupMarkdown(H._nodeToSource(table)),"| Name | Note |\n| --- | --- |\n| `a|b` | value |");
+assert.equal(H._nodeToSource(el("A",[text("Read")],{href:"notes.md",title:'A "title" &copy;'})), '[Read](<notes.md> "A \\"title\\" &amp;copy;")');
+assert.equal(H._nodeToSource(el("STRONG",[text("  bold  ")])),"  **bold**  ");
+assert.equal(H._nodeToSource(el("DEL",[text("gone")])),"~~gone~~");
 console.log("html-to-markdown pure helpers OK");

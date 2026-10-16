@@ -1,10 +1,14 @@
+mod build_identity;
+
 fn main() {
+    println!("cargo:rerun-if-changed=../VERSION");
     let version = std::fs::read_to_string("../VERSION")
         .unwrap_or_else(|_| "0.0.0".to_string())
         .trim()
         .to_string();
-    println!("cargo:rustc-env=CARGO_PKG_VERSION={}", version);
+    println!("cargo:rustc-env=AMORIST_VERSION={}", version);
     sync_tauri_conf_version(&version);
+    build_identity::emit(&version).expect("Cannot measure build identity");
     tauri_build::build()
 }
 

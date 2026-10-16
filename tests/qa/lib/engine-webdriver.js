@@ -136,7 +136,7 @@ class WebDriverEngine {
         .then(function () { return (${expression}); })
         .then(
           function (value) { done({ ok: true, value: value }); },
-          function (error) { done({ ok: false, error: String((error && error.stack) || error) }); }
+          function (error) { done({ ok: false, error: String((error && error.message) || error) + "\\n" + String((error && error.stack) || "") }); }
         );
     `;
     const response = await this.request("POST", `/session/${this.sessionId}/execute/async`, {
@@ -162,7 +162,7 @@ class WebDriverEngine {
       for (const [name, value] of Object.entries(keys.WEBDRIVER_MODIFIERS)) {
         if (item[name]) held.push(value);
       }
-      const value = keys.WEBDRIVER[item.key] || item.key;
+      const value = keys.WEBDRIVER[item.key] || (item.shift && item.key.length === 1 ? item.key.toUpperCase() : item.key);
       for (const modifier of held) actions.push({ type: "keyDown", value: modifier });
       for (let n = 0; n < item.repeat; n += 1) {
         actions.push({ type: "keyDown", value });
@@ -221,6 +221,9 @@ class WebDriverEngine {
           }
           resolve(parsed);
         });
+      });
+      req.setTimeout(this.requestTimeoutMs || 45000, () => {
+        req.destroy(new Error(`${method} ${endpoint} timed out waiting for ${this.id || "WebDriver"}: ${this.output.slice(-2000)}`));
       });
       req.on("error", reject);
       if (payload) req.write(payload);

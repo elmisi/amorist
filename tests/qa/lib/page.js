@@ -16,6 +16,7 @@ function makePage(engine) {
 
     open: (text) => call(engine, "open", [text]),
     markdown: () => call(engine, "markdown"),
+    rawSelection: () => call(engine, "rawSelection"),
     mode: () => call(engine, "mode"),
     toggleMode: () => call(engine, "toggleMode"),
     focusSurface: () => call(engine, "focusSurface"),

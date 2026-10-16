@@ -44,8 +44,15 @@ function discover() {
     return { available: true, binary: override };
   }
   const tried = [];
+  if(process.platform==="win32") {
+    const roots=[process.env.PROGRAMFILES,process.env['PROGRAMFILES(X86)'],process.env.LOCALAPPDATA].filter(Boolean);
+    for(const root of roots) for(const relative of ['Google/Chrome/Application/chrome.exe','Chromium/Application/chrome.exe','Microsoft/Edge/Application/msedge.exe']) {
+      const candidate=path.join(root,relative);tried.push(candidate);
+      if(fs.existsSync(candidate)) return {available:true,binary:candidate};
+    }
+  }
   for (const candidate of CANDIDATES) {
-    const found = childProcess.spawnSync("which", [candidate], { encoding: "utf8" });
+    const found = childProcess.spawnSync(process.platform==="win32"?"where.exe":"which", [candidate], { encoding: "utf8" });
     if (found.status === 0) return { available: true, binary: found.stdout.trim() };
     tried.push(candidate);
   }
@@ -75,14 +82,21 @@ class ChromiumEngine {
   }
 
   async start() {
-    const version = childProcess.spawnSync(this.binary, ["--version"], { encoding: "utf8" });
+    const version = process.platform === "win32"
+      ? childProcess.spawnSync("powershell.exe",["-NoProfile","-Command","(Get-Item -LiteralPath $env:AMORIST_QA_VERSION_BINARY).VersionInfo.FileVersion"],
+        {encoding:"utf8",timeout:10000,env:{...process.env,AMORIST_QA_VERSION_BINARY:this.binary}})
+      : childProcess.spawnSync(this.binary, ["--version"], { encoding: "utf8" });
     this.label = (version.stdout || "").trim() || path.basename(this.binary);
 
     this.profileDir = fs.mkdtempSync(path.join(os.tmpdir(), "amorist-qa-chromium-"));
     const debuggingUrl = await new Promise((resolve, reject) => {
       const proc = childProcess.spawn(this.binary, [
-        "--headless=new",
+        ...(process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1" ? [] : ["--headless=new"]),
+        ...(process.platform === "linux" && process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1" ? ["--ozone-platform=x11"] : []),
         "--disable-gpu",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
         "--no-sandbox",
         "--no-first-run",
         "--no-default-browser-check",
@@ -96,8 +110,8 @@ class ChromiumEngine {
 
       let stderr = "";
       const timer = setTimeout(() => {
-        reject(new Error(`${this.binary} did not report a DevTools endpoint within 20s.`));
-      }, 20000);
+        reject(new Error(`${this.binary} did not report a DevTools endpoint within 60s.`));
+      }, 60000);
       proc.stderr.on("data", (chunk) => {
         stderr += chunk.toString("utf8");
         const match = stderr.match(/DevTools listening on (ws:\/\/[^\s]+)/);
@@ -140,6 +154,8 @@ class ChromiumEngine {
 
   async navigate(url) {
     await this.socket.send("Page.enable", {});
+    await this.socket.send("Page.bringToFront", {});
+    await this.socket.send("Emulation.setFocusEmulationEnabled", {enabled:true});
     await this.socket.send("Page.navigate", { url });
     await this.evaluate(`new Promise((resolve) => {
       if (document.readyState === "complete") { resolve(true); return; }
@@ -162,6 +178,10 @@ class ChromiumEngine {
   }
 
   async sendKeys(sequence) {
+    if(process.env.AMORIST_QA_CHROMIUM_HEADFUL === "1") {
+      await this.socket.send("Page.bringToFront", {});
+      await this.socket.send("Emulation.setFocusEmulationEnabled", {enabled:true});
+    }
     for (const item of keys.normalizeSequence(sequence)) {
       if (item.text !== undefined) {
         await this.dispatchChar(item.text);
@@ -179,7 +199,7 @@ class ChromiumEngine {
             key: item.key,
             code: named.code,
             windowsVirtualKeyCode: named.vk,
-            nativeVirtualKeyCode: named.vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? named.vk : undefined,
             text: modifiers ? undefined : named.text,
             modifiers,
           });
@@ -188,7 +208,7 @@ class ChromiumEngine {
             key: item.key,
             code: named.code,
             windowsVirtualKeyCode: named.vk,
-            nativeVirtualKeyCode: named.vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? named.vk : undefined,
             modifiers,
           });
         } else {
@@ -200,15 +220,19 @@ class ChromiumEngine {
             key: item.key,
             code: `Key${upper}`,
             windowsVirtualKeyCode: vk,
-            nativeVirtualKeyCode: vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? vk : undefined,
             modifiers,
+            // CDP does not infer macOS editing commands from Meta alone.
+            commands: process.platform === "darwin" && item.meta && !item.alt && !item.ctrl
+              ? ({a:["selectAll"],c:["copy"],x:["cut"],v:[item.shift ? "pasteAndMatchStyle" : "paste"],z:[item.shift ? "redo" : "undo"]}[item.key.toLowerCase()] || [])
+              : undefined,
           });
           await this.socket.send("Input.dispatchKeyEvent", {
             type: "keyUp",
             key: item.key,
             code: `Key${upper}`,
             windowsVirtualKeyCode: vk,
-            nativeVirtualKeyCode: vk,
+            nativeVirtualKeyCode: process.platform === "win32" ? vk : undefined,
             modifiers,
           });
         }

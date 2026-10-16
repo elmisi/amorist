@@ -23,7 +23,7 @@ const BLOCK_MARKER = /^\s*([#>*+\-|=]|\d+[.)]|\[|---)/;
 //   prose  — ordinary text, the only kind whose line breaks are the author's
 //            own choice and therefore the only kind these requirements are about
 function classifyLines(text) {
-  const raw = text.split(/\r?\n/);
+  const raw = text.split(/\r\n|\r|\n/);
   const lines = [];
   let openFence = "";
 
@@ -81,4 +81,12 @@ function hasHandWrappedParagraph(text) {
   return findHandWrappedParagraph(text) !== null;
 }
 
-module.exports = { classifyLines, findHandWrappedParagraph, hasHandWrappedParagraph };
+// The approved autolink projection hides only its angle delimiters. This is
+// a targeting adjustment, not the product parser: raw-byte and line-envelope
+// assertions still compare the original fixture, and family I uses declared
+// expected labels and DOM-caret positions independently of this helper.
+function proseViewNeedle(text) {
+  return text.replace(/(?<!\\)<([a-z][a-z0-9+.-]{1,31}:[^\s<>]*|[^\s<>@]+@[^\s<>@]+)>/gi, "$1");
+}
+
+module.exports = { classifyLines, findHandWrappedParagraph, hasHandWrappedParagraph, proseViewNeedle };

@@ -9,7 +9,7 @@
 
 const { changedLines, splitLines, visible } = require("../lib/diff");
 const { select } = require("../lib/fixtures");
-const { findHandWrappedParagraph } = require("../lib/markdown-shape");
+const { findHandWrappedParagraph, proseViewNeedle } = require("../lib/markdown-shape");
 const { performanceFixture } = require("../lib/performance-fixture");
 const { runTauriAppChecks } = require("../lib/tauri-app-e2e");
 
@@ -43,7 +43,7 @@ module.exports = [
 
         const tops = [];
         for (const line of paragraph) {
-          const needle = line.text.trim().slice(0, 16);
+          const needle = proseViewNeedle(line.text).trim().slice(0, 16);
           const rect = await ctx.page.firstCharacterTop(needle);
           if (!rect.found) {
             failures.push({
@@ -105,7 +105,7 @@ module.exports = [
         const before = await ctx.page.markdown();
         await ctx.page.focusSurface();
         const surfaceText = await ctx.page.surfaceText();
-        const at = surfaceText.indexOf(target.text.trim());
+        const at = surfaceText.indexOf(proseViewNeedle(target.text).trim());
         if (at < 0) {
           failures.push({
             fixture: fixture.name,
@@ -114,7 +114,7 @@ module.exports = [
           });
           continue;
         }
-        await ctx.page.setCaretAtTextOffset(at + target.text.trim().length);
+        await ctx.page.setCaretAtTextOffset(at + proseViewNeedle(target.text).trim().length);
         await ctx.page.sendKeys([addition]);
         await ctx.page.settle(120);
         const after = await ctx.page.markdown();
@@ -141,8 +141,8 @@ module.exports = [
 
   {
     id: "REQ-B3",
-    title: "Enter inserts a bare newline: no paragraph break, no two-space hard break",
-    note: "Matches how a plain text editor behaves, and avoids writing trailing spaces that other editors delete on save.",
+    title: "Visual prose Enter inserts one local backslash hard break",
+    note: "Old physical boundaries stay verbatim; only the user-created prose boundary receives a marker.",
     async run(ctx) {
       const fixtures = select(ctx.corpus, "hasHandWrappedParagraph");
       const failures = [];
@@ -158,47 +158,21 @@ module.exports = [
         const before = await ctx.page.markdown();
         await ctx.page.focusSurface();
         const surfaceText = await ctx.page.surfaceText();
-        const needle = target.text.trim();
+        const needle = proseViewNeedle(target.text).trim();
         const at = surfaceText.indexOf(needle);
         if (at < 0) continue;
         await ctx.page.setCaretAtTextOffset(at + Math.floor(needle.length / 2));
+        const caret = (await ctx.page.rawSelection()).start;
+        const current = before.slice(caret).match(/\r\n|\r|\n/);
+        const previous = before.slice(0,caret).match(/\r\n|\r|\n/g) || [];
+        const ending = current ? current[0] : previous[previous.length-1] || "\n";
         await ctx.page.sendKeys([{ key: "Enter" }]);
         await ctx.page.settle(120);
         const after = await ctx.page.markdown();
+        const expected = before.slice(0,caret) + "\\" + ending + before.slice(caret);
+        if (after !== expected) failures.push({fixture:fixture.name,
+          detail:"Visual prose Enter did not create exactly one local hard-break boundary.", expected, actual:after});
 
-        // Exactly one newline inserted, and not one other character touched.
-        const strippedBefore = before.replace(/\n/g, "");
-        const strippedAfter = after.replace(/\n/g, "");
-        const newlineDelta = (after.match(/\n/g) || []).length - (before.match(/\n/g) || []).length;
-
-        if (strippedBefore !== strippedAfter) {
-          failures.push({
-            fixture: fixture.name,
-            detail: "Enter changed characters other than inserting a newline.",
-            expected: `${strippedBefore.length} non-newline characters`,
-            actual: `${strippedAfter.length} non-newline characters`,
-          });
-        } else if (newlineDelta !== 1) {
-          failures.push({
-            fixture: fixture.name,
-            detail: `Enter inserted ${newlineDelta} newline(s); the contract allows exactly one.`,
-            expected: "1",
-            actual: String(newlineDelta),
-          });
-        }
-
-        const gainedTrailingSpace = splitLines(after)
-          .map((line) => line.replace(/\r?\n$/, ""))
-          .some((line, index) => {
-            const originals = splitLines(before).map((l) => l.replace(/\r?\n$/, ""));
-            return /[ \t]$/.test(line) && !originals.includes(line);
-          });
-        if (gainedTrailingSpace) {
-          failures.push({
-            fixture: fixture.name,
-            detail: "Enter left trailing whitespace behind — a hard break written where the user asked for a plain newline.",
-          });
-        }
       }
 
       return { failures, fixturesExercised: exercised };
@@ -589,14 +563,33 @@ module.exports = [
           await ctx.page.setRawSelection(offset);
           await ctx.page.sendKeys(["w", "w", "w"]);
           await ctx.page.settle(40);
+          let warmupSamples=await ctx.page.latencies();
+          const warmupDeadline=Date.now()+1000;
+          while(warmupSamples.length<3&&Date.now()<warmupDeadline){
+            await ctx.page.settle(20);warmupSamples=await ctx.page.latencies();
+          }
+          const warmupSource=fixture.markdown.slice(0,offset)+"www"+fixture.markdown.slice(offset);
+          if(warmupSamples.length!==3||await ctx.page.markdown()!==warmupSource){
+            failures.push({fixture:`${size} lines / ${target}`,detail:"Warmup input was not acknowledged exactly before starting the measured batch.",expected:"3 samples and exactly three inserted warmup characters",actual:String(warmupSamples.length)+" samples"});
+            continue;
+          }
           const identity = await ctx.page.projectionIdentity();
           await ctx.page.resetLatencies();
           for (let sample = 0; sample < 20; sample += 1) {
             await ctx.page.sendKeys(["x"]);
             await ctx.page.settle(20);
           }
-          const samples = await ctx.page.latencies();
+          let samples = await ctx.page.latencies();
+          const sampleDeadline = Date.now() + 1000;
+          while(samples.length < 20 && Date.now() < sampleDeadline) {
+            await ctx.page.settle(20);
+            samples = await ctx.page.latencies();
+          }
           const afterIdentity = await ctx.page.projectionIdentity();
+          const measuredSource=fixture.markdown.slice(0,offset)+"www"+"x".repeat(20)+fixture.markdown.slice(offset);
+          if(await ctx.page.markdown()!==measuredSource){
+            failures.push({fixture:`${size} lines / ${target}`,detail:"Measured keyboard input changed the source by more or fewer than the twenty requested characters.",expected:measuredSource,actual:await ctx.page.markdown()});
+          }
           const p95 = samples.length === 20 ? nearestRankP95(samples) : null;
           const limit = size === 500 ? 50 : 100;
           timing.push({ engine: ctx.engine, lines: size, target, warmups: 3, samples, p95, limit });

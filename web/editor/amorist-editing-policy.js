@@ -24,8 +24,7 @@
           changed = wrapInline("code");
           break;
         case "link":
-          changed = createLink(surface);
-          break;
+          return createLink(surface).then(changed => { if (changed) notifyChanged(); return changed; });
         case "h1":
         case "h2":
         case "h3":
@@ -235,14 +234,38 @@
     return true;
   }
 
-  function createLink(surface) {
-    const href = window.prompt("URL");
-    if (!href) return false;
-    document.execCommand("createLink", false, href);
-    surface.querySelectorAll("a").forEach((link) => {
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
+  let linkDialogSerial = 0;
+  function requestLink(initial = "") {
+    return new Promise(resolve => {
+      const previous = document.activeElement, dialog = document.createElement("dialog");
+      dialog.className = "amorist-link-dialog";
+      const title=document.createElement("h2");title.id="amorist-link-title-"+(++linkDialogSerial);title.textContent="Link";
+      dialog.setAttribute("aria-labelledby",title.id);
+      const form = document.createElement("form");form.method = "dialog";
+      const label = document.createElement("label");label.textContent = "Link destination";
+      const input = document.createElement("input");input.type = "text";input.value = initial;input.required = true;
+      input.setAttribute("aria-label", "Link destination");label.append(input);
+      const cancel = document.createElement("button");cancel.type = "button";cancel.textContent = "Cancel";
+      const save = document.createElement("button");save.type = "submit";save.textContent = "Save";
+      form.append(title,label,cancel,save);dialog.append(form);document.body.append(dialog);
+      let done = false;
+      const finish = value => { if(done) return;done=true;dialog.close();dialog.remove();if(previous?.isConnected) previous.focus();resolve(value); };
+      cancel.addEventListener("click", () => finish(null));
+      dialog.addEventListener("cancel", event => {event.preventDefault();finish(null);});
+      form.addEventListener("submit", event => {event.preventDefault();if(input.value.trim()) finish(input.value.trim());});
+      dialog.showModal();input.focus();input.select();
     });
+  }
+
+  async function createLink(surface) {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return false;
+    const range = selection.getRangeAt(0).cloneRange();
+    const href = await requestLink();
+    if (!href || !surface.isConnected || !surface.contains(range.commonAncestorContainer)) return false;
+    surface.focus();selection.removeAllRanges();selection.addRange(range);
+    document.execCommand("createLink", false, href);
+    surface.querySelectorAll("a").forEach(link => {link.target="_blank";link.rel="noopener noreferrer";});
     return true;
   }
 
@@ -483,5 +506,5 @@
   }
 
   const Internals = window.AmoristInternals || (window.AmoristInternals = {});
-  Internals.EditingPolicy = { create };
+  Internals.EditingPolicy = { create, requestLink };
 })();

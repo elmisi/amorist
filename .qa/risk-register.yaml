@@ -1,14 +1,31 @@
 # amorist — risk register
 #
-# Companion to .qa/qa-contract.yaml (status: proposed). Every risk here was
-# reproduced against the repository at commit a9d7e73 — the reproductions are in
-# .qa/risks.yaml, which is the raw Discovery log. This file is the mapping:
+# Companion to the approved .qa/qa-contract.yaml. Original reproductions at
+# commit a9d7e73 remain in .qa/risks.yaml, the raw Discovery log. Later risks
+# identify their evidence below. Current verdicts are recorded in .qa/reports/.
+# This file is the mapping:
 # risk -> the requirement(s) that must fail when the risk is present.
 #
 # Audit rule: a risk with an empty verification_ids list is an uncovered risk,
 # whatever the suite reports.
 
 risks:
+  - id: R-021
+    title: Windows is claimed through a browser proxy or a non-compiling suite
+    source: repo-evidence, Windows baseline 2026-10-13
+    consequence: >
+      A missing engine declaration or Unix-only test prevents verification of
+      the new platform while a stand-in or successful build appears sufficient.
+    likelihood: high
+    impact: high
+    unacceptable: true
+    mitigation: >
+      Preserve baseline failures, use actual denied-write ACLs for failed-save
+      coverage, require WebView2 through tauri-driver, and keep the complete
+      delivery blocked until native Windows 10 VM installer acceptance passes.
+    verification_ids: [REQ-F1, REQ-G1, REQ-G2, REQ-G3]
+    status: open
+
   - id: R-001
     title: Code fence language tag discarded at parse time
     source: repo-evidence
@@ -82,7 +99,7 @@ risks:
     impact: low
     unacceptable: true
     mitigation: Verbatim pass-through, and never reparse an untouched region.
-    verification_ids: [REQ-A5, REQ-A2]
+    verification_ids: [REQ-A5, REQ-A2, REQ-I1, REQ-I2, REQ-I3]
     status: open
 
   - id: R-007
@@ -110,7 +127,7 @@ risks:
     mitigation: >
       Declare, per fixture, the tokens that must survive; convert what is
       convertible and degrade the rest to readable text.
-    verification_ids: [REQ-D1]
+    verification_ids: [REQ-D1, REQ-K1]
     status: open
 
   - id: R-009
@@ -122,8 +139,13 @@ risks:
     likelihood: low
     impact: high
     unacceptable: true
-    mitigation: Periodic working copy outside the user's file, offered on restart.
-    verification_ids: [REQ-E1, REQ-F1, REQ-F2]
+    mitigation: >
+      Session-isolated working copy outside the user's file, offered on restart.
+      Persist after 2000 ms idle or a non-postponable 5000 ms deadline; serialize
+      writes and cancel pending work on document transitions. Measure twenty
+      checkpoints per scenario on 500/1500 lines, with all completions within
+      2100/5100 ms, and recover the exact persisted text after an owned crash.
+    verification_ids: [REQ-E1, REQ-F1, REQ-F2, REQ-H1, REQ-H2, REQ-H3, REQ-H4]
     status: open
 
   - id: R-010
@@ -319,3 +341,18 @@ risks:
     note: >
       Verified by the audit phase rather than by a requirement, since it is a
       process risk rather than a product property.
+
+  - id: R-022
+    title: Preferences alter document content or misrepresent successful persistence
+    source: approved-editor-development-plan
+    consequence: >
+      Preview or a failed save changes the active editor, font changes lose the
+      editing point, or highlighting covers an entire wrapped paragraph.
+    likelihood: medium
+    impact: medium
+    unacceptable: true
+    mitigation: >
+      Isolate preview, apply only persisted settings, validate the finite values,
+      write atomically under a shared lock and measure active-line geometry.
+    verification_ids: [REQ-J1]
+    status: open

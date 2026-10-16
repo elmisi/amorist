@@ -17,6 +17,299 @@ approved_by: repository owner
 approved_on: 2026-07-28
 
 amendments:
+  - date: 2026-10-15
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      REQ-E1 recovery starts after two seconds of inactivity or no later than
+      five seconds from the first unpersisted edit during continuous input.
+      Only one write is in flight per session; later edits retain their own
+      first-unpersisted deadline. Document transitions cancel pending work.
+    why: >
+      Completes the approved recovery timing requirement rather than allowing
+      continuous typing to postpone the checkpoint indefinitely.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Automatic links expose their URI/email label in WYSIWYG while preserving
+      angle delimiters in raw source. Generic A2/B1/B2 gestures target that visible
+      label rather than requiring hidden syntax to be visible. Changed-line
+      envelopes, original-byte comparisons and physical line geometry are unchanged.
+    why: >
+      REQ-I1 implements the approved common Markdown autolinks. Raw-marker text
+      lookup would falsely reject the intended projection before performing an edit.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Save As uses the native chooser and an opaque, single-use destination
+      preparation tied to the current context. The destination timestamp or
+      absence is captured before replacement confirmation and rechecked under
+      the shared writer lock. Path, title, saved source and context change only
+      after a successful write; the existing editor and history are retained.
+      Save on an untitled document invokes this flow, including an empty document.
+    why: >
+      Implements the approved Save As and untitled Save requirements as REQ-H2,
+      preserving recovery and original identity on cancellation or failure.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      New and Open operate in the current window through a File menu and standard
+      shortcuts. Dirty work requires Save/Discard/Cancel. File-picker cancellation,
+      recovery-choice cancellation and failed preparation keep the original editor,
+      path, history and recovery. The backend reads and validates an existing file
+      before replacing context; New creates an empty untitled session without
+      recovering an unrelated untitled copy. Successful Open starts fresh history.
+    why: >
+      Adds the approved File lifecycle to the release contract as REQ-H1. Native
+      chooser transport and package-level acceptance remain separate platform gates.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Saving and Bug append share persistent standard filesystem locks in app-local
+      data. Canonical path identities use fixed FNV-1a 64-bit keys; full identities
+      are compared under lock and collisions get separate slots. Aliases, native
+      case rules and unresolved path components must route consistently before a
+      write. Waiting is bounded by five seconds. Saves recheck the destination
+      timestamp inside the lock and use unique adjacent temporaries. A destination
+      expected absent cannot replace a file created meanwhile. Log append preserves
+      a truncated tail and separates the next complete record with a newline.
+    why: >
+      Implements the approved shared writer prerequisite for File and new instances,
+      with real cross-process checks extending REQ-F1/F2 rather than weakening them.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Working copies are separate records owned by one session, including untitled
+      documents. Concurrent instances of the same path cannot overwrite or discard
+      each other's records. A live-session lease prevents recovery adoption by
+      another live editor. Multiple recoverable copies require an explicit choice;
+      choosing the saved file preserves every copy. Legacy working-copy.json is
+      retained with an exact import receipt after durable import, avoiding deletion
+      races with older writers and repeated recovery after discard. Corrupt copies
+      are retained with a warning.
+    why: >
+      Implements the approved recovery prerequisite for File actions and new windows.
+      REQ-E1 must prove isolation, explicit selection, own-record discard and untitled restart.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      A visual structural shortcut on the row after an automatically owned prose
+      boundary removes the now-unnecessary marker in the same raw transaction.
+      Undo restores the shortcut and provenance together; existing manual markers
+      remain untouched. The permitted edit envelope includes the owned preceding
+      boundary as part of the affected structure.
+    why: >
+      Implements the approved local reevaluation when prose becomes a list, heading
+      or quote, without rewriting unrelated original boundaries.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Forward Delete at a generated visual hard-break boundary joins both physical
+      rows in one transaction, removing the owned marker and full LF/CRLF/CR
+      terminator. Undo restores source and provenance. Generated escaping is
+      removed only when no longer required, preserving literal backslashes and
+      intentionally written escape sequences.
+    why: >
+      Completes the forward counterpart of the approved local boundary operation;
+      the hidden marker must not consume a separate user keypress.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      REQ-B3 now requires visual prose Enter to create a backslash hard break using
+      the local terminator, without rewriting old boundaries. Existing hard-break
+      syntax is not duplicated. A subsequent blank line removes an unnecessary
+      automatically owned marker; joining that generated boundary with Backspace
+      removes it in the same transaction. Literal backslashes and intentional
+      escaping remain protected. Source, code, metadata and table Enter stay
+      literal. Hidden hard-break syntax retains explicit source selection mapping.
+    why: >
+      Applies the approved new prose-writing rule, replacing the historical bare-LF
+      requirement before changing its checks. Structural shortcut cleanup and actual
+      recovery persistence remain required integration work before delivery.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      A new boundary uses its physical line's terminator, or the last preceding
+      terminator at an unterminated EOF, and LF when none exists. Automatic
+      hard-break ownership is explicit session metadata, never inferred merely
+      from existing backslashes. Validated metadata records generated markers
+      and escaping positions, rebases over edits and restores with undo/redo.
+      The serialized offset space is explicitly UTF-16, matching DOM selections;
+      a different encoding is rejected instead of guessed.
+      Malformed metadata cannot change source or advance the history position.
+    why: >
+      Establishes the approved provenance mechanism before enabling prose Enter
+      and cleanup. The gesture planner and actual recovery persistence still
+      require integration; the existing prose Enter check remains unchanged here.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Tab and Shift+Tab operate in both modes with a two-space default. A collapsed
+      prose/code caret inserts indentation at its position; selected physical
+      rows are indented together, preserving their original terminators. A list
+      item moves with its indented descendants and continuations, so REQ-A2's
+      permitted indent envelope includes that subtree. Shift+Tab removes up to
+      two leading spaces or one leading tab. Cursor and selection direction are
+      retained, and undo/redo restore the selection belonging to the gesture.
+      Escape closes an open find panel, otherwise it focuses the toolbar.
+    why: >
+      These are the approved keyboard semantics; the old line-only list envelope
+      and visual-only Tab handler cannot express them.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Top-level code indented by at least four columns is literal, can contain
+      genuine blank physical rows and cannot interrupt an existing prose paragraph.
+      Code context precedes heading/list/inline interpretation and Enter retains
+      indentation and the local source terminator. Setext headings style their
+      physical content rows while their underline adds no text height. A closed
+      initial front-matter region remains fully visible literal source.
+    why: >
+      Implements the approved indented-code and underlined-heading families while
+      preserving the explicit non-promise of visual interpretation for metadata.
+      Nested code and containers remain separate required work before delivery.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      All projected editable text, including code, table delimiters, physical
+      line endings and empty-line sentinels, has an explicit source interval.
+      Element boundaries around inline wrappers map outside their delimiters.
+      Hidden syntax snaps to a declared interval boundary; selection mapping
+      never guesses by searching visible text in raw Markdown. CRLF is one
+      display boundary covering both original source characters.
+      Native Select All and whole-document programmatic selection include hidden
+      structural prefixes and delimiters; replacing the selection replaces the
+      complete source document.
+    why: >
+      Completes the approved source-span mapping. The four unit assertions of
+      obsolete search helpers are replaced by real-engine selection round trips
+      and native keyboard edits over the explicit DOM boundaries.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Recovery stores automatic boundary provenance with the matching source and
+      revision, in the same atomic copy. Restart restores validated metadata before
+      editing, so a join gesture can remove generated syntax. Older copies lacking
+      metadata remain readable without inferring ownership from their Markdown.
+    why: >
+      The approved recovery mechanism must retain session provenance across a crash.
+      REQ-E1 now checks actual process restart and generated boundary cleanup.
+      Isolation per document/session and untitled recovery remain required work.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Inline rendering uses tokens carrying original source intervals, including
+      their content boundaries. Escaped punctuation stays literal; underscore
+      emphasis, nested emphasis, strikethrough and exact-width inline code
+      delimiters are supported. Rendered text nodes carry their source ranges so
+      editing repeated text uses its own occurrence, without scanning for a match.
+      An end-of-row caret outside a closing delimiter remains outside it.
+    why: >
+      The approved common Markdown base and explicit span mapping replace the
+      placeholder renderer and heuristic selection mapping. Raw HTML remains
+      escaped and original source is unchanged by rendering or mode switches.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Table classification and projection share separator offsets. Pipe characters
+      inside escaped source or a closed inline code span are cell content, including
+      code spans with exact matching delimiters longer than one backtick. An
+      unmatched opening code delimiter remains literal and does not hide separators.
+      Editing a code cell preserves surrounding source, spacing and line endings.
+    why: >
+      The approved common Markdown base requires pipes counted only outside
+      escapes and inline code; separate scans currently disagree about columns.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Wrapped list content has a hanging indent; physical indented continuation
+      rows align with their owning item. Adjacent quoted physical rows have
+      continuous quote bars, and nested quotes retain their depth on Enter.
+      Projection and mode switches preserve original source bytes, including
+      indentation and line endings. Continuation Enter retains its indentation.
+      Caret-after-marker probes measure the actual positioned marker or checkbox
+      gutter, retaining the existing requirement that the caret clears it.
+    why: >
+      The approved plan includes the reported list alignment and multiline quote
+      defects. Geometry must be verified on the actual applicable engines.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-14
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Creating a code block uses backtick delimiters longer than every backtick
+      or tilde run in its content, with a minimum of three. Pasted HTML PRE uses the
+      same rule and preserves literal code whitespace and blank lines; fragment
+      cleanup applies only outside code. Existing files are not repaired on open.
+    why: >
+      Identical nested fence runs cannot represent nested Markdown code blocks.
+      Safe generation keeps the selected or pasted content in one literal block
+      without inventing an alternative interpretation of existing source.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-13
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Code block context precedes structural and inline Markdown interpretation
+      in the projection and in input handling. Headings, list markers, tasks,
+      quotes and shorter fence runs inside a fenced block remain literal. Hidden
+      fence delimiters add zero text height, while original blank content lines
+      remain visible. Enter inside code inherits the source line terminator and
+      indentation. Opening, undo and mode changes preserve the original source.
+    why: >
+      The collected reports show code comments receiving heading styles,
+      ordered text receiving duplicate numbering and hidden fence rows adding
+      visual lines. Code context must also protect editing, not just rendering.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
+  - date: 2026-10-13
+    authorised_by: repository owner, explicit approval of the editor development plan
+    what: >
+      Windows 10 x64 joins the candidate delivery and must use its actual
+      WebView2 engine through tauri-driver and a matching Edge driver, plus
+      the Chromium stand-in. Linux and macOS checks retain their existing
+      requirements. REQ-F1 includes a real denied-write directory on Windows,
+      established with a temporary ACL on a synthetic test directory rather
+      than Unix permission bits. No test may skip this failure path.
+    why: >
+      The pre-change Windows baseline cannot compile its failed-save test
+      because it imports Unix-only APIs. The original runner also declares no
+      Windows engine. These are recorded baseline failures, not green results.
+      Delivery remains blocked until Windows engine coverage, native installer
+      acceptance in the specified VM, and all three platform gates pass.
+    source: docs/plan-amorist-editor-development-20261013-1932.md, approved 2026-10-13
+
   - date: 2026-08-17
     authorised_by: repository owner, after hands-on testing of version 0.10.6
     what: >
@@ -206,8 +499,12 @@ environments:
     description: >
       macOS, Tauri 2 with WKWebView. The publishing workflow builds a dmg on
       macos-latest, universal target.
-    note: >
-      Windows is not built by .github/workflows/build.yml and is out of scope.
+  - id: ENV-windows
+    description: >
+      Windows 10 x64, Tauri 2 with WebView2. The candidate requires a per-user
+      installer and actual installation, upgrade and uninstall verification in
+      the specified VMware guest. Until the build workflow and engine adapter
+      implement this scope, the delivery gate is blocked, never skipped green.
   - id: ENV-checks
     description: >
       The editor checks run once per applicable engine, from one set of check
@@ -309,7 +606,7 @@ requirements:
           affected_lines: selected-lines-plus-fence-lines
           line_delta: 2
         - id: indent
-          affected_lines: affected-list-item
+          affected_lines: affected-list-item-subtree
           line_delta: 0
         - id: undo-redo
           affected_lines: reverted-transaction
@@ -331,7 +628,7 @@ requirements:
             into one, plus whatever lines the typed text itself introduces
           - a toolbar action or keyboard shortcut (bold, heading, list marker,
             Tab / Shift-Tab indent) -> only the lines the affected construct
-            occupies; indenting one list item changes that item's line alone,
+            occupies; indenting one list item changes that item and its descendants,
             not the rest of the list
           - code-block toolbar action -> the selected lines plus the two fence
             lines the command adds
@@ -647,21 +944,23 @@ requirements:
 
   - id: REQ-B3
     statement: >
-      In ordinary prose, Enter inserts a bare newline at the caret. It does not
-      create a paragraph break and never writes the two-space hard break.
+      In ordinary visual prose, Enter inserts a backslash hard break at the caret
+      using the local terminator. Existing physical boundaries remain verbatim.
       Structural list behavior is specified separately by REQ-B6.
     category: invariant
-    origin: user-statement (Q-010 answer, D-018)
+    origin: approved editor development plan, 2026-10-13
     motivation: >
-      Matches how Sublime and Zed behave, and avoids writing trailing spaces that
-      the user's own Zed deletes on save.
+      Preserves the visual line break in conventional Markdown without rewriting
+      old paragraphs or relying on trailing spaces. Generated markers retain
+      provenance so later local cleanup preserves intentional escaping.
     risk_id: R-015
     verification:
       type: deterministic
       evidence_required: [the bytes written after a single Enter keypress]
       success_condition: >
-        Exactly one "\n" is inserted at the caret offset. No spaces are added
-        before it, and no blank line after it.
+        Exactly one backslash plus the local terminator is inserted at a prose
+        midpoint. Original characters and boundaries remain unchanged. Blank-line
+        creation and generated-marker cleanup are covered by the native prose probes.
     severity: blocking
     false_positive_risk: low
     automation: full
@@ -1028,7 +1327,9 @@ requirements:
     statement: >
       Work not yet saved survives an abrupt termination. A working copy is
       written periodically to amorist's own location and offered for recovery on
-      the next start.
+      the next start. Recovery is scheduled after 2000 ms of inactivity with a
+      non-postponable 5000 ms deadline from the first unpersisted edit. Writes
+      are serialized per session and preserve the captured document context.
     category: invariant
     origin: user-statement (Q-017 answer, D-024)
     motivation: >
@@ -1039,10 +1340,21 @@ requirements:
       type: deterministic
       evidence_required:
         - text typed, the process killed without a save, the recovered content
+        - twenty real disk checkpoints per idle/continuous scenario for 500 and 1500 lines
+        - all checkpoint completions within 2100 ms idle or 5100 ms continuous from the first pending edit
+        - serialized slow writes, clean-state discard and cancellation of stale contexts
+        - generated boundary metadata persisted with its source and cleanup after restart
+        - simultaneous same-path sessions, explicit recovery choice, own-copy discard and untitled restart
       success_condition: >
         The recovered text matches what was typed, verbatim, up to the last
         working-copy interval. That interval MUST be stated in the
-        implementation and asserted by the check.
+        implementation and asserted by the check. For each document size and
+        input scenario, all twenty measured completions stay within 2100 ms
+        after inactivity or 5100 ms during continuous input; no slow sample is
+        hidden by averaging. Only one persistence is in flight per session.
+        Explicit automatic boundary
+        ownership also survives restart; a recovered generated break is removed
+        by a join gesture while legacy copies without metadata remain readable.
     severity: blocking
     false_positive_risk: low
     automation: full
@@ -1093,9 +1405,12 @@ requirements:
       evidence_required:
         - a save into a read-only directory, a save with the tmp path blocked
         - the directory listing afterwards
+        - unique temporary allocation with an occupied candidate and preserved foreign bytes
       success_condition: >
         The original file is unchanged, no .amorist-tmp file remains, and the
         error is reported to the user rather than swallowed.
+        An occupied temporary name is retried without deleting or modifying the
+        existing entry. Failed allocation never deletes someone else's temporary.
     severity: blocking
     false_positive_risk: low
     automation: full
@@ -1118,9 +1433,19 @@ requirements:
       evidence_required:
         - a file changed on disk between open and save
         - the returned error, and the file's bytes afterwards
+        - a second process waiting for the first writer, checking mtime after lock acquisition
+        - filesystem aliases, collision routing, newly created and externally deleted destinations
       success_condition: >
         Save fails with a conflict, the file on disk is untouched, and it is
         overwritten only after the forced retry.
+        A second instance also detects the first instance's completed save. A
+        path expected absent does not overwrite a file created meanwhile; an
+        externally deleted open file is not silently recreated.
+        Editing while a save waits for its lock retains the newer editor text;
+        only the captured snapshot becomes saved and newer changes remain dirty.
+        Recovery also completes within its stated interval while that save is
+        pending, then rebases the newer copy onto the committed snapshot. Commands
+        from an obsolete document context cannot save or discard the current one.
     severity: blocking
     false_positive_risk: medium
     false_positive_note: >
@@ -1165,12 +1490,14 @@ requirements:
       The editor checks run on the engines the product actually ships with, not
       only on a stand-in. Which engines those are is declared per platform: on
       Linux, WebKitGTK through its own WebDriver server; on macOS, Safari
-      through the system's WebDriver server. Every check in families A, B, C and
+      through the system's WebDriver server; on Windows, WebView2 through
+      tauri-driver and a matching Microsoft Edge driver. Every check in families A, B, C and
       D runs unchanged on every engine applicable to the platform the suite is
       running on, and must pass on all of them.
     platform_engines:
       linux: [webkitgtk, chromium]
       macos: [safari, chromium]
+      windows: [webview2, chromium]
     not_applicable_is_not_missing: >
       An engine that does not exist on the current platform is NOT a failure —
       Safari on Linux is not a missing engine, it is an inapplicable one. An
@@ -1272,3 +1599,294 @@ requirements:
       wrapper does not support macOS, and a proxy engine would be a different
       build of WebKit rather than the one that ships — which would be claiming
       coverage instead of having it.
+
+  - id: REQ-H1
+    statement: >
+      New and Open change the current document only after successful preparation
+      and the required Save/Discard/Cancel choice. Cancelling or failing keeps the
+      original path, text, editor history and recovery. New is empty and untitled;
+      successful Open resets history and preserves the selected file's bytes.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: >
+      File actions must not turn a cancelled dialog or failed read into lost work.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - native app workflows for picker cancellation, dirty-choice cancellation and invalid reads
+        - unchanged original editor identity, undo/redo, path and recovery
+        - New/Discard, New/Save and successful Open with fresh history
+      success_condition: >
+        Every cancelled or failed transition preserves the original working session.
+        Explicit Save succeeds before transition; failed Save prevents it. Open never
+        creates a missing file. Prepared context replaces the original only on success.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      The Linux native app check controls the chooser's returned path to exercise
+      lifecycle cases deterministically. Actual native chooser interaction on each
+      published platform is still required by the plan's package acceptance gates.
+
+  - id: REQ-H2
+    statement: >
+      Save As preserves the current editor, history and recovery on cancellation
+      or failure. Successful writing changes its backend identity and saved source
+      while retaining history. Save of an untitled document opens Save As; new
+      documents use LF and a missing extension defaults to .md.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: >
+      Renaming or saving an untitled document must not lose work or replace a
+      destination changed during confirmation.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - native app chooser/replacement cancellation and failed Save As with retained original identity
+        - destination changed or created after preparation, without forced overwrite
+        - successful Save As with the same editor, working undo/redo and a subsequent Save to the new path
+        - empty and edited untitled Save, and Save before New
+      success_condition: >
+        Failed or cancelled Save As leaves source, path, history and recovery
+        intact. Only a successful write changes identity. The captured destination
+        state is checked independently of the previous file's mtime. Untitled
+        Save chooses a path; cancellation prevents a pending New/Open transition.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Linux automation drives the built application with controlled chooser and
+      confirmation results. Actual native chooser interaction on each published
+      platform remains required by the package acceptance gates.
+
+  - id: REQ-H3
+    statement: >
+      New window and Open in new window launch an independent process without
+      changing or prompting to discard the original document. The same package
+      and debug mode are inherited, with filenames passed as structured arguments.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Separate windows must preserve unsaved work and survive closure of their launcher.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - native launch from a dirty editor with original source and recovery retained
+        - separate process arguments for Unicode/spaces and inherited debug mode
+        - child remains alive after the launching window closes
+        - New window creates a fresh untitled lease without adopting an older untitled copy
+      success_condition: >
+        Launch cancellation or failure preserves the original session. Successful
+        launch uses an independent process and does not require a dirty-document decision.
+        Explicit New window retains unrelated recovery copies and starts empty.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Linux native automation checks process isolation and launch arguments.
+      AppImage, Windows and macOS bundle launch, Finder events and rendered
+      child-document acceptance remain separate mandatory package gates.
+
+  - id: REQ-H4
+    statement: >
+      macOS Finder events survive frontend startup. Initial file arguments and
+      duplicate initial events open once; the first event can fill an unused
+      initial window. Further events launch independent instances and preserve
+      the current document. Missing Finder targets report an error without creation.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Finder may deliver files before the webview exists or after a document is already in use.
+    risk_id: R-009
+    verification:
+      type: deterministic
+      evidence_required:
+        - queued initial events, canonical alias deduplication and retained request order
+        - first unused window filled, subsequent events launched independently
+        - events deferred during dialogs and file actions without replacing unsaved work
+        - actual macOS bundle Finder/Dock startup and later-open acceptance
+      success_condition: >
+        No initial event is lost or opened twice. A document in use is never
+        replaced by Finder. Invalid requests show an error and preserve originals.
+    severity: blocking
+    false_positive_risk: medium
+    automation: partial
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Rust queue and frontend routing tests cover deterministic event order and
+      document preservation. Actual Finder event timing, Dock behavior and bundle
+      launch require the mandatory macOS package acceptance gate.
+
+  - id: REQ-I1
+    statement: >
+      URI and email autolinks render as links outside literal code, retain exact
+      source intervals and remain editable with undo and mode round-trips.
+      Angle delimiters and plain URL punctuation remain in the original source.
+      Executable or unsupported URI schemes never become browser href attributes.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: The common Markdown base includes automatic links and exact source mapping.
+    risk_id: R-006
+    verification:
+      type: deterministic
+      evidence_required:
+        - URI/email angle autolinks and plain URL/email recognition
+        - native DOM-caret edits at repeated labels with unchanged surrounding bytes
+        - code and escaped angle delimiters stay literal
+        - undo and mode round-trips retain raw source and CRLF
+        - dangerous scheme attributes and raw HTML cannot execute document text
+      success_condition: >
+        Automatic links expose the expected label and safe destination, with
+        explicit source intervals. Editing changes only the selected raw span.
+        Literal code, original delimiters and untouched bytes remain unchanged.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: Native external activation is a separate approved feature and package gate.
+
+  - id: REQ-I2
+    statement: >
+      Inline-link grammar separates destinations and titles, honors escaped and
+      balanced parentheses, angle destinations with spaces and character references.
+      Row-local projection preserves raw intervals, including styled or empty labels.
+      Nested links and angle autolinks take precedence over an enclosing link.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Correct destination grammar and source spans are needed for common inline and reference links.
+    risk_id: R-006
+    verification:
+      type: deterministic
+      evidence_required:
+        - destination/title grammar with escapes, named/numeric character references and invalid syntax
+        - nested inline links and angle autolinks without nested DOM anchors
+        - native editing, undo and mode round-trip of styled and empty labels with CRLF
+        - source and inert metadata retained without executable attributes
+      success_condition: >
+        Grammar yields the declared destination and title without rewriting source.
+        Projected labels remain editable at their exact raw intervals. Malformed
+        syntax remains readable; metadata cannot create executable HTML attributes.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      This gate verifies grammar and row-local projection. Cross-row inline
+      projection, reference definitions and native activation remain required
+      separate work in the approved plan.
+
+  - id: REQ-I3
+    statement: >
+      Reference links resolve full, collapsed and shortcut labels against the
+      first matching document definition, using Unicode case folding and whitespace
+      normalization. Definition metadata remains editable without source rewriting.
+      Editing a definition updates dependent prose and tables, preserving unrelated DOM.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Reference links belong to the approved common Markdown base.
+    risk_id: R-006
+    verification:
+      type: deterministic
+      evidence_required:
+        - full, collapsed and shortcut references, Unicode labels and first-definition precedence
+        - unresolved labels, literal code, escaped syntax and definitions that cannot interrupt prose
+        - multiline destination/title metadata and malformed title fallback
+        - native label/destination edits, dependent table refresh and unrelated DOM preservation
+        - exact CRLF, undo and mode round-trip
+      success_condition: >
+        Resolved labels expose the declared safe destination and title at exact raw
+        intervals. Malformed and unresolved syntax remains readable. Native edits
+        affect only their selected source span; undo restores source and resolution.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Cross-row inline projection, complete nested containers and native external
+      activation remain additional mandatory work under the approved plan.
+
+  - id: REQ-J1
+    statement: >
+      Settings provides an isolated preview, approved font sizes/scales/palette,
+      defaults and transactional Save/Cancel. Failed writes retain the dialog and
+      applied preferences; successful writes and focus reload update typography
+      without changing Markdown or selection. Only the active visual line is highlighted.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Global preferences must change presentation without damaging the document.
+    risk_id: R-022
+    verification:
+      type: deterministic
+      evidence_required:
+        - isolated preview, cancel, failed save, retry and focus reload with controlled backend responses
+        - common source/visual font size, proportional headings and separate table/code factors
+        - unchanged source and selection while preferences change
+        - soft-wrap, backward selection, source rows and container-boundary Select All
+        - hidden overlay without focus or in dialogs, invisible markers and horizontal clipping
+        - destroyed preview cannot change the main viewport
+      success_condition: >
+        Every applicable browser engine passes preference interaction and measured
+        geometry probes. Preview/cancellation never writes preferences. Only successful
+        Save applies new values. The overlay follows one active line and source stays exact.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      This gate tests the real frontend with controlled backend responses. Atomic
+      persistence has separate Rust tests. Actual native IPC, concurrent instances,
+      restart and package acceptance remain mandatory delivery gates on all platforms.
+
+  - id: REQ-K1
+    statement: >
+      Copy/cut/paste preserves selected Markdown and formatting through a validated
+      internal payload and semantic HTML/plain fallbacks. Source/code/plain-paste
+      remain literal; empty clipboard data and failed writes never delete selected work.
+      Incoming reference definitions must not change existing link destinations.
+    category: invariant
+    origin: approved editor development plan, 2026-10-13
+    motivation: Clipboard operations must preserve useful structure across modes and documents.
+    risk_id: R-008
+    verification:
+      type: deterministic
+      evidence_required:
+        - partial inline formatting, source copy/cut, cut undo and rejected clipboard writes
+        - internal payload preference, malformed payload fallback and literal source/code/plain paste
+        - empty paste preservation and HTML-only source fallback
+        - copied code/heading/list/quote context and safe fences
+        - reference dependencies, destination collisions and table-cell references
+        - semantic HTML fallback for links/titles, tables, task states and ordered numbers
+      success_condition: >
+        Every applicable browser engine passes the real editor-handler probes with
+        controlled clipboard data. Untouched source remains exact, undo restores edits,
+        selected formatting survives and existing reference destinations stay unchanged.
+    severity: blocking
+    false_positive_risk: low
+    automation: full
+    estimated_cost: medium
+    currently_holds: false
+    status: confirmed
+    coverage_note: >
+      Controlled clipboard data is not proof of native clipboard transport. Real MIME
+      support, multi-window transfer, shortcuts, nested containers and relative resource
+      context remain mandatory additional delivery work on all published webviews.

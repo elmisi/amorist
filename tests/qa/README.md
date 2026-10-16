@@ -12,12 +12,38 @@ whatever the suite reports.
 node tests/qa/run.js                    # everything, on both engines
 node tests/qa/run.js --only A           # one family
 node tests/qa/run.js --engine chromium  # one engine, for debugging only
+node tests/editor-code-context.test.js # code projection/input and safe fence creation
 ```
+
+On Linux, after building the native application, the following additional
+gates run the real executable with isolated temporary documents and app data:
+
+```bash
+GDK_BACKEND=x11 xvfb-run -a node tests/editor-clipboard-native.test.js
+GDK_BACKEND=x11 xvfb-run -a python3 tests/editor-review-loop-native.test.py
+```
+
+Set `AMORIST_QA_APPLICATION` to a release executable or AppImage to test that
+artifact instead of the debug binary. For an AppImage without FUSE, also set
+`APPIMAGE_EXTRACT_AND_RUN=1`. The clipboard test transfers a selection between
+two real processes, checks trusted paste events, source/plain paste and cut
+with Undo. The review test runs the actual review script through an automation
+adapter that launches the specified application, saves a real Bug, interrupts
+the runner without killing the window, closes through the native window
+protocol, then verifies resumption and completed-round behavior. It rejects
+a close request with a mismatched window PID. These gates do not certify
+system installation, native file-picker interaction, or macOS Finder events.
 
 The result lands in `.qa/reports/last-run.json`: a verdict per requirement per
 engine, and for every failure the fixture, the byte offset or line number, and
 the two values that differ. A failure that cannot name where it happened is not
 a usable failure.
+
+The standalone code-context regression runs on every applicable engine. It
+checks literal Markdown-looking code, zero-height fence markers, original blank
+lines, keyboard input and undo, safe generated fences and HTML PRE whitespace.
+The reusable QA workflow also runs the codec, toolbar and source-position tests
+before the contract suite. A missing applicable engine fails these probes.
 
 Exit status is non-zero if and only if a blocking requirement failed **or a
 check could not run**. There is no third state.

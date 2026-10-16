@@ -116,17 +116,46 @@
 .amorist-wysiwyg-h6 { color: var(--muted, #68717d); font-size: 13px; }
 
 .amorist-wysiwyg-quote {
-  border-left: 3px solid var(--accent, #246b54);
+  display: block;
+  position: relative;
   color: #40566b;
-  padding-left: 8px;
+  padding-inline-start: calc(var(--quote-depth, 1) * 11px);
+}
+
+.amorist-wysiwyg-quote::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: calc(var(--quote-depth, 1) * 11px);
+  background: repeating-linear-gradient(to right, var(--accent, #246b54) 0 3px, transparent 3px 11px);
+  pointer-events: none;
+}
+
+.amorist-wysiwyg-list-item,
+.amorist-wysiwyg-list-continuation {
+  display: block;
+  position: relative;
+  padding-inline-start: var(--list-content-indent, 1.4em);
 }
 
 .amorist-wysiwyg-list-item::before {
   color: var(--muted, #68717d);
   content: attr(data-marker);
-  display: inline-block;
-  margin-left: -1.35em;
-  width: 1.15em;
+  position: absolute;
+  inset-inline-start: calc(var(--list-content-indent) - var(--list-marker-width));
+  width: calc(var(--list-marker-width) - 0.25em);
+  text-align: right;
+}
+
+.amorist-wysiwyg-quote-list::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: calc(var(--quote-depth, 1) * 11px);
+  background: repeating-linear-gradient(to right, var(--accent, #246b54) 0 3px, transparent 3px 11px);
+  pointer-events: none;
 }
 
 .amorist-wysiwyg-list-item.amorist-wysiwyg-ordered::before {
@@ -134,11 +163,19 @@
 }
 
 .amorist-wysiwyg-task {
-  display: inline;
+  display: block;
+}
+
+.amorist-wysiwyg-task::before {
+  content: none;
 }
 
 .amorist-wysiwyg-task .amorist-task-checkbox {
-  margin-right: 9px;
+  position: absolute;
+  inset-inline-start: calc(var(--list-content-indent) - 22px);
+  top: 0.2em;
+  margin-right: 0;
+  transform: none;
 }
 
 .amorist-wysiwyg-task .amorist-task-content {
@@ -165,11 +202,53 @@
   color: var(--muted, #68717d);
 }
 
+.amorist-wysiwyg-code-block > .amorist-wysiwyg-fence,
+.amorist-wysiwyg-setext-delimiter {
+  display: block;
+  height: 0;
+  line-height: 0;
+  font-size: 0;
+  overflow: hidden;
+}
+
 .amorist-wysiwyg-code,
 .amorist-wysiwyg-table {
   color: #2b3a47;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
+
+.amorist-wysiwyg-quoted-code {
+  border-left: 3px solid var(--muted, #68717d);
+  padding-left: calc(var(--quote-depth, 1) * 1ch);
+}
+
+.amorist-editor-surface .amorist-wysiwyg-quoted-code.amorist-wysiwyg-quote-list-code {
+  font-size: var(--amorist-base-font-size, 16px);
+  font-family: inherit;
+  border-left: 0;
+  padding-left: var(--list-content-indent);
+  background-image: repeating-linear-gradient(to right, var(--accent, #246b54) 0 3px, transparent 3px 11px);
+  background-size: calc(var(--quote-depth, 1) * 11px) 100%;
+  background-repeat: no-repeat;
+}
+
+.amorist-editor-surface .amorist-wysiwyg-direct-list-code {
+  position: relative;
+  font-size: var(--amorist-base-font-size, 16px);
+  font-family: inherit;
+  padding-inline-start: var(--list-content-indent);
+}
+.amorist-wysiwyg-direct-list-code::before {
+  content: attr(data-marker);
+  position: absolute;
+  inset-inline-start: calc(var(--list-content-indent) - var(--list-marker-width));
+  top: 16px;
+  width: calc(var(--list-marker-width) - .25em);
+  text-align: right;
+  color: var(--muted, #68717d);
+}
+.amorist-wysiwyg-direct-list-code.amorist-wysiwyg-task::before { content: none; }
+.amorist-wysiwyg-direct-list-code > .amorist-task-checkbox { top: 16px; }
 
 .amorist-wysiwyg-code {
   white-space: pre;
@@ -185,10 +264,19 @@
   box-sizing: content-box;
 }
 
+/* Retain delimiter characters and their source offsets for editing/copying,
+   while drawing the header divider as a continuous line. */
+.amorist-wysiwyg-table-delimiter {
+  color: transparent;
+  background: linear-gradient(var(--border, #b8c2ca), var(--border, #b8c2ca)) no-repeat center / 100% 1px;
+}
+
+/* A thematic break already owns a physical row. Extra margins manufacture
+   blank visual rows beyond the Markdown's actual empty lines. */
 .amorist-wysiwyg-rule {
   border-top: 1px solid #ccc;
-  display: inline-block;
-  margin: 0.65em 0;
+  display: block;
+  margin: 0;
   min-width: 100%;
 }
 
@@ -436,3 +524,68 @@ mark.amorist-find-current {
   background: #f0a020;
   color: #fff;
 }
+
+/* Global preferences affect document text, never toolbar controls. */
+.amorist-editor .amorist-source-line { font-size: var(--amorist-base-font-size, 16px); }
+.amorist-editor .amorist-wysiwyg-h1, .amorist-editor-surface h1 { font-size: calc(var(--amorist-base-font-size, 16px) * 2); }
+.amorist-editor .amorist-wysiwyg-h2, .amorist-editor-surface h2 { font-size: calc(var(--amorist-base-font-size, 16px) * 1.5); }
+.amorist-editor .amorist-wysiwyg-h3, .amorist-editor-surface h3 { font-size: calc(var(--amorist-base-font-size, 16px) * 1.1875); }
+.amorist-editor .amorist-wysiwyg-h4, .amorist-editor-surface h4 { font-size: var(--amorist-base-font-size, 16px); }
+.amorist-editor .amorist-wysiwyg-h5, .amorist-editor-surface h5 { font-size: calc(var(--amorist-base-font-size, 16px) * .875); }
+.amorist-editor .amorist-wysiwyg-h6, .amorist-editor-surface h6 { font-size: calc(var(--amorist-base-font-size, 16px) * .8125); }
+.amorist-editor .amorist-wysiwyg-code { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-code-scale, 1)); }
+.amorist-editor .amorist-wysiwyg-table { font-size: calc(var(--amorist-base-font-size, 16px) * var(--amorist-table-scale, .875)); }
+.amorist-editor .amorist-editor-source { font: var(--amorist-base-font-size, 16px)/var(--amorist-source-line-height, 26px) "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+
+.amorist-editor { position: relative; isolation: isolate; }
+.amorist-editor-surface, .amorist-editor-source { position: relative; z-index: 1; }
+.amorist-current-line { position: fixed; z-index: 0; pointer-events: none; background: var(--amorist-current-line-color, #eef1f4); }
+.amorist-current-line[hidden] { display: none; }
+.amorist-highlight-current-line .amorist-editor-source { background: transparent; }
+.amorist-wysiwyg-block { isolation: isolate; }
+.amorist-wysiwyg-block > .amorist-source-line { position: relative; z-index: 1; }
+.amorist-image-atom { display: inline-block; max-width: 100%; vertical-align: middle; }
+.amorist-image-fallback { color: var(--muted, #68717d); overflow-wrap: anywhere; }
+.amorist-image { display: block; max-width: 100%; max-height: min(55vh, 480px); object-fit: contain; }
+.amorist-image[hidden], .amorist-image-fallback[hidden] { display: none; }
+
+.amorist-link-dialog {
+  box-sizing: border-box;
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border: 1px solid var(--border, #d8dee6);
+  border-radius: 10px;
+  padding: 24px;
+  background: var(--panel, #fff);
+  color: var(--text, #1c232b);
+  font: 16px/1.5 system-ui, sans-serif;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 18%);
+}
+.amorist-link-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+.amorist-link-dialog form { display: grid; grid-template-columns: 1fr auto; gap: 20px 10px; }
+.amorist-link-dialog h2 { grid-column: 1 / -1; margin: 0; font-size: 20px; }
+.amorist-link-dialog label { grid-column: 1 / -1; display: grid; gap: 8px; font-size: 14px; font-weight: 600; }
+.amorist-link-dialog input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border, #d8dee6);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font: 16px/1.5 system-ui, sans-serif;
+  color: inherit;
+  background: var(--panel, #fff);
+}
+.amorist-link-dialog button {
+  border: 1px solid var(--border, #d8dee6);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font: inherit;
+  cursor: pointer;
+  background: var(--panel, #fff);
+  color: inherit;
+}
+.amorist-link-dialog button[type="button"] { justify-self: end; }
+.amorist-link-dialog button[type="submit"] { background: var(--accent, #246b54); border-color: var(--accent, #246b54); color: #fff; }
+.amorist-link-dialog :is(input, button):focus-visible { outline: 2px solid var(--accent, #246b54); outline-offset: 2px; }

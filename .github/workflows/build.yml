@@ -1,10 +1,21 @@
 name: Build
 
 on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Explicitly publish the fully verified delivery
+        type: boolean
+        default: false
+        required: true
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: write
@@ -33,7 +44,16 @@ jobs:
             tauri_cli_asset: cargo-tauri-aarch64-apple-darwin.zip
             artifact_name: amorist-dmg
             artifact_glob: src-tauri/target/universal-apple-darwin/release/bundle/dmg/amorist_*.dmg
+          - os: windows-latest
+            bundle: nsis
+            target: x86_64-pc-windows-msvc
+            tauri_cli_asset: cargo-tauri-x86_64-pc-windows-msvc.zip
+            artifact_name: amorist-windows-setup
+            artifact_glob: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/amorist_*-setup.exe
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +62,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev heif-gdk-pixbuf \
+            libheif-plugin-aomdec webkit2gtk-driver xvfb bubblewrap
+
+      - name: Enable isolated decoder tests on the ephemeral Linux runner
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          bwrap --ro-bind / / --proc /proc --dev-bind /dev /dev -- /bin/true
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -53,6 +82,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
           key: ${{ matrix.os }}-${{ matrix.target }}
 
       - name: Install Tauri CLI
@@ -74,7 +104,7 @@ jobs:
               tmp=$(mktemp -d)
               curl -fsSL "$url" -o "$tmp/tauri.zip"
               unzip -q -o "$tmp/tauri.zip" -d "$dest"
-              chmod +x "$dest/cargo-tauri"
+              chmod +x "$dest"/cargo-tauri*
               rm -rf "$tmp"
               ;;
           esac
@@ -86,11 +116,86 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           VERSION=$(tr -d '[:space:]' < VERSION)
-          if [ -n "${{ matrix.target }}" ]; then
+          if [ "${{ matrix.bundle }}" = "appimage" ]; then
+            amorist_bundle_config="$RUNNER_TEMP/amorist-appimage-decoders.json"
+            python3 src-tauri/linux/prepare-appimage.py "$amorist_bundle_config"
+            cargo tauri build --bundles appimage --config "$amorist_bundle_config" --config "{\"version\": \"$VERSION\"}"
+          elif [ -n "${{ matrix.target }}" ]; then
             cargo tauri build --bundles "${{ matrix.bundle }}" --target "${{ matrix.target }}" --config "{\"version\": \"$VERSION\"}"
           else
             cargo tauri build --bundles "${{ matrix.bundle }}" --config "{\"version\": \"$VERSION\"}"
           fi
+
+      - uses: actions/setup-node@v4
+        if: matrix.bundle == 'appimage'
+        with:
+          node-version: '22'
+
+      - name: Install native AppImage QA driver
+        if: matrix.bundle == 'appimage'
+        run: cargo install tauri-driver --version 2.0.6 --locked
+
+      - name: Verify packaged images without the host AV1 decoder
+        timeout-minutes: 5
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/tests/qa/lib/no-host-av1.sh" \
+          AMORIST_CODEC_QA_BINARY="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-local-image-native.test.js
+
+      - name: Verify packaged preferences and clean native restarts
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-settings-native.test.js
+
+      - name: Verify packaged review loop and native Bug capture
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a python3 tests/editor-review-loop-native.test.py
+
+      - name: Verify packaged clipboard across application processes
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-clipboard-native.test.js
+
+      - name: Verify packaged recovery preserves automatic boundary ownership
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-boundaries-native.test.js
+
+      - name: Verify packaged recovery deadlines on real disk
+        if: matrix.bundle == 'appimage'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          AMORIST_QA_APPLICATION="$PWD/src-tauri/target/release/bundle/appimage/amorist_${VERSION}_amd64.AppImage" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-deadline-native.test.js
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -106,10 +211,13 @@ jobs:
 
   release:
     needs: [build, qa]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Require completed development delivery
+        run: python3 scripts/check-delivery-gate.py
 
       - name: Download artifacts
         uses: actions/download-artifact@v4

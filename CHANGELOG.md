@@ -4,6 +4,134 @@ All notable changes to amorist are documented in this file. The format is based 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - Unreleased
+
+### Fixed
+- Command+Shift+V reads plain clipboard text on macOS WebKit when the native
+  view does not emit paste, and discards delayed reads after document, selection
+  or focus changes. Clipboard denial leaves the document unchanged.
+- Thematic breaks preserve the source blank-line spacing instead of adding
+  vertical margins. Link editing uses a spaced, responsive dialog with a
+  full-width destination field and aligned Save/Cancel buttons.
+- Review progress now survives build and version changes, including legacy
+  completed files, while retaining per-build history and identity checks.
+  Bug reports can be copied into a deduplicated processing queue without
+  altering original captures or the review counter.
+- Continuing without startup recovery leaves the initial empty macOS window
+  available for the first Finder file. Further files open in independent windows;
+  an explicitly recovered unnamed copy retains its own window even when empty.
+- Recovery checkpoints can no longer be postponed indefinitely by continuous
+  input: a two-second idle timer has a five-second first-pending deadline.
+  Writes are serialized, subsequent edits retain their own deadline, and returning
+  to saved content removes the copy after any in-flight write finishes.
+- Shift+Arrow selection across an image recognizes the physical arrow code when
+  Safari supplies a control character in the key value, preserving backward selection.
+- Inline links separate destinations from titles, support escaped/balanced
+  parentheses and angle destinations with spaces, and decode character references
+  once. Nested links and angle autolinks take precedence over an enclosing link;
+  empty labels now retain an editable source position.
+- URI/email autolinks and plain URLs use explicit source intervals, preserve
+  surrounding delimiters and punctuation, and remain literal inside code.
+  Unsupported executable schemes are kept readable without an active browser href.
+- macOS Finder opens are queued until the frontend is ready. Initial file aliases
+  are deduplicated; an unused initial window accepts the first request and later
+  requests launch independent instances. Invalid targets report an error.
+- Explicit New window starts a fresh untitled lease and preserves older untitled
+  recovery copies. macOS launcher failures now propagate to the originating window.
+- New window and Open in new window launch another process with inherited debug
+  mode and structured filename arguments, preserving the original dirty session.
+  Launches use the original AppImage or executable, and `open -n` for macOS bundles.
+- Save As and untitled Save use a native destination chooser, retain editor
+  history, and change path/title only after successful writing. Cancellation,
+  access denial and a destination changed during confirmation preserve the old
+  session. New filenames without an extension default to `.md`.
+- The File menu creates an untitled document and opens Markdown with standard
+  shortcuts. Save/Discard/Cancel, cancelled pickers and recovery choices preserve
+  the current editor; failed reads keep its text, history, path and recovery.
+  Successful Open starts fresh history, and New keeps unrelated recovery copies.
+- Saves from different instances share a persistent path lock and recheck the
+  destination timestamp after acquiring it. Unique adjacent temporary files
+  preserve occupied entries; new-file saves do not replace a file created meanwhile.
+  Canonical aliases, native casing and lock-key collisions are handled explicitly.
+- Concurrent Bug reports keep complete records separate, including after a
+  previously interrupted log entry, while preserving the original log bytes.
+- File I/O runs off the UI thread. Edits made while Save waits remain modified;
+  recovery meets its interval and keeps newer content when the captured snapshot
+  becomes saved. Obsolete document callbacks cannot modify the current context.
+- Recovery records are isolated per session, including untitled documents. Multiple
+  copies of the same file require a choice, and discard affects only the chosen copy.
+  Existing recovery files migrate with an exact receipt, retaining the original and
+  preventing discarded imported work from reappearing on the next launch.
+- Launching without a file opens an untitled document. Saving cancels pending recovery
+  timers, and a recovery cleanup failure is reported separately from a successful save.
+- Recovery copies retain explicit automatic line-break ownership alongside the
+  matching source revision. Older copies remain readable without inferring ownership.
+- Fenced code keeps heading, list, task and quote syntax literal in rendering
+  and editing. Enter retains its source line ending; Backspace and paste use
+  the same code context as the projection.
+- Hidden fence delimiters add no text height; original blank code lines remain
+  visible. Regression probes run on WebKitGTK, Safari and Chromium.
+- Newly created code blocks use delimiters longer than all backtick runs in
+  their content, including tilde runs. Pasted HTML PRE keeps literal whitespace and blank lines.
+- Wrapped list text and indented physical continuations align with the item
+  content. Task checkboxes occupy the marker gutter. Adjacent quote bars join,
+  and nested quote Enter retains its depth. Structural Enter inherits the local
+  line ending.
+- Table classification and visual columns share separator offsets, keeping
+  escaped pipes and pipes in closed inline code spans inside their cells.
+- Inline tokens retain original source and content ranges. Escaped punctuation,
+  underscore emphasis, nested emphasis, strikethrough and variable-width inline
+  code render without placeholder substitution. Mapped text nodes keep editing
+  attached to the correct occurrence when content repeats or earlier rows change.
+- Selection uses explicit source intervals for code, table markers, line
+  endings and empty rows, including boundaries outside inline wrappers.
+  Select All includes hidden Markdown prefixes and delimiters.
+- Top-level indented code keeps literal markers, internal blank rows and local
+  line endings. Setext titles render without extra delimiter height; changing
+  the underline level updates the dependent title. Closed initial front matter
+  stays visible literal source.
+- Tab and Shift+Tab work in both modes, preserving source terminators and
+  selection direction. List indentation moves descendants with their item;
+  prose and code insert two spaces at the caret. Undo/redo restores the gesture's
+  selection, and Escape returns focus to the toolbar.
+- Visual prose Enter creates a local backslash hard break with the existing
+  terminator. A subsequent blank line or Backspace join removes its generated
+  marker atomically. Literal backslashes and explicitly retyped source remain
+  protected; code, source and table Enter stay literal.
+- Forward Delete joins a generated hard-break boundary in one gesture, retaining
+  intentional escaping and restoring source and provenance together on undo.
+- Creating a list, heading, quote or fence after a generated prose boundary
+  removes its redundant marker in the same transaction. Existing manual markers
+  remain unchanged; undo restores the structural transition and provenance.
+
+### Quality
+- The source model tracks validated automatic-boundary provenance separately
+  from Markdown, including generated escaping positions and UTF-16 offsets.
+  Transactions and undo/redo preserve it; malformed metadata cannot edit source.
+  Native Linux crash/recovery checks verify exact boundary ownership, structural
+  cleanup and Undo. Recovery timing checks measure twenty real disk checkpoints
+  for each idle/continuous scenario on 500 and 1,500 lines, without averaging
+  away failures; packaged acceptance remains a release gate.
+- Linux automated graphical checks explicitly use X11 under Xvfb, avoiding an
+  inherited Wayland session. Graphical regression scripts run sequentially.
+- This version is the editor development candidate. Delivery remains blocked
+  until the complete approved plan and all native platform gates pass.
+- Windows denied-write save tests now use a real directory ACL, retaining the
+  original Unix permission test. Nine Rust tests pass on all three platforms.
+
+## [0.10.9] - 2026-10-13
+
+### Added
+- Preserve the existing local `--debug` problem-report dialog and append-only
+  report writer, including the resumable Markdown review script.
+- Keep personal review paths and state outside version control.
+
+### Quality
+- This is a local diagnostic baseline, not the completed editor delivery.
+  Reports previously captured as 0.10.8 keep their original bytes and do not
+  identify a published build. Cross-platform delivery remains blocked pending
+  the approved plan's baseline and native package checks.
+
 ## [0.10.8] - 2026-08-18
 
 ### Fixed

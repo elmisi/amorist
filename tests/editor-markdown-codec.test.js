@@ -98,6 +98,23 @@ assert.equal(
 
 assert.equal(codec.renderInline(""), "<br>");
 assert.equal(codec.renderInline("x < y & z"), "x &lt; y &amp; z");
+assert.equal(codec.renderInline("``a`b`` and ` c `"), "<code>a`b</code> and <code>c</code>");
+assert.equal(codec.renderInline("\\*literal\\* and _em_ and __bold__ and ~~gone~~"),
+  "*literal* and <em>em</em> and <strong>bold</strong> and <del>gone</del>");
+assert.equal(codec.renderInline("word_under_score and ***both***"),
+  "word_under_score and <em><strong>both</strong></em>");
+assert.equal(codec.renderInline("**outer *inner* end**"), "<strong>outer <em>inner</em> end</strong>");
+assert.equal(codec.renderInline("[label](https://example.com/a(b))"),
+  '<a href="https://example.com/a(b)" target="_blank" rel="noopener noreferrer">label</a>');
+assert.equal(codec.renderInline("\ue0000\ue000 <script>x</script>"), "\ue0000\ue000 &lt;script&gt;x&lt;/script&gt;");
+const rawInline = "same **same** \\*same\\* ``same`same``";
+const spans = codec.tokenizeInline(rawInline);
+assert.equal(spans.map(token => rawInline.slice(token.start, token.end)).join(""), rawInline,
+  "tokens partition original source even when visible content repeats");
+const strongSpan = spans.find(token => token.type === "strong");
+assert.equal(rawInline.slice(strongSpan.contentStart, strongSpan.contentEnd), "same");
+const codeSpan = spans.find(token => token.type === "code");
+assert.equal(rawInline.slice(codeSpan.contentStart, codeSpan.contentEnd), "same`same");
 
 assert.deepEqual(JSON.parse(JSON.stringify(codec.parseBlocks("#### Sub-heading"))), [
   { type: "heading", level: 4, text: "Sub-heading", sourceLine: 0 },
@@ -395,4 +412,89 @@ assert.equal(
   "## a b",
 );
 
+assert.equal(codec.renderInline("<https://notes.example/a_b>"), '<a href="https://notes.example/a_b" target="_blank" rel="noopener noreferrer">https://notes.example/a_b</a>');
+assert.equal(codec.renderInline("<writer@example.test>"), '<a href="mailto:writer@example.test" target="_blank" rel="noopener noreferrer">writer@example.test</a>');
+assert.equal(codec.renderInline("<javascript:alert(1)>"), '<a target="_blank" rel="noopener noreferrer">javascript:alert(1)</a>');
+assert.equal(codec.renderInline("`<https://notes.example>`"), '<code>&lt;https://notes.example&gt;</code>');
+assert.equal(codec.safeLinkHref("\tjava\nscript:alert(1)"), null);
+const automatic = codec.tokenizeInline("repeat <https://repeat.example> repeat").find(token => token.type === "link");
+assert.equal(automatic.start, 7); assert.equal(automatic.contentStart, 8);
+assert.equal(automatic.end, 31); assert.equal(automatic.contentEnd, 30);
+
+for (const [source, href, title] of [
+  ['[read](<docs/caffè λ (v2).md> "Résumé &copy;")', 'docs/caffè λ (v2).md', 'Résumé ©'],
+  ['[read](docs/a\\(b\\).md \'A "title"\')', 'docs/a(b).md', 'A "title"'],
+  ['[read](notes_(v2).md (Parenthesized title))', 'notes_(v2).md', 'Parenthesized title'],
+  ['[read](?a=1&amp;b=2 "&NotEqualTilde; &#x80;")', '?a=1&b=2', '≂̸ €'],
+  ['[read](<> "")', '', ''],
+  ['[read](notes%20v2.md)', 'notes%20v2.md', null],
+  ['[read](a\\&copy;.md "\\&copy; &amp;copy; &#92;*")', 'a&copy;.md', '&copy; &copy; \\*'],
+]) {
+  const link = codec.tokenizeInline(source).find(token => token.type === "link");
+  assert.ok(link, source); assert.equal(link.href, href); assert.equal(link.title, title);
+  assert.equal(link.end, source.length);
+}
+for (const source of ['[read](docs/my notes.md)', '[read](<missing.md)', '[read](notes.md "unclosed)', '[read](notes.md (nested (title)))']) {
+  assert.equal(codec.tokenizeInline(source).filter(token => token.type === "link").length, 0, source);
+}
+assert.equal(codec.renderInline('[outer [inner](inside.md)](outside.md)'), '[outer <a href="inside.md" target="_blank" rel="noopener noreferrer">inner</a>](outside.md)');
+assert.equal(codec.renderInline('[outer <https://inside.example>](outside.md)'), '[outer <a href="https://inside.example" target="_blank" rel="noopener noreferrer">https://inside.example</a>](outside.md)');
+assert.equal(codec.linkDestinationAt('(notes.md "first\r\nsecond")', 0).title, 'first\r\nsecond');
+assert.equal(codec.linkDestinationAt('(notes.md "first\r\n   \r\nsecond")', 0), null);
+assert.equal(codec.linkDestinationAt('(notes.md\n\n"title")', 0), null);
+assert.equal(codec.renderInline('[unsafe](javascr&#x69;pt:alert(1))'), '<a target="_blank" rel="noopener noreferrer">unsafe</a>');
+
+const definitions = new Map([
+  [codec.referenceKey("Straße"), {href: "notes.md", title: "A title"}],
+  ["other", {href: "other.md", title: null}],
+  ["a\\*b", {href: "escaped.md", title: null}],
+]);
+for (const source of ["[Read][STRASSE]", "[Straße][]", "[STRAẞE]"]) {
+  const tokens = codec.tokenizeInline(source, 0, source.length, 0, false, false, definitions);
+  assert.equal(tokens[0].type, "link", source);
+  assert.equal(tokens[0].href, "notes.md");
+  assert.equal(tokens[0].end, source.length);
+  assert.equal(tokens[0].contentStart, 1);
+}
+for (const source of ["[Straße][undefined]", "`[Straße]`", "[a*b]", "\\[Straße]"]) {
+  assert.equal(codec.tokenizeInline(source, 0, source.length, 0, false, false, definitions)
+    .filter(token => token.referenceKey).length, 0, source);
+}
+assert.equal(codec.referenceKey(" A\t B\r\nC "), "a b c");
+assert.equal(codec.referenceKey("😀".repeat(999)), "😀".repeat(999));
+assert.equal(codec.referenceKey("😀".repeat(1000)), null);
+assert.equal(codec.referenceKey("a[b"), null);
+for (const [source, href, title, end] of [
+  ['[Name]: <docs/caffè λ.md> "&copy;"\r\nnext', 'docs/caffè λ.md', '©', 34],
+  ['[Name]:\r\n  notes_(v2).md\r\n  "first\r\nsecond"\r\nnext', 'notes_(v2).md', 'first\r\nsecond', 43],
+  ['[Name]: <>', '', null, 10],
+  ['[Name]: notes.md\n"unclosed', 'notes.md', null, 16],
+]) {
+  const definition = codec.referenceDefinitionAt(source);
+  assert.ok(definition, source);
+  assert.equal(definition.key, 'name');
+  assert.equal(definition.href, href);
+  assert.equal(definition.title, title);
+  // Endpoint is the end of the last consumed physical content row.
+  assert.equal(definition.end, end);
+  assert.equal(source[definition.end] || '', source.endsWith('next') ? '\r' : source.includes('\n') ? '\n' : '');
+}
+for (const source of ['[x]:', '[x]: bad)path', '[x]: path "bad', '    [x]: path', '[x]: path trailing', '[x]: path "a\n\nb"']) {
+  assert.equal(codec.referenceDefinitionAt(source), null, source);
+}
+const imageSource='![**Alt** 😀](<images/my (photo).png> "Title")';
+const image=codec.tokenizeInline(imageSource)[0];
+assert.equal(image.type,"image");assert.equal(image.alt,"Alt 😀");assert.equal(image.href,"images/my (photo).png");
+assert.equal(image.title,"Title");assert.equal(image.start,0);assert.equal(image.end,imageSource.length);assert.equal(image.contentStart,2);
+assert.equal(codec.tokenizeInline('`![alt](image.png)`')[0].type,"code");
+const imageRef=codec.tokenizeInline('![Straße][]',0,11,0,false,false,definitions)[0];
+assert.equal(imageRef.type,"image");assert.equal(imageRef.href,"notes.md");
 console.log("editor-markdown-codec.test.js passed");
+
+// Clipboard HTML retains image semantics without granting executable destinations.
+assert.equal(codec.renderInline('![A & B](../photo.svg "Caption")', null, true),
+  '<img src="../photo.svg" alt="A &amp; B" title="Caption">');
+assert.equal(codec.renderInline('![Unsafe](javascript:alert)', null, true),
+  '<img alt="Unsafe">');
+assert.ok(codec.renderMarkdown('- ![Photo](photo.svg)', null, true).includes('<img src="photo.svg" alt="Photo">'));
+assert.ok(codec.renderMarkdown('| Image |\n| --- |\n| ![Photo](photo.svg) |', null, true).includes('<img src="photo.svg" alt="Photo">'));

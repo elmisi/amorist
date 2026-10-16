@@ -1,6 +1,6 @@
 {
   "productName": "amorist",
-  "version": "0.10.8",
+  "version": "0.11.0",
   "identifier": "dev.elmisi.amorist",
   "build": {
     "frontendDist": "../web"
@@ -28,13 +28,27 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["md", "markdown", "mdown"],
+        "ext": [
+          "md",
+          "markdown",
+          "mdown"
+        ],
         "mimeType": "text/markdown",
         "description": "Markdown document"
       }
     ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
     "linux": {
       "deb": {
+        "depends": ["heif-gdk-pixbuf"],
         "desktopTemplate": "linux/amorist.desktop"
       }
     }
@@ -43,6 +57,21 @@
     "cli": {
       "description": "Local Markdown editor",
       "args": [
+        {
+          "name": "debug",
+          "takesValue": false,
+          "description": "Enable local problem reporting."
+        },
+        {
+          "name": "heading-anchor",
+          "takesValue": true,
+          "description": "Navigate to a heading after opening the document."
+        },
+        {
+          "name": "new-document",
+          "takesValue": false,
+          "description": "Start a fresh untitled session without adopting older recovery copies."
+        },
         {
           "name": "file",
           "index": 1,

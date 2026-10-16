@@ -17,6 +17,19 @@
           <span id="file-name">Loading...</span>
         </div>
         <div class="actions">
+          <details id="file-menu" class="file-menu" hidden>
+            <summary>File</summary>
+            <div class="file-menu-items">
+              <button type="button" data-file-action="new">New</button>
+              <button type="button" data-file-action="open">Open…</button>
+              <button type="button" data-file-action="new-window">New window</button>
+              <button type="button" data-file-action="open-window">Open in new window…</button>
+              <button type="button" data-file-action="save-as">Save As…</button>
+              <button type="button" data-file-action="reload">Reload</button>
+            </div>
+          </details>
+          <button id="settings-button" type="button" hidden>Settings</button>
+          <button id="report-button" type="button" hidden>Bug</button>
           <button id="reload-button" type="button">Reload</button>
           <button id="save-button" type="button">Save</button>
         </div>
@@ -31,6 +44,21 @@
       </footer>
     </main>
 
+    <dialog id="report-dialog" aria-labelledby="report-title">
+      <form id="report-form">
+        <h2 id="report-title">Report a bug</h2>
+        <label for="report-note">Describe the problem and what you expected.</label>
+        <textarea id="report-note" rows="5" required></textarea>
+        <p>The report includes the document and editor state captured before this dialog opened. It is saved on this computer.</p>
+        <p id="report-log-path"></p>
+        <p id="report-error" role="alert"></p>
+        <div class="actions">
+          <button id="report-cancel" type="button">Cancel</button>
+          <button id="report-submit" type="submit">Save report</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="editor/amorist-text-utils.js"></script>
     <script src="editor/amorist-document-model.js"></script>
     <script src="editor/amorist-table-codec.js"></script>
@@ -38,6 +66,11 @@
     <script src="editor/amorist-html-to-markdown.js"></script>
     <script src="editor/amorist-editing-policy.js"></script>
     <script src="editor/amorist-editor.js"></script>
+    <script src="debug-report.js"></script>
+    <script src="file-actions.js"></script>
+    <script src="native-open.js"></script>
+    <script src="settings.js"></script>
+    <script src="working-copy.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

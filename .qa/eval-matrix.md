@@ -21,7 +21,7 @@ generated; the contract is the source of truth.
 | `REQ-A10` | Switching between WYSIWYG and source, any number of times and in any order, leaves the do… | R-002, R-007, R-012 | deterministic | blocking | full | low | low | RED today |
 | `REQ-B1` | Every line of the file is shown as its own line in the WYSIWYG view. Soft breaks are not… | R-005, R-015 | deterministic | blocking | full | high | medium | RED today |
 | `REQ-B2` | Typing lengthens the current line. It never moves the other lines of the same paragraph. | R-005 | deterministic | blocking | full | low | low | RED today |
-| `REQ-B3` | In ordinary prose, Enter inserts a bare newline at the caret. It does not create a paragr… | R-015 | deterministic | blocking | full | low | low | RED today |
+| `REQ-B3` | In ordinary visual prose, Enter inserts a backslash hard break at the caret using the loc… | R-015 | deterministic | blocking | full | low | low | RED today |
 | `REQ-B4` | When typed Markdown becomes a visual construct, subsequent typing remains at the visible… | R-011 | deterministic | blocking | full | low | low | green today |
 | `REQ-B6` | WYSIWYG list editing follows conventional editor behavior while retaining exact Markdown… | R-011, R-013 | deterministic | blocking | full | medium | low | green today |
 | `REQ-B7` | Hidden heading and quote prefixes participate in conventional WYSIWYG editing. Enter cont… | R-011 | deterministic | blocking | full | low | low | green today |
@@ -34,24 +34,33 @@ generated; the contract is the source of truth.
 | `REQ-D1` | Content pasted from another application never disappears silently. What amorist cannot co… | R-008 | deterministic | blocking | full | medium | low | RED today |
 | `REQ-E1` | Work not yet saved survives an abrupt termination. A working copy is written periodically… | R-009 | deterministic | blocking | full | medium | low | green today |
 | `REQ-E2` | amorist never writes to the user's .md file except on an explicit save. The working copy… | R-010 | deterministic | blocking | full | low | low | green today |
-| `REQ-F1` | The file is written atomically. A failure during the write leaves the original file intac… | R-009 | deterministic | blocking | full | low | low | green today |
+| `REQ-F1` | The file is written atomically. A failure during the write leaves the original file intac… | R-009, R-021 | deterministic | blocking | full | low | low | green today |
 | `REQ-F2` | A file modified outside amorist since it was opened is detected on save, and is never ove… | R-009 | deterministic | blocking | full | low | medium | green today |
-| `REQ-G1` | A check that cannot execute is a failure, never a pass. Missing browser, missing corpus,… | R-016 | deterministic | blocking | full | low | low | RED today |
-| `REQ-G2` | The editor checks run on the engines the product actually ships with, not only on a stand… | R-017 | deterministic | blocking | full | medium | medium | RED today |
-| `REQ-G3` | Every report names the engines actually exercised, and names any published platform that… | R-017 | manual | advisory | manual | low | low | RED today |
+| `REQ-G1` | A check that cannot execute is a failure, never a pass. Missing browser, missing corpus,… | R-016, R-021 | deterministic | blocking | full | low | low | RED today |
+| `REQ-G2` | The editor checks run on the engines the product actually ships with, not only on a stand… | R-017, R-021 | deterministic | blocking | full | medium | medium | RED today |
+| `REQ-G3` | Every report names the engines actually exercised, and names any published platform that… | R-017, R-021 | manual | advisory | manual | low | low | RED today |
+| `REQ-H1` | New and Open change the current document only after successful preparation and the requir… | R-009 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-H2` | Save As preserves the current editor, history and recovery on cancellation or failure. Su… | R-009 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-H3` | New window and Open in new window launch an independent process without changing or promp… | R-009 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-H4` | macOS Finder events survive frontend startup. Initial file arguments and duplicate initia… | R-009 | deterministic | blocking | partial | medium | medium | RED today |
+| `REQ-I1` | URI and email autolinks render as links outside literal code, retain exact source interva… | R-006 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-I2` | Inline-link grammar separates destinations and titles, honors escaped and balanced parent… | R-006 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-I3` | Reference links resolve full, collapsed and shortcut labels against the first matching do… | R-006 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-J1` | Settings provides an isolated preview, approved font sizes/scales/palette, defaults and t… | R-022 | deterministic | blocking | full | medium | low | RED today |
+| `REQ-K1` | Copy/cut/paste preserves selected Markdown and formatting through a validated internal pa… | R-008 | deterministic | blocking | full | medium | low | RED today |
 
 ## Reading this table
 
 **State** is measured against the repository at commit a9d7e73, not assumed:
-8 requirements hold today, 1 holds partially, 21 fail. The suite is
+8 requirements hold today, 1 holds partially, 30 fail. The suite is
 expected to be red on first run — the contract specifies the editor that must
 exist, not the one that does.
 
-**Gate**: 29 blocking, 1 advisory. A blocking failure stops
+**Gate**: 38 blocking, 1 advisory. A blocking failure stops
 publication of a release; it does not stop a commit, a merge or a push
 (`G-PUSH` in the contract).
 
-**Verification**: 29 deterministic, 1 manual. No requirement is verified by
+**Verification**: 38 deterministic, 1 manual. No requirement is verified by
 a model. The runner never calls one, so a red result always means the code is
 wrong — never that a service was unavailable or a model was inconsistent.
 

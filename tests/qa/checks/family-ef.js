@@ -96,7 +96,7 @@ module.exports = [
     async run() {
       return {
         failures: collect("qa_req_f1_", "REQ-F1"),
-        fixturesExercised: ["a successful save", "a save into a directory that cannot be written"],
+        fixturesExercised: ["a successful save", "a save into a directory that cannot be written", "occupied temporary slots with preserved foreign bytes", "canonical path aliases on the platform's filesystem"],
       };
     },
   },
@@ -107,9 +107,11 @@ module.exports = [
     title: "A file changed outside amorist is detected and never silently overwritten",
     note: "Modification-time comparison has known limits on filesystems with coarse timestamps; the contract records that rather than hiding it.",
     async run() {
+      const app = await runTauriAppChecks();
       return {
-        failures: collect("qa_req_f2_", "REQ-F2"),
-        fixturesExercised: ["a file changed between opening and saving", "a forced save after the conflict"],
+        failures: [...collect("qa_req_f2_", "REQ-F2"), ...app.F2],
+        fixturesExercised: ["a file changed between opening and saving", "a forced save after the conflict", "cross-process lock wait and mtime recheck", "persistent identity collisions and bounded lock wait", "created/deleted destinations", ...app.fixtures.filter((fixture) => fixture.includes("second live instance"))],
+        delegated: app.delegated ? [app.delegated] : [],
       };
     },
   },
@@ -121,12 +123,20 @@ module.exports = [
     note: "Rust verifies the storage boundary; on Linux tauri-driver also types in the built app, waits for persistence, kills it and verifies recovery after restart.",
     async run() {
       const app = await runTauriAppChecks();
+      const timingFailures=[],timingFixtures=[];
+      if(process.platform==='linux') {
+        try {
+          const timings=await require('../../editor-recovery-deadline-native.test').run();
+          timingFixtures.push(...timings.map(sample=>`${sample.size} lines / ${sample.mode}: twenty real disk checkpoints and exact crash recovery`));
+        }catch(error){timingFailures.push({fixture:'native recovery deadlines',detail:error.stack||String(error)});}
+      }
       return {
-        failures: [...collect("qa_req_e1_", "REQ-E1"), ...app.E1],
+        failures: [...collect("qa_req_e1_", "REQ-E1"), ...app.E1, ...timingFailures],
         fixturesExercised: [
           "exact CRLF, trailing-space and Unicode recovery after a disk reload",
           "discarding a recovery copy twice",
           ...app.fixtures.filter((fixture) => fixture.includes("SIGKILL")),
+          ...timingFixtures,
         ],
         delegated: app.delegated ? [app.delegated] : [],
       };

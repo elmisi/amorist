@@ -1,23 +1,11 @@
 name: QA
 
-# Placement is deliberate and comes from the contract (G-PUSH, G-RELEASE).
-#
-# This runs on every push and its result is visible, but a red result does NOT
-# block a commit, a merge or a push: almost every requirement is red today, and
-# a gate on commits would block the very work that turns them green. What it
-# does block is PUBLICATION — the release job in build.yml calls this workflow
-# and will not publish while it is red.
-#
-# It runs on BOTH published platforms, because a run on one platform is evidence
-# about one platform and nothing more. Each run judges only where it ran; the
-# composition across platforms is what the release gate consumes.
-#
-# Tighten to merges once the suite is green. That is an easy decision to take
-# then, and a costly one to take now.
+# Build calls this suite once per pull request or main push. Keep manual runs
+# available for diagnosis without duplicating the entire platform matrix.
+# Each platform verifies its own shipping engine; publication depends on all.
 
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
   workflow_call:
 
 jobs:
@@ -29,13 +17,32 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             shipping_engine: WebKitGTK
-          - os: macos-latest
+          # Pin the OS and use the native Apple Silicon desktop runner.
+          # The Intel virtual display adds unstable frame scheduling latency.
+          - os: macos-15
             platform: macos
             shipping_engine: Safari
+          # Keep native desktop QA on a fixed Windows baseline as well.
+          - os: windows-2022
+            platform: windows
+            shipping_engine: WebView2
+    defaults:
+      run:
+        shell: bash
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.platform }} (ships on ${{ matrix.shipping_engine }})
+    env:
+      # macOS headless rendering is throttled by the virtual display. Exercise
+      # the same visible desktop conditions used for the shipping engine.
+      AMORIST_QA_CHROMIUM_HEADFUL: ${{ matrix.platform == 'macos' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
 
       - name: Install the shipping engine's driver and the build dependencies
         if: matrix.platform == 'linux'
@@ -51,7 +58,23 @@ jobs:
           # works. Same list as the build workflow.
           sudo apt-get install -y webkit2gtk-driver xvfb \
             libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev heif-gdk-pixbuf bubblewrap
+
+      - name: Prepare matching Windows WebView2 driver
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $amoristBase=[Environment]::GetFolderPath('ProgramFilesX86')
+          $amoristRuntime=Get-ChildItem "$amoristBase/Microsoft/EdgeWebView/Application/*/msedgewebview2.exe" -ErrorAction SilentlyContinue | Sort-Object { [Version]$_.VersionInfo.FileVersion } -Descending | Select-Object -First 1
+          if(-not $amoristRuntime){throw 'The required WebView2 runtime was not found'}
+          $amoristVersion=$amoristRuntime.VersionInfo.FileVersion
+          $amoristDriver=Join-Path $env:RUNNER_TEMP 'amorist-edge-driver'
+          New-Item -ItemType Directory $amoristDriver -Force | Out-Null
+          Invoke-WebRequest "https://msedgedriver.microsoft.com/$amoristVersion/edgedriver_win64.zip" -OutFile "$amoristDriver/driver.zip"
+          Expand-Archive "$amoristDriver/driver.zip" $amoristDriver -Force
+          Add-Content $env:GITHUB_ENV "AMORIST_QA_EDGE_DRIVER=$amoristDriver/msedgedriver.exe"
+          Add-Content $env:GITHUB_ENV "AMORIST_QA_APPLICATION=$env:GITHUB_WORKSPACE/src-tauri/target/debug/amorist.exe"
+          Write-Output "WebView2 runtime: $amoristVersion"
 
       - name: Turn on remote automation for the shipping engine
         if: matrix.platform == 'macos'
@@ -61,32 +84,91 @@ jobs:
         # failing here on every run would be noise rather than information.
         run: sudo safaridriver --enable
 
+      - name: Install the same stable Chromium comparison browser on every platform
+        env:
+          CHROME_TEST_VERSION: '155.0.8059.84'
+        run: |
+          case "${{ matrix.platform }}" in
+            linux) chrome_platform=linux64; chrome_relative=chrome-linux64/chrome ;;
+            macos)
+              if [ "$(uname -m)" = "arm64" ]; then chrome_platform=mac-arm64; else chrome_platform=mac-x64; fi
+              chrome_relative="chrome-$chrome_platform/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" ;;
+            windows) chrome_platform=win64; chrome_relative=chrome-win64/chrome.exe ;;
+          esac
+          chrome_root="$RUNNER_TEMP/amorist-chrome-$CHROME_TEST_VERSION"
+          mkdir -p "$chrome_root"
+          curl -fSL --retry 3 "https://storage.googleapis.com/chrome-for-testing-public/$CHROME_TEST_VERSION/$chrome_platform/chrome-$chrome_platform.zip" -o "$chrome_root/chrome.zip"
+          unzip -q "$chrome_root/chrome.zip" -d "$chrome_root"
+          echo "AMORIST_QA_CHROMIUM=$chrome_root/$chrome_relative" >> "$GITHUB_ENV"
+          echo "Chrome for Testing: $CHROME_TEST_VERSION ($chrome_platform)"
+
       - name: Record what is actually installed
         run: |
           echo "platform:  ${{ matrix.platform }}"
           if [ "${{ matrix.platform }}" = "linux" ]; then
             echo "WebKitGTK: $(dpkg-query -W -f='${Version}' libwebkit2gtk-4.1-0 2>/dev/null || echo absent)"
             echo "driver:    $(command -v WebKitWebDriver || echo absent)"
-            echo "stand-in:  $(google-chrome --version 2>/dev/null || echo absent)"
+            echo "stand-in:  $("$AMORIST_QA_CHROMIUM" --version 2>/dev/null || echo absent)"
+          elif [ "${{ matrix.platform }}" = "windows" ]; then
+            powershell.exe -NoProfile -Command '(Get-Item -LiteralPath $env:AMORIST_QA_EDGE_DRIVER).VersionInfo.FileVersion'
           else
             echo "Safari:    $(defaults read /Applications/Safari.app/Contents/Info CFBundleShortVersionString 2>/dev/null || echo absent)"
             echo "driver:    $(command -v safaridriver || echo absent)"
-            echo "stand-in:  $("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version 2>/dev/null || echo absent)"
+            echo "stand-in:  $("$AMORIST_QA_CHROMIUM" --version 2>/dev/null || echo absent)"
           fi
+
+      - name: Enable isolated decoder tests on the ephemeral Linux runner
+        if: matrix.platform == 'linux'
+        run: |
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          bwrap --ro-bind / / --proc /proc --dev-bind /dev /dev -- /bin/true
+
+      - name: Run codec, toolbar and code-context regressions
+        if: matrix.platform != 'windows'
+        run: |
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            caffeinate -diu node tests/editor-system-clipboard.test.js
+          fi
+          checks="tests/working-copy.test.js tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/qa-windows-discovery.test.js tests/qa-driver-transport.test.js tests/editor-code-context.test.js tests/editor-multiline-inline.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            caffeinate -diu node --test --test-concurrency=1 $checks
+          else
+            node --test --test-concurrency=1 $checks
+          fi
+
+      - name: Verify macOS Chromium frame and viewport checks
+        id: render_preflight
+        if: matrix.platform == 'macos'
+        run: |
+          caffeinate -diu node tests/qa/run.js --only B9 --engine chromium
+          caffeinate -diu node tests/qa/run.js --only C2 --engine chromium
 
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
           key: qa-${{ matrix.platform }}
 
       - name: Install the Tauri application WebDriver intermediary
-        if: matrix.platform == 'linux'
+        if: matrix.platform != 'macos'
         # WebKitWebDriver covers the engine in a browser. tauri-driver starts
         # the compiled executable, which is required to verify the recovery
         # timer, invoke boundary, app-data and restart behavior in E1/E2.
         run: cargo install tauri-driver --locked
+
+      - name: Build native Windows application for WebView2 checks
+        if: matrix.platform == 'windows'
+        run: cargo build --manifest-path src-tauri/Cargo.toml
+
+      - name: Verify Windows native clipboard before expensive checks
+        if: matrix.platform == 'windows'
+        run: node tests/editor-system-clipboard.test.js
 
       - name: Check the contract and its generated projection agree
         if: matrix.platform == 'linux'
@@ -105,14 +187,92 @@ jobs:
             exit 1
           }
 
+      - name: Run native backend and cross-process filesystem regressions
+        # Cross-process cases supply their own concurrency. Isolate unrelated
+        # fixture leases from temporary descriptor inheritance during fork.
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib -- --test-threads=1
+
+      - name: Run review-loop identity, state and concurrency regressions
+        run: |
+          python3 tests/review_runner_test.py
+          python3 tests/problem_report_reader_test.py
+          python3 tests/bug_report_queue_test.py
+
+      - name: Verify effective bundle configuration and payload build identity
+        run: |
+          cargo test --manifest-path src-tauri/Cargo.toml --test build_identity
+          python3 tests/build-identity-config.test.py
+
+      - name: Run codec, toolbar and code-context regressions
+        if: matrix.platform == 'windows'
+        run: |
+          checks="tests/working-copy.test.js tests/editor-markdown-codec.test.js tests/editor-table-codec.test.js tests/editor-html-to-markdown.test.js tests/editor-history.test.js tests/editor-toolbar.test.js tests/editor-view-positioning.test.js tests/qa-platform-delegation.test.js tests/qa-windows-discovery.test.js tests/qa-driver-transport.test.js tests/editor-code-context.test.js tests/editor-multiline-inline.test.js tests/editor-block-layout.test.js tests/editor-indentation.test.js tests/editor-prose-enter.test.js tests/editor-settings.test.js tests/editor-clipboard.test.js tests/editor-system-clipboard.test.js tests/editor-link-activation.test.js"
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            GDK_BACKEND=x11 xvfb-run -a node --test --test-concurrency=1 $checks
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            caffeinate -diu node --test --test-concurrency=1 $checks
+          else
+            node --test --test-concurrency=1 $checks
+          fi
+
+      - name: Verify native changed-base recovery decisions
+        if: matrix.platform != 'macos'
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-changed-base-native.test.js
+          else
+            node tests/editor-recovery-changed-base-native.test.js
+          fi
+
+      - name: Verify native rule spacing and link dialog layout
+        if: matrix.platform != 'macos'
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            AMORIST_QA_APPLICATION="$PWD/src-tauri/target/debug/amorist" \
+            GDK_BACKEND=x11 xvfb-run -a node tests/editor-feedback-native.test.js
+          else
+            node tests/editor-feedback-native.test.js
+          fi
+
+      - name: Verify startup recovery across documents
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-startup-documents-native.test.js
+
+      - name: Verify native preference persistence and cross-process focus refresh
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-settings-native.test.js
+
+      - name: Verify native local image formats and resource lifecycle
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-local-image-native.test.js
+
+      - name: Verify native review loop, Bug capture and interruption recovery
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a python3 tests/editor-review-loop-native.test.py
+
+      - name: Verify native clipboard across application processes
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-clipboard-native.test.js
+
+      - name: Verify native recovery preserves automatic boundary ownership
+        if: matrix.platform == 'linux'
+        run: GDK_BACKEND=x11 xvfb-run -a node tests/editor-recovery-boundaries-native.test.js
+
+      - name: Verify graceful image resource failure without host AV1 decoder
+        if: matrix.platform == 'linux'
+        run: |
+          AMORIST_QA_APPLICATION="$PWD/tests/qa/lib/no-host-av1.sh" \
+          AMORIST_CODEC_QA_BINARY="$PWD/src-tauri/target/debug/amorist" \
+          GDK_BACKEND=x11 xvfb-run -a node tests/editor-local-image-native.test.js --expect-no-avif-loader
+
       - name: Run the QA suite on every engine applicable to this platform
         id: suite
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
-            xvfb-run -a node tests/qa/run.js
+            GDK_BACKEND=x11 xvfb-run -a node tests/qa/run.js
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            caffeinate -diu node tests/qa/run.js
           else
-            # No virtual display here: the shipping engine on this platform
-            # needs a real graphical session, which the runner already has.
             node tests/qa/run.js
           fi
 
@@ -120,7 +280,7 @@ jobs:
         # Only when the suite actually ran. Demanding a report from a job that
         # failed before starting it would add a second, misleading red step on
         # top of the real cause.
-        if: always() && steps.suite.conclusion != 'skipped'
+        if: always() && (steps.suite.conclusion == 'success' || steps.suite.conclusion == 'failure' || steps.render_preflight.conclusion == 'failure')
         uses: actions/upload-artifact@v4
         with:
           name: qa-report-${{ matrix.platform }}

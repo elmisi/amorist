@@ -1,10 +1,21 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 use tauri::{App, Emitter, Manager, State};
 use tauri_plugin_cli::CliExt;
+
+mod recovery;
+mod file_io;
+mod document;
+mod instances;
+mod native_open;
+mod settings;
+mod image_resources;
+mod links;
+pub mod build_info;
 
 const MAX_MARKDOWN_BYTES: u64 = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS: &[&str] = &["md", "markdown", "mdown"];
@@ -14,6 +25,130 @@ struct AppState {
     last_modified: Mutex<Option<std::time::SystemTime>>,
     dirty: Mutex<bool>,
     force_close: Mutex<bool>,
+    debug: Mutex<bool>,
+    debug_log: Mutex<()>,
+    recovery_session: Mutex<Option<recovery::Session>>,
+    recovery_checked: Mutex<bool>,
+    context_id: AtomicU64,
+    saved_source: Mutex<String>,
+    working_revision: Mutex<u64>,
+    save_target: Mutex<Option<PendingSaveTarget>>,
+    save_target_serial: AtomicU64,
+    native_open: Mutex<native_open::Queue>,
+    image_resources: Mutex<image_resources::Store>,
+    startup_anchor: Mutex<Option<String>>,
+}
+
+struct PendingSaveTarget { token: u64, context_id: u64, target: document::SaveTarget }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveTargetResponse { token: u64, path: String, exists: bool }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveAsResponse { context_id: Option<u64>, path: String, name: String, exists: bool,
+    saved: bool, recovery_warning: Option<String> }
+
+async fn run_io<T: Send + 'static>(app: tauri::AppHandle,
+    operation: impl FnOnce(&tauri::AppHandle, &AppState) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        operation(&app, &state)
+    }).await.map_err(|e| e.to_string())?
+}
+
+fn require_context(state: &AppState, context_id: u64) -> Result<(), String> {
+    if context_id != state.context_id.load(Ordering::SeqCst) {
+        return Err("STALE_DOCUMENT: the document context has changed.".into());
+    }
+    Ok(())
+}
+
+// Called only with file_path held, after the read has succeeded.
+fn install_read_context(state: &AppState, saved: &str, recovered: bool, path: Option<PathBuf>) -> u64 {
+    state.image_resources.lock().unwrap().replace_document(path);
+    *state.saved_source.lock().unwrap() = saved.into();
+    *state.working_revision.lock().unwrap() = 0;
+    let mut dirty = state.dirty.lock().unwrap();
+    let context_id = state.context_id.fetch_add(1, Ordering::SeqCst) + 1;
+    *dirty = recovered;
+    context_id
+}
+
+#[tauri::command]
+fn debug_enabled(state: State<AppState>) -> bool {
+    *state.debug.lock().unwrap()
+}
+
+#[tauri::command]
+fn take_startup_anchor(state: State<AppState>) -> Option<String> {
+    state.startup_anchor.lock().unwrap().take()
+}
+
+#[tauri::command]
+async fn spawn_document_instance(app: tauri::AppHandle, path: Option<String>, anchor: Option<String>, context_id: Option<u64>) -> Result<u32, String> {
+    run_io(app, move |_app, state| {
+        if let Some(context_id) = context_id { require_context(state, context_id)?; }
+        let file = path.map(|path| document::Prepared::open(std::path::Path::new(&path)).map(|doc| doc.path))
+            .transpose()?.flatten();
+        #[cfg(not(target_os = "linux"))]
+        let executable = std::env::current_exe().map_err(|e| e.to_string())?;
+        #[cfg(target_os = "macos")]
+        let bundle = instances::macos_bundle(&executable);
+        #[cfg(not(target_os = "macos"))]
+        let bundle = None;
+        #[cfg(target_os = "linux")]
+        let executable = PathBuf::from(exec_path()?);
+        let _guard = state.file_path.lock().unwrap();
+        if let Some(context_id) = context_id { require_context(state, context_id)?; }
+        instances::Launch::prepare(executable, bundle, file.as_deref(), *state.debug.lock().unwrap()).with_anchor(anchor.as_deref()).spawn()
+    }).await
+}
+
+#[tauri::command]
+async fn take_native_open_requests(app: tauri::AppHandle) -> Result<Vec<native_open::Request>, String> {
+    run_io(app, |_app, state| {
+        let batch = state.native_open.lock().unwrap().drain();
+        Ok(batch.resolve())
+    }).await
+}
+
+fn append_debug_record(path: &std::path::Path, report: &serde_json::Value, locks: &std::path::Path) -> Result<(), String> {
+    let mut bytes = serde_json::to_vec(report).map_err(|e| e.to_string())?;
+    bytes.push(b'\n');
+    file_io::append(locks, path, &bytes)
+}
+
+#[tauri::command]
+fn get_report_path(app: tauri::AppHandle) -> Result<String, String> {
+    Ok(app.path().app_local_data_dir().map_err(|e|e.to_string())?.join("problem-reports.jsonl").display().to_string())
+}
+
+#[tauri::command]
+async fn report_problem(app: tauri::AppHandle, report: serde_json::Value) -> Result<String, String> {
+    run_io(app, move |app, state| report_problem_inner(app, state, report)).await
+}
+
+fn report_problem_inner(app: &tauri::AppHandle, state: &AppState, mut report: serde_json::Value) -> Result<String, String> {
+    if !*state.debug.lock().unwrap() { return Err("Problem reporting requires --debug.".into()); }
+    if !report.is_object() || report.get("note").and_then(|v| v.as_str()).unwrap_or("").trim().is_empty() {
+        return Err("Describe the problem before saving.".into());
+    }
+    if report.get("schemaVersion").and_then(|v|v.as_u64()) != Some(2) || !report.get("filePath").is_some_and(|v|v.is_null() || v.is_string()) {
+        report["filePath"] = serde_json::json!(state.file_path.lock().unwrap().as_ref().map(|p| p.display().to_string()));
+    }
+    report["appVersion"] = serde_json::json!(env!("AMORIST_VERSION"));
+    report["buildId"] = serde_json::json!(build_info::current().build_id);
+    report["buildInfo"] = serde_json::to_value(build_info::current()).map_err(|e|e.to_string())?;
+    report["platform"] = serde_json::json!(std::env::consts::OS);
+    let directory = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+    let path = directory.join("problem-reports.jsonl");
+    let _guard = state.debug_log.lock().unwrap();
+    append_debug_record(&path, &report, &app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("locks"))?;
+    Ok(path.display().to_string())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -23,31 +158,50 @@ struct WorkingCopy {
     saved_source: String,
     unsaved_source: String,
     revision: u64,
+    #[serde(default)]
+    boundary_state: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DocumentResponse {
+    context_id: u64,
     path: String,
     name: String,
     exists: bool,
     markdown: String,
     recovery_markdown: Option<String>,
+    recovery_boundary_state: Option<serde_json::Value>,
+    recovery_candidates: Vec<recovery::Record>,
+    recovery_warnings: Vec<String>,
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SaveResponse {
     saved: bool,
     path: String,
+    recovery_warning: Option<String>,
 }
 
 #[tauri::command]
-fn read_document(
-    app: tauri::AppHandle,
-    state: State<AppState>,
-) -> Result<DocumentResponse, String> {
+async fn read_document(app: tauri::AppHandle) -> Result<DocumentResponse, String> {
+    run_io(app, read_document_inner).await
+}
+
+fn read_document_inner(app: &tauri::AppHandle, state: &AppState) -> Result<DocumentResponse, String> {
     let guard = state.file_path.lock().unwrap();
-    let path = guard.as_ref().ok_or("No file open.")?;
+    let Some(path) = guard.as_ref() else {
+        let (record, candidates, warnings) = load_session_recovery(&app, &state, None, "")?;
+        return Ok(DocumentResponse {
+            context_id: install_read_context(state, "", record.is_some(), None),
+            path: String::new(), name: "Untitled".into(), exists: false,
+            markdown: String::new(),
+            recovery_markdown: record.as_ref().map(|r| r.unsaved_source.clone()),
+            recovery_boundary_state: record.and_then(|r| r.boundary_state),
+            recovery_candidates: candidates, recovery_warnings: warnings,
+        });
+    };
 
     if path.exists() {
         let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
@@ -59,12 +213,14 @@ fn read_document(
         let text = String::from_utf8(raw.clone())
             .map_err(|_| "Markdown files must be UTF-8 encoded.".to_string())?;
         let markdown = text.clone();
+        let (recovery, candidates, warnings) = load_session_recovery(&app, &state, Some(path), &text)?;
 
         if let Ok(mtime) = metadata.modified() {
             *state.last_modified.lock().unwrap() = Some(mtime);
         }
 
         Ok(DocumentResponse {
+            context_id: install_read_context(state, &text, recovery.is_some(), Some(path.clone())),
             path: path.display().to_string(),
             name: path
                 .file_name()
@@ -72,10 +228,18 @@ fn read_document(
                 .unwrap_or_default(),
             exists: true,
             markdown,
-            recovery_markdown: load_recovery(&app, path, &text),
+            recovery_markdown: recovery.as_ref().map(|record| record.unsaved_source.clone()),
+            recovery_boundary_state: recovery.and_then(|record| record.boundary_state),
+            recovery_candidates: candidates,
+            recovery_warnings: warnings,
         })
     } else {
+        if state.last_modified.lock().unwrap().is_some() {
+            return Err("The open file no longer exists. Your editor was preserved.".into());
+        }
+        let (recovery, candidates, warnings) = load_session_recovery(&app, &state, Some(path), "")?;
         Ok(DocumentResponse {
+            context_id: install_read_context(state, "", recovery.is_some(), Some(path.clone())),
             path: path.display().to_string(),
             name: path
                 .file_name()
@@ -83,46 +247,188 @@ fn read_document(
                 .unwrap_or_default(),
             exists: false,
             markdown: String::new(),
-            recovery_markdown: load_recovery(&app, path, ""),
+            recovery_markdown: recovery.as_ref().map(|record| record.unsaved_source.clone()),
+            recovery_boundary_state: recovery.and_then(|record| record.boundary_state),
+            recovery_candidates: candidates,
+            recovery_warnings: warnings,
         })
     }
 }
 
 #[tauri::command]
-fn save_document(
-    app: tauri::AppHandle,
-    state: State<AppState>,
-    markdown: String,
-    force: Option<bool>,
-) -> Result<SaveResponse, String> {
-    let guard = state.file_path.lock().unwrap();
-    let path = guard.as_ref().ok_or("No file open.")?;
+async fn save_document(app: tauri::AppHandle, markdown: String, force: Option<bool>, context_id: u64, revision: u64) -> Result<SaveResponse, String> {
+    run_io(app, move |app, state| save_document_inner(app, state, markdown, force.unwrap_or(false), context_id, revision)).await
+}
 
-    let expected_mtime = *state.last_modified.lock().unwrap();
-    write_document(path, &markdown, expected_mtime, force.unwrap_or(false))?;
-
-    // Update last_modified after successful save
-    if let Ok(meta) = fs::metadata(path) {
-        if let Ok(mtime) = meta.modified() {
-            *state.last_modified.lock().unwrap() = Some(mtime);
-        }
+fn save_document_inner(app: &tauri::AppHandle, state: &AppState, markdown: String, force: bool, context_id: u64, revision: u64) -> Result<SaveResponse, String> {
+    let (path, expected) = {
+        let guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        let path = guard.as_ref().ok_or("No file open.")?.clone();
+        let expected = state.last_modified.lock().unwrap().map(file_io::Expected::Modified).unwrap_or(file_io::Expected::Missing);
+        (path, expected)
+    };
+    // Autosave has its own recovery target and must meet its interval even
+    // while another instance holds the user's file lock for up to five seconds.
+    file_io::write(&app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("locks"),
+        &path, &markdown, expected, force)?;
+    let _guard = state.file_path.lock().unwrap();
+    if require_context(state, context_id).is_err() {
+        return Ok(SaveResponse { saved: true, path: path.display().to_string(),
+            recovery_warning: Some("The previous document was saved after its view changed; recovery was retained.".into()) });
     }
-    let _ = fs::remove_file(working_copy_path(&app)?);
+    if let Ok(meta) = fs::metadata(&path) {
+        if let Ok(mtime) = meta.modified() { *state.last_modified.lock().unwrap() = Some(mtime); }
+    }
+    *state.saved_source.lock().unwrap() = markdown.clone();
+    let recovery_warning = reconcile_saved_recovery(app, state, &markdown, revision).err();
+    Ok(SaveResponse { saved: true, path: path.display().to_string(), recovery_warning })
+}
 
-    Ok(SaveResponse {
-        saved: true,
-        path: path.display().to_string(),
-    })
+fn reconcile_saved_recovery(app: &tauri::AppHandle, state: &AppState, saved: &str, revision: u64) -> Result<(), String> {
+    let latest = *state.working_revision.lock().unwrap();
+    let owner = state.recovery_session.lock().unwrap();
+    if let Some(session) = owner.as_ref() {
+        if latest > revision {
+            if let Some(mut record) = recovery_store(app)?.read(session.id())? {
+                if record.unsaved_source != saved {
+                    record.saved_source = saved.into();
+                    return session.persist(&record);
+                }
+            }
+        }
+        session.discard()?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn prepare_save_as(app: tauri::AppHandle, path: String, context_id: u64) -> Result<SaveTargetResponse, String> {
+    run_io(app, move |_app, state| {
+        require_context(state, context_id)?;
+        let target = document::SaveTarget::prepare(std::path::Path::new(&path))?;
+        let _guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        let token = state.save_target_serial.fetch_add(1, Ordering::SeqCst) + 1;
+        let response = SaveTargetResponse { token, path: target.path.display().to_string(),
+            exists: !matches!(target.expected, file_io::Expected::Missing) };
+        *state.save_target.lock().unwrap() = Some(PendingSaveTarget { token, context_id, target });
+        Ok(response)
+    }).await
+}
+
+#[tauri::command]
+async fn save_as_document(app: tauri::AppHandle, token: u64, context_id: u64, markdown: String, revision: u64) -> Result<SaveAsResponse, String> {
+    run_io(app, move |app, state| {
+        let pending = {
+            let _guard = state.file_path.lock().unwrap();
+            require_context(state, context_id)?;
+            let mut pending = state.save_target.lock().unwrap();
+            if !pending.as_ref().is_some_and(|p| p.token == token && p.context_id == context_id) {
+                return Err("The Save As destination is no longer valid. Choose it again.".into());
+            }
+            pending.take().unwrap()
+        };
+        let path = &pending.target.path;
+        // The user confirms replacement after preparation. No forced bypass of
+        // its snapshot: a changed destination requires a new selection/confirmation.
+        file_io::write(&app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("locks"),
+            path, &markdown, pending.target.expected, false)?;
+        let mut current_path = state.file_path.lock().unwrap();
+        if require_context(state, context_id).is_err() {
+            return Ok(SaveAsResponse { context_id: None, path: path.display().to_string(),
+                name: path.file_name().unwrap_or_default().to_string_lossy().into_owned(), exists: true, saved: true,
+                recovery_warning: Some("The copy was saved, but the current document changed; its identity was preserved.".into()) });
+        }
+        *current_path = Some(path.clone());
+        state.image_resources.lock().unwrap().replace_document(Some(path.clone()));
+        *state.last_modified.lock().unwrap() = fs::metadata(path).and_then(|m| m.modified()).ok();
+        *state.saved_source.lock().unwrap() = markdown;
+        *state.working_revision.lock().unwrap() = revision;
+        let recovery_warning = discard_owned_recovery(state).err();
+        let mut dirty = state.dirty.lock().unwrap();
+        let id = state.context_id.fetch_add(1, Ordering::SeqCst) + 1;
+        *dirty = false;
+        Ok(SaveAsResponse { context_id: Some(id), path: path.display().to_string(),
+            name: path.file_name().unwrap_or_default().to_string_lossy().into_owned(), exists: true,
+            saved: true, recovery_warning })
+    }).await
+}
+
+#[tauri::command]
+async fn open_external_link(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    run_io(app, move |app, state| {
+        let document = {
+            let path = state.file_path.lock().unwrap();
+            require_context(state, context_id)?;
+            path.clone()
+        };
+        let destination = links::resolve(&reference, document.as_deref())?;
+        let _guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        match destination {
+            links::Destination::Url(url) => app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string()),
+            links::Destination::File(path) => {
+                let path = path.into_os_string().into_string().map_err(|_| "The link path is not valid Unicode.".to_string())?;
+                app.opener().open_path(path, None::<&str>).map_err(|e| e.to_string())
+            }
+            _ => Err("This destination requires editor navigation.".into()),
+        }
+    }).await
+}
+
+#[tauri::command]
+async fn resolve_link(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<links::Destination, String> {
+    run_io(app, move |_app, state| {
+        let document = {
+            let path = state.file_path.lock().unwrap();
+            require_context(state, context_id)?;
+            path.clone()
+        };
+        let destination = links::resolve(&reference, document.as_deref())?;
+        let _guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        Ok(destination)
+    }).await
+}
+
+#[tauri::command]
+async fn register_image(app: tauri::AppHandle, reference: String, context_id: u64) -> Result<String, String> {
+    run_io(app, move |_app,state| {
+        let path={
+            let _guard=state.file_path.lock().unwrap();require_context(state,context_id)?;
+            state.image_resources.lock().unwrap().resolve_reference(&reference)?
+        };
+        let bytes=fs::read(&path).map_err(|_| "Cannot read the referenced image.".to_string())?;
+        let _guard=state.file_path.lock().unwrap();require_context(state,context_id)?;
+        state.image_resources.lock().unwrap().register(&path,&bytes)
+    }).await
+}
+
+#[tauri::command]
+async fn load_settings(app: tauri::AppHandle) -> Result<settings::Loaded, String> {
+    run_io(app, |app, _state| {
+        Ok(settings::load(&app.path().app_local_data_dir().map_err(|e| e.to_string())?))
+    }).await
+}
+
+#[tauri::command]
+async fn save_settings(app: tauri::AppHandle, settings: settings::Settings) -> Result<settings::Settings, String> {
+    run_io(app, move |app, _state| {
+        settings::save(&app.path().app_local_data_dir().map_err(|e| e.to_string())?, settings)
+    }).await
 }
 
 #[tauri::command]
 fn get_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+    env!("AMORIST_VERSION").to_string()
 }
 
 #[tauri::command]
-fn set_dirty(state: State<AppState>, dirty: bool) {
-    *state.dirty.lock().unwrap() = dirty;
+fn set_dirty(state: State<AppState>, dirty: bool, context_id: u64) {
+    let mut current = state.dirty.lock().unwrap();
+    if require_context(&state, context_id).is_ok() { *current = dirty; }
 }
 
 #[tauri::command]
@@ -143,58 +449,15 @@ fn force_close(app_handle: tauri::AppHandle) {
     app_handle.exit(0);
 }
 
-/// The write path, with no application state attached.
-///
-/// Extracted from `save_document` so that the two properties the QA contract
-/// puts on it can be verified directly, over real temporary files, without
-/// standing up a window: the write is atomic, and a file changed underneath us
-/// is never overwritten without being asked. `save_document` is now a thin
-/// wrapper that supplies the state and records the new modification time.
-///
-/// Behaviour is unchanged from the inline version.
-fn write_document(
-    path: &std::path::Path,
-    markdown: &str,
-    expected_mtime: Option<std::time::SystemTime>,
-    force: bool,
-) -> Result<(), String> {
-    if markdown.len() as u64 > MAX_MARKDOWN_BYTES {
-        return Err("File is too large (max 10 MB).".into());
-    }
-
-    if !force {
-        if let Some(expected) = expected_mtime {
-            if let Ok(meta) = fs::metadata(path) {
-                if let Ok(current) = meta.modified() {
-                    if current != expected {
-                        return Err("CONFLICT".into());
-                    }
-                }
-            }
-        }
-    }
-
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let tmp_path = path.with_file_name(format!(".{}.amorist-tmp", name));
-
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-
-    if let Err(e) = fs::write(&tmp_path, markdown.as_bytes()) {
-        let _ = fs::remove_file(&tmp_path);
-        return Err(e.to_string());
-    }
-
-    if let Err(e) = fs::rename(&tmp_path, path) {
-        let _ = fs::remove_file(&tmp_path);
-        return Err(e.to_string());
-    }
-
-    Ok(())
+/// Test adapter for the same production writer with an isolated lock directory.
+#[cfg(test)]
+fn write_document(path: &std::path::Path, markdown: &str,
+    expected_mtime: Option<std::time::SystemTime>, force: bool) -> Result<(), String> {
+    let locks = tests::scratch_dir("writer-locks");
+    let expected = expected_mtime.map(file_io::Expected::Modified).unwrap_or(file_io::Expected::Any);
+    let result = file_io::write(&locks, path, markdown, expected, force);
+    let _ = fs::remove_dir_all(locks);
+    result
 }
 
 fn app_data_home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -209,59 +472,246 @@ fn app_data_home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-fn working_copy_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    Ok(app_data_home(app)?.join("working-copy.json"))
+fn recovery_store(app: &tauri::AppHandle) -> Result<recovery::Store, String> {
+    recovery::Store::new(app_data_home(app)?.join("recovery-sessions"))
 }
 
-fn load_recovery(
+fn load_session_recovery(
     app: &tauri::AppHandle,
-    path: &std::path::Path,
-    saved_source: &str,
-) -> Option<String> {
-    let file = working_copy_path(app).ok()?;
-    load_recovery_file(&file, path, saved_source)
+    state: &AppState,
+    path: Option<&std::path::Path>,
+    saved: &str,
+) -> Result<(Option<recovery::Record>, Vec<recovery::Record>, Vec<String>), String> {
+    load_recovery_into(app, &state.recovery_session, &state.recovery_checked, path, saved)
 }
 
+fn load_recovery_into(app: &tauri::AppHandle, session: &Mutex<Option<recovery::Session>>,
+    checked_state: &Mutex<bool>, path: Option<&std::path::Path>, saved: &str,
+) -> Result<(Option<recovery::Record>, Vec<recovery::Record>, Vec<String>), String> {
+    let store = recovery_store(app)?;
+    let mut owner = session.lock().unwrap();
+    if owner.is_none() { *owner = Some(store.create()?); }
+    let path = path.map(|p| p.display().to_string());
+    if let Some(record) = store.read(owner.as_ref().unwrap().id())? {
+        if record.path == path && record.saved_source == saved && record.unsaved_source != saved {
+            return Ok((Some(record), Vec::new(), Vec::new()));
+        }
+    }
+    let mut checked = checked_state.lock().unwrap();
+    if *checked { return Ok((None, Vec::new(), Vec::new())); }
+    let mut warnings = Vec::new();
+    if let Err(e) = store.import_legacy(&app_data_home(app)?.join("working-copy.json")) {
+        warnings.push(format!("Legacy recovery was preserved: {e}"));
+    }
+    let listing = store.list()?;
+    warnings.extend(listing.warnings);
+    let mut candidates: Vec<_> = listing.candidates.into_iter()
+        .filter(|c| !c.active && (path.is_none() || c.record.path == path)
+            && c.record.unsaved_source != c.record.saved_source
+            && (c.record.path != path || c.record.unsaved_source != saved))
+        .map(|c| c.record).collect();
+    if candidates.len() == 1 && candidates[0].path == path && candidates[0].saved_source == saved {
+        let record = candidates.pop().unwrap();
+        *owner = Some(store.claim(&record.session_id)?);
+        *checked = true;
+        return Ok((Some(record), Vec::new(), warnings));
+    }
+    *checked = true;
+    Ok((None, candidates, warnings))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RecoveryInspection { copies: Vec<recovery::Record>, warnings: Vec<String>, saved_source: String }
+
+#[tauri::command]
+async fn inspect_open_document(app: tauri::AppHandle, path: String, context_id: u64) -> Result<RecoveryInspection, String> {
+    run_io(app, move |app, state| {
+        require_context(state, context_id)?;
+        let prepared = document::Prepared::open(std::path::Path::new(&path))?;
+        let store = recovery_store(app)?;
+        let mut warnings = Vec::new();
+        if let Err(e) = store.import_legacy(&app_data_home(app)?.join("working-copy.json")) {
+            warnings.push(format!("Legacy recovery was preserved: {e}"));
+        }
+        let listing = store.list()?;
+        warnings.extend(listing.warnings);
+        let expected = prepared.path.as_ref().map(|p| p.display().to_string());
+        let copies = listing.candidates.into_iter().filter(|c| !c.active && c.record.path == expected
+            && c.record.unsaved_source != c.record.saved_source && c.record.unsaved_source != prepared.source)
+            .map(|c| c.record).collect();
+        Ok(RecoveryInspection { copies, warnings, saved_source: prepared.source })
+    }).await
+}
+
+#[tauri::command]
+async fn create_document(app: tauri::AppHandle, context_id: u64, discard: bool) -> Result<DocumentResponse, String> {
+    run_io(app, move |app, state| transition_document(app, state, document::Prepared::untitled(), context_id, discard, None, false)).await
+}
+
+#[tauri::command]
+async fn open_document(app: tauri::AppHandle, path: String, context_id: u64, discard: bool, recovery_choice: Option<String>, expected_saved_source: Option<String>) -> Result<DocumentResponse, String> {
+    run_io(app, move |app, state| {
+        require_context(state, context_id)?;
+        let prepared = document::Prepared::open(std::path::Path::new(&path))?;
+        if recovery_choice.is_some() && expected_saved_source.as_deref() != Some(prepared.source.as_str()) {
+            return Err("The saved file changed during recovery selection. Try again.".into());
+        }
+        transition_document(app, state, prepared, context_id, discard, recovery_choice, false)
+    }).await
+}
+
+fn transition_document(app: &tauri::AppHandle, state: &AppState, prepared: document::Prepared,
+    context_id: u64, discard: bool, recovery_choice: Option<String>, recovery_as_untitled: bool) -> Result<DocumentResponse, String> {
+    require_context(state, context_id)?;
+    // Stage recovery separately: failed preparation must not touch the old lease.
+    let store = recovery_store(app)?;
+    let mut staged_owner = store.create()?;
+    let mut recovery = None;
+    if let Some(id) = recovery_choice {
+        let claimed = store.claim(&id)?;
+        let record = store.read(&id)?.ok_or("The recovery copy is no longer available.")?;
+        let expected_path = prepared.path.as_ref().map(|p| p.display().to_string());
+        if record.path != expected_path && !(recovery_as_untitled && prepared.path.is_none()) {
+            return Err("The file or recovery copy changed during selection. Try again.".into());
+        }
+        staged_owner = claimed;
+        recovery = Some(record);
+    }
+    let mut path = state.file_path.lock().unwrap();
+    require_context(state, context_id)?;
+    if *state.dirty.lock().unwrap() && !discard {
+        return Err("Unsaved changes require Save, Discard or Cancel.".into());
+    }
+    // Only now, with a valid candidate and unchanged context, remove our old copy.
+    discard_owned_recovery(state)?;
+    *path = prepared.path.clone();
+    *state.last_modified.lock().unwrap() = prepared.modified;
+    *state.recovery_session.lock().unwrap() = Some(staged_owner);
+    *state.recovery_checked.lock().unwrap() = true;
+    let id = install_read_context(state, &prepared.source, recovery.is_some(), prepared.path.clone());
+    Ok(DocumentResponse {
+        context_id: id,
+        path: prepared.path.as_ref().map(|p| p.display().to_string()).unwrap_or_default(),
+        name: prepared.path.as_ref().and_then(|p| p.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Untitled".into()),
+        exists: prepared.path.is_some(), markdown: prepared.source,
+        recovery_markdown: recovery.as_ref().map(|r| r.unsaved_source.clone()),
+        recovery_boundary_state: recovery.and_then(|r| r.boundary_state),
+        recovery_candidates: Vec::new(), recovery_warnings: Vec::new(),
+    })
+}
+
+#[tauri::command]
+async fn recover_startup_document(app: tauri::AppHandle, session_id: String, context_id: u64) -> Result<DocumentResponse, String> {
+    run_io(app, move |app, state| {
+        require_context(state, context_id)?;
+        if state.file_path.lock().unwrap().is_some() || *state.dirty.lock().unwrap() {
+            return Err("Startup recovery requires an unused untitled document.".into());
+        }
+        let record = recovery_store(app)?.read(&session_id)?.ok_or("The recovery copy is no longer available.")?;
+        let prepared = record.path.as_ref().ok_or_else(|| "Choose an untitled recovery copy in the current document.".to_string())
+            .and_then(|path| document::Prepared::open(std::path::Path::new(path)));
+        match prepared {
+            Ok(prepared) => transition_document(app, state, prepared, context_id, false, Some(session_id), false),
+            Err(error) => {
+                let mut prepared = document::Prepared::untitled();
+                prepared.source = record.saved_source;
+                let mut document = transition_document(app, state, prepared, context_id, false, Some(session_id), true)?;
+                document.recovery_warnings.push(format!("The original file could not be opened: {error}. Recovered into an untitled document; use Save As. The original file and other recovery copies are kept."));
+                Ok(document)
+            }
+        }
+    }).await
+}
+
+#[tauri::command]
+async fn select_recovery(app: tauri::AppHandle, session_id: String, context_id: u64) -> Result<recovery::Record, String> {
+    run_io(app, move |app, state| select_recovery_inner(app, state, session_id, context_id)).await
+}
+
+fn select_recovery_inner(app: &tauri::AppHandle, state: &AppState, session_id: String, context_id: u64) -> Result<recovery::Record, String> {
+    if *state.dirty.lock().unwrap() { return Err("Cannot replace unsaved work with recovery.".into()); }
+    let path = state.file_path.lock().unwrap();
+    require_context(state, context_id)?;
+    let expected_path = path.as_ref().map(|p| p.display().to_string());
+    let saved = match path.as_ref() {
+        Some(path) if path.exists() => fs::read_to_string(path).map_err(|e| e.to_string())?,
+        _ => String::new(),
+    };
+    let store = recovery_store(&app)?;
+    let session = store.claim(&session_id)?;
+    let record = store.read(&session_id)?.ok_or("Recovery copy is no longer available.")?;
+    if record.path != expected_path || saved != *state.saved_source.lock().unwrap() {
+        return Err("Recovery belongs to another document or the saved file changed.".into());
+    }
+    *state.recovery_session.lock().unwrap() = Some(session);
+    *state.dirty.lock().unwrap() = true;
+    Ok(record)
+}
+
+#[cfg(test)]
 fn load_recovery_file(
     file: &std::path::Path,
     path: &std::path::Path,
     saved_source: &str,
 ) -> Option<String> {
+    load_recovery_record_file(file, path, saved_source).map(|record| record.unsaved_source)
+}
+
+#[cfg(test)]
+fn load_recovery_record_file(
+    file: &std::path::Path,
+    path: &std::path::Path,
+    saved_source: &str,
+) -> Option<WorkingCopy> {
     let record: WorkingCopy = serde_json::from_slice(&fs::read(file).ok()?).ok()?;
     if record.path == path.display().to_string()
         && record.saved_source == saved_source
         && record.unsaved_source != saved_source
     {
-        Some(record.unsaved_source)
+        Some(record)
     } else {
         None
     }
 }
 
 #[tauri::command]
-fn persist_working_copy(
-    app: tauri::AppHandle,
-    state: State<AppState>,
-    saved_source: String,
-    unsaved_source: String,
-    revision: u64,
-) -> Result<(), String> {
+async fn persist_working_copy(app: tauri::AppHandle, saved_source: String, unsaved_source: String,
+    revision: u64, boundary_state: Option<serde_json::Value>, context_id: u64) -> Result<(), String> {
+    run_io(app, move |app, state| persist_working_copy_inner(app, state, saved_source, unsaved_source, revision, boundary_state, context_id)).await
+}
+
+fn persist_working_copy_inner(app: &tauri::AppHandle, state: &AppState, saved_source: String, unsaved_source: String,
+    revision: u64, boundary_state: Option<serde_json::Value>, context_id: u64) -> Result<(), String> {
     if unsaved_source.len() as u64 > MAX_MARKDOWN_BYTES
         || saved_source.len() as u64 > MAX_MARKDOWN_BYTES
     {
         return Err("File is too large (max 10 MB).".into());
     }
     let guard = state.file_path.lock().unwrap();
-    let path = guard.as_ref().ok_or("No file open.")?;
-    let record = WorkingCopy {
-        path: path.display().to_string(),
-        saved_source,
-        unsaved_source,
-        revision,
+    require_context(state, context_id)?;
+    let mut latest_revision = state.working_revision.lock().unwrap();
+    if revision < *latest_revision { return Ok(()); }
+    // A save may complete while this callback waits. Its authoritative base
+    // belongs to the same context and is paired with the captured unsaved source.
+    let saved_source = state.saved_source.lock().unwrap().clone();
+    let mut owner = state.recovery_session.lock().unwrap();
+    if owner.is_none() { *owner = Some(recovery_store(&app)?.create()?); }
+    let session = owner.as_ref().unwrap();
+    let record = recovery::Record {
+        schema_version: 1,
+        session_id: session.id().into(),
+        path: guard.as_ref().map(|p| p.display().to_string()),
+        saved_source, unsaved_source, revision, boundary_state,
+        legacy_import: false,
     };
-    persist_working_copy_file(&working_copy_path(&app)?, &record)
+    if record.unsaved_source == record.saved_source { session.discard()?; }
+    else { session.persist(&record)?; }
+    *latest_revision = revision;
+    Ok(())
 }
 
+#[cfg(test)]
 fn persist_working_copy_file(file: &std::path::Path, record: &WorkingCopy) -> Result<(), String> {
     let encoded = serde_json::to_string(record).map_err(|e| e.to_string())?;
     // Recovery must survive a crash during the recovery write itself. Reuse
@@ -271,10 +721,22 @@ fn persist_working_copy_file(file: &std::path::Path, record: &WorkingCopy) -> Re
 }
 
 #[tauri::command]
-fn discard_working_copy(app: tauri::AppHandle) -> Result<(), String> {
-    discard_working_copy_file(&working_copy_path(&app)?)
+async fn discard_working_copy(app: tauri::AppHandle, context_id: u64) -> Result<(), String> {
+    run_io(app, move |_app, state| {
+        let _guard = state.file_path.lock().unwrap();
+        require_context(state, context_id)?;
+        discard_owned_recovery(state)
+    }).await
 }
 
+fn discard_owned_recovery(state: &AppState) -> Result<(), String> {
+    if let Some(session) = state.recovery_session.lock().unwrap().as_ref() {
+        session.discard()?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
 fn discard_working_copy_file(file: &std::path::Path) -> Result<(), String> {
     match fs::remove_file(file) {
         Ok(()) => Ok(()),
@@ -596,6 +1058,8 @@ fn resolve_file_arg(app: &App) -> Result<Option<PathBuf>, String> {
 }
 
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    image_resources::configure_packaged_decoder();
     // WebKitGTK tries to create a GL context for accelerated compositing and
     // prints a noisy "Disabled hardware acceleration ... Unable to create a GL
     // context" warning when that fails (headless/VM/remote-X machines without
@@ -608,13 +1072,45 @@ pub fn run() {
     }
 
     tauri::Builder::default()
+        .register_asynchronous_uri_scheme_protocol("amorist-image", |context, request, responder| {
+            let app=context.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let content=if request.method()==tauri::http::Method::GET {
+                    app.try_state::<AppState>().and_then(|state| image_resources::read_resource(
+                        &state.image_resources,request.uri().path().trim_start_matches('/')))
+                }else {None};
+                let (status,mime,body)=match content {
+                    Some((bytes,mime))=>(200,mime,bytes),
+                    None=>(404,"text/plain",b"Image resource not found.".to_vec()),
+                };
+                let response=tauri::http::Response::builder().status(status)
+                    .header("Content-Type",mime).header("X-Content-Type-Options","nosniff")
+                    .header("Cache-Control","no-store")
+                    .header("Content-Security-Policy","default-src 'none'; style-src 'unsafe-inline'")
+                    .body(body).expect("static image response headers");
+                responder.respond(response);
+            });
+        })
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::Builder::new().open_js_links_on_click(false).build())
         .manage(AppState {
             file_path: Mutex::new(None),
             last_modified: Mutex::new(None),
             dirty: Mutex::new(false),
             force_close: Mutex::new(false),
+            debug: Mutex::new(false),
+            debug_log: Mutex::new(()),
+            recovery_session: Mutex::new(None),
+            recovery_checked: Mutex::new(false),
+            context_id: AtomicU64::new(0),
+            saved_source: Mutex::new(String::new()),
+            working_revision: Mutex::new(0),
+            save_target: Mutex::new(None),
+            save_target_serial: AtomicU64::new(0),
+            native_open: Mutex::new(native_open::Queue::default()),
+            image_resources: Mutex::new(image_resources::Store::default()),
+            startup_anchor: Mutex::new(None),
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -635,6 +1131,13 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            let matches = app.cli().matches()?;
+            *app.state::<AppState>().debug.lock().unwrap() = matches.args.get("debug")
+                .map(|arg| arg.value.as_bool().unwrap_or(false)).unwrap_or(false);
+            *app.state::<AppState>().startup_anchor.lock().unwrap() = matches.args.get("heading-anchor")
+                .and_then(|arg| arg.value.as_str()).map(str::to_owned);
+            let fresh_document = matches.args.get("new-document").is_some_and(|arg| arg.occurrences > 0);
+            if fresh_document { *app.state::<AppState>().recovery_checked.lock().unwrap() = true; }
             match check_install_cli(app) {
                 Ok(true) => std::process::exit(0),
                 Ok(false) => {}
@@ -653,8 +1156,10 @@ pub fn run() {
             }
             match resolve_file_arg(app) {
                 Ok(Some(path)) => {
+                    if fresh_document { return Err("--new-document cannot be combined with a file.".into()); }
                     let state: State<AppState> = app.state();
                     *state.file_path.lock().unwrap() = Some(path.clone());
+                    state.native_open.lock().unwrap().set_startup_file(path.clone());
                     if let Some(window) = app.get_webview_window("main") {
                         let name = path
                             .file_name()
@@ -667,13 +1172,7 @@ pub fn run() {
                         let _ = window.set_focus();
                     }
                 }
-                Ok(None) => {
-                    eprintln!("Usage: amorist <file.md>");
-                    eprintln!("       amorist --install-cli   (install shell command into ~/.local/bin)");
-                    #[cfg(target_os = "linux")]
-                    eprintln!("       amorist --install-desktop   (register in 'Open with' for .md files)");
-                    std::process::exit(1);
-                }
+                Ok(None) => {}
                 Err(error) => {
                     #[cfg(debug_assertions)]
                     eprintln!("{error}");
@@ -684,20 +1183,71 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             read_document,
+            recover_startup_document,
+            spawn_document_instance,
+            take_native_open_requests,
+            create_document,
+            open_document,
+            inspect_open_document,
             save_document,
+            prepare_save_as,
+            save_as_document,
             persist_working_copy,
             discard_working_copy,
+            select_recovery,
+            register_image,
+            resolve_link,
+            take_startup_anchor,
+            open_external_link,
+            load_settings,
+            save_settings,
             get_version,
+            debug_enabled,
+            report_problem,
+            get_report_path,
             set_dirty,
             force_close,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = event {
+                let requests = urls.into_iter().map(|url| match url.to_file_path() {
+                    Ok(path) => match path.into_os_string().into_string() {
+                        Ok(path) => native_open::Request { path: Some(path), error: None },
+                        Err(_) => native_open::Request { path: None, error: Some("The Finder filename is not valid Unicode.".into()) },
+                    },
+                    Err(_) => native_open::Request { path: None, error: Some("Finder can only open local Markdown files.".into()) },
+                });
+                let ready = app.state::<AppState>().native_open.lock().unwrap().enqueue(requests);
+                if ready { let _ = app.emit("native-open-available", ()); }
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn debug_reports_append_complete_json_records_without_overwriting() {
+        let dir = scratch_dir("debug-reports");
+        let path = dir.join("reports.jsonl");
+        let first = serde_json::json!({"note": "first\nproblem", "markdown": "# Original"});
+        let second = serde_json::json!({"note": "second", "markdown": "# Unsaved"});
+        append_debug_record(&path, &first, &dir.join("locks")).unwrap();
+        let original = fs::read(&path).unwrap();
+        append_debug_record(&path, &second, &dir.join("locks")).unwrap();
+        let bytes = fs::read(&path).unwrap();
+        assert!(bytes.starts_with(&original));
+        let records: Vec<serde_json::Value> = std::str::from_utf8(&bytes).unwrap().lines()
+            .map(|line| serde_json::from_str(line).unwrap()).collect();
+        assert_eq!(records, vec![first, second]);
+        fs::remove_dir_all(dir).unwrap();
+    }
 
     // ---------------------------------------------------------------- family F
     //
@@ -706,7 +1256,7 @@ mod tests {
     // cannot quietly regress while the save path is rewritten to preserve the
     // source. A regression check earns its keep before the change, not after.
 
-    fn scratch_dir(label: &str) -> PathBuf {
+    pub(super) fn scratch_dir(label: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
             "amorist-qa-{}-{}-{:?}",
             label,
@@ -746,6 +1296,7 @@ mod tests {
         fs::remove_dir_all(&dir).ok();
     }
 
+    #[cfg(unix)]
     #[test]
     fn qa_req_f1_a_failed_write_leaves_the_original_intact_and_no_debris() {
         use std::os::unix::fs::PermissionsExt;
@@ -778,6 +1329,39 @@ mod tests {
             temporary_files_in(&dir)
         );
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn qa_req_f1_a_failed_write_leaves_the_original_intact_and_no_debris() {
+        use std::process::Command;
+
+        let dir = scratch_dir("f1-fail");
+        let file = dir.join("nota.md");
+        let original = b"# non deve cambiare\n\ncontenuto originale\n";
+        fs::write(&file, original).unwrap();
+        let identity = Command::new("powershell.exe")
+            .args(["-NoProfile", "-Command",
+                "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"])
+            .output().expect("query the current Windows identity");
+        assert!(identity.status.success(), "identity lookup failed: {identity:?}");
+        let sid = String::from_utf8(identity.stdout).unwrap();
+        let sid = sid.trim();
+        assert!(sid.starts_with("S-1-"), "unexpected identity: {sid}");
+        let denied = Command::new("icacls.exe").arg(&dir)
+            .args(["/deny", &format!("*{sid}:(WD)")]).output().unwrap();
+        assert!(denied.status.success(), "cannot deny directory writes: {denied:?}");
+
+        let outcome = write_document(&file, "# sovrascritto\n", None, false);
+        let restored = Command::new("icacls.exe").arg(&dir)
+            .args(["/remove:d", &format!("*{sid}")]).output().unwrap();
+        assert!(restored.status.success(), "cannot restore test directory: {restored:?}");
+        assert!(outcome.is_err(), "save bypassed the directory write denial");
+        assert_eq!(fs::read(&file).unwrap(), original,
+            "a failed save modified the original file");
+        assert!(temporary_files_in(&dir).is_empty(),
+            "a failed save left temporary debris");
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
@@ -836,6 +1420,7 @@ mod tests {
             saved_source: saved.to_string(),
             unsaved_source: unsaved.to_string(),
             revision: 7,
+            boundary_state: None,
         };
 
         persist_working_copy_file(&copy, &record).unwrap();
@@ -847,6 +1432,39 @@ mod tests {
         );
         assert_eq!(fs::read(&document).unwrap(), saved.as_bytes());
         assert!(temporary_files_in(&dir).is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn recovery_preserves_boundary_metadata_and_accepts_legacy_records() {
+        let dir = scratch_dir("recovery-metadata");
+        let document = dir.join("nota.md");
+        let copy = dir.join("working-copy.json");
+        let metadata = serde_json::json!({
+            "schemaVersion": 1,
+            "offsetEncoding": "utf16",
+            "automaticBreaks": [{"marker": 2, "escapes": []}]
+        });
+        let record = WorkingCopy {
+            path: document.display().to_string(),
+            saved_source: "😀".into(),
+            unsaved_source: "😀\\\r\n".into(),
+            revision: 3,
+            boundary_state: Some(metadata.clone()),
+        };
+        persist_working_copy_file(&copy, &record).unwrap();
+        let restored = load_recovery_record_file(&copy, &document, "😀").unwrap();
+        assert_eq!(restored.unsaved_source, record.unsaved_source);
+        assert_eq!(restored.boundary_state, Some(metadata));
+        assert!(load_recovery_record_file(&copy, &document, "changed base").is_none());
+        assert!(load_recovery_record_file(&copy, &dir.join("other.md"), "😀").is_none());
+
+        let mut legacy = serde_json::to_value(&record).unwrap();
+        legacy.as_object_mut().unwrap().remove("boundaryState");
+        fs::write(&copy, serde_json::to_vec(&legacy).unwrap()).unwrap();
+        let restored = load_recovery_record_file(&copy, &document, "😀").unwrap();
+        assert_eq!(restored.unsaved_source, record.unsaved_source);
+        assert_eq!(restored.boundary_state, None);
         fs::remove_dir_all(&dir).ok();
     }
 
@@ -876,6 +1494,7 @@ mod tests {
             saved_source: saved.to_string(),
             unsaved_source: "# Modifica non salvata\n".to_string(),
             revision: 1,
+            boundary_state: None,
         };
 
         persist_working_copy_file(&copy, &record).unwrap();
