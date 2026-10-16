@@ -17,9 +17,9 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             shipping_engine: WebKitGTK
-          # Pin the Safari QA environment; macos-latest moved to 26.6.2,
-          # whose WebDriver drops Command chords before page keydown.
-          - os: macos-15-intel
+          # Pin the OS and use the native Apple Silicon desktop runner.
+          # The Intel virtual display adds unstable frame scheduling latency.
+          - os: macos-15
             platform: macos
             shipping_engine: Safari
           # Keep native desktop QA on a fixed Windows baseline as well.
@@ -90,7 +90,9 @@ jobs:
         run: |
           case "${{ matrix.platform }}" in
             linux) chrome_platform=linux64; chrome_relative=chrome-linux64/chrome ;;
-            macos) chrome_platform=mac-x64; chrome_relative='chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing' ;;
+            macos)
+              if [ "$(uname -m)" = "arm64" ]; then chrome_platform=mac-arm64; else chrome_platform=mac-x64; fi
+              chrome_relative="chrome-$chrome_platform/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" ;;
             windows) chrome_platform=win64; chrome_relative=chrome-win64/chrome.exe ;;
           esac
           chrome_root="$RUNNER_TEMP/amorist-chrome-$CHROME_TEST_VERSION"
@@ -139,6 +141,7 @@ jobs:
           fi
 
       - name: Verify macOS Chromium frame and viewport checks
+        id: render_preflight
         if: matrix.platform == 'macos'
         run: |
           caffeinate -diu node tests/qa/run.js --only B9 --engine chromium
@@ -277,7 +280,7 @@ jobs:
         # Only when the suite actually ran. Demanding a report from a job that
         # failed before starting it would add a second, misleading red step on
         # top of the real cause.
-        if: always() && steps.suite.conclusion != 'skipped'
+        if: always() && (steps.suite.conclusion == 'success' || steps.suite.conclusion == 'failure' || steps.render_preflight.conclusion == 'failure')
         uses: actions/upload-artifact@v4
         with:
           name: qa-report-${{ matrix.platform }}

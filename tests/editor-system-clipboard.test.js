@@ -27,17 +27,7 @@ async function main(){
    async function send(sequence,target=engine,focusOnly=false){
     if(process.platform==='win32' && entry.id==='webview2') {
      assert.equal(sequence.length,focusOnly?0:1);const key=focusOnly?{key:''}:sequence[0];if(!focusOnly)assert.match(key.key,/^[cvxz]$/);
-     const script=`Add-Type -AssemblyName System.Windows.Forms
-       $owned=Get-Process -Id $env:AMORIST_QA_APP_PID -ErrorAction Stop
-       if($owned.Path -ne $env:AMORIST_QA_APPLICATION -or $owned.SessionId -ne (Get-Process -Id $PID).SessionId){throw 'Owned application identity mismatch'}
-       $shell=New-Object -ComObject WScript.Shell
-       if(!$shell.AppActivate($owned.Id)){throw 'Owned application activation failed'}
-       Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class AmoristClipboardFocus{[DllImport("user32.dll")]public static extern IntPtr GetForegroundWindow();[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr h,out uint p);}'
-       $end=[DateTime]::UtcNow.AddSeconds(3);[uint32]$foreground=0
-       do{[void][AmoristClipboardFocus]::GetWindowThreadProcessId([AmoristClipboardFocus]::GetForegroundWindow(),[ref]$foreground);if($foreground -ne $owned.Id){Start-Sleep -Milliseconds 50}}while($foreground -ne $owned.Id -and [DateTime]::UtcNow -lt $end)
-       if($foreground -ne $owned.Id){throw 'Owned application not foreground; keyboard input refused'}
-       if($env:AMORIST_QA_CHORD){[System.Windows.Forms.SendKeys]::SendWait($env:AMORIST_QA_CHORD)}`;
-     const result=require('node:child_process').spawnSync('powershell.exe',['-NoProfile','-Command',script],
+     const result=require('node:child_process').spawnSync('powershell.exe',['-NoProfile','-File',path.join(__dirname,'qa/lib/windows-clipboard-keys.ps1')],
        {encoding:'utf8',timeout:30000,env:{...process.env,AMORIST_QA_APPLICATION:target.application,
         AMORIST_QA_APP_PID:String(target.applicationProcess.pid),AMORIST_QA_CHORD:(key.ctrl?'^':'')+(key.shift?'+':'')+key.key}});
      assert.equal(result.status,0,result.error?.message||result.stderr);
