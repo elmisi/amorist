@@ -24,9 +24,9 @@ async function main(){
           const recordPath=path.join(recoveryRoot,entry.name,'record.json');
           let record;try{record=JSON.parse(fs.readFileSync(recordPath,'utf8'));}catch(error){if(error.code==='ENOENT')continue;throw error;}
           if(record.path!==file||record.unsavedSource.length<=previousLength)continue;
-          const complete=Date.now();
+          const complete=Date.now(),diskTimes=fs.statSync(recordPath);
           assert.ok(record.unsavedSource.startsWith(original));assert.match(record.unsavedSource.slice(original.length),/^x+$/);
-          samples.push({complete,firstInput:previousLength-original.length,lastInput:record.unsavedSource.length-original.length-1,source:record.unsavedSource,revision:record.revision});
+          samples.push({complete,recordMtimeMs:diskTimes.mtimeMs,recordCtimeMs:diskTimes.ctimeMs,firstInput:previousLength-original.length,lastInput:record.unsavedSource.length-original.length-1,source:record.unsavedSource,revision:record.revision});
           previousLength=record.unsavedSource.length;
         }}catch(error){watchError=error;}
       };
@@ -36,8 +36,9 @@ async function main(){
       try {
       await engine.evaluate(`(()=>{
         const source=document.querySelector('.amorist-editor-source');if(source.hidden)document.querySelector('[data-action="source"]').click();source.focus();source.setSelectionRange(source.value.length,source.value.length);
-        window.__deadline={inputs:[],interval:null};
-        source.addEventListener('input',()=>window.__deadline.inputs.push(Date.now()),true);return true;
+        window.__deadline={inputs:[],handled:[],interval:null};
+        source.addEventListener('input',()=>window.__deadline.inputs.push(Date.now()),true);
+        source.addEventListener('input',()=>window.__deadline.handled.push(Date.now()));return true;
       })()`);
       if(mode==='idle'){
         for(let n=1;n<=20;n++){
@@ -54,6 +55,11 @@ async function main(){
       for(const sample of samples){
         sample.first=inputs[sample.firstInput];sample.last=inputs[sample.lastInput];
         assert.ok(Number.isFinite(sample.first)&&Number.isFinite(sample.last));
+        // Filesystem timestamps are diagnostics, never a substitute for observing the complete record.
+        if(sample.complete-sample.first>(mode==='idle'?2100:5100)){
+          const {source,...timing}=sample;
+          console.error(JSON.stringify({size,mode,timing,inputHandledAt:await engine.evaluate(`window.__deadline.handled[${sample.firstInput}]`)}));
+        }
         assert.ok(sample.complete-sample.first<=(mode==='idle'?2100:5100),`${size}/${mode} completion latency ${sample.complete-sample.first}ms`);
       }
       }finally{watcher.close();clearInterval(polling);}
